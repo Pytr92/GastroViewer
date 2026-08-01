@@ -213,9 +213,13 @@ def classify(
             continue
         elat, elon = coords
         dist = haversine_m(lat, lon, elat, elon)
-        # Overpass rechnet around: auf die Geometrie, wir auf den Mittelpunkt.
-        # Große Flächen können dadurch etwas außerhalb liegen — nicht verwerfen,
-        # sondern korrekt mit ihrer Mittelpunktdistanz ausweisen.
+        # Overpass prüft `around:` gegen die **Geometrie**, wir messen zum
+        # Mittelpunkt. Ein Campus oder Klinikgelände kann in den Umkreis
+        # hineinreichen, während sein Flächenmittelpunkt Kilometer entfernt liegt
+        # (gemessen: LMU München, 5.798 m bei r=600). Solche Objekte werden nicht
+        # verworfen — sie sind echte Frequenzbringer —, aber gekennzeichnet, damit
+        # die Distanzangabe nicht wie ein Datenfehler aussieht.
+        ausserhalb = dist > radius
         base = {
             "id": el.get("id"),
             "osm_type": el.get("type"),
@@ -224,6 +228,13 @@ def classify(
             "lon": round(elon, 7),
             "distanz_m": round(dist),
             "richtung": bearing_label(lat, lon, elat, elon),
+            "mittelpunkt_ausserhalb": ausserhalb,
+            "distanz_hinweis": (
+                "Fläche reicht in den Umkreis hinein; angegeben ist die Entfernung "
+                "zum Mittelpunkt der Gesamtfläche."
+                if ausserhalb
+                else None
+            ),
             "osm_url": osm_url(el),
         }
 
@@ -371,6 +382,18 @@ async def load(
     data = {**cls, "zusammenfassung": summarize(cls), "elemente_gesamt": len(elements)}
 
     warnings = list(problems)
+    flaechen = [
+        e
+        for key in ("gastronomie", "frequenzbringer", "oepnv", "leerstand")
+        for e in cls[key]
+        if e.get("mittelpunkt_ausserhalb")
+    ]
+    if flaechen:
+        warnings.append(
+            f"{len(flaechen)} Objekt(e) sind Flächen, die in den Umkreis hineinreichen, "
+            "deren Mittelpunkt aber außerhalb liegt (z. B. ein Universitäts- oder "
+            "Klinikgelände). Die Entfernung bezieht sich auf den Flächenmittelpunkt."
+        )
     if not elements:
         warnings.append(
             "Keine OSM-Objekte im Umkreis gefunden. Im ländlichen Raum ist das ein "

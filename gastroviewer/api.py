@@ -32,6 +32,17 @@ STATIC_DIR = __import__("pathlib").Path(__file__).parent / "static"
 RADIUS_CHOICES = (300, 600, 900, 1400)
 
 
+class SavePoint(BaseModel):
+    """Muss auf Modulebene stehen: mit ``from __future__ import annotations`` sind
+    Annotationen Strings, die FastAPI nur im Modul-Namensraum auflösen kann. In einer
+    Funktion definiert, hielte FastAPI das Modell für einen Query-Parameter."""
+
+    label: str = Field(..., min_length=1, max_length=120)
+    lat: float
+    lon: float
+    radius: int = 600
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     settings: Settings = app.state.settings
@@ -173,12 +184,6 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         return (await svc(request).suche(q)).to_dict()
 
     # ------------------------------------------------------- Vergleich
-
-    class SavePoint(BaseModel):
-        label: str = Field(..., min_length=1, max_length=120)
-        lat: float
-        lon: float
-        radius: int = 600
 
     @app.get("/api/points")
     async def list_points(request: Request):
