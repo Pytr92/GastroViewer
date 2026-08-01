@@ -1,0 +1,2 @@
+[console_scripts]
+gastroviewer = gastroviewer.__main__:main

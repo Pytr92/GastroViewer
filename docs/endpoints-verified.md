@@ -477,7 +477,7 @@ A 99 1.638 m    79.216 Kfz/Tag   davon 10.742 Schwerverkehr  (13,6 %)
 
 | Quelle | Grund |
 |---|---|
-| **GENESIS-Webservice Bayern**, `statistikdaten.bayern.de/genesisWS/rest/2020` | Antwortet auf `helloworld/whoami` und auf das historische Gastkonto mit „Access forbidden". Beschäftigte am Arbeitsort — der eigentliche Mittagsgeschäft-Indikator — bleiben damit ohne Konto unerreichbar. |
+| **GENESIS-Webservice** (Bayern und Regionalstatistik) | Konto nötig; am 01.08.2026 per POST nachgeprüft, siehe eigener Nachtrag unten. Feinste Gliederung ist ohnehin die Gemeinde — innerhalb Münchens ohne Unterscheidungskraft. |
 | **Denkmalatlas Bayern (BLfD)** | Zwei plausible Dienstpfade geprüft, beide HTTP 404. Kein offener OGC-Dienst gefunden. |
 | hystreet | Im kostenfreien Modell ist die gewerbliche Nutzung untersagt (Notizen §1). Bleibt Link. |
 | Open-Data-Portal München, Suche „passanten", „frequenz", „einzelhandel", „kaufkraft" | jeweils **0 Treffer** — es gibt dort keine Passanten- oder Kaufkraftdaten |
@@ -505,6 +505,71 @@ Aufgenommen mit einer eigenen Kategorie „Markt & Alltagsversorgung" und „Beh
 Die kombinierte Abfrage liefert damit **843 statt 801 Elemente**, die Frequenzbringer
 steigen von 354 auf 396. Das Fixture `raw_overpass_combined.json` wurde neu
 aufgezeichnet (Stand 2026-08-01T09:16:36Z).
+
+---
+
+## Nachtrag 2026-08-01: GENESIS erneut geprüft, diesmal mit der richtigen Methode
+
+Die erste Prüfung des GENESIS-Webservice lief per **GET** und lieferte deshalb nur
+`HTTP 405 – Method Not Allowed`; der Befund „Access forbidden" war damit nicht belastbar.
+Die REST-Schnittstelle 2020 verlangt **POST**. Nachgeholt:
+
+| Aufruf (POST) | Antwort |
+|---|---|
+| `regionalstatistik.de/genesisws/rest/2020/helloworld/logincheck` | `{"Status":"Sie wurden erfolgreich an- und abgemeldet!","Username":"GAST"}` |
+| `…/catalogue/tables` mit leeren Zugangsdaten | `Code 15 — Sie sind nicht berechtigt diesen Service aufzurufen` |
+| `…/catalogue/tables` mit `GAST/GAST` | `Code 15` |
+| `…/data/table?name=13111-01-03-5` mit `GAST/GAST` | `Code 15` |
+| dieselben Zugangsdaten als HTTP-Header statt als Formularfeld | `Code 15` |
+
+**Ergebnis:** Der Anmeldedienst antwortet und nennt sogar das Gastkonto, die eigentlichen
+Katalog- und Datendienste weisen es aber ab. Ein (kostenfreies) registriertes Konto ist
+tatsächlich nötig. Der Befund bleibt bestehen, ruht jetzt aber auf richtiger Methodik.
+
+### Regionale Tiefe — die eigentliche Einschränkung
+
+Feinste Gliederung der Tabelle 13111 („Sozialversicherungspflichtig Beschäftigte am
+Arbeitsort") ist die **Gemeinde** (`13111-01-03-5`, regionale Tiefe: Gemeinden). Darunter
+wird nichts veröffentlicht — bei Beschäftigtenzahlen wäre sonst der einzelne Betrieb
+identifizierbar.
+
+Für dieses Werkzeug heißt das: Innerhalb Münchens hätte der Wert **keinerlei
+Unterscheidungskraft**, weil Marienplatz und Sendlinger Tor dieselbe Zahl für 1,6 Mio.
+Einwohner bekämen. Aussagekräftig wird er erst beim Vergleich **verschiedener Gemeinden**
+im Umland — Garching, Unterschleißheim, Erding, Freising —, wo das Gemeindegebiet dem
+Einzugsgebiet nahekommt.
+
+### Kleinräumige Alternative geprüft und verworfen
+
+`opendata.muenchen.de` führt „Indikatorenatlas: Arbeitsmarkt — Sozialversicherungspflichtig
+Beschäftigte" je Stadtbezirksviertel. Die Datensatzbeschreibung sagt aber wörtlich:
+*„Anteil der sozialversicherungspflichtig Beschäftigten **am Wohnort** …"*. Das sind
+erwerbstätige Anwohner, nicht Arbeitsplätze am Ort — für das Mittagsgeschäft der falsche
+Indikator. Die übrigen sechs Treffer betreffen das Personal der Stadtverwaltung selbst.
+
+Die Lücke „Beschäftigte am Arbeitsort, kleinräumig" bleibt damit offen; unterhalb der
+Gemeindeebene gibt es sie in offenen Daten nicht.
+
+---
+
+## Nachtrag 2026-08-01: Verhalten ohne Internetverbindung
+
+Nachgemessen, weil im README bisher nicht beantwortet.
+
+| Prüfung | Ergebnis |
+|---|---|
+| Installation in frischem venv nach README-Anleitung | Python 3.11.15, `pip install -e .`, CLI vorhanden |
+| Serverstart mit totem Proxy (`HTTPS_PROXY=http://127.0.0.1:9`) | startet, `/` liefert HTTP 200 |
+| `/api/point` ohne Netz, unbekannter Punkt | 2,0 s, alle Blöcke `ok=false`, `kind=connect`, Meldung „Verbindung nicht möglich — Dienst nicht erreichbar, DNS- oder Proxy-Problem" |
+| einzelne Quellen ohne Netz | 5–12 ms, `osm` 2,0 s (drei Spiegel nacheinander) |
+| `/api/point` ohne Netz, **vorher mit Netz geladener** Punkt | 14 ms, `outbound_requests: 0`, `aus_cache: true`, alle sechs Blöcke `ok=true` |
+
+Belegwerte aus der Offline-Sitzung am Marienplatz: 110 Zensuszellen, 10.002 Einwohner,
+15,98 €/m² Miete (86 von 110 Zellen), 380 Gastronomiebetriebe, Raddauerzählstelle
+Erhardtstraße mit 1.415.000 Fahrten 2025. `verkehrsmenge` ist leer — am Marienplatz liegt
+korrekterweise keine BAYSIS-Zählstelle.
+
+Kein Ausfall führt zu Absturz oder Hänger; jeder benennt seine Ursache.
 
 ---
 

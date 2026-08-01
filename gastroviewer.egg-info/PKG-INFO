@@ -1,3 +1,17 @@
+Metadata-Version: 2.4
+Name: gastroviewer
+Version: 0.1.0
+Summary: Standort-Datenterminal Deutschland — offene Daten zu einem Punkt auf der Karte
+License: MIT
+Requires-Python: >=3.10
+Description-Content-Type: text/markdown
+Requires-Dist: fastapi>=0.110
+Requires-Dist: uvicorn[standard]>=0.27
+Requires-Dist: httpx>=0.27
+Provides-Extra: dev
+Requires-Dist: pytest>=8; extra == "dev"
+Requires-Dist: pytest-asyncio>=0.23; extra == "dev"
+
 # Standort-Datenterminal Deutschland
 
 Punkt auf einer Deutschlandkarte anklicken → alle verfügbaren offenen Daten zu diesem
@@ -16,11 +30,6 @@ Endpunktprüfung: [`docs/endpoints-verified.md`](docs/endpoints-verified.md)
 ---
 
 ## Start
-
-Das Werkzeug ist **keine HTML-Datei zum Doppelklicken**. Es ist ein kleiner Webserver, der
-auf dem eigenen Rechner läuft; die Oberfläche öffnet man danach im Browser unter
-`127.0.0.1`. Der Server holt die Daten bei den Fachdiensten, hält den Cache und rechnet —
-eine einzelne `index.html` direkt zu öffnen funktioniert nicht.
 
 Läuft auf **macOS, Linux und Windows**. Voraussetzung: Python 3.10 oder neuer. Sonst
 nichts — kein Docker, kein `make`, keine Datenbank zum Aufsetzen.
@@ -119,46 +128,6 @@ Dienstag im Gültigkeitszeitraum), nicht ein Durchschnitt. Verkehrstage stammen 
 `calendar.txt` einschließlich der Ausnahmen aus `calendar_dates.txt`.
 
 Läuft der Fahrplan ab, meldet der Block das und der Import wird einfach wiederholt.
-
----
-
-## Ohne Internet arbeiten
-
-„Lokal" und „offline" sind hier zwei verschiedene Dinge.
-
-**Lokal ist es immer.** Kein Konto, kein Deployment, keine Cloud — der Server läuft auf dem
-eigenen Rechner, die Daten liegen in `~/.gastroviewer`. Das gilt unabhängig davon, ob
-gerade eine Internetverbindung besteht.
-
-**Ohne Internetverbindung** hängt alles am Cache, denn jede Zahl kommt im Normalfall frisch
-von einem Fachdienst. Gemessen am 01.08.2026:
-
-| Lage | Verhalten |
-|---|---|
-| Punkt noch nie geladen, kein Netz | Server startet, Oberfläche lädt, jeder Block meldet nach ~2 s „Verbindung nicht möglich — Dienst nicht erreichbar". Kein Absturz, kein Hängen. |
-| Punkt vorher **mit** Netz geladen | Vollständig da: 0 ausgehende Abrufe, Antwort in 14 ms, alle Blöcke aus dem Cache. |
-| Kartenhintergrund | braucht Netz — die Kacheln kommen von OSM bzw. basemap.de. Leaflet selbst liegt lokal, Marker und Umkreis werden also weiter gezeichnet. |
-| GTFS-Fahrplan | einmal importiert vollständig lokal, funktioniert offline. |
-
-Nachgemessen am Marienplatz: nach einem Abruf mit Netz liefert derselbe Punkt offline
-110 Zensuszellen, 10.002 Einwohner, 15,98 €/m² Miete, 380 Gastronomiebetriebe und die
-Raddauerzählstelle Erhardtstraße — bei `outbound_requests: 0`.
-
-Der praktische Weg ist deshalb: die Kandidaten **einmal mit Netz** durchklicken und mit
-„Punkt merken" ablegen, danach offline vergleichen und exportieren.
-
-> Der Cache hat eine Haltbarkeit: OSM 24 Stunden, Zensus und Nominatim 30 Tage. Ein
-> abgelaufener Eintrag gilt als nicht vorhanden — für eine Offline-Sitzung die Punkte also
-> kurz vorher laden, nicht letzte Woche.
-
-Selbst nachstellen lässt sich das, indem man den Server mit einem toten Proxy startet:
-
-```bash
-HTTPS_PROXY=http://127.0.0.1:9 HTTP_PROXY=http://127.0.0.1:9 gastroviewer serve
-```
-
-Die Testsuite braucht ohnehin kein Netz — sie läuft gegen die aufgezeichneten echten
-Antworten unter `fixtures/`.
 
 ---
 
