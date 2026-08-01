@@ -628,6 +628,16 @@ python scripts/abnahme.py http://127.0.0.1:8011
 
 Das letzte Protokoll steht in [`docs/abnahme.md`](docs/abnahme.md).
 
+### Vollprüfung aller Endpunkte
+
+Die dritte Ebene: alle 29 API-Routen live gegen einen laufenden Server, mit erzwungenen
+Frischabrufen bei Zensus und Overpass und unabhängigen Erwartungswerten (A9: 111.624
+Kfz/Tag; Isarauen: HQ 100; Köln: Bodenrichtwert). Braucht Netz und einen GTFS-Import.
+
+```bash
+python scripts/vollpruefung.py http://127.0.0.1:8011
+```
+
 ### Oberflächenprüfung
 
 `pytest` deckt ausschließlich Python ab. Alles in `app.js` — Blöcke, Reiter,
@@ -675,6 +685,7 @@ gastroviewer/
 scripts/
   abnahme.py         Abnahmekriterien aus §7 gegen einen laufenden Server
   uitest.py          Oberflächenprüfung im echten Browser
+  vollpruefung.py    alle 29 API-Routen live, mit inhaltlicher Bewertung
 fixtures/            echte API-Antworten aus Phase 0, Grundlage der Tests
 docs/                Endpunktprüfung
 ```
