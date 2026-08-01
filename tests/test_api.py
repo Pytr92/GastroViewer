@@ -402,3 +402,31 @@ def test_bodenrichtwerte_im_punkt_tragen_den_kartendienst(client):
     k = d["bodenrichtwerte"]["kartendienst"]
     assert k["verfuegbar"] is False, "München liegt in Bayern"
     assert "keine URL geraten" in k["hinweis"]
+
+
+def test_schaetzung_ohne_einwohner_rechnet_statt_abzubrechen(client):
+    """Ländlicher Punkt ohne Zensuszelle: die Rechnung muss 0 liefern, nicht 422."""
+    r = client.post("/api/schaetzung", json={
+        "besuche_je_einwohner": 60.3, "bon_min": 7.15, "bon_max": 10.21,
+    })
+    assert r.status_code == 200
+    assert r.json()["ergebnis"]["jahresumsatz_eur"] == [0, 0]
+
+
+def test_bodenrichtwerte_ohne_bundesland_haben_dieselbe_form(client):
+    """Ohne AGS fehlten früher drei Schlüssel — die Oberfläche musste überall
+    auf undefined prüfen."""
+    from gastroviewer.sources import boris
+
+    ohne = boris.links_for(None)
+    mit = boris.links_for("05", "Köln")
+    assert set(ohne) == set(mit)
+    assert ohne["kartendienst"]["verfuegbar"] is False
+
+
+def test_wms_ebenen_endpunkt(client):
+    d = client.get("/api/wms/ebenen", params={"bundesland_code": "09"}).json()
+    assert len(d["ebenen"]) == 2
+    assert {e["schluessel"] for e in d["ebenen"]} == {"by_dop40", "by_alkis"}
+    d2 = client.get("/api/wms/ebenen", params={"bundesland_code": "05"}).json()
+    assert d2["ebenen"] == []

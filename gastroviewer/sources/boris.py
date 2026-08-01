@@ -39,13 +39,20 @@ def suchlink(land: str) -> str:
 def links_for(bundesland_code: str | None, gemeinde: str | None = None) -> dict:
     """Gibt die passenden Verweise zurück, klar getrennt nach Belegstatus."""
     if not bundesland_code:
+        # Gleiche Form wie im Normalfall: fehlende Schlüssel würden die
+        # Oberfläche zwingen, überall auf undefined zu prüfen.
         return {
             "bundesland": None,
+            "bundesland_code": None,
             "hinweis": (
                 "Ohne Bundesland (kein AGS aus dem Zensus-Gitter) lässt sich das "
                 "zuständige Portal nicht bestimmen."
             ),
             "links": [{"titel": "BORIS-D (Bund)", "url": BORIS_D, "status": "bestätigt"}],
+            "kartendienst": wms.fuer_bundesland(None),
+            "quelle": (
+                "Keine Bodenrichtwerte abgerufen; ohne Bundesland auch kein Landesdienst."
+            ),
         }
 
     land = BUNDESLAENDER.get(bundesland_code, bundesland_code)

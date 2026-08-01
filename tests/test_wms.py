@@ -272,3 +272,34 @@ async def test_unauswertbare_antwort_liefert_den_rohtext(settings):
     assert res.ok and res.data["felder"] == []
     assert res.data["rohantwort"] == "Etwas völlig Unerwartetes"
     assert "Originaltext" in res.warnings[0]
+
+
+# ------------------------------------ Zusätzliche Kartenebenen (Bayern)
+
+
+def test_bayern_hat_zusatzebenen():
+    e = {x["schluessel"]: x for x in wms.zusatzebenen("09")}
+    assert set(e) == {"by_dop40", "by_alkis"}
+    assert all(x["url"].startswith("https://geoservices.bayern.de/") for x in e.values())
+    assert all(x["lizenz"] == "CC BY 4.0" for x in e.values())
+    assert all("©" in x["attribution"] for x in e.values())
+
+
+def test_zusatzebenen_min_zoom_kommt_aus_dem_dienst():
+    e = {x["schluessel"]: x for x in wms.zusatzebenen("09")}
+    # ALKIS zeichnet nur bis 1:5.000 -> ab Zoom 17; Luftbild bis 1:3,5 Mio -> ab 8.
+    assert e["by_alkis"]["min_zoom"] == 17
+    assert e["by_dop40"]["min_zoom"] == 8
+
+
+def test_luftbild_ist_grundkarte_alkis_ist_overlay():
+    e = {x["schluessel"]: x for x in wms.zusatzebenen("09")}
+    assert e["by_dop40"]["als_grundkarte"] is True
+    assert e["by_dop40"]["transparent"] is False
+    assert e["by_alkis"]["als_grundkarte"] is False
+    assert e["by_alkis"]["transparent"] is True
+
+
+def test_laender_ohne_zusatzebenen_liefern_leere_liste():
+    assert wms.zusatzebenen("05") == []
+    assert wms.zusatzebenen(None) == []

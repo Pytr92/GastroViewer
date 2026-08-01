@@ -291,7 +291,10 @@ def vorgaben_aus_punkt(punkt: dict[str, Any]) -> dict[str, Any]:
 
     besuche = besuche_je_einwohner_und_jahr()
     return {
-        "einwohner": einwohner,
+        # 0 statt None: An einem Punkt ohne Zensuszelle ist null Einwohner die
+        # zutreffende Aussage. Ein leeres Pflichtfeld würde die Rechnung dagegen
+        # mit HTTP 422 abbrechen — das sähe aus wie ein Fehler des Werkzeugs.
+        "einwohner": einwohner if einwohner is not None else 0,
         "einwohner_herkunft": (
             f"Zensus 2022, Summe über {((z.get('bevoelkerung') or {}).get('einwohner') or {}).get('zellen', 0)} "
             f"Gitterzellen im Radius {punkt.get('punkt', {}).get('radius_m')} m"

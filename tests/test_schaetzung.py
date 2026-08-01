@@ -219,7 +219,12 @@ def test_vorgaben_aus_punkt_uebernimmt_die_echten_zahlen(zensus_600, overpass_co
 
 
 def test_vorgaben_ohne_daten_bricht_nicht():
+    """An einem Punkt ohne Zensuszelle ist 0 die zutreffende Aussage. Ein leeres
+    Pflichtfeld würde die Rechnung dagegen mit HTTP 422 abbrechen — das sähe aus
+    wie ein Fehler des Werkzeugs statt wie eine Aussage über die Lage."""
     v = schaetzung.vorgaben_aus_punkt({"punkt": {"radius_m": 600}, "bloecke": {}})
-    assert v["einwohner"] is None
+    assert v["einwohner"] == 0
     assert v["wettbewerber"] == 0
     assert "keine Zensuszelle" in v["einwohner_herkunft"]
+    d = rechne(basis(einwohner=v["einwohner"], wettbewerber=v["wettbewerber"]))
+    assert d["ok"] and d["ergebnis"]["jahresumsatz_eur"] == [0, 0]

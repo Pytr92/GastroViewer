@@ -372,6 +372,12 @@ function lade(refresh = false) {
   document.getElementById('start-hinweis')?.remove();
   baueGeruest();
   state.daten = {};
+  // Der Schätzungsreiter hängt an den Punktdaten. Ist er gerade offen, muss er
+  // mitwandern statt die Werte des vorigen Punktes stehen zu lassen.
+  if (!document.getElementById('panel-schaetzung').hidden) {
+    schaetzState.fuerPunkt = null;
+    zeigeSchaetzung();
+  }
 
   const aktuell = () => lauf === state.ladeLauf;
 
@@ -390,6 +396,12 @@ function lade(refresh = false) {
       if (!aktuell()) return;
       zeigeBlockFehler('bevoelkerung', e);
       zeigeBlockFehler('wohnen', e);
+      // Auch im Fehlerfall vermerken: sonst wartet ladeLinks() ewig auf diesen
+      // Block, und die weiterführenden Quellen samt Bodenrichtwerten blieben
+      // dauerhaft im Ladezustand hängen.
+      state.daten.zensus = { ok: false, error: { message: e.message } };
+      zeigeKopf();
+      ladeLinks();
     });
 
   hole('/api/point/osm', p)
@@ -402,6 +414,10 @@ function lade(refresh = false) {
   hole('/api/point/gtfs', p)
     .then((d) => { if (aktuell()) { state.daten.gtfs = d; zeigeGtfs(d); } })
     .catch((e) => aktuell() && zeigeBlockFehler('gtfs', e));
+
+  hole('/api/point/radzaehlung', { lat, lon, r: radius })
+    .then((d) => { if (aktuell()) { state.daten.radzaehlung = d; zeigeRadzaehlung(d); } })
+    .catch((e) => aktuell() && zeigeBlockFehler('radzaehlung', e));
 
   aktualisiereFuss();
 }
@@ -437,6 +453,7 @@ function baueGeruest() {
     block('umfeld', '5 · Umfeld'),
     block('verkehr', '6 · Verkehr'),
     block('gtfs', '6b · Abfahrten (GTFS)'),
+    block('radzaehlung', '6c · Gemessene Radverkehrsfrequenz'),
     block('leerstand', '7 · Leerstände'),
     block('quellen', '8 · Weiterführende Quellen'),
     block('grenzen', 'Bekannte Grenzen dieser Daten'),
@@ -770,6 +787,7 @@ function zeigeLinks(d) {
 
   const b = d.bodenrichtwerte;
   setzeBrwEbene(b.bundesland_code);
+  setzeZusatzebenen(b.bundesland_code);
   const brw = brwBlock(b);
   document.getElementById('block-quellen')?.before(brw);
 
@@ -1320,4 +1338,103 @@ function brwBlock(bodenrichtwerte) {
       el('span', { class: 'status ok' }, 'Dienst verfügbar')),
     el('div', { class: 'block-inhalt', id: 'inhalt-bodenrichtwert' }, inhalt));
   return block;
+}
+
+/* ===================================================================
+ * München und Bayern
+ *
+ * Zwei Ergänzungen für die Zielregion:
+ *  · Raddauerzählstellen der Stadt — die einzigen gemessenen Frequenzzahlen,
+ *    die frei nutzbar sind. Radfahrende, nicht Fußgänger, sechs Standorte.
+ *  · Amtliche Kartenebenen Bayerns: Luftbild und Flurstücke. Für die Fragen
+ *    aus notizen-standort-flaeche.md §6 (Abluft über Dach, Hoffläche,
+ *    Stellplätze) oft aussagekräftiger als jede Zahl.
+ * =================================================================== */
+
+const zusatzState = { ebenen: [], code: null };
+
+async function setzeZusatzebenen(bundeslandCode) {
+  if (zusatzState.code === bundeslandCode) return;
+  for (const e of zusatzState.ebenen) {
+    karte.removeLayer(e);
+    ebenenSchalter.removeLayer(e);
+  }
+  zusatzState.ebenen = [];
+  zusatzState.code = bundeslandCode;
+  if (!bundeslandCode) return;
+
+  let d;
+  try {
+    d = await hole('/api/wms/ebenen', { bundesland_code: bundeslandCode });
+  } catch { return; }
+
+  for (const cfg of d.ebenen || []) {
+    const ebene = L.tileLayer.wms(cfg.url, {
+      layers: cfg.layers,
+      format: cfg.format,
+      transparent: cfg.transparent,
+      version: cfg.version,
+      attribution: cfg.attribution,
+      minZoom: cfg.min_zoom || 0,
+      maxZoom: 19,
+    });
+    zusatzState.ebenen.push(ebene);
+    const beschriftung = cfg.min_zoom > 12
+      ? `${cfg.titel} (ab Zoom ${cfg.min_zoom})`
+      : cfg.titel;
+    if (cfg.als_grundkarte) ebenenSchalter.addBaseLayer(ebene, beschriftung);
+    else ebenenSchalter.addOverlay(ebene, beschriftung);
+  }
+}
+
+function zeigeRadzaehlung(d) {
+  const id = 'radzaehlung';
+  if (!d.ok) {
+    setStatus(id, 'fehler', 'nicht erreichbar');
+    setInhalt(id, fehlerbox(d.error));
+    setQuelle(id, d.provenance);
+    return;
+  }
+  const r = d.data;
+  if (!r || !r.in_reichweite.length) {
+    setStatus(id, 'leer', 'keine Zählstelle');
+    setInhalt(id, ...warnungen(d.warnings),
+      el('div', { class: 'notiz' },
+        'Gemessene Frequenzdaten gibt es in München nur an sechs Querschnitten. '
+        + 'Für diesen Punkt liegt keine vor.'));
+    setQuelle(id, d.provenance);
+    return;
+  }
+
+  setStatus(id, 'ok', 'geladen');
+  const n = r.naechste;
+  const kz = el('div', { class: 'kennzahlen' },
+    kennzahl('Nächste Zählstelle', n.distanz_m, 'm'),
+    kennzahl(`Radfahrende ${n.summe_vorjahr_jahr || ''}`.trim(), n.summe_vorjahr),
+    kennzahl('davon je Tag', n.je_tag_vorjahr));
+
+  const tab = el('table', { class: 'daten' },
+    el('tr', {}, el('th', {}, 'Zählstelle'), el('th', { class: 'num' }, 'm'),
+      el('th', { class: 'num' }, 'je Tag'), el('th', { class: 'num' }, 'Jahr')));
+  for (const s of r.in_reichweite) {
+    tab.append(el('tr', {},
+      el('td', {}, `${s.name}${s.richtungen.length ? ` (${s.richtungen.join('/')})` : ''}`),
+      el('td', { class: 'num' }, NF.format(s.distanz_m)),
+      el('td', { class: 'num' }, s.je_tag_vorjahr === null ? '—' : NF.format(s.je_tag_vorjahr)),
+      el('td', { class: 'num' }, s.summe_vorjahr === null ? '—' : NF.format(s.summe_vorjahr))));
+  }
+
+  const besonders = r.in_reichweite.filter((s) => s.besonderheiten);
+  setInhalt(id, kz, tab,
+    ...besonders.map((s) => el('div', { class: 'notiz' },
+      el('strong', {}, `${s.kurzname}: `), s.besonderheiten)),
+    ...warnungen(d.warnings),
+    el('div', { class: 'warnung' },
+      'Radfahrende, keine Fußgänger — und sechs Querschnitte für die ganze Stadt. '
+      + 'Die Zahl beschreibt die Achse an der Zählstelle, nicht das Umfeld dieses Punktes.'),
+    el('div', { class: 'notiz' },
+      el('a', { href: r.rohdaten, target: '_blank', rel: 'noopener' },
+        'Rohdaten im Open-Data-Portal München'),
+      ' — dort auch 15-Minuten-Werte und Tageswerte mit Wetter.'));
+  setQuelle(id, d.provenance);
 }

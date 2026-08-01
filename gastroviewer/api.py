@@ -26,7 +26,7 @@ from .config import Settings, get_settings
 from .http import Outbound
 from .schaetzung import Eingaben, rechne, vorgaben_aus_punkt
 from .service import GRENZEN, PointService
-from .sources import boris, gtfs, links, wms
+from .sources import boris, gtfs, links, muenchen, wms
 
 STATIC_DIR = __import__("pathlib").Path(__file__).parent / "static"
 
@@ -37,8 +37,10 @@ class SchaetzEingaben(BaseModel):
     """Alle Annahmen der Umsatzschätzung — jede einzelne kommt aus der Oberfläche.
     Es gibt keinen Wert, den der Server hinter dem Rücken des Nutzers setzt."""
 
-    einwohner: float = Field(..., ge=0)
-    wettbewerber: int = Field(..., ge=0)
+    # Vorbelegt mit 0, damit ein Punkt ohne Zensuszelle bzw. ohne OSM-Objekte
+    # rechenbar bleibt statt mit einem Pflichtfeldfehler abzubrechen.
+    einwohner: float = Field(0, ge=0)
+    wettbewerber: int = Field(0, ge=0)
     besuche_je_einwohner: float = Field(..., gt=0)
     bon_min: float = Field(..., gt=0)
     bon_max: float = Field(..., gt=0)
@@ -187,6 +189,12 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         _validate(lat, lon, r)
         return (await svc(request).gtfs(lat, lon, r)).to_dict()
 
+    @app.get("/api/point/radzaehlung")
+    async def point_radzaehlung(request: Request, lat: float, lon: float, r: int = 600):
+        """Gemessene Radverkehrszahlen der Landeshauptstadt München."""
+        _validate(lat, lon, r)
+        return (await svc(request).radzaehlung(lat, lon, r)).to_dict()
+
     @app.get("/api/point/links")
     async def point_links(
         request: Request,
@@ -224,6 +232,11 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         if bundesland_code:
             return wms.fuer_bundesland(bundesland_code)
         return wms.alle()
+
+    @app.get("/api/wms/ebenen")
+    async def wms_ebenen(request: Request, bundesland_code: str | None = None):
+        """Zusätzliche amtliche Kartenebenen des Landes (Luftbild, Flurstücke)."""
+        return {"ebenen": wms.zusatzebenen(bundesland_code)}
 
     @app.get("/api/wms/bodenrichtwert")
     async def wms_bodenrichtwert(

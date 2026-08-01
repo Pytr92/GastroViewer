@@ -120,6 +120,8 @@ Läuft der Fahrplan ab, meldet der Block das und der Import wird einfach wiederh
 | [Nominatim](https://nominatim.openstreetmap.org/) | Adresse, Gemeinde, Ortsteil, PLZ | ODbL 1.0, © OpenStreetMap-Mitwirkende | 30 Tage |
 | [gtfs.de](https://gtfs.de/) | Abfahrten je Haltestelle und Stunde | CC BY 4.0, Datengrundlage DELFI e.V. | lokal, kein Cache |
 | Bodenrichtwert-WMS von 7 Ländern | Kartenebene und Wert am Punkt | je Land, siehe unten | kein Cache |
+| [Raddauerzählstellen München](https://opendata.muenchen.de/dataset/daten-der-raddauerzaehlstellen-muenchen-jahreszahlen) | gemessene Radverkehrsfrequenz | dl-de/by-2-0, © LH München | 24 h |
+| [Luftbild und ALKIS Bayern](https://geodaten.bayern.de/opengeodata/) | Kartenebenen | CC BY 4.0, © Bayerische Vermessungsverwaltung | kein Cache |
 | OSM-Kacheln | Kartenhintergrund (Vorgabe) | ODbL 1.0 | Browser |
 | [basemap.de](https://basemap.de/) (BKG) | amtlicher Kartenhintergrund, umschaltbar | dl-de/by-2-0, © GeoBasis-DE / BKG | Browser |
 
@@ -207,6 +209,32 @@ untere und obere Annahme. Alle Werte sind Eingabefelder und überschreibbar.
   ein Suchlink erzeugt, kein erfundener Link. Dasselbe gilt für die Kartendienste: nur
   eingebunden, was `GetCapabilities`, `GetMap` **und** `GetFeatureInfo` bestanden hat.
 
+## München und Bayern
+
+Das Werkzeug funktioniert bundesweit, hat für die Zielregion aber zwei Ergänzungen.
+
+**Gemessene Frequenz — Raddauerzählstellen.** §8 nennt die größte Lücke des Werkzeugs:
+Passantenströme fehlen, Fußgängerzone und Seitenstraße sind in offenen Daten nicht
+unterscheidbar. Ganz schließen lässt sich das nicht — hystreet untersagt die gewerbliche
+Nutzung im kostenfreien Modell. München betreibt aber **sechs Dauerzählstellen mit echten
+Messwerten**, die frei nutzbar sind. Der Block zeigt die Zählstellen bis 3 km Entfernung
+mit Jahressumme und Tagesmittel, dazu die Störungs- und Baustellenhinweise der Stadt.
+
+Beispiel Sendlinger Tor: Erhardtstraße in 1.294 m, 1.415.000 Radfahrende 2025, also
+3.877 je Tag. Die Grenzen stehen im Block: **Radfahrende, keine Fußgänger**, und sechs
+Querschnitte für 1,6 Mio. Einwohner. Über 3 km bleibt der Block leer statt eine Zahl von
+der anderen Stadtseite zu zeigen.
+
+**Amtliche Kartenebenen Bayerns** (beide CC BY 4.0, kostenfrei):
+
+| Ebene | Was sie zeigt | ab Zoom |
+|---|---|---|
+| Luftbild DOP 40 cm | Hof, Terrassenfläche, Stellplätze, Dachaufbauten | 8 |
+| ALKIS-Parzellarkarte | Flurstücksgrenzen und Gebäudegrundrisse | 17 |
+
+Für die Checkliste in `notizen-standort-flaeche.md` §6 — Abluft über Dach, Hoffläche,
+Stellplatznachweis — ist das oft aussagekräftiger als jede Zahl.
+
 ## Bodenrichtwerte als Kartenebene
 
 Sieben Länder haben einen offenen Kartendienst, der am 01.08.2026 in allen drei Stufen
@@ -287,7 +315,7 @@ Alles über Umgebungsvariablen, alles optional:
 | Endpunkt | Zweck |
 |---|---|
 | `GET /api/point?lat=&lon=&r=` | alles auf einmal |
-| `GET /api/point/{adresse\|zensus\|osm\|gtfs\|links}` | je Quelle einzeln (nutzt die Oberfläche) |
+| `GET /api/point/{adresse\|zensus\|osm\|gtfs\|radzaehlung\|links}` | je Quelle einzeln (nutzt die Oberfläche) |
 | `GET /api/geocode?q=` | Adresssuche |
 | `GET /api/points` · `POST /api/points` · `DELETE /api/points/{id}` | gemerkte Punkte |
 | `GET /api/points/vergleich` | Vergleichstabelle |
@@ -295,6 +323,7 @@ Alles über Umgebungsvariablen, alles optional:
 | `GET /api/stats` · `GET /api/outbound` | Cache-Zustand, Protokoll der echten Abrufe |
 | `DELETE /api/cache?quelle=` | Cache leeren |
 | `GET /api/wms` · `?bundesland_code=` | Kartendienst-Register bzw. Ebene eines Landes |
+| `GET /api/wms/ebenen?bundesland_code=` | zusätzliche amtliche Kartenebenen (Bayern: Luftbild, ALKIS) |
 | `GET /api/wms/bodenrichtwert` | Wert am Punkt beim Landesdienst (GetFeatureInfo) |
 | `GET /api/health` | Zustand, GTFS-Status |
 
@@ -359,6 +388,7 @@ gastroviewer/
     gtfs.py          Import und Abfahrtszählung
     boris.py         Bodenrichtwert-Portale je Bundesland
     wms.py           verifizierte Landes-Kartendienste, Klickabfrage
+    muenchen.py      Raddauerzählstellen der Landeshauptstadt München
     links.py         Deep-Links aus Spec §4.6 und den Notizen
   static/            Oberfläche (Leaflet lokal, kein CDN)
 fixtures/            echte API-Antworten aus Phase 0, Grundlage der Tests

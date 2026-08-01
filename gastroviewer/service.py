@@ -18,7 +18,7 @@ from typing import Any, Awaitable, Callable
 from .cache import AsyncCache, cache_key
 from .config import Settings
 from .http import Outbound
-from .sources import boris, links, nominatim, overpass, zensus
+from .sources import boris, links, muenchen, nominatim, overpass, zensus
 from .sources.base import Provenance, SourceError, SourceResult
 
 Loader = Callable[[], Awaitable[SourceResult]]
@@ -97,6 +97,17 @@ class PointService:
             "nominatim_search",
             key,
             lambda: nominatim.search(self.outbound, self.settings, query),
+            refresh=refresh,
+        )
+
+    async def radzaehlung(self, lat: float, lon: float, radius: int, refresh: bool = False):
+        # Die sechs Zählstellen ändern sich nicht stündlich; der Cache-Schlüssel
+        # rundet ohnehin auf 4 Nachkommastellen. TTL wie OSM: 24 h.
+        key = cache_key("muenchen_rad", lat, lon, radius)
+        return await self._cached(
+            "muenchen_rad",
+            key,
+            lambda: muenchen.zaehlstellen(self.outbound, self.settings, lat, lon, radius),
             refresh=refresh,
         )
 

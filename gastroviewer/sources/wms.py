@@ -207,6 +207,64 @@ OHNE_DIENST: dict[str, str] = {
 
 VERIFIZIERT_AM = "2026-08-01"
 
+# ---------------------------------------------------------------------------
+# Zusätzliche amtliche Kartenebenen je Bundesland.
+#
+# Anders als die Bodenrichtwerte tragen diese Ebenen keine Kennzahlen, sondern
+# Anschauung: Wie sieht das Grundstück aus, wo verlaufen die Flurstücksgrenzen,
+# wie tief ist das Gebäude, gibt es einen Hof für die Abluft. Für die Fragen aus
+# `notizen-standort-flaeche.md` §6 ist das oft aussagekräftiger als jede Zahl.
+#
+# Auch hier gilt §4.5: nur was am 2026-08-01 mit GetCapabilities belegt wurde.
+# ---------------------------------------------------------------------------
+
+ZUSATZEBENEN: dict[str, list[dict[str, Any]]] = {
+    "09": [
+        {
+            "schluessel": "by_dop40",
+            "titel": "Luftbild Bayern (DOP 40 cm)",
+            "url": "https://geoservices.bayern.de/od/wms/dop/v1/dop40",
+            "version": "1.3.0",
+            "layers": "by_dop40c",
+            "format": "image/jpeg",
+            "transparent": False,
+            "als_grundkarte": True,
+            "max_scale": 3_500_000,
+            "lizenz": "CC BY 4.0",
+            "attribution": "Luftbild © Bayerische Vermessungsverwaltung (CC BY 4.0)",
+            "beschreibung": (
+                "Entzerrte Luftbilder der Bayernbefliegung, 40 cm Auflösung. Zeigt "
+                "Hof, Terrassenfläche, Stellplätze und Dachaufbauten."
+            ),
+        },
+        {
+            "schluessel": "by_alkis",
+            "titel": "Flurstücke und Gebäude (ALKIS)",
+            "url": "https://geoservices.bayern.de/od/wms/alkis/v1/parzellarkarte",
+            "version": "1.3.0",
+            "layers": "by_alkis_parzellarkarte_farbe",
+            "format": "image/png",
+            "transparent": True,
+            "als_grundkarte": False,
+            "max_scale": 5_000,
+            "lizenz": "CC BY 4.0",
+            "attribution": "ALKIS-Parzellarkarte © Bayerische Vermessungsverwaltung (CC BY 4.0)",
+            "beschreibung": (
+                "Amtliche Flurstücksgrenzen und Gebäudegrundrisse. Sichtbar erst ab "
+                "Zoomstufe 17 — der Dienst zeichnet nur bis Maßstab 1:5.000."
+            ),
+        },
+    ],
+}
+
+
+def zusatzebenen(code: str | None) -> list[dict[str, Any]]:
+    """Zusätzliche Kartenebenen für ein Bundesland, mit abgeleiteter Mindestzoomstufe."""
+    return [
+        {**e, "min_zoom": min_zoom_fuer(e["max_scale"]), "verifiziert_am": VERIFIZIERT_AM}
+        for e in ZUSATZEBENEN.get(code or "", [])
+    ]
+
 
 def fuer_bundesland(code: str | None) -> dict[str, Any]:
     """Konfiguration der Kartenebene für ein Bundesland."""
@@ -250,6 +308,7 @@ def fuer_bundesland(code: str | None) -> dict[str, Any]:
 def alle() -> dict[str, Any]:
     return {
         "verifiziert_am": VERIFIZIERT_AM,
+        "zusatzebenen": {c: zusatzebenen(c) for c in sorted(ZUSATZEBENEN)},
         "dienste": [fuer_bundesland(c) for c in sorted(DIENSTE)],
         "ohne_dienst": [
             {"bundesland_code": c, "grund": g} for c, g in sorted(OHNE_DIENST.items())
