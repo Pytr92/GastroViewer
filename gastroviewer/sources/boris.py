@@ -12,6 +12,7 @@ from __future__ import annotations
 
 from urllib.parse import quote_plus
 
+from . import wms
 from .zensus import BUNDESLAENDER
 
 BORIS_D = "https://bodenrichtwerte-boris.de/boris-d/?lang=de"
@@ -86,13 +87,19 @@ def links_for(bundesland_code: str | None, gemeinde: str | None = None) -> dict:
             }
         )
 
+    dienst = wms.fuer_bundesland(bundesland_code)
     return {
         "bundesland": land,
         "bundesland_code": bundesland_code,
         "hinweis": hinweis,
         "links": links,
+        "kartendienst": dienst,
         "quelle": (
-            "Keine Bodenrichtwerte abgerufen. Es gibt keinen bundesweit einheitlichen "
-            "offenen Dienst; die Portale werden verlinkt statt Werte zu schätzen."
+            f"Für {land} ist ein amtlicher Kartendienst eingebunden "
+            f"({dienst['titel']}); die Werte kommen unverändert von dort."
+            if dienst["verfuegbar"]
+            else "Keine Bodenrichtwerte abgerufen. Es gibt keinen bundesweit "
+            "einheitlichen offenen Dienst; die Portale werden verlinkt statt Werte "
+            "zu schätzen."
         ),
     }

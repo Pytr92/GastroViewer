@@ -427,6 +427,7 @@ function zeigeBlockFehler(id, err) {
 
 function baueGeruest() {
   linksGeladen = false;
+  document.getElementById('block-bodenrichtwert')?.remove();
   const panel = document.getElementById('panel');
   panel.replaceChildren(
     block('kopf', '1 · Standort'),
@@ -768,7 +769,11 @@ function zeigeLinks(d) {
   const teile = [];
 
   const b = d.bodenrichtwerte;
-  teile.push(el('h3', { class: 'hinweis-klein' }, 'Bodenrichtwerte'));
+  setzeBrwEbene(b.bundesland_code);
+  const brw = brwBlock(b);
+  document.getElementById('block-quellen')?.before(brw);
+
+  teile.push(el('h3', { class: 'hinweis-klein' }, 'Bodenrichtwert-Portale'));
   if (b.hinweis) teile.push(el('div', { class: 'notiz' }, b.hinweis));
   teile.push(el('ul', { class: 'liste' }, b.links.map((l) => el('li', {},
     el('span', { class: 'haupt' },
@@ -1174,3 +1179,145 @@ document.getElementById('reiter').addEventListener('click', (ev) => {
   document.getElementById('panel-schaetzung').hidden = welcher !== 'schaetzung';
   if (welcher === 'schaetzung') zeigeSchaetzung();
 });
+
+/* ===================================================================
+ * Bodenrichtwerte als Kartenebene — Phase 4
+ *
+ * Spec §4.5: Landesdienst als Kartenebene nachrüsten, wenn einer gefunden wird.
+ * Es sind sieben Länder verifiziert; für die übrigen bleibt es beim Portallink,
+ * und der Grund steht im Panel statt einer geratenen URL.
+ *
+ * Die Kacheln holt der Browser direkt beim Landesdienst. Die Klickabfrage
+ * (GetFeatureInfo) läuft über das Backend, weil sie sonst an CORS scheitert.
+ * =================================================================== */
+
+const brwState = { ebene: null, cfg: null, code: null };
+
+function entferneBrwEbene() {
+  if (brwState.ebene) {
+    karte.removeLayer(brwState.ebene);
+    ebenenSchalter.removeLayer(brwState.ebene);
+    brwState.ebene = null;
+  }
+  brwState.cfg = null;
+  brwState.code = null;
+}
+
+async function setzeBrwEbene(bundeslandCode) {
+  if (brwState.code === bundeslandCode) return;
+  entferneBrwEbene();
+  if (!bundeslandCode) return;
+
+  let cfg;
+  try {
+    cfg = await hole('/api/wms', { bundesland_code: bundeslandCode });
+  } catch {
+    return; // Ohne Ebene weiterarbeiten; der Panel-Block nennt den Grund.
+  }
+  if (!cfg.verfuegbar) { brwState.code = bundeslandCode; brwState.cfg = cfg; return; }
+
+  const zusatz = {};
+  for (const [k, v] of Object.entries(cfg.params || {})) zusatz[k] = v;
+
+  const ebene = L.tileLayer.wms(cfg.url, {
+    layers: cfg.layers,
+    format: 'image/png',
+    transparent: true,
+    version: cfg.version,
+    attribution: cfg.attribution,
+    minZoom: cfg.min_zoom || 0,
+    maxZoom: 19,
+    ...zusatz,
+  });
+  brwState.ebene = ebene;
+  brwState.cfg = cfg;
+  brwState.code = bundeslandCode;
+  ebenenSchalter.addOverlay(ebene, `Bodenrichtwerte ${cfg.land}`);
+}
+
+/** Klickabfrage: nur auf Wunsch, damit kein Kartenklick ungefragt hinausgeht. */
+async function frageBodenrichtwertAb(ziel) {
+  ziel.replaceChildren(el('div', { class: 'laden' }));
+  try {
+    const d = await hole('/api/wms/bodenrichtwert', {
+      lat: state.lat, lon: state.lon, bundesland_code: brwState.code || '',
+    });
+    if (!d.ok) { ziel.replaceChildren(fehlerbox(d.error)); return; }
+    if (!d.data) { ziel.replaceChildren(...warnungen(d.warnings)); return; }
+
+    const teile = [];
+    if (d.data.felder.length) {
+      const tab = el('table', { class: 'daten' },
+        el('tr', {}, el('th', {}, 'Feld'), el('th', {}, 'Wert')));
+      for (const f of d.data.felder) {
+        tab.append(el('tr', {}, el('td', {}, f.feld), el('td', {}, f.wert)));
+      }
+      teile.push(tab);
+    }
+    teile.push(...warnungen(d.warnings));
+    if (d.data.rohantwort) {
+      const roh = el('details', {},
+        el('summary', { class: 'hinweis-klein' }, 'Unveränderte Antwort des Dienstes'),
+        el('pre', { class: 'formel', style: 'white-space:pre-wrap;max-height:240px;' },
+          d.data.rohantwort));
+      teile.push(roh);
+    }
+    ziel.replaceChildren(...teile);
+    setQuelle('bodenrichtwert', d.provenance);
+  } catch (e) {
+    ziel.replaceChildren(fehlerbox({ message: e.message }));
+  }
+}
+
+/** Wird von zeigeLinks() aufgerufen und hängt den Block ans Panel. */
+function brwBlock(bodenrichtwerte) {
+  const cfg = bodenrichtwerte.kartendienst || { verfuegbar: false };
+  const inhalt = [];
+
+  if (!cfg.verfuegbar) {
+    inhalt.push(el('div', { class: 'notiz' },
+      el('strong', {}, 'Keine Kartenebene: '), cfg.grund || 'kein Dienst hinterlegt.',
+      cfg.hinweis ? el('div', { style: 'margin-top:4px' }, cfg.hinweis) : null));
+    return el('section', { class: 'block', id: 'block-bodenrichtwert' },
+      el('h2', {}, 'Bodenrichtwerte', el('span', { class: 'status leer' }, 'kein Dienst')),
+      el('div', { class: 'block-inhalt', id: 'inhalt-bodenrichtwert' }, inhalt));
+  }
+
+  const ergebnis = el('div', { id: 'brw-ergebnis' });
+  inhalt.push(
+    el('div', { class: 'notiz' },
+      el('strong', {}, `${cfg.titel}. `),
+      `Als Kartenebene „Bodenrichtwerte ${cfg.land}" zuschaltbar, sichtbar ab `
+      + `Zoomstufe ${cfg.min_zoom || 0}. Stand: ${cfg.stand}.`),
+    el('div', { style: 'display:flex;gap:6px;flex-wrap:wrap;margin-top:8px' },
+      el('button', {
+        type: 'button',
+        onclick: (ev) => {
+          if (brwState.ebene && !karte.hasLayer(brwState.ebene)) karte.addLayer(brwState.ebene);
+          if (karte.getZoom() < (cfg.min_zoom || 0)) karte.setZoom(cfg.min_zoom);
+          ev.target.textContent = 'Ebene eingeschaltet';
+        },
+      }, 'Ebene in der Karte zeigen'),
+      cfg.abfragbar !== 'nein'
+        ? el('button', {
+          type: 'button',
+          onclick: () => frageBodenrichtwertAb(ergebnis),
+        }, 'Wert am Punkt abfragen')
+        : null,
+      el('a', { class: 'knopf-link', href: cfg.portal, target: '_blank', rel: 'noopener' },
+        'Landesportal')),
+    ergebnis);
+
+  if (cfg.abfragbar !== 'voll') {
+    inhalt.push(el('div', { class: 'warnung' }, cfg.abfrage_hinweis));
+  }
+  inhalt.push(el('div', { class: 'notiz' },
+    'Bodenrichtwerte sind Zonenwerte für ein fiktives Grundstück mit den angegebenen '
+    + 'Merkmalen — nicht der Wert eines konkreten Grundstücks und kein Mietpreis.'));
+
+  const block = el('section', { class: 'block', id: 'block-bodenrichtwert' },
+    el('h2', {}, 'Bodenrichtwerte',
+      el('span', { class: 'status ok' }, 'Dienst verfügbar')),
+    el('div', { class: 'block-inhalt', id: 'inhalt-bodenrichtwert' }, inhalt));
+  return block;
+}

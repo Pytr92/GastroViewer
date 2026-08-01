@@ -26,7 +26,7 @@ from .config import Settings, get_settings
 from .http import Outbound
 from .schaetzung import Eingaben, rechne, vorgaben_aus_punkt
 from .service import GRENZEN, PointService
-from .sources import boris, gtfs, links
+from .sources import boris, gtfs, links, wms
 
 STATIC_DIR = __import__("pathlib").Path(__file__).parent / "static"
 
@@ -214,6 +214,27 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         refresh: bool = Query(False),
     ):
         return (await svc(request).suche(q, refresh)).to_dict()
+
+    # ------------------------------- Bodenrichtwert-Kartendienste (Phase 4)
+
+    @app.get("/api/wms")
+    async def wms_dienste(request: Request, bundesland_code: str | None = None):
+        """Konfiguration der Kartenebene. Ohne verifizierten Dienst wird der
+        Grund genannt statt einer geratenen URL."""
+        if bundesland_code:
+            return wms.fuer_bundesland(bundesland_code)
+        return wms.alle()
+
+    @app.get("/api/wms/bodenrichtwert")
+    async def wms_bodenrichtwert(
+        request: Request, lat: float, lon: float, bundesland_code: str | None = None
+    ):
+        """GetFeatureInfo beim Landesdienst — über das Backend, weil ein fetch
+        aus dem Browser an CORS scheitern würde."""
+        _validate(lat, lon, 600)
+        out: Outbound = request.app.state.outbound
+        res = await wms.feature_info(out, cfg(request), lat, lon, bundesland_code)
+        return res.to_dict()
 
     # ------------------------------------------------ Umsatzschätzung (§9)
 

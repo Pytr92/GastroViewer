@@ -145,6 +145,42 @@ def cmd_status(args: argparse.Namespace, settings: Settings) -> int:
     return 0
 
 
+def cmd_check_wms(args: argparse.Namespace, settings: Settings) -> int:
+    """Ruft bei jedem hinterlegten Landesdienst GetCapabilities ab.
+
+    Landesdienste ändern ihre URLs — Brandenburg hat seine 2025 umgestellt.
+    Ohne Gegenprobe merkt man das erst, wenn die Karte leer bleibt.
+    """
+    import asyncio
+
+    from .cache import AsyncCache
+    from .http import Outbound
+    from .sources import wms
+
+    async def lauf():
+        cache = AsyncCache(settings.db_path)
+        out = Outbound(settings, cache)
+        await out.start()
+        try:
+            return await wms.pruefe_dienste(out, settings)
+        finally:
+            await out.aclose()
+
+    ergebnisse = asyncio.run(lauf())
+    kaputt = 0
+    for e in ergebnisse:
+        zeichen = "OK   " if e.get("ok") else "FEHLT"
+        if not e.get("ok"):
+            kaputt += 1
+        print(f"[{zeichen}] {e['land']:22} {e['url']}")
+        if e.get("fehler"):
+            print(f"         {e['fehler']}")
+        elif e.get("fehlende_layer"):
+            print(f"         Layer nicht mehr im Dienst: {', '.join(e['fehlende_layer'])}")
+    print(f"\n{len(ergebnisse) - kaputt} von {len(ergebnisse)} Diensten in Ordnung.")
+    return 1 if kaputt else 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(
         prog="gastroviewer",
@@ -172,6 +208,11 @@ def build_parser() -> argparse.ArgumentParser:
     c = sub.add_parser("clear-cache", help="Cache leeren")
     c.add_argument("--quelle", help="nur eine Quelle (zensus, overpass, nominatim)")
     c.set_defaults(func=cmd_clear_cache)
+
+    w = sub.add_parser(
+        "check-wms", help="Bodenrichtwert-Kartendienste der Länder gegenprüfen"
+    )
+    w.set_defaults(func=cmd_check_wms)
 
     st = sub.add_parser("status", help="Cache- und GTFS-Status anzeigen")
     st.set_defaults(func=cmd_status)

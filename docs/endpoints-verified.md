@@ -349,6 +349,70 @@ Suchlink erzeugt.
 
 ---
 
+## Bodenrichtwert-Kartendienste der Länder (Phase 4)
+
+Geprüft am **2026-08-01**, jeder Dienst in drei Stufen: `GetCapabilities` abgerufen,
+`GetMap` mit einem Punkt im jeweiligen Land aufgerufen und geprüft, dass ein PNG **mit
+Inhalt** zurückkommt, dann `GetFeatureInfo` gegen denselben Punkt.
+
+§4.5 verlangt: **keine URL raten.** Aufgenommen ist deshalb nur, was diese drei Stufen
+bestanden hat.
+
+| Land | Dienst | WMS | GetMap | Klickabfrage | Lizenz |
+|---|---|---|---|---|---|
+| Nordrhein-Westfalen | `wms.nrw.de/boris/wms-t_nw_brw` | 1.3.0 | 17.017 B | ✅ voll | dl-de/zero-2-0 |
+| Hamburg | `geodienste.hamburg.de/HH_WMS_Bodenrichtwerte` | 1.3.0 | 67.361 B | ⚠️ ohne Wert | keine Zugriffsbeschränkungen |
+| Niedersachsen | `opendata.lgln.niedersachsen.de/…/boris_2025_wms` | 1.3.0 | 5.584 B | ✅ voll | dl-de/by-2-0 |
+| Sachsen-Anhalt | `geodatenportal.sachsen-anhalt.de/ows_st_lvermgeo_brw2026` | 1.3.0 | 2.248 B | ✅ voll | Kostenverordnung genannt |
+| Thüringen | `geoproxy.geoportal-th.de/geoproxy/services/boris/boris_wms` | 1.3.0 | 22.390 B | ✅ voll | dl-de/by-2-0 |
+| Brandenburg | `isk.geobasis-bb.de/ows/boris_wms` | 1.3.0 | 11.087 B | ✅ voll | dl-de/by-2-0 |
+| Rheinland-Pfalz | `geo5.service24.rlp.de/wms/genbori_rp.fcgi` | 1.1.1 | 3.228 B | ❌ keine Sachdaten | dl-de/by-2-0 |
+
+Belegte Klickantworten (Auszug, unverändert):
+
+```
+Thüringen    BODENRICHTWERT=1000 · STICHTAG=2026-01-01 · ENTWICKLUNGSZUSTAND=Baureifes Land (B)
+Brandenburg  Bodenrichtwert=1200 €/m² · wertrelevante Geschossflächenzahl=nicht vorhanden
+Sachsen-Anh. bodenrichtwert=700 · bodenrichtwertKlassifikation=1000
+Niedersachs. bodenrichtwert=10500.0 · bodenrichtwertNummer=04305001
+NRW          35 Felder inkl. Bodenrichtwert, Entwicklungszustand, Bemerkung „Unter Sachsenhausen/Tunisstr."
+```
+
+**Befunde:**
+
+- **`brw_verfuegbarkeit` (NRW) ist nur ein Sammelknoten** und zeichnet nichts. Die
+  Kindebenen müssen einzeln benannt werden — sonst kommt ein leeres PNG zurück, das wie
+  ein Datenfehler aussieht. Ebenso braucht NRW den Parameter `TIME`.
+- **Maßstabsgrenzen** stehen als `MaxScaleDenominator` in den Capabilities und werden im
+  Code in eine Mindest-Zoomstufe umgerechnet, statt sie zu schätzen: NRW ab Zoom 14,
+  Thüringen und Brandenburg ab 13, Niedersachsen und Sachsen-Anhalt ab 7.
+- **Hamburg:** Die gezeichnete Ebene `lgv_brw_zonen_2026` liefert per `GetFeatureInfo`
+  eine leere `FeatureCollection`, unabhängig von der Boxgröße (20 m, 100 m, 300 m
+  getestet). Die Ebene `v_brw_zonen_geom_flaeche_2026` antwortet, aber mit Zonennummer
+  und Nutzungsarten — **ohne den €/m²-Wert**. Der steht nur als Kartenbeschriftung.
+- **Rheinland-Pfalz:** Der zonale VBORIS-Dienst liegt hinter einem Mapbender-Proxy, der
+  `GetMap` mit „Parameter REQUEST invalid" ablehnt. Eingebunden ist deshalb der
+  generalisierte Dienst — dessen Features tragen aber keine Sachdaten, nur Geometrie.
+- **Fünf Antwortformate** bei sieben Diensten: GeoJSON, `KEY=VALUE$#$`-Text, GML/XML,
+  HTML-Tabellen und ein reines Ergebnisprotokoll. Statt sieben Parser gibt es vier
+  allgemeine Muster; was sich nicht sicher zerlegen lässt, wird als unveränderter
+  Originaltext angezeigt.
+
+### Geprüft und **nicht** aufgenommen
+
+| Land | Befund |
+|---|---|
+| Berlin | `gdi.berlin.de` und `fbinter.stadt-berlin.de` scheitern an der TLS-Zertifikatskette, auch mit dem CA-Bundle des Proxys. Ohne Beleg keine Aufnahme. |
+| Sachsen | `geodienste.sachsen.de` weist die Prüfabrufe mit HTTP 403 zurück (auch der Host selbst). |
+| Hessen, Bremen | Kein offener Dienst gefunden; die geprüften Kandidaten antworteten mit HTTP 404. |
+| Bayern, Baden-Württemberg, Saarland, Schleswig-Holstein, Mecklenburg-Vorpommern | Aus rechtlichen Gründen nicht in den offenen Bodenrichtwert-Diensten enthalten — dieselbe Ausnahme, die §4.5 für BORIS-D nennt. |
+
+Für diese Länder bleibt es beim Portallink bzw. beim Suchlink. `gastroviewer check-wms`
+ruft bei allen sieben Diensten `GetCapabilities` ab und meldet, wenn eine URL oder ein
+Layername nicht mehr stimmt — Brandenburg hat seine Dienst-URL 2025 umgestellt.
+
+---
+
 ## Fazit für die Umsetzung
 
 1. Alle fünf Pflichtendpunkte funktionieren. Kein Feature muss gestrichen werden.

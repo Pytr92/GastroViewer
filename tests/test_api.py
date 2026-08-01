@@ -360,3 +360,45 @@ def test_schaetzung_beruehrt_den_datenteil_nicht(client):
     for begriff in ("schaetzung", "schätzung", "jahresumsatz", "marktanteil",
                     "bestellungen"):
         assert begriff not in text, f"„{begriff}\" taucht im Datenteil auf"
+
+
+# --------------------------------- Bodenrichtwert-Kartendienste (Phase 4)
+
+
+def test_wms_register_deckt_alle_bundeslaender(client):
+    d = client.get("/api/wms").json()
+    codes = {x["bundesland_code"] for x in d["dienste"]} | {
+        x["bundesland_code"] for x in d["ohne_dienst"]
+    }
+    assert len(codes) == 16
+    assert d["verifiziert_am"] == "2026-08-01"
+
+
+def test_wms_fuer_bayern_nennt_den_grund(client):
+    d = client.get("/api/wms", params={"bundesland_code": "09"}).json()
+    assert d["verfuegbar"] is False
+    assert "rechtlichen Gründen" in d["grund"]
+
+
+def test_wms_fuer_nrw_liefert_die_ebene(client):
+    d = client.get("/api/wms", params={"bundesland_code": "05"}).json()
+    assert d["verfuegbar"] is True
+    assert d["url"].startswith("https://www.wms.nrw.de/")
+    assert d["min_zoom"] == 14
+    assert d["params"]["TIME"] == "2026-01-01"
+    assert "dl-de/zero-2-0" in d["lizenz"]
+
+
+def test_bodenrichtwert_ohne_dienst_bricht_nicht(client):
+    d = client.get("/api/wms/bodenrichtwert",
+                   params={"lat": LAT, "lon": LON, "bundesland_code": "09"}).json()
+    assert d["ok"] is True
+    assert d["data"] is None
+    assert d["warnings"]
+
+
+def test_bodenrichtwerte_im_punkt_tragen_den_kartendienst(client):
+    d = client.get("/api/point", params={"lat": LAT, "lon": LON, "r": R}).json()
+    k = d["bodenrichtwerte"]["kartendienst"]
+    assert k["verfuegbar"] is False, "München liegt in Bayern"
+    assert "keine URL geraten" in k["hinweis"]

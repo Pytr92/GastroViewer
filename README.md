@@ -75,6 +75,7 @@ gastroviewer status                      # Cache- und GTFS-Status
 gastroviewer clear-cache                 # Cache leeren
 gastroviewer clear-cache --quelle zensus # nur eine Quelle
 gastroviewer import-gtfs --bbox 47.9,11.2,48.4,11.9
+gastroviewer check-wms                   # Bodenrichtwert-Dienste gegenprüfen
 ```
 
 Alle Daten liegen unter `~/.gastroviewer` (überschreibbar mit `GASTROVIEWER_DATA_DIR`).
@@ -118,6 +119,7 @@ Läuft der Fahrplan ab, meldet der Block das und der Import wird einfach wiederh
 | [OpenStreetMap / Overpass](https://overpass-api.de/) | Gastronomie, Frequenzbringer, ÖPNV, Leerstand, Linien | ODbL 1.0, © OpenStreetMap-Mitwirkende | 24 h |
 | [Nominatim](https://nominatim.openstreetmap.org/) | Adresse, Gemeinde, Ortsteil, PLZ | ODbL 1.0, © OpenStreetMap-Mitwirkende | 30 Tage |
 | [gtfs.de](https://gtfs.de/) | Abfahrten je Haltestelle und Stunde | CC BY 4.0, Datengrundlage DELFI e.V. | lokal, kein Cache |
+| Bodenrichtwert-WMS von 7 Ländern | Kartenebene und Wert am Punkt | je Land, siehe unten | kein Cache |
 | OSM-Kacheln | Kartenhintergrund (Vorgabe) | ODbL 1.0 | Browser |
 | [basemap.de](https://basemap.de/) (BKG) | amtlicher Kartenhintergrund, umschaltbar | dl-de/by-2-0, © GeoBasis-DE / BKG | Browser |
 
@@ -202,7 +204,41 @@ untere und obere Annahme. Alle Werte sind Eingabefelder und überschreibbar.
   Bot-Schutz; ihn zu umgehen ist der rechtlich kritischste Punkt beim Scraping. Der Weg
   über Suchagenten und ein Sammelpostfach steht in `notizen-standort-flaeche.md` §4.2.
 - **Keine geratenen URLs.** Für Bundesländer ohne bestätigtes Bodenrichtwert-Portal wird
-  ein Suchlink erzeugt, kein erfundener Link.
+  ein Suchlink erzeugt, kein erfundener Link. Dasselbe gilt für die Kartendienste: nur
+  eingebunden, was `GetCapabilities`, `GetMap` **und** `GetFeatureInfo` bestanden hat.
+
+## Bodenrichtwerte als Kartenebene
+
+Sieben Länder haben einen offenen Kartendienst, der am 01.08.2026 in allen drei Stufen
+geprüft wurde. Liegt der gewählte Punkt in einem davon, erscheint die Ebene im
+Ebenenschalter und der Wert lässt sich am Punkt abfragen.
+
+| Land | Klickabfrage | Ebene ab Zoom | Lizenz |
+|---|---|---|---|
+| Nordrhein-Westfalen | Wert und alle Merkmale | 14 | dl-de/zero-2-0 |
+| Niedersachsen | Wert und alle Merkmale | 7 | dl-de/by-2-0 |
+| Sachsen-Anhalt | Wert und alle Merkmale | 7 | Kostenverordnung des Landes beachten |
+| Thüringen | Wert und alle Merkmale | 13 | dl-de/by-2-0 |
+| Brandenburg | Wert und alle Merkmale | 13 | dl-de/by-2-0 |
+| Hamburg | nur Zone und Nutzungsart, **kein Wert** | 0 | keine Zugriffsbeschränkungen |
+| Rheinland-Pfalz | keine — nur die Karte | 0 | dl-de/by-2-0 |
+
+Für die übrigen neun Länder gibt es keine Ebene, und im Panel steht warum: Bayern,
+Baden-Württemberg, Saarland, Schleswig-Holstein und Mecklenburg-Vorpommern sind aus
+rechtlichen Gründen nicht in den offenen Diensten; Berlin scheitert an der
+TLS-Zertifikatskette; Sachsen weist die Abrufe mit HTTP 403 zurück; für Hessen und Bremen
+wurde kein offener Dienst gefunden. Dort bleibt es beim Portallink.
+
+Die Kacheln holt der Browser direkt beim Landesdienst — Kartenbilder brauchen kein CORS,
+und jede Kachel im Outbound-Protokoll zu zählen würde den Cache-Nachweis unbrauchbar
+machen. Die Klickabfrage läuft über das Backend, weil sie sonst an CORS scheitert.
+
+`gastroviewer check-wms` ruft bei allen sieben `GetCapabilities` ab und meldet, wenn eine
+URL oder ein Layername nicht mehr stimmt. Das ist kein Luxus: Brandenburg hat seine
+Dienst-URL 2025 umgestellt.
+
+> Bodenrichtwerte sind Zonenwerte für ein fiktives Grundstück mit den angegebenen
+> Merkmalen — nicht der Wert eines konkreten Grundstücks und kein Mietpreis.
 
 ## Bekannte Grenzen der Daten
 
@@ -258,6 +294,8 @@ Alles über Umgebungsvariablen, alles optional:
 | `GET /api/export/point.json` · `point.csv` · `vergleich.csv` | Export |
 | `GET /api/stats` · `GET /api/outbound` | Cache-Zustand, Protokoll der echten Abrufe |
 | `DELETE /api/cache?quelle=` | Cache leeren |
+| `GET /api/wms` · `?bundesland_code=` | Kartendienst-Register bzw. Ebene eines Landes |
+| `GET /api/wms/bodenrichtwert` | Wert am Punkt beim Landesdienst (GetFeatureInfo) |
 | `GET /api/health` | Zustand, GTFS-Status |
 
 Interaktive Doku unter `/docs`.
@@ -320,6 +358,7 @@ gastroviewer/
     nominatim.py     Geocoding und Reverse-Geocoding
     gtfs.py          Import und Abfahrtszählung
     boris.py         Bodenrichtwert-Portale je Bundesland
+    wms.py           verifizierte Landes-Kartendienste, Klickabfrage
     links.py         Deep-Links aus Spec §4.6 und den Notizen
   static/            Oberfläche (Leaflet lokal, kein CDN)
 fixtures/            echte API-Antworten aus Phase 0, Grundlage der Tests
