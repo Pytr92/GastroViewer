@@ -192,6 +192,64 @@ const ebenenSchalter = L.control.layers({
 }, { collapsed: false }).addTo(karte);
 ebenenSchalter.getContainer().classList.add('ebenen-schalter');
 
+/* ------------------------------------------------- Deckkraft der Ebenen */
+
+/* Sobald eine echte Grundkarte darunterliegt, verdeckt das Zensusgitter genau
+   das, was man sehen will: Straßenverlauf, Gebäudekanten, Hofflächen. Der
+   Regler blendet alle aufgesetzten Ebenen gemeinsam zurück. Die Wahl bleibt
+   erhalten, damit sie nicht bei jedem Punktwechsel neu eingestellt werden muss. */
+const DECKKRAFT_SPEICHER = 'gastroviewer.deckkraft';
+
+function geladeneDeckkraft() {
+  const roh = Number(localStorage.getItem(DECKKRAFT_SPEICHER));
+  return Number.isFinite(roh) && roh >= 0.1 && roh <= 1 ? roh : 1;
+}
+state.deckkraft = geladeneDeckkraft();
+
+/* Rasterebenen (WMS) melden sich hier an, damit der Regler sie mitnimmt. */
+state.rasterEbenen = new Set();
+
+function wendeDeckkraftAn() {
+  const f = state.deckkraft;
+  for (const name of ['zensus', 'gastronomie', 'frequenzbringer', 'oepnv', 'leerstand']) {
+    state.ebenen[name]?.eachLayer((l) => {
+      const basis = l.options?._basisDeckkraft;
+      if (basis === undefined || !l.setStyle) return;
+      l.setStyle({ fillOpacity: basis * f, opacity: (l.options._basisRand ?? 1) * f });
+    });
+  }
+  for (const r of state.rasterEbenen) {
+    if (r.setOpacity) r.setOpacity(f);
+  }
+  const anzeige = document.getElementById('deckkraft-wert');
+  if (anzeige) anzeige.textContent = `${Math.round(f * 100)} %`;
+}
+
+function setzeDeckkraft(f) {
+  state.deckkraft = Math.min(1, Math.max(0.1, f));
+  localStorage.setItem(DECKKRAFT_SPEICHER, String(state.deckkraft));
+  wendeDeckkraftAn();
+}
+
+const deckkraftRegler = L.control({ position: 'topright' });
+deckkraftRegler.onAdd = () => {
+  const c = L.DomUtil.create('div', 'leaflet-control deckkraft-regler');
+  c.innerHTML = `<label for="deckkraft">Deckkraft der Ebenen
+      <span id="deckkraft-wert">${Math.round(state.deckkraft * 100)} %</span></label>
+    <input type="range" id="deckkraft" min="10" max="100" step="5"
+           value="${Math.round(state.deckkraft * 100)}"
+           aria-label="Deckkraft der aufgesetzten Kartenebenen">
+    <div class="hinweis-klein">Blendet Gitter und Marker zurück, damit
+      Straßen und Gebäude der Grundkarte sichtbar bleiben.</div>`;
+  L.DomEvent.disableClickPropagation(c);
+  L.DomEvent.disableScrollPropagation(c);
+  c.querySelector('#deckkraft').addEventListener('input', (ev) => {
+    setzeDeckkraft(Number(ev.target.value) / 100);
+  });
+  return c;
+};
+deckkraftRegler.addTo(karte);
+
 karte.on('click', (e) => setzePunkt(e.latlng.lat, e.latlng.lng));
 
 /* Choroplethen-Metriken: Feldname -> Beschriftung, Einheit, Nachkommastellen */
@@ -246,8 +304,13 @@ function zeichneZensus(zellen) {
     if (!z._ring) continue;
     const v = metrikWert(z, state.choroMetrik);
     const latlngs = z._ring.map((p) => [p[1], p[0]]);
+    const basis = v === null ? 0.25 : 0.62;
     const poly = L.polygon(latlngs, {
-      color: '#ffffff', weight: 0.6, fillColor: farbe(v, g), fillOpacity: v === null ? 0.25 : 0.62,
+      color: '#ffffff', weight: 0.6, fillColor: farbe(v, g),
+      fillOpacity: basis * state.deckkraft, opacity: state.deckkraft,
+      // Ausgangswerte merken, damit der Regler mehrfach greifen kann, ohne
+      // sich selbst zu multiplizieren.
+      _basisDeckkraft: basis, _basisRand: 1,
     });
     poly.bindPopup(() => zellenPopup(z), { maxWidth: 320 });
     gruppe.addLayer(poly);
@@ -311,7 +374,9 @@ function zeichnePois(name, liste) {
   const stil = POI_STIL[name];
   for (const p of liste || []) {
     const m = L.circleMarker([p.lat, p.lon], {
-      radius: 5, color: stil.color, weight: 1.5, fillColor: stil.fill, fillOpacity: 0.85,
+      radius: 5, color: stil.color, weight: 1.5, fillColor: stil.fill,
+      fillOpacity: 0.85 * state.deckkraft, opacity: state.deckkraft,
+      _basisDeckkraft: 0.85, _basisRand: 1,
     });
     m.bindPopup(() => poiPopup(p, name), { maxWidth: 320 });
     gruppe.addLayer(m);
@@ -1304,6 +1369,7 @@ function entferneBrwEbene() {
   if (brwState.ebene) {
     karte.removeLayer(brwState.ebene);
     ebenenSchalter.removeLayer(brwState.ebene);
+    state.rasterEbenen.delete(brwState.ebene);
     brwState.ebene = null;
   }
   brwState.cfg = null;
@@ -1336,6 +1402,8 @@ async function setzeBrwEbene(bundeslandCode) {
     maxZoom: 19,
     ...zusatz,
   });
+  ebene.setOpacity(state.deckkraft);
+  state.rasterEbenen.add(ebene);
   brwState.ebene = ebene;
   brwState.cfg = cfg;
   brwState.code = bundeslandCode;
@@ -1447,6 +1515,7 @@ async function setzeZusatzebenen(bundeslandCode) {
   for (const e of zusatzState.ebenen) {
     karte.removeLayer(e);
     ebenenSchalter.removeLayer(e);
+    state.rasterEbenen.delete(e);
   }
   zusatzState.ebenen = [];
   zusatzState.code = bundeslandCode;
@@ -1471,8 +1540,15 @@ async function setzeZusatzebenen(bundeslandCode) {
     const beschriftung = cfg.min_zoom > 12
       ? `${cfg.titel} (ab Zoom ${cfg.min_zoom})`
       : cfg.titel;
-    if (cfg.als_grundkarte) ebenenSchalter.addBaseLayer(ebene, beschriftung);
-    else ebenenSchalter.addOverlay(ebene, beschriftung);
+    if (cfg.als_grundkarte) {
+      // Eine Grundkarte wird nicht zurückgeblendet — sie ist ja das, was man
+      // durch die anderen Ebenen hindurch sehen will.
+      ebenenSchalter.addBaseLayer(ebene, beschriftung);
+    } else {
+      ebene.setOpacity(state.deckkraft);
+      state.rasterEbenen.add(ebene);
+      ebenenSchalter.addOverlay(ebene, beschriftung);
+    }
   }
 }
 

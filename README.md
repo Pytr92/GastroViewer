@@ -60,7 +60,8 @@ export GASTROVIEWER_CONTACT="deine@mailadresse.de"     # Windows: set GASTROVIEW
 | Marker ziehen | verschiebt den Punkt |
 | Adresssuche | Nominatim, mit 1,1 s Verzögerung wegen des Limits von 1 Anfrage/s |
 | Radius 300/600/900/1400 m | begrenzt alle Abfragen |
-| Ebenen links oben | Kartengrundlage (OSM oder basemap.de) sowie Zensus-Gitter, Gastronomie, Frequenzbringer, ÖPNV, Leerstände |
+| Ebenen links oben | Kartengrundlage (OSM, basemap.de farbig/grau, Luftbild Bayern) sowie Zensus-Gitter, Gastronomie, Frequenzbringer, ÖPNV, Leerstände, Verkehrsmengen, Lärm, ALKIS |
+| Regler „Deckkraft der Ebenen" | blendet Gitter, Marker und Rasterebenen gemeinsam zurück, damit Straßen und Gebäude der Grundkarte durchscheinen. Die Grundkarte selbst bleibt voll; die Einstellung wird gemerkt |
 | Auswahl in der Legende | Zensus-Ebene: Einwohner, Anteil 18–49, Miete, Leerstand |
 | Klick auf Zelle oder POI | zeigt die Rohwerte, wie sie vom Dienst kamen |
 | „Punkt merken" | legt den Standort in die Vergleichstabelle (bleibt in SQLite) |

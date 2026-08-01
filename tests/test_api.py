@@ -640,3 +640,19 @@ def test_gehwegspalten_stehen_im_vergleich(client):
     keys = {c["key"] for c in v["spalten"]}
     assert {"einwohner_gehweg", "erschliessung_einwohner",
             "gastro_gehweg", "umwegfaktor"} <= keys
+
+
+def test_deckkraftregler_ist_vorhanden_und_beruehrt_die_grundkarte_nicht():
+    """Der Regler soll die aufgesetzten Ebenen zurückblenden, damit Straßen und
+    Gebäude sichtbar bleiben — die Grundkarte selbst darf er nicht dimmen."""
+    js = (Path(__file__).resolve().parents[1]
+          / "gastroviewer" / "static" / "app.js").read_text(encoding="utf-8")
+    assert "deckkraft-regler" in js and 'type="range"' in js
+    assert "localStorage.setItem(DECKKRAFT_SPEICHER" in js, "Einstellung muss bleiben"
+    # Grundkarten werden ohne setOpacity eingehängt.
+    block = js.split("if (cfg.als_grundkarte) {")[1].split("} else {")[0]
+    assert "setOpacity" not in block, "eine Grundkarte wird nicht zurückgeblendet"
+
+    css = (Path(__file__).resolve().parents[1]
+           / "gastroviewer" / "static" / "style.css").read_text(encoding="utf-8")
+    assert ".deckkraft-regler" in css

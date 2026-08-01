@@ -481,3 +481,30 @@ dialog::backdrop { background: rgba(0,0,0,.35); }
 
 .ebenen-schalter { font-size: 12.5px; }
 .ebenen-schalter label { display: block; }
+
+/* Deckkraftregler: sitzt unter dem Ebenenschalter und ist bewusst schmal —
+   er soll die Karte nicht verdecken, die er sichtbar machen soll. */
+.deckkraft-regler {
+  background: #fff;
+  border: 1px solid rgba(0, 0, 0, 0.2);
+  border-radius: 5px;
+  padding: 7px 9px 6px;
+  margin-top: 8px;
+  width: 210px;
+  box-shadow: 0 1px 5px rgba(0, 0, 0, 0.25);
+  font-size: 12.5px;
+}
+.deckkraft-regler label {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  font-weight: 600;
+  margin-bottom: 3px;
+}
+.deckkraft-regler #deckkraft-wert {
+  font-weight: 400;
+  font-variant-numeric: tabular-nums;
+  color: #5b6570;
+}
+.deckkraft-regler input[type='range'] { width: 100%; margin: 0; }
+.deckkraft-regler .hinweis-klein { margin: 3px 0 0; line-height: 1.35; }
