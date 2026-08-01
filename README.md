@@ -54,7 +54,7 @@ export GASTROVIEWER_CONTACT="deine@mailadresse.de"     # Windows: set GASTROVIEW
 | Marker ziehen | verschiebt den Punkt |
 | Adresssuche | Nominatim, mit 1,1 s Verzögerung wegen des Limits von 1 Anfrage/s |
 | Radius 300/600/900/1400 m | begrenzt alle Abfragen |
-| Ebenen links oben | Zensus-Gitter, Gastronomie, Frequenzbringer, ÖPNV, Leerstände |
+| Ebenen links oben | Kartengrundlage (OSM oder basemap.de) sowie Zensus-Gitter, Gastronomie, Frequenzbringer, ÖPNV, Leerstände |
 | Auswahl in der Legende | Zensus-Ebene: Einwohner, Anteil 18–49, Miete, Leerstand |
 | Klick auf Zelle oder POI | zeigt die Rohwerte, wie sie vom Dienst kamen |
 | „Punkt merken" | legt den Standort in die Vergleichstabelle (bleibt in SQLite) |
@@ -116,7 +116,8 @@ Läuft der Fahrplan ab, meldet der Block das und der Import wird einfach wiederh
 | [OpenStreetMap / Overpass](https://overpass-api.de/) | Gastronomie, Frequenzbringer, ÖPNV, Leerstand, Linien | ODbL 1.0, © OpenStreetMap-Mitwirkende | 24 h |
 | [Nominatim](https://nominatim.openstreetmap.org/) | Adresse, Gemeinde, Ortsteil, PLZ | ODbL 1.0, © OpenStreetMap-Mitwirkende | 30 Tage |
 | [gtfs.de](https://gtfs.de/) | Abfahrten je Haltestelle und Stunde | CC BY 4.0, Datengrundlage DELFI e.V. | lokal, kein Cache |
-| OSM-Kacheln | Kartenhintergrund | ODbL 1.0 | Browser |
+| OSM-Kacheln | Kartenhintergrund (Vorgabe) | ODbL 1.0 | Browser |
+| [basemap.de](https://basemap.de/) (BKG) | amtlicher Kartenhintergrund, umschaltbar | dl-de/by-2-0, © GeoBasis-DE / BKG | Browser |
 
 Verlinkt, aber **nicht abgerufen**: BORIS-D und die Landesportale für Bodenrichtwerte,
 hystreet, Pendleratlas, INKAR, Regionalstatistik, Zensusatlas, Leerstandsmelder,
@@ -236,6 +237,17 @@ pytest
 
 Die Tests laufen ausschließlich gegen die in Phase 0 aufgezeichneten **echten** Antworten
 unter `fixtures/`, nicht gegen ausgedachte Testdaten. Sie brauchen kein Netz.
+
+Zusätzlich prüft ein Skript die Abnahmekriterien aus §7 der Spec gegen einen laufenden
+Server — mit echten Aufrufen, inklusive eines direkten Gegenchecks der angezeigten Zahlen
+bei Zensus und Overpass:
+
+```bash
+gastroviewer serve --port 8011 &
+python scripts/abnahme.py http://127.0.0.1:8011
+```
+
+Das letzte Protokoll steht in [`docs/abnahme.md`](docs/abnahme.md).
 
 ---
 
