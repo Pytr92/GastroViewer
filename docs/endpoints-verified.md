@@ -293,6 +293,45 @@ optional, gtfs.de reicht für Phase 3.
 
 ---
 
+## basemap.de — amtliche Kartengrundlage (§5, war **[U]**)
+
+Nachträglich geprüft am 2026-08-01.
+
+`GET https://sgx.geodatenzentrum.de/wmts_basemapde/1.0.0/WMTSCapabilities.xml`
+**HTTP 200** · 30.712 Bytes
+
+```
+Layer            : de_basemapde_web_raster_farbe · de_basemapde_web_raster_grau
+TileMatrixSets   : GLOBAL_WEBMERCATOR (20 Stufen) · DE_EPSG_3857_ADV (14) ·
+                   DE_EPSG_25832_ADV (14) · DE_EPSG_25833_ADV (14)
+AccessConstraints: „Es gelten keine Zugriffsbeschränkungen"
+Template         : …/tile/1.0.0/{Layer}/{Style}/{TileMatrixSet}/{TileMatrix}/{TileRow}/{TileCol}.png
+```
+
+Kacheltest: `…/de_basemapde_web_raster_farbe/default/GLOBAL_WEBMERCATOR/15/11265/17445.png`
+→ **HTTP 200**, 22.871 Bytes, `image/png`.
+
+**Befunde:**
+
+- **`GLOBAL_WEBMERCATOR` ist der Satz für Leaflet**, nicht `DE_EPSG_3857_ADV` — der
+  antwortet auf denselben Kachelaufruf mit **HTTP 400**.
+- **Die TileMatrix-IDs sind zweistellig** (`00`–`19`). Mit Leaflets `{z}` allein käme
+  bei Zoomstufen unter 10 eine 400er-Antwort. Der Code füllt deshalb auf zwei Stellen auf.
+- Reihenfolge im Pfad ist `{TileMatrix}/{TileRow}/{TileCol}`, also z/y/x — nicht z/x/y.
+- Attribution: „© basemap.de / GeoBasis-DE, BKG (dl-de/by-2-0)".
+
+basemap.de ist als umschaltbare Kartengrundlage eingebaut (farbig und grau), OSM bleibt
+die Vorgabe.
+
+> **Einschränkung dieser Umgebung:** Wie die OSM-Kacheln erreichen auch die
+> basemap.de-Kacheln den Browser im Container nicht — der ausgehende Proxy beantwortet
+> Kachelanfragen aus dem Browser nicht (per `curl` funktionieren dieselben URLs). Geprüft
+> werden konnte daher: Erreichbarkeit und Format über `curl`, korrekte URL-Bildung und
+> Umschaltung im Browser (12 Kachelanfragen mit korrekt aufgefüllter Zoomstufe). Das
+> tatsächliche Kartenbild ist in dieser Umgebung nicht darstellbar.
+
+---
+
 ## Bodenrichtwert-Portale (§4.5)
 
 Alle fünf in der Spec als **[V]** geführten URLs geprüft, alle **HTTP 200**:

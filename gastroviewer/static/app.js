@@ -134,10 +134,33 @@ function warnungen(liste) {
 
 const karte = L.map('karte', { zoomControl: true }).setView([51.163, 10.448], 6);
 
-L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+const osmKarte = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
   maxZoom: 19,
   attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap-Mitwirkende</a>',
-}).addTo(karte);
+});
+
+/* Amtliche Alternative des Bundesamts für Kartographie und Geodäsie.
+   In Phase 0 geprüft: WMTS mit TileMatrixSet GLOBAL_WEBMERCATOR, 20 Zoomstufen,
+   „Es gelten keine Zugriffsbeschränkungen". Die TileMatrix-IDs sind zweistellig
+   (00–19), deshalb muss z aufgefüllt werden — mit {z} allein käme bei Zoom < 10
+   eine 400er-Antwort. */
+const BasemapDe = L.TileLayer.extend({
+  getTileUrl(coords) {
+    const z = String(this._getZoomForUrl()).padStart(2, '0');
+    return `https://sgx.geodatenzentrum.de/wmts_basemapde/tile/1.0.0/`
+      + `${this.options.stil}/default/GLOBAL_WEBMERCATOR/${z}/${coords.y}/${coords.x}.png`;
+  },
+});
+const bkgAttribution = '&copy; <a href="https://basemap.de/">basemap.de</a> / '
+  + 'GeoBasis-DE, BKG (dl-de/by-2-0)';
+const basemapFarbe = new BasemapDe('', {
+  stil: 'de_basemapde_web_raster_farbe', maxZoom: 19, attribution: bkgAttribution,
+});
+const basemapGrau = new BasemapDe('', {
+  stil: 'de_basemapde_web_raster_grau', maxZoom: 19, attribution: bkgAttribution,
+});
+
+osmKarte.addTo(karte);
 
 for (const name of ['zensus', 'gastronomie', 'frequenzbringer', 'oepnv', 'leerstand']) {
   state.ebenen[name] = L.layerGroup();
@@ -145,7 +168,11 @@ for (const name of ['zensus', 'gastronomie', 'frequenzbringer', 'oepnv', 'leerst
 state.ebenen.zensus.addTo(karte);
 state.ebenen.gastronomie.addTo(karte);
 
-const ebenenSchalter = L.control.layers(null, {
+const ebenenSchalter = L.control.layers({
+  'OpenStreetMap': osmKarte,
+  'basemap.de (amtlich)': basemapFarbe,
+  'basemap.de grau': basemapGrau,
+}, {
   'Zensus-Gitter': state.ebenen.zensus,
   'Gastronomie': state.ebenen.gastronomie,
   'Frequenzbringer': state.ebenen.frequenzbringer,

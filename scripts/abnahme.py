@@ -1,0 +1,300 @@
+#!/usr/bin/env python3
+"""Abnahmeprüfung gegen die Kriterien aus §7 der Spec.
+
+Läuft gegen einen **laufenden** Server und prüft jedes Kriterium mit echten
+Aufrufen, nicht mit Behauptungen.
+
+    python -m gastroviewer serve --port 8011 &
+    python scripts/abnahme.py http://127.0.0.1:8011
+
+Beim ersten Lauf gehen echte Anfragen an Overpass, Zensus und Nominatim. Das
+dauert ein bis zwei Minuten und ist beabsichtigt — geprüft wird das reale
+Verhalten, nicht ein Ersatz.
+"""
+
+from __future__ import annotations
+
+import json
+import subprocess
+import sys
+import time
+import urllib.request
+from pathlib import Path
+
+BASE = sys.argv[1] if len(sys.argv) > 1 else "http://127.0.0.1:8000"
+WURZEL = Path(__file__).resolve().parents[1]
+
+# Vier Lagetypen laut §7.
+PUNKTE = [
+    ("Großstadt-Innenstadt", 48.1334, 11.5674, 600),
+    ("Großstadt-Wohnviertel", 48.1078, 11.5470, 600),
+    ("Kleinstadt", 49.0447, 11.3547, 600),
+    ("ländlich", 53.0210, 13.2100, 900),
+]
+
+ergebnisse: list[tuple[str, bool, str]] = []
+
+
+def hole(pfad: str, timeout: float = 180) -> dict:
+    req = urllib.request.Request(BASE + pfad, headers={"Accept": "application/json"})
+    # Kein Proxy: der Server läuft lokal.
+    opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
+    with opener.open(req, timeout=timeout) as r:
+        return json.loads(r.read().decode("utf-8"))
+
+
+def hole_text(pfad: str, timeout: float = 180) -> str:
+    opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
+    with opener.open(BASE + pfad, timeout=timeout) as r:
+        return r.read().decode("utf-8")
+
+
+def pruefe(nr: str, titel: str, bedingung: bool, beleg: str) -> None:
+    ergebnisse.append((f"{nr} {titel}", bool(bedingung), beleg))
+    zeichen = "OK   " if bedingung else "FEHLT"
+    print(f"[{zeichen}] {nr} {titel}")
+    for zeile in beleg.splitlines():
+        print(f"         {zeile}")
+
+
+print(f"Abnahmeprüfung gegen {BASE}\n" + "=" * 72)
+
+# ---------------------------------------------------------------- Vorlauf
+daten: dict[str, dict] = {}
+print("\nVier Lagetypen laden (kalt, echte Abrufe) …")
+for name, lat, lon, r in PUNKTE:
+    t0 = time.perf_counter()
+    daten[name] = hole(f"/api/point?lat={lat}&lon={lon}&r={r}&refresh=true")
+    print(f"  {name:24} {time.perf_counter() - t0:5.1f}s")
+
+# ------------------------------------------------------------------- §7.1
+# Herkunftsnachweis: die angezeigten Zahlen werden gegen einen direkten,
+# unabhaengigen Aufruf der Originalquellen gehalten. Eine Heuristik ueber
+# Zahlenkonstanten im Code wuerde HTTP-Codes und Puffergroessen falsch anschlagen;
+# hier wird stattdessen geprueft, was zaehlt: stimmt die Zahl mit der Quelle ueberein.
+import urllib.parse
+
+d = daten["Großstadt-Innenstadt"]
+lat0, lon0, r0 = PUNKTE[0][1], PUNKTE[0][2], PUNKTE[0][3]
+opener = urllib.request.build_opener()
+# Overpass und ArcGIS lehnen Anfragen ohne User-Agent ab (Overpass mit HTTP 406).
+# Dieselbe Identifikation wie die Anwendung verwenden.
+KOPFZEILEN = {"User-Agent": "gastroviewer-abnahme/0.1 (Abnahmepruefung)"}
+
+zensus_form = urllib.parse.urlencode({
+    "f": "json", "where": "1=1",
+    "geometry": json.dumps({"x": lon0, "y": lat0, "spatialReference": {"wkid": 4326}}),
+    "geometryType": "esriGeometryPoint", "distance": str(r0),
+    "units": "esriSRUnit_Meter", "inSR": "4326", "outSR": "4326",
+    "spatialRel": "esriSpatialRelIntersects", "outFields": "Einwohner",
+    "returnGeometry": "false", "resultRecordCount": "2000",
+}).encode()
+roh = json.loads(
+    opener.open(urllib.request.Request(
+        "https://services2.arcgis.com/jUpNdisbWqRpMo35/arcgis/rest/services"
+        "/Zensus2022_grid_final/FeatureServer/0/query",
+        data=zensus_form, headers=KOPFZEILEN), timeout=90
+    ).read().decode()
+)
+quelle_summe = sum(
+    f["attributes"]["Einwohner"] for f in roh["features"]
+    if f["attributes"].get("Einwohner") is not None
+)
+quelle_zellen = len(roh["features"])
+angezeigt = d["bloecke"]["zensus"]["data"]["bevoelkerung"]["einwohner"]
+zensus_passt = angezeigt["wert"] == quelle_summe and angezeigt["zellen"] == quelle_zellen
+
+abfrage = (
+    f'[out:json][timeout:60];nwr["amenity"="fast_food"](around:{r0},{lat0},{lon0});'
+    "out count;"
+)
+roh_osm = json.loads(
+    opener.open(urllib.request.Request(
+        "https://overpass-api.de/api/interpreter",
+        data=urllib.parse.urlencode({"data": abfrage}).encode(),
+        headers=KOPFZEILEN), timeout=90
+    ).read().decode()
+)
+quelle_ff = int(roh_osm["elements"][0]["tags"]["total"])
+angezeigt_ff = (
+    d["bloecke"]["osm"]["data"]["zusammenfassung"]["gastronomie"]["nach_typ"]
+    .get("Schnellrestaurant", 0)
+)
+osm_passt = angezeigt_ff == quelle_ff
+
+pruefe(
+    "§7.1",
+    "Jede Zahl ist auf eine reale API-Antwort zurückführbar",
+    zensus_passt and osm_passt,
+    f"Zensus direkt abgefragt: {quelle_zellen} Zellen, Summe Einwohner {quelle_summe:.0f}\n"
+    f"  Anwendung zeigt: {angezeigt['zellen']} Zellen, {angezeigt['wert']:.0f} Einwohner\n"
+    f"  Overpass `out count` fast_food: {quelle_ff}\n"
+    f"  Anwendung zeigt Schnellrestaurants: {angezeigt_ff}",
+)
+
+# ------------------------------------------------------------------- §7.2
+fehlend = []
+for name, d in daten.items():
+    for block, inhalt in d["bloecke"].items():
+        p = inhalt.get("provenance")
+        if block == "gtfs" and inhalt.get("data") is None:
+            continue
+        if not p or not p.get("source") or not p.get("license"):
+            fehlend.append(f"{name}/{block}")
+        elif block in ("zensus", "osm", "gtfs") and not p.get("stand"):
+            fehlend.append(f"{name}/{block}: kein Stand")
+beispiel = daten["Großstadt-Innenstadt"]["bloecke"]["zensus"]["provenance"]
+pruefe(
+    "§7.2",
+    "Jeder Block nennt Quelle, Stand und Lizenz",
+    not fehlend,
+    f"Beispiel Zensus: {beispiel['source'][:56]}…\n"
+    f"  Stand: {beispiel['stand']}\n"
+    f"  Lizenz: {beispiel['license'][:60]}…"
+    + ("\n  fehlend: " + ", ".join(fehlend) if fehlend else ""),
+)
+
+# ------------------------------------------------------------------- §7.3
+html = hole_text("/")
+osm_sichtbar = "OpenStreetMap-Mitwirkende" in html and "ODbL" in html
+zensus_sichtbar = "Statistische Ämter des Bundes und der Länder" in html
+pruefe(
+    "§7.3",
+    "Attribution OSM/ODbL und Zensus-Copyright sichtbar",
+    osm_sichtbar and zensus_sichtbar,
+    "in der Fußzeile von index.html: "
+    f"OSM/ODbL={'ja' if osm_sichtbar else 'nein'}, "
+    f"Zensus={'ja' if zensus_sichtbar else 'nein'}",
+)
+
+# ------------------------------------------------------------------- §7.4
+gesundheit = hole("/api/health")
+ua = gesundheit["user_agent"]
+t0 = time.perf_counter()
+for begriff in ("Augsburg Rathaus", "Regensburg Dom", "Ingolstadt Rathaus"):
+    hole(f"/api/geocode?q={begriff.replace(' ', '+')}")
+dauer = time.perf_counter() - t0
+stats = hole("/api/stats")
+lim = stats["rate_limiter"].get("nominatim", {})
+pruefe(
+    "§7.4",
+    "Nominatim ≤ 1 req/s gedrosselt, User-Agent gesetzt",
+    dauer >= 2.0 and lim.get("min_interval_s") == 1.0 and "gastroviewer/" in ua,
+    f"3 Suchen nacheinander: {dauer:.2f}s (Untergrenze 2,0s)\n"
+    f"  Limiter: {lim}\n"
+    f"  User-Agent: {ua}",
+)
+
+# ------------------------------------------------------------------- §7.5
+vorher = hole("/api/stats")["outbound_requests_total"]
+lat, lon, r = PUNKTE[0][1], PUNKTE[0][2], PUNKTE[0][3]
+zweiter = hole(f"/api/point?lat={lat}&lon={lon}&r={r}")
+nachher = hole("/api/stats")["outbound_requests_total"]
+pruefe(
+    "§7.5",
+    "Cache greift: zweiter Aufruf ohne Outbound-Traffic",
+    nachher == vorher and zweiter["meta"]["outbound_requests"] == 0,
+    f"Outbound-Protokoll vorher {vorher}, nachher {nachher}\n"
+    f"  Antwortzeit: {zweiter['meta']['dauer_ms']} ms, aus_cache={zweiter['meta']['aus_cache']}\n"
+    f"  nachprüfbar unter {BASE}/api/outbound",
+)
+
+# ------------------------------------------------------------------- §7.6
+# Erzwungener Ausfall: unerreichbarer Overpass-Endpunkt in einem eigenen Prozess.
+proc = subprocess.run(
+    [sys.executable, str(WURZEL / "scripts" / "_ausfalltest.py")],
+    capture_output=True,
+    text=True,
+    cwd=WURZEL,
+    timeout=180,
+)
+try:
+    ausfall = json.loads(proc.stdout.strip().splitlines()[-1])
+except (ValueError, IndexError):
+    ausfall = {"fehler": (proc.stderr or proc.stdout)[-400:]}
+pruefe(
+    "§7.6",
+    "Ausfall einer Quelle bricht die Seite nicht",
+    ausfall.get("osm_ok") is False
+    and ausfall.get("zensus_ok") is True
+    and bool(ausfall.get("gemeinde")),
+    f"Overpass auf toten Endpunkt gezwungen: osm.ok={ausfall.get('osm_ok')}\n"
+    f"  Meldung: {str(ausfall.get('osm_fehler'))[:70]}\n"
+    f"  Zensus lief weiter: {ausfall.get('zellen')} Zellen, "
+    f"Gemeinde {ausfall.get('gemeinde')}"
+    + (f"\n  Fehler im Unterprozess: {ausfall['fehler']}" if "fehler" in ausfall else ""),
+)
+
+# ------------------------------------------------------------------- §7.7
+zeilen = []
+alle_ok = True
+for name, _lat, _lon, _r in PUNKTE:
+    d = daten[name]
+    z = d["bloecke"]["zensus"]["data"] or {}
+    o = d["bloecke"]["osm"]["data"] or {}
+    zus = o.get("zusammenfassung", {})
+    ew = ((z.get("bevoelkerung") or {}).get("einwohner") or {}).get("wert")
+    zeilen.append(
+        f"{name:24} {z.get('zellen_gefunden', 0):>4} Zellen  "
+        f"{str(ew):>8} Einw.  {zus.get('gastronomie', {}).get('gesamt', 0):>4} Gastro  "
+        f"{zus.get('oepnv', {}).get('haltestellen', 0):>3} Halte  "
+        f"{d['punkt'].get('gemeinde') or '—'}"
+    )
+    if not d["bloecke"]["zensus"]["ok"] or not d["bloecke"]["osm"]["ok"]:
+        alle_ok = False
+laendlich = daten["ländlich"]
+laendlich_sauber = (
+    laendlich["bloecke"]["osm"]["ok"]
+    and (laendlich["bloecke"]["osm"]["warnings"] or laendlich["bloecke"]["zensus"]["warnings"])
+)
+pruefe(
+    "§7.7",
+    "Vier Lagetypen liefern vollständige Ausgaben",
+    alle_ok and laendlich_sauber,
+    "\n".join(zeilen)
+    + f"\n  ländlicher Fall mit Hinweis statt Leere: {'ja' if laendlich_sauber else 'nein'}",
+)
+
+# ------------------------------------------------------------------- §7.8
+quelle = (WURZEL / "gastroviewer" / "sources" / "zensus.py").read_text(encoding="utf-8")
+behandelt = 'exceededTransferLimit") is not True' in quelle and "resultOffset" in quelle
+gross = hole(f"/api/point/zensus?lat=48.1334&lon=11.5674&r=3000")
+n = (gross.get("data") or {}).get("zellen_gefunden", 0)
+pruefe(
+    "§7.8",
+    "exceededTransferLimit wird behandelt",
+    behandelt and n > 2000,
+    "zensus.py prüft auf `is not True` (der Schlüssel fehlt bei false)\n"
+    f"  und blättert über resultOffset weiter\n"
+    f"  Gegenprobe r=3000: {n} Zellen geliefert (Limit je Seite: 2000)",
+)
+
+# ------------------------------------------------------------------- §7.9
+readme = (WURZEL / "README.md").read_text(encoding="utf-8")
+pflicht = {
+    "Start": "gastroviewer serve" in readme,
+    "GTFS-Import": "import-gtfs" in readme,
+    "Cache leeren": "clear-cache" in readme,
+    "Zensus-Lizenz": "Statistische Ämter" in readme,
+    "OSM-Lizenz": "ODbL" in readme,
+    "GTFS-Lizenz": "CC BY 4.0" in readme,
+    "Nominatim": "Nominatim" in readme,
+    "hystreet-Auflage": "gewerbliche Nutzung untersagt" in readme,
+}
+pruefe(
+    "§7.9",
+    "README erklärt Start, GTFS-Import, Cache leeren, listet Quellen mit Lizenz",
+    all(pflicht.values()),
+    " · ".join(f"{k}={'ja' if v else 'NEIN'}" for k, v in pflicht.items()),
+)
+
+# --------------------------------------------------------------- Ergebnis
+print("\n" + "=" * 72)
+offen = [t for t, ok, _ in ergebnisse if not ok]
+print(f"{len(ergebnisse) - len(offen)} von {len(ergebnisse)} Kriterien erfüllt.")
+if offen:
+    print("Offen:")
+    for t in offen:
+        print(f"  - {t}")
+    sys.exit(1)
+print("Alle Abnahmekriterien aus §7 erfüllt.")

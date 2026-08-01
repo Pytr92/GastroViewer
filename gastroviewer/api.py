@@ -69,7 +69,16 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.state.settings = settings or get_settings()
 
     def svc(request: Request) -> PointService:
-        return request.app.state.service
+        service = getattr(request.app.state, "service", None)
+        if service is None:
+            # Passiert, wenn die App ohne Lifespan läuft (z. B. TestClient ohne
+            # `with`). Ohne diese Meldung käme ein nacktes AttributeError.
+            raise HTTPException(
+                503,
+                "Der Dienst ist nicht initialisiert — der Lifespan der Anwendung "
+                "wurde nicht gestartet.",
+            )
+        return service
 
     def cfg(request: Request) -> Settings:
         return request.app.state.settings
