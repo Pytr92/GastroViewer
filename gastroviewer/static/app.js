@@ -176,6 +176,10 @@ osmKarte.addTo(karte);
 for (const name of ['zensus', 'gastronomie', 'frequenzbringer', 'oepnv', 'leerstand']) {
   state.ebenen[name] = L.layerGroup();
 }
+/* Die zu Fuß erreichbare Fläche. Canvas statt SVG, weil es je nach Lage einige
+   tausend Punkte sind und SVG dabei spürbar träge wird. */
+state.gehwegRenderer = L.canvas({ padding: 0.3 });
+state.ebenen.gehflaeche = L.layerGroup();
 state.ebenen.zensus.addTo(karte);
 state.ebenen.gastronomie.addTo(karte);
 
@@ -184,6 +188,7 @@ const ebenenSchalter = L.control.layers({
   'basemap.de (amtlich)': basemapFarbe,
   'basemap.de grau': basemapGrau,
 }, {
+  'Zu Fuß erreichbar': state.ebenen.gehflaeche,
   'Zensus-Gitter': state.ebenen.zensus,
   'Gastronomie': state.ebenen.gastronomie,
   'Frequenzbringer': state.ebenen.frequenzbringer,
@@ -550,6 +555,9 @@ function baueGeruest() {
    die grösste Overpass-Antwort des Werkzeugs, und Overpass ist ein Spendendienst.
    Deshalb erst auf Knopfdruck — dafür bleibt das Ergebnis 14 Tage im Cache. */
 function zeigeGehwegAngebot() {
+  // Sonst bliebe die erreichbare Fläche des vorigen Punktes auf der Karte
+  // liegen und behauptete etwas über den neuen.
+  state.ebenen.gehflaeche?.clearLayers();
   setStatus('gehweg', 'ok', 'auf Anforderung');
   setInhalt('gehweg',
     el('p', { class: 'hinweis-klein' },
@@ -1679,6 +1687,45 @@ function zeigeRadzaehlung(d) {
 /* Verkehrsmenge (BAYSIS) — für einen Standort an einer Ausfallstraße, mit
  * Drive-through oder Parkplatz die aussagekräftigste Frequenzgröße, die es
  * amtlich gemessen und frei gibt. */
+/* Gehstufen für die Karte. Die Grenzen sind Anteile des gewählten Radius, keine
+   festen Meterwerte — sonst wären sie bei 300 m und bei 1400 m gleich sinnlos. */
+const GEH_STUFEN = [
+  { bis: 0.34, farbe: '#1a7f37', name: 'erstes Drittel' },
+  { bis: 0.67, farbe: '#6aab3f', name: 'zweites Drittel' },
+  { bis: 1.01, farbe: '#d9a441', name: 'letztes Drittel' },
+];
+
+function zeichneGehflaeche(g) {
+  const gruppe = state.ebenen.gehflaeche;
+  gruppe.clearLayers();
+  const punkte = g?.flaeche || [];
+  if (!punkte.length) return;
+  const radius = g.radius_m || state.radius;
+
+  for (const [lat, lon, meter] of punkte) {
+    const anteil = meter / radius;
+    const stufe = GEH_STUFEN.find((s) => anteil <= s.bis) || GEH_STUFEN[GEH_STUFEN.length - 1];
+    const m = L.circleMarker([lat, lon], {
+      renderer: state.gehwegRenderer,
+      radius: 4,
+      stroke: false,
+      fillColor: stufe.farbe,
+      fillOpacity: 0.55 * state.deckkraft,
+      _basisDeckkraft: 0.55,
+      _basisRand: 0,
+    });
+    m.bindPopup(() => `<h4>Zu Fuß erreichbar</h4>
+      <p>${NF.format(meter)} m Gehweg (${NF1.format(meter / g.gehtempo_m_pro_min)} min)
+      · Luftlinie ${NF.format(Math.round(
+        L.latLng(state.lat, state.lon).distanceTo(L.latLng(lat, lon)))
+      )} m</p>
+      <p class="hinweis-klein">Ein Punkt je ${g.raster_m} m Rasterzelle,
+      jeweils der kürzeste Weg darin.</p>`);
+    gruppe.addLayer(m);
+  }
+  if (!karte.hasLayer(gruppe)) gruppe.addTo(karte);
+}
+
 function zeigeGehweg(d) {
   const id = 'gehweg';
   if (!d.ok) {
@@ -1696,6 +1743,7 @@ function zeigeGehweg(d) {
     return;
   }
   setStatus(id, 'ok', 'geladen');
+  zeichneGehflaeche(g);
 
   const gas = g.gastronomie || {};
   const zen = g.zensus || {};
@@ -1727,13 +1775,26 @@ function zeigeGehweg(d) {
     if (x) zeile(name, x.im_luftlinienkreis, x.im_gehradius, x.erschliessungsgrad);
   }
 
+  /* Legende zur Kartenebene — ohne sie sind die drei Farben Dekoration. */
+  const stufen = el('div', { class: 'gehstufen' },
+    el('span', { class: 'hinweis-klein' }, 'Auf der Karte:'),
+    GEH_STUFEN.map((s, i) => {
+      const von = i === 0 ? 0 : Math.round(GEH_STUFEN[i - 1].bis * g.radius_m);
+      const bis = Math.min(g.radius_m, Math.round(s.bis * g.radius_m));
+      return el('span', { class: 'gehstufe' },
+        el('i', { style: `background:${s.farbe}` }),
+        `${NF.format(von)}–${NF.format(bis)} m`);
+    }),
+    el('span', { class: 'hinweis-klein' },
+      `· ${NF.format((g.flaeche || []).length)} Punkte, ein Raster von ${g.raster_m} m`));
+
   const netz = el('p', { class: 'hinweis-klein' },
     `Wegenetz: ${NF.format(g.knoten)} Knoten, ${NF.format(g.kanten)} Kanten aus `
     + `${NF.format(g.wege)} OSM-Wegen (${NF.format(g.wege_gesperrt)} als nicht begehbar `
     + `ausgeschlossen). Kürzester Weg je Knoten in ${g.rechenzeit_ms} ms berechnet. `
     + `Anbindung des Standorts an das Netz: ${g.anbindung_m} m.`);
 
-  setInhalt(id, kz, tab, netz,
+  setInhalt(id, kz, tab, stufen, netz,
     ...(g.hinweise || []).map((h) => el('div', { class: 'notiz' }, h)),
     zen.hinweis ? el('div', { class: 'notiz' }, zen.hinweis) : null,
     ...warnungen(d.warnings || []));

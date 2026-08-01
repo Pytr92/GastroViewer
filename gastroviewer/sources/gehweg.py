@@ -205,6 +205,36 @@ def _minuten(meter: float) -> float:
     return round(meter / GEHTEMPO_M_PRO_MIN, 1)
 
 
+# Auflösung der Karte in Grad. Ein Grad Breite sind rund 111 km, 0,00025°
+# entsprechen also etwa 28 m. Feiner braucht die Darstellung nicht zu sein,
+# und die Antwort bleibt klein.
+KARTEN_RASTER = 0.00025
+
+
+def erreichbare_flaeche(
+    dist: dict[tuple[float, float], float], anbindung: float, radius: int
+) -> list[list[float]]:
+    """Erreichbare Knoten auf ein Raster ausgedünnt, für die Kartendarstellung.
+
+    Ohne Ausdünnung wären es je nach Lage einige tausend Punkte, von denen viele
+    übereinanderliegen. Je Rasterzelle bleibt der **kürzeste** Weg stehen, damit
+    die Darstellung nicht schlechter aussieht, als die Erreichbarkeit ist.
+    """
+    beste: dict[tuple[int, int], tuple[float, float, float]] = {}
+    for (lat, lon), d in dist.items():
+        gesamt = d + anbindung
+        if gesamt > radius:
+            continue
+        zelle = (int(lat / KARTEN_RASTER), int(lon / KARTEN_RASTER))
+        vorher = beste.get(zelle)
+        if vorher is None or gesamt < vorher[2]:
+            beste[zelle] = (lat, lon, gesamt)
+    return [
+        [round(lat, 6), round(lon, 6), round(g)]
+        for lat, lon, g in sorted(beste.values(), key=lambda x: x[2])
+    ]
+
+
 def bewerte(
     netz: Wegenetz,
     dist: dict[tuple[float, float], float],
@@ -417,6 +447,10 @@ async def load(
         "radius_m": radius,
         "gehtempo_m_pro_min": GEHTEMPO_M_PRO_MIN,
         "gehzeit_minuten": _minuten(radius),
+        # Für die Karte: „26,6 % erschlossen" sagt nicht, *wo* die Barriere
+        # liegt. Die erreichbaren Punkte zeigen es.
+        "flaeche": erreichbare_flaeche(dist, anbindung, radius),
+        "raster_m": round(KARTEN_RASTER * 111_320),
         "hinweise": [*HINWEISE, _tempo_hinweis()],
     }
 

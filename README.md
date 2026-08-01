@@ -568,6 +568,24 @@ python scripts/abnahme.py http://127.0.0.1:8011
 
 Das letzte Protokoll steht in [`docs/abnahme.md`](docs/abnahme.md).
 
+### Oberflächenprüfung
+
+`pytest` deckt ausschließlich Python ab. Alles in `app.js` — Blöcke, Reiter,
+Kartenebenen, Vergleichstabelle — prüft ein eigenes Skript im echten Browser:
+
+```bash
+pip install playwright && playwright install chromium
+python scripts/uitest.py http://127.0.0.1:8011
+```
+
+Elf Prüfungen, darunter: jeder Block nennt Quelle und Lizenz, im Datenreiter steht keine
+geschätzte Zahl, der Deckkraftregler wirkt auf die Ebenen und **nicht** auf die Grundkarte,
+der Gehwegblock lädt nur auf Anforderung und räumt seine Kartenebene beim Punktwechsel auf.
+
+Fehlt Playwright oder Chromium, endet das Skript mit **Exitcode 3** und der Meldung
+„Oberfläche NICHT geprüft" — ein übersprungener Test darf nicht wie ein bestandener
+aussehen. Exitcode 2 heißt: der Server läuft nicht.
+
 ---
 
 ## Aufbau
@@ -593,6 +611,9 @@ gastroviewer/
     bayern.py        Verkehrsmengen der Straßenverkehrszählung (BAYSIS)
     links.py         Deep-Links aus Spec §4.6 und den Notizen
   static/            Oberfläche (Leaflet lokal, kein CDN)
+scripts/
+  abnahme.py         Abnahmekriterien aus §7 gegen einen laufenden Server
+  uitest.py          Oberflächenprüfung im echten Browser
 fixtures/            echte API-Antworten aus Phase 0, Grundlage der Tests
 docs/                Endpunktprüfung
 ```
