@@ -1,0 +1,376 @@
+/* Standort-Datenterminal — Layout laut Spec §5:
+   zweispaltig, Karte links dominant, Panel rechts scrollbar,
+   unter 900 px gestapelt mit Karte oben. */
+
+:root {
+  --bg: #f4f5f7;
+  --flaeche: #ffffff;
+  --rand: #d8dbe0;
+  --text: #1c2024;
+  --text-schwach: #5b6570;
+  --akzent: #1f5f8b;
+  --akzent-hell: #e8f1f7;
+  --warn: #8a5a00;
+  --warn-bg: #fdf5e3;
+  --fehler: #a32020;
+  --fehler-bg: #fdeceb;
+  --ok: #2b6a3f;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  height: 100%;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  font-size: 15px;
+  color: var(--text);
+  background: var(--bg);
+}
+
+body {
+  display: flex;
+  flex-direction: column;
+}
+
+/* ------------------------------------------------------------- Kopf */
+
+#kopf {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 8px 14px;
+  background: var(--flaeche);
+  border-bottom: 1px solid var(--rand);
+  flex-wrap: wrap;
+}
+
+.marke strong { font-size: 16px; }
+.marke .untertitel {
+  display: block;
+  font-size: 12px;
+  color: var(--text-schwach);
+}
+
+#suche-form {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1 1 320px;
+}
+
+#suche {
+  flex: 1 1 auto;
+  min-width: 180px;
+  padding: 7px 10px;
+  border: 1px solid var(--rand);
+  border-radius: 4px;
+  font-size: 14px;
+}
+
+.kopf-rechts {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.kopf-rechts label { font-size: 13px; color: var(--text-schwach); }
+
+button, .knopf-link, select {
+  font-family: inherit;
+  font-size: 14px;
+  padding: 7px 12px;
+  border: 1px solid var(--rand);
+  border-radius: 4px;
+  background: var(--flaeche);
+  color: var(--text);
+  cursor: pointer;
+  text-decoration: none;
+  display: inline-block;
+}
+
+button:hover, .knopf-link:hover { background: var(--akzent-hell); border-color: var(--akzent); }
+button:disabled { opacity: .5; cursor: default; }
+button[type="submit"], #btn-merken { background: var(--akzent); color: #fff; border-color: var(--akzent); }
+button[type="submit"]:hover, #btn-merken:hover { background: #17496b; }
+
+/* --------------------------------------------------------- Hauptteil */
+
+main {
+  flex: 1 1 auto;
+  display: grid;
+  grid-template-columns: minmax(0, 1.35fr) minmax(360px, 0.9fr);
+  min-height: 0;
+}
+
+#karten-spalte { position: relative; min-height: 0; }
+#karte { position: absolute; inset: 0; }
+
+#panel {
+  overflow-y: auto;
+  padding: 14px;
+  border-left: 1px solid var(--rand);
+  background: var(--bg);
+  min-height: 0;
+}
+
+@media (max-width: 900px) {
+  main { grid-template-columns: 1fr; grid-template-rows: 55vh auto; }
+  #karten-spalte { min-height: 55vh; }
+  #panel { border-left: none; border-top: 1px solid var(--rand); }
+}
+
+/* ------------------------------------------------------------ Bloecke */
+
+.block {
+  background: var(--flaeche);
+  border: 1px solid var(--rand);
+  border-radius: 6px;
+  margin-bottom: 12px;
+  overflow: hidden;
+}
+
+.block > h2 {
+  margin: 0;
+  padding: 10px 12px;
+  font-size: 14px;
+  letter-spacing: .02em;
+  text-transform: uppercase;
+  color: var(--text-schwach);
+  border-bottom: 1px solid var(--rand);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.block-inhalt { padding: 10px 12px; }
+
+.status {
+  font-size: 11px;
+  font-weight: normal;
+  text-transform: none;
+  letter-spacing: 0;
+  padding: 2px 7px;
+  border-radius: 10px;
+  background: var(--bg);
+  color: var(--text-schwach);
+  border: 1px solid var(--rand);
+  white-space: nowrap;
+}
+.status.laedt { background: var(--akzent-hell); color: var(--akzent); border-color: var(--akzent); }
+.status.ok { background: #eaf5ed; color: var(--ok); border-color: #b6d8c1; }
+.status.fehler { background: var(--fehler-bg); color: var(--fehler); border-color: #e8b4b0; }
+.status.leer { background: var(--warn-bg); color: var(--warn); border-color: #e7d3a3; }
+
+/* Ladebalken je Quelle */
+.laden {
+  height: 3px;
+  background: linear-gradient(90deg, var(--akzent) 0 40%, transparent 40% 100%);
+  background-size: 250% 100%;
+  animation: laufen 1.1s linear infinite;
+}
+@keyframes laufen { from { background-position: 100% 0; } to { background-position: -150% 0; } }
+
+/* --------------------------------------------------------- Kennzahlen */
+
+.kennzahlen {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 8px;
+}
+
+.kennzahl {
+  background: var(--bg);
+  border: 1px solid var(--rand);
+  border-radius: 5px;
+  padding: 8px 10px;
+}
+.kennzahl .wert { font-size: 20px; font-weight: 600; line-height: 1.15; }
+.kennzahl .wert.fehlt { font-size: 15px; color: var(--text-schwach); font-weight: normal; }
+.kennzahl .titel { font-size: 12px; color: var(--text-schwach); margin-bottom: 2px; }
+.kennzahl .basis { font-size: 11px; color: var(--text-schwach); margin-top: 3px; }
+
+table.daten { width: 100%; border-collapse: collapse; font-size: 13px; }
+table.daten th, table.daten td { text-align: left; padding: 5px 6px; border-bottom: 1px solid var(--rand); }
+table.daten th { color: var(--text-schwach); font-weight: 600; }
+table.daten td.num, table.daten th.num { text-align: right; font-variant-numeric: tabular-nums; }
+table.daten tr:last-child td { border-bottom: none; }
+
+.liste { list-style: none; margin: 0; padding: 0; font-size: 13px; }
+.liste li {
+  padding: 6px 0;
+  border-bottom: 1px solid var(--rand);
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+}
+.liste li:last-child { border-bottom: none; }
+.liste .dist {
+  flex: 0 0 62px;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-schwach);
+  font-size: 12px;
+}
+.liste .haupt { flex: 1 1 auto; min-width: 0; }
+.liste .name { font-weight: 600; }
+.liste .meta { font-size: 12px; color: var(--text-schwach); }
+
+.merkmale { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 3px; }
+.merkmal {
+  font-size: 11px;
+  padding: 1px 6px;
+  border-radius: 9px;
+  background: var(--akzent-hell);
+  color: var(--akzent);
+  border: 1px solid #cfe2ee;
+}
+.merkmal.aus { background: var(--bg); color: var(--text-schwach); border-color: var(--rand); }
+
+.mehr {
+  margin-top: 8px;
+  font-size: 13px;
+  background: none;
+  border: none;
+  color: var(--akzent);
+  padding: 0;
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+/* --------------------------------------------------- Hinweise & Fehler */
+
+.quelle {
+  padding: 7px 12px;
+  border-top: 1px solid var(--rand);
+  background: #fafbfc;
+  font-size: 11px;
+  color: var(--text-schwach);
+  line-height: 1.5;
+}
+.quelle b { color: var(--text); font-weight: 600; }
+
+.notiz, .warnung, .fehlerbox {
+  font-size: 12.5px;
+  border-radius: 4px;
+  padding: 7px 9px;
+  margin: 8px 0 0;
+  line-height: 1.45;
+}
+.notiz { background: var(--bg); border: 1px solid var(--rand); color: var(--text-schwach); }
+.warnung { background: var(--warn-bg); border: 1px solid #e7d3a3; color: var(--warn); }
+.fehlerbox { background: var(--fehler-bg); border: 1px solid #e8b4b0; color: var(--fehler); }
+.fehlerbox code { font-size: 11px; word-break: break-all; }
+
+.hinweis-klein { font-size: 12px; color: var(--text-schwach); }
+
+.karte-hinweis {
+  background: var(--flaeche);
+  border: 1px solid var(--rand);
+  border-radius: 6px;
+  padding: 16px;
+}
+.karte-hinweis h2 { margin: 0 0 6px; font-size: 16px; }
+.karte-hinweis p { margin: 6px 0; font-size: 13.5px; }
+
+/* ------------------------------------------------------------ Legende */
+
+.legende {
+  position: absolute;
+  left: 10px;
+  bottom: 22px;
+  z-index: 500;
+  background: rgba(255,255,255,.95);
+  border: 1px solid var(--rand);
+  border-radius: 5px;
+  padding: 8px 10px;
+  font-size: 12px;
+  max-width: 230px;
+  box-shadow: 0 1px 4px rgba(0,0,0,.15);
+}
+.legende h3 { margin: 0 0 5px; font-size: 12px; }
+.legende .skala { display: flex; height: 11px; border-radius: 2px; overflow: hidden; margin-bottom: 3px; }
+.legende .skala span { flex: 1 1 0; }
+.legende .achse { display: flex; justify-content: space-between; color: var(--text-schwach); font-variant-numeric: tabular-nums; }
+.legende .einheit { color: var(--text-schwach); margin-top: 3px; }
+
+/* ------------------------------------------------------ Trefferliste */
+
+.treffer-liste {
+  position: absolute;
+  z-index: 1200;
+  top: 56px;
+  left: 14px;
+  right: 14px;
+  max-width: 560px;
+  background: var(--flaeche);
+  border: 1px solid var(--rand);
+  border-radius: 5px;
+  box-shadow: 0 3px 12px rgba(0,0,0,.16);
+  max-height: 320px;
+  overflow-y: auto;
+}
+.treffer-liste button {
+  display: block;
+  width: 100%;
+  text-align: left;
+  border: none;
+  border-bottom: 1px solid var(--rand);
+  border-radius: 0;
+  padding: 8px 11px;
+  font-size: 13px;
+  background: none;
+}
+.treffer-liste button:last-child { border-bottom: none; }
+
+/* ------------------------------------------------------------ Dialog */
+
+dialog {
+  border: 1px solid var(--rand);
+  border-radius: 8px;
+  padding: 16px;
+  max-width: min(1150px, 94vw);
+  width: 100%;
+}
+dialog::backdrop { background: rgba(0,0,0,.35); }
+.dialog-kopf { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-bottom: 10px; }
+.dialog-kopf h2 { margin: 0; font-size: 17px; }
+.tabelle-rahmen { overflow-x: auto; }
+.tabelle-rahmen table { border-collapse: collapse; font-size: 13px; width: 100%; }
+.tabelle-rahmen th, .tabelle-rahmen td {
+  border: 1px solid var(--rand);
+  padding: 5px 8px;
+  white-space: nowrap;
+}
+.tabelle-rahmen th { background: var(--bg); text-align: left; position: sticky; top: 0; }
+/* Lange Adressen dürfen die Kennzahlen nicht aus dem Bild drängen —
+   die Kennzahlen sind der Zweck der Tabelle. Volltext im Tooltip. */
+.tabelle-rahmen td.text { max-width: 220px; overflow: hidden; text-overflow: ellipsis; }
+.tabelle-rahmen td.num { text-align: right; font-variant-numeric: tabular-nums; }
+.tabelle-rahmen td.best { background: #eaf5ed; font-weight: 600; }
+
+/* -------------------------------------------------------------- Fuss */
+
+#fuss {
+  padding: 6px 14px;
+  background: var(--flaeche);
+  border-top: 1px solid var(--rand);
+  font-size: 11px;
+  color: var(--text-schwach);
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+#fuss a { color: var(--akzent); }
+
+/* ------------------------------------------------------ Karten-Popup */
+
+.leaflet-popup-content { font-size: 12.5px; margin: 9px 11px; max-height: 320px; overflow-y: auto; }
+.leaflet-popup-content h4 { margin: 0 0 5px; font-size: 13px; }
+.leaflet-popup-content table { border-collapse: collapse; }
+.leaflet-popup-content td { padding: 2px 6px 2px 0; vertical-align: top; }
+.leaflet-popup-content td:first-child { color: var(--text-schwach); }
+.leaflet-popup-content .rohwerte { max-height: 210px; overflow-y: auto; display: block; }
+
+.ebenen-schalter { font-size: 12.5px; }
+.ebenen-schalter label { display: block; }

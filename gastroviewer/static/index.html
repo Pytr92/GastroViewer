@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Standort-Datenterminal Deutschland</title>
+<link rel="stylesheet" href="/static/vendor/leaflet.css">
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+
+<header id="kopf">
+  <div class="marke">
+    <strong>Standort-Datenterminal</strong>
+    <span class="untertitel">Offene Daten zu einem Punkt in Deutschland</span>
+  </div>
+  <form id="suche-form" autocomplete="off">
+    <input id="suche" type="search" placeholder="Adresse oder Ort suchen …"
+           aria-label="Adresse suchen" spellcheck="false">
+    <button type="submit">Suchen</button>
+    <span id="suche-status" class="hinweis-klein"></span>
+  </form>
+  <div class="kopf-rechts">
+    <label for="radius">Radius</label>
+    <select id="radius">
+      <option value="300">300 m</option>
+      <option value="600" selected>600 m</option>
+      <option value="900">900 m</option>
+      <option value="1400">1400 m</option>
+    </select>
+    <button id="btn-merken" type="button" title="Punkt in die Vergleichstabelle legen">Punkt merken</button>
+    <button id="btn-vergleich" type="button">Vergleich</button>
+    <button id="btn-neu" type="button" title="Cache für diesen Punkt umgehen">Neu laden</button>
+  </div>
+</header>
+
+<div id="suche-treffer" class="treffer-liste" hidden></div>
+
+<main>
+  <section id="karten-spalte">
+    <div id="karte"></div>
+    <div id="legende" class="legende" hidden></div>
+  </section>
+
+  <section id="panel" aria-live="polite">
+    <div id="start-hinweis" class="karte-hinweis">
+      <h2>Punkt wählen</h2>
+      <p>In die Karte klicken oder oben eine Adresse suchen. Der Marker lässt sich ziehen.</p>
+      <p class="hinweis-klein">
+        Dieses Werkzeug zeigt ausschließlich Werte, die aus einer realen API-Antwort stammen.
+        Jeder Block nennt Quelle, Stand und Lizenz. Es wird nichts geschätzt und nichts
+        hochgerechnet.
+      </p>
+    </div>
+  </section>
+</main>
+
+<footer id="fuss">
+  <span>Karte © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap-Mitwirkende</a> (ODbL)</span>
+  <span>·</span>
+  <span>Zensus 2022 © Statistische Ämter des Bundes und der Länder 2024 · GeoBasis-DE/BKG 2024</span>
+  <span>·</span>
+  <span id="fuss-stats"></span>
+</footer>
+
+<dialog id="vergleich-dialog">
+  <div class="dialog-kopf">
+    <h2>Standortvergleich</h2>
+    <div>
+      <a id="vergleich-csv" href="/api/export/vergleich.csv" class="knopf-link">CSV</a>
+      <button id="vergleich-zu" type="button">Schließen</button>
+    </div>
+  </div>
+  <div id="vergleich-inhalt" class="tabelle-rahmen"></div>
+  <p class="hinweis-klein">
+    Die Rangfolge mehrerer Kandidaten ist belastbarer als jeder Einzelwert. Werte, die
+    „—" zeigen, liegen für diesen Punkt nicht vor — das ist kein Nullwert.
+  </p>
+</dialog>
+
+<script src="/static/vendor/leaflet.js"></script>
+<script src="/static/app.js"></script>
+</body>
+</html>
