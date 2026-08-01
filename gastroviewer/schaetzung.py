@@ -340,6 +340,46 @@ def rechne(e: Eingaben) -> dict[str, Any]:
     }
 
 
+def _gehweg_alternative(
+    bloecke: dict[str, Any], einwohner_luftlinie: float | None
+) -> dict[str, Any] | None:
+    """Bietet die zu Fuß erreichbaren Zahlen als Alternative an — auf Knopfdruck.
+
+    Der Umkreis ist ein Luftlinienkreis; zu Fuß ist er kleiner und an Flüssen,
+    Gleisen und Schnellstraßen zerschnitten. Die Rechnung mit der vollen
+    Einwohnerzahl überschätzt das Einzugsgebiet deshalb systematisch.
+
+    Warum das trotzdem **nicht** die Vorgabe ist: die Gehstrecken liegen nur
+    vor, wenn Block 4b geladen wurde. Würden sie stillschweigend die Vorgabe
+    ändern, hinge das Ergebnis daran, ob jemand vorher einen Knopf gedrückt hat
+    — und zwei Standorte wären nicht mehr vergleichbar. Deshalb: sichtbar
+    angeboten, ausdrücklich zu übernehmen.
+    """
+    gw = (bloecke.get("gehweg") or {}).get("data") or {}
+    zen = gw.get("zensus") or {}
+    gas = gw.get("gastronomie") or {}
+    einwohner = zen.get("einwohner_gehweg")
+    if einwohner is None:
+        return None
+    return {
+        "einwohner": einwohner,
+        "einwohner_luftlinie": einwohner_luftlinie,
+        "erschliessungsgrad": zen.get("erschliessungsgrad"),
+        "wettbewerber_gastronomie": gas.get("im_gehradius"),
+        "hinweis": (
+            "Für diesen Punkt sind die Gehstrecken berechnet. Zu Fuß erreichbar "
+            f"sind {einwohner:,.0f} Einwohner statt "
+            f"{(einwohner_luftlinie or 0):,.0f} in der Luftlinie "
+            f"({zen.get('erschliessungsgrad')} % erschlossen). Die Rechnung mit "
+            "der Luftlinienzahl überschätzt das Einzugsgebiet."
+        ).replace(",", "."),
+        "warnung": (
+            "Wenn du übernimmst, rechne beide Standorte gleich — sonst "
+            "vergleichst du einen Fußwegradius mit einem Luftlinienradius."
+        ),
+    }
+
+
 def vorgaben_aus_punkt(punkt: dict[str, Any]) -> dict[str, Any]:
     """Füllt die Eingabefelder aus den Daten des gewählten Punktes vor.
 
@@ -378,6 +418,7 @@ def vorgaben_aus_punkt(punkt: dict[str, Any]) -> dict[str, Any]:
                 "nicht nur die Schnellrestaurants. Feld entsprechend ändern."
             ),
         },
+        "gehweg_alternative": _gehweg_alternative(bloecke, einwohner),
         "besuche_je_einwohner": besuche["wert"],
         "besuche_herleitung": besuche,
         "bon_min": _ref("systemgastronomie_bon")["wert"],

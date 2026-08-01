@@ -232,6 +232,20 @@ gleicher Einwohner- und Wettbewerbszahl bekommen dasselbe Ergebnis, auch wenn ei
 Fußgängerzone liegt und einer an der Umgehungsstraße. Genau deshalb ist das Ergebnis ein
 **Vergleichsmaß und keine Prognose**.
 
+### Gehstrecke in der Schätzung — angeboten, nicht gesetzt
+
+Sind für den Punkt die Gehstrecken berechnet (Block 4b), erscheint im Schätzungsreiter ein
+Angebot: die zu Fuß erreichbare Einwohnerzahl statt der Luftlinienzahl. Am Isarufer sind
+das 4.853 statt 18.227 — die Rechnung mit der Luftlinienzahl überschätzt das Einzugsgebiet
+also um mehr als das Dreifache.
+
+**Vorgabe bleibt trotzdem die Luftlinienzahl.** Die Gehstrecken liegen nur vor, wenn jemand
+den Block geladen hat; würden sie stillschweigend die Vorgabe ändern, hinge das Ergebnis
+daran, ob vorher ein Knopf gedrückt wurde — und zwei Standorte wären nicht mehr
+vergleichbar. Deshalb wird die engere Zahl sichtbar angeboten, mit einem Knopf übernommen
+und mit einem zweiten zurückgesetzt. Wer übernimmt, muss beide Standorte gleich rechnen;
+der Hinweis steht daneben.
+
 ### Prüfstein: gegen einen echten Betrieb halten
 
 Die Rechnung arbeitet mit Bundesdurchschnitten und kennt weder Lage noch Passantenströme.

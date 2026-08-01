@@ -281,7 +281,13 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         """Füllt die Eingabefelder aus den Daten des Punktes vor — vorbefüllt,
         nicht festgelegt. Jeder Wert nennt seine Herkunft."""
         _validate(lat, lon, r)
-        punkt = await svc(request).point(lat, lon, r)
+        service = svc(request)
+        punkt = await service.point(lat, lon, r)
+        # Gehstrecken nur, wenn sie schon berechnet sind — die Vorgaben zu
+        # holen darf keine 1–3-MB-Abfrage auslösen.
+        gw = await service.gehweg_aus_cache(lat, lon, r)
+        if gw is not None:
+            punkt["bloecke"]["gehweg"] = gw.to_dict()
         return vorgaben_aus_punkt(punkt)
 
     @app.post("/api/schaetzung")

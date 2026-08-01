@@ -239,6 +239,29 @@ def pruefe_gehweg(page) -> str:
     return f"{n} Punkte gezeichnet, beim Punktwechsel geleert"
 
 
+def pruefe_gehwegangebot_in_der_schaetzung(page) -> str:
+    """Die engere Zahl wird angeboten, aber nicht stillschweigend gesetzt."""
+    setze_punkt(page, *ISARUFER)
+    page.click("#reiter button[data-reiter=schaetzung]")
+    page.wait_for_timeout(2500)
+    if not page.query_selector("#gehweg-angebot"):
+        page.click("#reiter button[data-reiter=daten]")
+        page.wait_for_timeout(600)
+        return "übersprungen — für diesen Punkt sind keine Gehstrecken berechnet"
+
+    vorgabe = page.eval_on_selector("#sf-einwohner", "e=>Number(e.value)")
+    t = text(page, "#gehweg-angebot")
+    fordere("überschätzt" in t, "das Angebot benennt den Fehler nicht")
+    page.click("#btn-gehweg-uebernehmen")
+    page.wait_for_timeout(1200)
+    danach = page.eval_on_selector("#sf-einwohner", "e=>Number(e.value)")
+    fordere(danach < vorgabe,
+            f"Übernehmen ändert die Einwohnerzahl nicht: {vorgabe} -> {danach}")
+    page.click("#reiter button[data-reiter=daten]")
+    page.wait_for_timeout(600)
+    return f"angeboten und übernommen: {vorgabe} → {danach} Einwohner"
+
+
 def pruefe_vergleich(page) -> str:
     page.click("#btn-vergleich")
     page.wait_for_timeout(1500)
@@ -319,6 +342,7 @@ PRUEFUNGEN = [
     ("München-Erweiterungen", pruefe_muenchen_erweiterungen),
     ("Verkehrszähler in der Fußzeile", pruefe_verkehrszaehler),
     ("Erreichbarkeit zu Fuß", pruefe_gehweg),
+    ("Gehwegzahl in der Schätzung", pruefe_gehwegangebot_in_der_schaetzung),
     ("Bodenrichtwert-Ebene (NRW)", pruefe_bodenrichtwert_ebene),
 ]
 

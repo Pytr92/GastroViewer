@@ -1258,6 +1258,39 @@ const FELDER = [
   { key: 'mietanteil_max_prozent', label: 'Miete, oberer Anteil vom Umsatz (%)', schritt: '0.5', gesetzt: true },
 ];
 
+/* Der Umkreis ist ein Luftlinienkreis; zu Fuß ist er kleiner und an Flüssen
+   und Gleisen zerschnitten. Sind die Gehstrecken berechnet, wird die engere
+   Zahl angeboten — aber nicht stillschweigend gesetzt: sonst hinge das
+   Ergebnis daran, ob jemand vorher einen Knopf gedrückt hat, und zwei
+   Standorte wären nicht mehr vergleichbar. */
+function gehwegAngebot(alt) {
+  if (!alt) return null;
+  return el('div', { class: 'warnung', id: 'gehweg-angebot' },
+    el('div', {}, alt.hinweis),
+    el('div', { class: 'hinweis-klein', style: 'margin:5px 0 7px' }, alt.warnung),
+    el('button', {
+      type: 'button',
+      id: 'btn-gehweg-uebernehmen',
+      onclick: () => {
+        document.getElementById('sf-einwohner').value = String(alt.einwohner);
+        const feld = document.getElementById('sf-einwohner')?.closest('.feld');
+        feld?.querySelector('.herkunft')?.replaceChildren(
+          `Zu Fuß erreichbar (Block 4b), ${alt.erschliessungsgrad} % des `
+          + 'Luftlinienkreises — übernommen',
+        );
+        rechneSchaetzung();
+      },
+    }, `Einwohner auf ${NF.format(alt.einwohner)} setzen`),
+    ' ',
+    el('button', {
+      type: 'button',
+      onclick: () => {
+        document.getElementById('sf-einwohner').value = String(alt.einwohner_luftlinie ?? 0);
+        rechneSchaetzung();
+      },
+    }, 'zurück auf Luftlinie'));
+}
+
 function schaetzBlock(titel, ...inhalt) {
   return el('section', { class: 'block' },
     el('h2', {}, titel),
@@ -1332,7 +1365,8 @@ function baueSchaetzFormular() {
       el('strong', {}, 'Besuche je Einwohner und Jahr: '), herleitung.herleitung),
     v.wettbewerber_alternative ? el('div', { class: 'notiz' },
       `${v.wettbewerber_alternative.hinweis} Im Umkreis liegen insgesamt `
-      + `${NF.format(v.wettbewerber_alternative.alle_gastronomie)} gastronomische Betriebe.`) : null);
+      + `${NF.format(v.wettbewerber_alternative.alle_gastronomie)} gastronomische Betriebe.`) : null,
+    gehwegAngebot(v.gehweg_alternative));
 
   const formel = schaetzBlock('Rechenweg',
     el('div', { class: 'formel' }, v.formel.join('\n')),

@@ -275,3 +275,40 @@ def test_pruefstein_veraendert_das_ergebnis_nicht():
     assert ohne["ergebnis"] == mit["ergebnis"]
     assert ohne["kalibrierung"] is None
     assert mit["kalibrierung"]["tatsaechlich_eur"] == 999_999
+
+
+def test_gehwegzahl_wird_angeboten_aber_nicht_gesetzt():
+    """Die Gehstrecken liegen nur vor, wenn Block 4b geladen wurde. Würden sie
+    stillschweigend die Vorgabe ändern, hinge das Ergebnis daran, ob jemand
+    vorher einen Knopf gedrückt hat — und zwei Standorte wären nicht mehr
+    vergleichbar."""
+    punkt = {
+        "punkt": {"radius_m": 600},
+        "bloecke": {
+            "zensus": {"data": {"bevoelkerung": {"einwohner": {"wert": 10002, "zellen": 110}}}},
+            "osm": {"data": {"zusammenfassung": {"gastronomie": {
+                "gesamt": 382, "nach_typ": {"Schnellrestaurant": 33}}}}},
+            "gehweg": {"data": {
+                "zensus": {"einwohner_gehweg": 3616, "erschliessungsgrad": 36.2},
+                "gastronomie": {"im_gehradius": 290},
+            }},
+        },
+    }
+    v = schaetzung.vorgaben_aus_punkt(punkt)
+    assert v["einwohner"] == 10002, "die Vorgabe bleibt die Luftlinienzahl"
+    alt = v["gehweg_alternative"]
+    assert alt["einwohner"] == 3616
+    assert alt["erschliessungsgrad"] == 36.2
+    assert "überschätzt" in alt["hinweis"]
+    assert "gleich" in alt["warnung"], "der Vergleichsfehler muss benannt sein"
+
+
+def test_ohne_geladene_gehstrecken_gibt_es_kein_angebot():
+    punkt = {
+        "punkt": {"radius_m": 600},
+        "bloecke": {
+            "zensus": {"data": {"bevoelkerung": {"einwohner": {"wert": 500, "zellen": 9}}}},
+            "osm": {"data": {"zusammenfassung": {"gastronomie": {"gesamt": 3, "nach_typ": {}}}}},
+        },
+    }
+    assert schaetzung.vorgaben_aus_punkt(punkt)["gehweg_alternative"] is None
