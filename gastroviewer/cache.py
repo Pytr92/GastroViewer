@@ -53,9 +53,22 @@ CREATE TABLE IF NOT EXISTS saved_points (
     lon         REAL NOT NULL,
     radius      INTEGER NOT NULL,
     created_at  REAL NOT NULL,
-    payload     TEXT NOT NULL
+    payload     TEXT NOT NULL,
+    -- Das Werkzeug bewertet bewusst nicht und stellt keine Rangfolge auf.
+    -- Der Nutzer darf und soll das aber — dafür sind diese beiden Felder da.
+    -- Sie sind ausdrücklich als eigene Einschätzung gekennzeichnet und werden
+    -- nirgends in eine Rechnung übernommen.
+    notiz       TEXT,
+    bewertung   INTEGER
 );
 """
+
+# Bestehende Datenbanken haben die beiden Spalten noch nicht. SQLite kennt kein
+# "ADD COLUMN IF NOT EXISTS", also wird der Bestand geprüft.
+NACHRUESTUNG = [
+    ("saved_points", "notiz", "TEXT"),
+    ("saved_points", "bewertung", "INTEGER"),
+]
 
 
 def cache_key(source: str, lat: float, lon: float, radius: float | int, *, extra: str = "") -> str:
@@ -79,6 +92,9 @@ class Cache:
         with self._connect() as conn:
             conn.execute("PRAGMA journal_mode=WAL")
             conn.executescript(SCHEMA)
+            # Eine Datenbank aus einer früheren Fassung soll weiterlaufen, statt
+            # den Nutzer seine gemerkten Punkte zu kosten.
+            self._nachruesten(conn)
 
     # ------------------------------------------------------------------ Cache
 
@@ -184,6 +200,25 @@ class Cache:
 
     # ----------------------------------------------------- Gemerkte Punkte
 
+    def _nachruesten(self, conn) -> None:
+        """Spalten ergänzen, die es in älteren Datenbanken noch nicht gibt."""
+        for tabelle, spalte, typ in NACHRUESTUNG:
+            vorhanden = {
+                r["name"] for r in conn.execute(f"PRAGMA table_info({tabelle})").fetchall()
+            }
+            if spalte not in vorhanden:
+                conn.execute(f"ALTER TABLE {tabelle} ADD COLUMN {spalte} {typ}")
+
+    def set_point_notiz(
+        self, point_id: int, notiz: str | None, bewertung: int | None
+    ) -> bool:
+        with self._connect() as conn:
+            cur = conn.execute(
+                "UPDATE saved_points SET notiz = ?, bewertung = ? WHERE id = ?",
+                (notiz, bewertung, point_id),
+            )
+            return cur.rowcount > 0
+
     def save_point(self, label: str, lat: float, lon: float, radius: int, payload: Any) -> int:
         with self._connect() as conn:
             cur = conn.execute(
@@ -227,3 +262,8 @@ class AsyncCache:
 
     async def stats(self):
         return await asyncio.to_thread(self.sync.stats)
+
+    async def set_point_notiz(self, point_id, notiz, bewertung):
+        return await asyncio.to_thread(
+            self.sync.set_point_notiz, point_id, notiz, bewertung
+        )

@@ -147,7 +147,7 @@ class Settings:
         return f"gastroviewer/{self.version} ({self.contact})"
 
     def ttl_for(self, source: str) -> int:
-        if source.startswith("gehweg"):
+        if source.startswith("gehweg") or source.startswith("planung"):
             return self.ttl_gehweg
         if source.startswith("overpass"):
             return self.ttl_osm

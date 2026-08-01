@@ -65,7 +65,7 @@ export GASTROVIEWER_CONTACT="deine@mailadresse.de"     # Windows: set GASTROVIEW
 | Auswahl in der Legende | Zensus-Ebene: Einwohner, Anteil 18–49, Miete, Leerstand |
 | Klick auf Zelle oder POI | zeigt die Rohwerte, wie sie vom Dienst kamen |
 | „Punkt merken" | legt den Standort in die Vergleichstabelle (bleibt in SQLite) |
-| „Vergleich" | Kandidaten nebeneinander, mit CSV-Export |
+| „Vergleich" | Kandidaten nebeneinander, Spalten in sechs Gruppen zu- und abschaltbar, eigene Note und Notiz je Punkt, CSV-Export |
 | „Neu laden" | umgeht den Cache für diesen Punkt |
 | „Export JSON/CSV" | ein Punkt mit Zeitstempel und Quellenangaben je Zeile |
 | „Gehstrecken berechnen" | Block 4b — rechnet die echte Fußwegdistanz statt der Luftlinie |
@@ -178,6 +178,8 @@ Antworten unter `fixtures/`.
 | [Raddauerzählstellen München](https://opendata.muenchen.de/dataset/daten-der-raddauerzaehlstellen-muenchen-jahreszahlen) | gemessene Radverkehrsfrequenz | dl-de/by-2-0, © LH München | 24 h |
 | [Luftbild und ALKIS Bayern](https://geodaten.bayern.de/opengeodata/) | Kartenebenen | CC BY 4.0, © Bayerische Vermessungsverwaltung | kein Cache |
 | [BAYSIS Straßenverkehrszählung](https://www.baysis.bayern.de/internet/verdat/svz/index.html) | Verkehrsmenge (DTV) je Zählstelle | CC BY 4.0, © Bayerische Straßenbauverwaltung | 24 h |
+| [Hochwassergefahrenflächen LfU](https://www.lfu.bayern.de/wasser/hw_ue_gebiete/index.htm) | HQhäufig, HQ100, HQextrem am Punkt | CC BY 4.0, © Bayerisches Landesamt für Umwelt | 14 Tage |
+| [Bebauungsplan-Umgriffe München](https://geoportal.muenchen.de/portal/plan) | gilt für die Fläche ein Plan, und welcher | dl-de/by-2-0, © LH München | 14 Tage |
 | [Lärmkartierung LfU Bayern](https://www.lfu.bayern.de/) | Kartenebene Verkehrslärm | CC BY 4.0, © Bayerisches Landesamt für Umwelt | kein Cache |
 | OSM-Kacheln | Kartenhintergrund (Vorgabe) | ODbL 1.0 | Browser |
 | [basemap.de](https://basemap.de/) (BKG) | amtlicher Kartenhintergrund, umschaltbar | dl-de/by-2-0, © GeoBasis-DE / BKG | Browser |
@@ -411,6 +413,36 @@ Gewachsene Viertel liegen bei exakt null, wachsende darüber. Deshalb hängt der
 „größer null" und nicht an einer gewählten Schwelle. Er sagt: hier lag die Einwohnerzahl
 zum Stichtag vermutlich unter der heutigen.
 
+## Planungsrecht und Hochwasser (Bayern, Bebauungspläne München)
+
+Zwei Fragen, die eine Standortentscheidung kippen können und die keine der übrigen Quellen
+beantwortet. Block **6e** fragt beide am Punkt ab.
+
+| Quelle | Befund der Prüfung am 01.08.2026 |
+|---|---|
+| Hochwassergefahrenflächen, LfU Bayern | **funktioniert** — liefert Gewässer, Jährlichkeit und Ermittlungsdatum. Isarauen Thalkirchen: „Isar, HQ 100, 30.09.2016" |
+| Bebauungsplan-Umgriffe, Geoportal München | **funktioniert** — liefert die Plannummer. Freiham: „A1856" |
+| Flächennutzungsplan München | nur Kartenebene — `queryable` ist im Dienst nicht gesetzt, eine Punktabfrage gibt es nicht |
+| Lärmwert am Punkt, LfU | **geht nicht.** Der Dienst antwortet, gibt aber über 81 Rasterpunkte quer über die Landshuter Allee durchgehend `NoData` zurück. Bleibt Kartenebene |
+
+> **Fallstrick, der beim Bauen zweimal in die Irre führte:** beide Dienste führen `EPSG:4326`
+> **nicht** in ihrer CRS-Liste. Mit 4326 antworten sie mit einer leeren Trefferliste statt mit
+> einem Fehler — das sieht aus wie „nicht betroffen" und ist es nicht. Verwendet wird `CRS:84`.
+
+Was der Block **nicht** sagt: ein Bebauungsplan-Umgriff bedeutet nur, dass es einen Plan
+gibt — nicht, was er erlaubt. Und wo keiner ausgewiesen ist, heißt das nicht „alles
+erlaubt": im unbeplanten Innenbereich gilt § 34 BauGB. Beide Hinweise stehen im Block.
+
+## Eigene Notiz und Note je Standort
+
+Das Werkzeug bewertet bewusst nicht und stellt keine Rangfolge auf. Der Nutzer darf und soll
+das aber — dafür hat jeder gemerkte Punkt in der Vergleichstabelle eine **eigene Note von
+1 bis 5** und ein **Notizfeld**. Beides ist als eigene Einschätzung beschriftet, steht in der
+festen Spaltengruppe, geht in keine Rechnung ein und landet im CSV-Export.
+
+Eine Datenbank aus einer früheren Fassung wird beim Start um die beiden Spalten ergänzt,
+statt den Nutzer seine gemerkten Punkte zu kosten.
+
 ## Erreichbarkeit zu Fuß — der Umkreis ist kein Kreis
 
 Der Radius, mit dem dieses Werkzeug arbeitet, ist ein Kreis auf der Karte. Zu Fuß ist er
@@ -637,6 +669,7 @@ gastroviewer/
     wms.py           verifizierte Landes-Kartendienste, Klickabfrage
     muenchen.py      Raddauerzählstellen der Landeshauptstadt München
     bayern.py        Verkehrsmengen der Straßenverkehrszählung (BAYSIS)
+    planung.py       Hochwassergefahr und Bebauungsplan am Punkt
     links.py         Deep-Links aus Spec §4.6 und den Notizen
   static/            Oberfläche (Leaflet lokal, kein CDN)
 scripts/

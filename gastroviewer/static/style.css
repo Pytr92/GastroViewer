@@ -566,3 +566,18 @@ dialog::backdrop { background: rgba(0,0,0,.35); }
 
 /* Hinweis in der Fußzeile, wenn viel Verkehr zu den Spendendiensten geht */
 #fuss-stats .viel-verkehr { color: var(--warn); font-weight: 600; }
+
+/* Eigene Note und Notiz — die einzigen Felder in der Vergleichstabelle, die
+   der Nutzer selbst füllt. Sichtbar anders als die Messwerte. */
+.vergleich-tabelle td.eigen { background: #fbfcfd; padding: 3px 5px; }
+.vergleich-tabelle td.eigen select,
+.vergleich-tabelle td.eigen input {
+  font-family: inherit;
+  font-size: 12.5px;
+  padding: 3px 5px;
+  border: 1px solid var(--rand);
+  border-radius: 3px;
+  background: #fff;
+  max-width: 190px;
+}
+.vergleich-tabelle td.eigen input { width: 190px; }

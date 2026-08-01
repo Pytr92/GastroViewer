@@ -395,7 +395,9 @@ def test_vergleich_csv(client):
     client.post("/api/points", json={"label": "A", "lat": LAT, "lon": LON, "radius": R})
     r = client.get("/api/export/vergleich.csv")
     assert r.status_code == 200
-    assert "Bezeichnung;Adresse" in r.text
+    kopf = r.text.splitlines()[0]
+    for spalte in ("Bezeichnung", "Adresse", "Einwohner"):
+        assert spalte in kopf, f"{spalte} fehlt im CSV-Kopf"
     assert "16370" in r.text
 
 
@@ -690,6 +692,10 @@ def test_vorgabe_zeigt_deutlich_weniger_als_alle_spalten(client):
     assert "erreichbarkeit" not in vorgabe, (
         "die Gehwegspalten sind meist leer und gehören nicht in die Vorgabe"
     )
+    assert len(sichtbar) <= 20, (
+        f"die Vorgabe ist mit {len(sichtbar)} Spalten wieder zu breit geworden — "
+        "abgeleitete und Detailwerte gehören in die abschaltbare Gruppe"
+    )
 
 
 def test_csv_enthaelt_immer_alle_spalten(client):
@@ -700,3 +706,99 @@ def test_csv_enthaelt_immer_alle_spalten(client):
     kopf = client.get("/api/export/vergleich.csv").text.splitlines()[0]
     for c in VERGLEICH_SPALTEN:
         assert c["titel"] in kopf, f"{c['titel']} fehlt im CSV"
+
+
+# --------------------------------------------- Eigene Notiz und Bewertung
+
+
+def test_notiz_und_bewertung_lassen_sich_setzen(client):
+    """Das Werkzeug bewertet nicht — der Nutzer darf und soll das aber."""
+    r = client.post("/api/points", json={"label": "Kandidat", "lat": LAT, "lon": LON,
+                                         "radius": R})
+    pid = r.json()["id"]
+
+    zeile = client.get("/api/points/vergleich").json()["zeilen"][0]
+    assert zeile["bewertung"] is None and zeile["notiz"] is None, (
+        "ohne eigene Eingabe darf dort nichts stehen"
+    )
+
+    p = client.patch(f"/api/points/{pid}",
+                     json={"notiz": "Ecklage, Terrasse nach Süden", "bewertung": 4})
+    assert p.status_code == 200
+
+    zeile = client.get("/api/points/vergleich").json()["zeilen"][0]
+    assert zeile["bewertung"] == 4
+    assert zeile["notiz"] == "Ecklage, Terrasse nach Süden"
+
+
+def test_notizspalten_sind_als_eigene_einschaetzung_beschriftet(client):
+    v = client.get("/api/points/vergleich").json()
+    titel = {c["key"]: c["titel"] for c in v["spalten"]}
+    assert "Eigene" in titel["bewertung"] and "Eigene" in titel["notiz"], (
+        "sonst sähen sie aus wie eine Bewertung des Werkzeugs"
+    )
+    gruppe = {c["key"]: c["gruppe"] for c in v["spalten"]}
+    assert gruppe["bewertung"] == "standort", (
+        "in der festen Gruppe — eine eigene Note nützt nur, wenn sie sichtbar ist"
+    )
+
+
+def test_bewertung_ausserhalb_der_skala_wird_abgewiesen(client):
+    r = client.post("/api/points", json={"label": "A", "lat": LAT, "lon": LON, "radius": R})
+    pid = r.json()["id"]
+    assert client.patch(f"/api/points/{pid}", json={"bewertung": 9}).status_code == 422
+    assert client.patch(f"/api/points/{pid}", json={"bewertung": 0}).status_code == 422
+    assert client.patch(f"/api/points/{pid}", json={"bewertung": None}).status_code == 200
+
+
+def test_notiz_fuer_unbekannten_punkt_meldet_404(client):
+    assert client.patch("/api/points/9999", json={"notiz": "x"}).status_code == 404
+
+
+def test_alte_datenbank_bekommt_die_neuen_spalten(tmp_path):
+    """Eine Datenbank aus einer früheren Fassung soll weiterlaufen, statt den
+    Nutzer seine gemerkten Punkte zu kosten."""
+    import sqlite3
+
+    pfad = tmp_path / "alt.sqlite"
+    with sqlite3.connect(pfad) as conn:
+        conn.execute(
+            "CREATE TABLE saved_points (id INTEGER PRIMARY KEY AUTOINCREMENT,"
+            " label TEXT NOT NULL, lat REAL NOT NULL, lon REAL NOT NULL,"
+            " radius INTEGER NOT NULL, created_at REAL NOT NULL, payload TEXT NOT NULL)"
+        )
+        conn.execute(
+            "INSERT INTO saved_points (label, lat, lon, radius, created_at, payload)"
+            " VALUES ('Bestand', 48.1, 11.5, 600, 0, '{}')"
+        )
+
+    from gastroviewer.cache import Cache
+
+    c = Cache(pfad)
+    punkte = c.list_points()
+    assert len(punkte) == 1 and punkte[0]["label"] == "Bestand", "Bestand ging verloren"
+    assert punkte[0]["notiz"] is None and punkte[0]["bewertung"] is None
+    assert c.set_point_notiz(punkte[0]["id"], "geht", 3) is True
+    assert c.list_points()[0]["bewertung"] == 3
+
+
+def test_alle_python_dateien_lassen_sich_uebersetzen():
+    """Zweimal in dieser Entwicklung ist ein ASCII-Anführungszeichen als
+    deutsches Schlusszeichen in einen String geraten und hat die Datei
+    unübersetzbar gemacht — einmal in nominatim.py, einmal in planung.py.
+    Module ohne eigenen Test würden das nicht bemerken."""
+    import ast
+
+    wurzel = Path(__file__).resolve().parents[1]
+    dateien = [
+        f for f in wurzel.rglob("*.py")
+        if not any(teil in f.parts for teil in (".venv", "venvtest", "build", ".git"))
+    ]
+    assert len(dateien) > 15, "die Suche hat offenbar nichts gefunden"
+    kaputt = []
+    for f in dateien:
+        try:
+            ast.parse(f.read_text(encoding="utf-8"), filename=str(f))
+        except SyntaxError as e:
+            kaputt.append(f"{f.relative_to(wurzel)}:{e.lineno} {e.msg}")
+    assert not kaputt, "nicht übersetzbar: " + " · ".join(kaputt)

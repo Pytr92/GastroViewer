@@ -18,7 +18,8 @@ from typing import Any, Awaitable, Callable
 from .cache import AsyncCache, cache_key
 from .config import Settings
 from .http import Outbound
-from .sources import bayern, boris, gehweg, links, muenchen, nominatim, overpass, zensus
+from .sources import (bayern, boris, gehweg, links, muenchen, nominatim, overpass,
+                      planung, zensus)
 from .sources.base import Provenance, SourceError, SourceResult
 
 Loader = Callable[[], Awaitable[SourceResult]]
@@ -183,6 +184,17 @@ class PointService:
             result.provenance.cached = True
         return result
 
+    async def planung(self, lat: float, lon: float, radius: int, refresh: bool = False):
+        """Planungsrecht und Hochwasserrisiko. Beides aendert sich in Jahren,
+        nicht in Stunden — deshalb dieselbe lange Haltbarkeit wie das Wegenetz."""
+        key = cache_key("planung", lat, lon, radius)
+        return await self._cached(
+            "planung",
+            key,
+            lambda: planung.load(self.outbound, self.settings, lat, lon, radius),
+            refresh=refresh,
+        )
+
     async def gtfs(self, lat: float, lon: float, radius: int):
         """Rein lokal (SQLite aus dem Import) — kein Cache, kein Outbound."""
         from .sources import gtfs as gtfs_mod
@@ -206,9 +218,11 @@ class PointService:
             self.gtfs(lat, lon, radius),
             self.radzaehlung(lat, lon, radius, refresh),
             self.verkehrsmenge(lat, lon, radius, refresh),
+            self.planung(lat, lon, radius, refresh),
             return_exceptions=True,
         )
-        names = ["adresse", "zensus", "osm", "gtfs", "radzaehlung", "verkehrsmenge"]
+        names = ["adresse", "zensus", "osm", "gtfs", "radzaehlung", "verkehrsmenge",
+                 "planung"]
         blocks: dict[str, Any] = {}
         for name, res in zip(names, results):
             if isinstance(res, BaseException):

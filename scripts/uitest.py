@@ -34,6 +34,8 @@ from pathlib import Path
 # Punkte, die für einzelne Prüfungen gebraucht werden.
 MARIENPLATZ = (48.1372, 11.5755)
 ISARUFER = (48.1297, 11.5822)   # Fluss als Barriere
+ISARAUEN = (48.1050, 11.5530)   # liegt im Hochwassergebiet HQ 100
+FREIHAM = (48.1450, 11.4200)    # dort gilt ein Bebauungsplan
 GIESING = (48.1114, 11.5859)
 KOELN = (50.9413, 6.9583)       # Nordrhein-Westfalen: Bodenrichtwert-Ebene
 
@@ -319,6 +321,56 @@ def pruefe_verkehrszaehler(page) -> str:
     return t.replace("\n", " ")[:90]
 
 
+def pruefe_planung_und_hochwasser(page) -> str:
+    """Zwei Fragen, die eine Standortentscheidung kippen können."""
+    setze_punkt(page, *ISARAUEN)
+    st = status(page, "planung")
+    if st not in ("geladen", "ok"):
+        return f"übersprungen — Dienst nicht verfügbar ({st})"
+    t = text(page, "#inhalt-planung")
+    fordere("Hochwassergefahrengebiet" in t,
+            f"Hochwasserbefund fehlt in den Isarauen: {t[:80]}")
+    fordere("HQ 100" in t, "die Jährlichkeit wird nicht ausgewiesen")
+    fordere("§ 34 BauGB" in t,
+            "der Hinweis fehlt, dass „kein Plan“ nicht „alles erlaubt“ heißt")
+
+    setze_punkt(page, *FREIHAM)
+    if status(page, "planung") == "geladen":
+        f = text(page, "#inhalt-planung")
+        fordere("A1856" in f, f"Bebauungsplan-Nummer fehlt in Freiham: {f[:90]}")
+        fordere("Kein Hochwassergefahrengebiet" in f,
+                "Freiham liegt nicht im Hochwassergebiet — das muss dastehen")
+    return "Hochwasser HQ 100 in den Isarauen, B-Plan A1856 in Freiham"
+
+
+def pruefe_eigene_notiz(page) -> str:
+    """Das Werkzeug bewertet nicht — der Nutzer darf und soll das aber."""
+    page.click("#btn-vergleich")
+    page.wait_for_timeout(1500)
+    if "Noch kein Punkt gemerkt" in text(page, "#vergleich-inhalt"):
+        page.eval_on_selector("#vergleich-zu", "e=>e.click()")
+        return "übersprungen — keine gemerkten Punkte vorhanden"
+
+    fordere(page.query_selector("#vergleich-inhalt td.eigen select") is not None,
+            "keine Notenauswahl in der Vergleichstabelle")
+    fordere(page.query_selector("#vergleich-inhalt td.eigen input") is not None,
+            "kein Notizfeld in der Vergleichstabelle")
+
+    page.eval_on_selector("#vergleich-inhalt td.eigen input", """e => {
+        e.value = 'Prüfnotiz aus dem Oberflächentest';
+        e.dispatchEvent(new Event('change', { bubbles: true }));
+    }""")
+    page.wait_for_timeout(1200)
+    page.eval_on_selector("#vergleich-zu", "e=>e.click()")
+    page.wait_for_timeout(600)
+    page.click("#btn-vergleich")
+    page.wait_for_timeout(1500)
+    wert = page.eval_on_selector("#vergleich-inhalt td.eigen input", "e=>e.value")
+    page.eval_on_selector("#vergleich-zu", "e=>e.click()")
+    fordere("Prüfnotiz" in wert, f"die Notiz wurde nicht gespeichert: {wert!r}")
+    return "Note und Notiz vorhanden, Notiz übersteht das Neuöffnen"
+
+
 def pruefe_bodenrichtwert_ebene(page) -> str:
     """In Nordrhein-Westfalen gibt es einen abfragbaren Landesdienst."""
     setze_punkt(page, *KOELN)
@@ -343,6 +395,8 @@ PRUEFUNGEN = [
     ("Verkehrszähler in der Fußzeile", pruefe_verkehrszaehler),
     ("Erreichbarkeit zu Fuß", pruefe_gehweg),
     ("Gehwegzahl in der Schätzung", pruefe_gehwegangebot_in_der_schaetzung),
+    ("Planung und Hochwasser", pruefe_planung_und_hochwasser),
+    ("Eigene Notiz und Note", pruefe_eigene_notiz),
     ("Bodenrichtwert-Ebene (NRW)", pruefe_bodenrichtwert_ebene),
 ]
 

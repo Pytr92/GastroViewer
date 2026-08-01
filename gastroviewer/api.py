@@ -57,6 +57,18 @@ class SchaetzEingaben(BaseModel):
     kalibrierung_bezeichnung: str | None = Field(None, max_length=120)
 
 
+class PunktNotiz(BaseModel):
+    """Eigene Einschätzung zu einem gemerkten Punkt.
+
+    Das Werkzeug bewertet bewusst nicht und stellt keine Rangfolge auf — der
+    Nutzer darf und soll das aber. Beide Felder sind als eigene Einschätzung
+    gekennzeichnet und gehen in keine Rechnung ein.
+    """
+
+    notiz: str | None = Field(None, max_length=2000)
+    bewertung: int | None = Field(None, ge=1, le=5)
+
+
 class SavePoint(BaseModel):
     """Muss auf Modulebene stehen: mit ``from __future__ import annotations`` sind
     Annotationen Strings, die FastAPI nur im Modul-Namensraum auflösen kann. In einer
@@ -218,6 +230,12 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         _validate(lat, lon, r)
         return (await svc(request).gehweg(lat, lon, r, refresh)).to_dict()
 
+    @app.get("/api/point/planung")
+    async def point_planung(request: Request, lat: float, lon: float, r: int = 600):
+        """Hochwassergefahr und Bebauungsplan am Punkt."""
+        _validate(lat, lon, r)
+        return (await svc(request).planung(lat, lon, r)).to_dict()
+
     @app.get("/api/point/links")
     async def point_links(
         request: Request,
@@ -325,6 +343,16 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             _compact(payload),
         )
         return {"id": pid, "label": body.label}
+
+    @app.patch("/api/points/{point_id}")
+    async def punkt_notiz(request: Request, point_id: int, body: PunktNotiz):
+        """Eigene Notiz und Bewertung — die einzige Stelle, an der eine Wertung
+        in die Daten kommt, und sie kommt ausdrücklich vom Nutzer."""
+        cache: AsyncCache = request.app.state.cache
+        ok = await cache.set_point_notiz(point_id, body.notiz, body.bewertung)
+        if not ok:
+            raise HTTPException(404, "Punkt nicht gefunden.")
+        return {"id": point_id, "notiz": body.notiz, "bewertung": body.bewertung}
 
     @app.delete("/api/points/{point_id}")
     async def delete_point(request: Request, point_id: int):
@@ -450,12 +478,16 @@ VERGLEICH_GRUPPEN = [
     {"key": "wettbewerb", "titel": "Wettbewerb", "vorgabe": True},
     {"key": "erreichbarkeit", "titel": "Erreichbarkeit zu Fuß", "vorgabe": False},
     {"key": "verkehr", "titel": "Verkehr & ÖPNV", "vorgabe": True},
-    {"key": "sonstiges", "titel": "Weiteres", "vorgabe": False},
+    {"key": "detail", "titel": "Detail & abgeleitete Werte", "vorgabe": False},
 ]
 
 VERGLEICH_SPALTEN = [
     # --- Standort (immer sichtbar, erste Spalte bleibt beim Scrollen stehen) ---
     {"key": "label", "titel": "Bezeichnung", "gruppe": "standort"},
+    # Die einzigen beiden Werte in dieser Tabelle, die nicht aus einer API
+    # stammen — sie kommen vom Nutzer und sind so beschriftet.
+    {"key": "bewertung", "titel": "Eigene Note (1–5)", "gruppe": "standort"},
+    {"key": "notiz", "titel": "Eigene Notiz", "gruppe": "standort"},
     {"key": "adresse", "titel": "Adresse", "gruppe": "standort"},
     {"key": "gemeinde", "titel": "Gemeinde", "gruppe": "standort"},
     {"key": "radius", "titel": "Radius (m)", "gruppe": "standort"},
@@ -463,7 +495,7 @@ VERGLEICH_SPALTEN = [
     # --- Bevölkerung und Wohnen ---
     {"key": "einwohner", "titel": "Einwohner", "gruppe": "bevoelkerung"},
     {"key": "durchschnittsalter", "titel": "Durchschnittsalter", "gruppe": "bevoelkerung"},
-    {"key": "haushaltsgroesse", "titel": "Haushaltsgröße", "gruppe": "bevoelkerung"},
+    {"key": "haushaltsgroesse", "titel": "Haushaltsgröße", "gruppe": "detail"},
     # "stellen" legt die Nachkommastellen in Tabelle und Export fest. Ohne die
     # Angabe rundet die Oberfläche auf eine Stelle — bei kleinen Verhältniszahlen
     # verschwindet damit genau der Unterschied, den man vergleichen will.
@@ -475,14 +507,14 @@ VERGLEICH_SPALTEN = [
     # --- Wettbewerb ---
     {"key": "gastro_gesamt", "titel": "Gastronomie gesamt", "gruppe": "wettbewerb"},
     {"key": "fast_food", "titel": "davon Schnellrestaurants", "gruppe": "wettbewerb"},
-    {"key": "gastro_bis_150", "titel": "Gastronomie bis 150 m", "gruppe": "wettbewerb"},
+    {"key": "gastro_bis_150", "titel": "Gastronomie bis 150 m", "gruppe": "detail"},
     {"key": "gastro_bis_300", "titel": "Gastronomie bis 300 m", "gruppe": "wettbewerb"},
     {"key": "naechster_wettbewerber", "titel": "Nächster Betrieb (m)",
      "gruppe": "wettbewerb"},
     {"key": "wettbewerb_je_1000", "titel": "Wettbewerber je 1.000 Einw. (berechnet)",
      "stellen": 1, "gruppe": "wettbewerb"},
     {"key": "fastfood_je_1000", "titel": "Schnellrestaurants je 1.000 Einw. (berechnet)",
-     "stellen": 2, "gruppe": "wettbewerb"},
+     "stellen": 2, "gruppe": "detail"},
 
     # --- Erreichbarkeit zu Fuß (nur belegt, wenn Block 4b geladen war) ---
     {"key": "einwohner_gehweg", "titel": "Einwohner zu Fuß erreichbar",
@@ -497,25 +529,25 @@ VERGLEICH_SPALTEN = [
     # --- Verkehr und ÖPNV ---
     {"key": "frequenzbringer", "titel": "Frequenzbringer", "gruppe": "verkehr"},
     {"key": "haltestellen", "titel": "Haltestellen", "gruppe": "verkehr"},
-    {"key": "linien", "titel": "Linien (eindeutig)", "gruppe": "verkehr"},
+    {"key": "linien", "titel": "Linien (eindeutig)", "gruppe": "detail"},
     {"key": "abfahrten", "titel": "Abfahrten/Tag (GTFS)", "gruppe": "verkehr"},
     {"key": "abfahrten_mittag", "titel": "Abfahrten 11–14 Uhr", "gruppe": "verkehr"},
     {"key": "mittagsanteil", "titel": "Anteil Mittag % (berechnet)", "stellen": 1,
-     "gruppe": "verkehr"},
+     "gruppe": "detail"},
     {"key": "abfahrten_je_einwohner", "titel": "Abfahrten je Einwohner (berechnet)",
-     "stellen": 2, "gruppe": "verkehr"},
+     "stellen": 2, "gruppe": "detail"},
     {"key": "dtv_kfz", "titel": "Kfz/Tag stärkste Zählstelle", "gruppe": "verkehr"},
-    {"key": "dtv_sv_anteil", "titel": "Schwerverkehr %", "gruppe": "verkehr"},
-    {"key": "rad_je_tag", "titel": "Radfahrende/Tag (Messung)", "gruppe": "verkehr"},
+    {"key": "dtv_sv_anteil", "titel": "Schwerverkehr %", "gruppe": "detail"},
+    {"key": "rad_je_tag", "titel": "Radfahrende/Tag (Messung)", "gruppe": "detail"},
 
     # --- Weiteres ---
-    {"key": "ags", "titel": "Gemeindeschlüssel", "gruppe": "sonstiges"},
-    {"key": "ketten", "titel": "davon Ketten", "gruppe": "sonstiges"},
-    {"key": "rad_entfernung", "titel": "Entfernung Zählstelle (m)", "gruppe": "sonstiges"},
+    {"key": "ags", "titel": "Gemeindeschlüssel", "gruppe": "detail"},
+    {"key": "ketten", "titel": "davon Ketten", "gruppe": "detail"},
+    {"key": "rad_entfernung", "titel": "Entfernung Zählstelle (m)", "gruppe": "detail"},
     {"key": "neubau_anteil", "titel": "Gebäude ab 2020 %", "stellen": 1,
-     "gruppe": "sonstiges"},
-    {"key": "leerstand_osm", "titel": "Leerstände (OSM)", "gruppe": "sonstiges"},
-    {"key": "erzeugt", "titel": "Abgerufen am", "gruppe": "sonstiges"},
+     "gruppe": "detail"},
+    {"key": "leerstand_osm", "titel": "Leerstände (OSM)", "gruppe": "detail"},
+    {"key": "erzeugt", "titel": "Abgerufen am", "gruppe": "detail"},
 ]
 
 
@@ -544,6 +576,8 @@ def _row_for(saved: dict[str, Any]) -> dict[str, Any]:
     return {
         "id": saved.get("id"),
         "label": saved.get("label"),
+        "bewertung": saved.get("bewertung"),
+        "notiz": saved.get("notiz"),
         "adresse": punkt.get("adresse"),
         "gemeinde": punkt.get("gemeinde"),
         "ags": punkt.get("ags"),

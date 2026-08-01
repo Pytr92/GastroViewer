@@ -509,6 +509,10 @@ function lade(refresh = false) {
     .then((d) => { if (aktuell()) { state.daten.verkehrsmenge = d; zeigeVerkehrsmenge(d); } })
     .catch((e) => aktuell() && zeigeBlockFehler('verkehrsmenge', e));
 
+  hole('/api/point/planung', { lat, lon, r: radius })
+    .then((d) => { if (aktuell()) { state.daten.planung = d; zeigePlanung(d); } })
+    .catch((e) => aktuell() && zeigeBlockFehler('planung', e));
+
   aktualisiereFuss();
 }
 
@@ -546,6 +550,7 @@ function baueGeruest() {
     block('gtfs', '6b · Abfahrten (GTFS)'),
     block('radzaehlung', '6c · Gemessene Radverkehrsfrequenz'),
     block('verkehrsmenge', '6d · Verkehrsmenge (DTV, Bayern)'),
+    block('planung', '6e · Planungsrecht und Hochwasser'),
     block('leerstand', '7 · Leerstände'),
     block('quellen', '8 · Weiterführende Quellen'),
     block('grenzen', 'Bekannte Grenzen dieser Daten'),
@@ -1040,6 +1045,48 @@ function merkeGruppenwahl() {
   localStorage.setItem(GRUPPEN_SPEICHER, JSON.stringify([...sichtbareGruppen]));
 }
 
+/* Eigene Note und Notiz. Das Werkzeug bewertet bewusst nicht und stellt keine
+   Rangfolge auf — der Nutzer darf und soll das aber. Gespeichert wird beim
+   Verlassen des Feldes, nicht bei jedem Tastendruck. */
+async function speichereEigenes(id, zeile) {
+  await fetch(`/api/points/${id}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      notiz: zeile.notiz || null,
+      bewertung: zeile.bewertung === '' || zeile.bewertung === null
+        ? null : Number(zeile.bewertung),
+    }),
+  });
+}
+
+function eigenesFeld(z, key) {
+  if (key === 'bewertung') {
+    const aus = el('select', {
+      'aria-label': 'Eigene Note',
+      onchange: (ev) => {
+        z.bewertung = ev.target.value === '' ? null : Number(ev.target.value);
+        speichereEigenes(z.id, z);
+      },
+    });
+    for (const [wert, beschriftung] of [['', '—'], ['1', '1 sehr gut'], ['2', '2 gut'],
+      ['3', '3 mittel'], ['4', '4 schwach'], ['5', '5 ungeeignet']]) {
+      aus.append(el('option', {
+        value: wert, selected: String(z.bewertung ?? '') === wert,
+      }, beschriftung));
+    }
+    return aus;
+  }
+  return el('input', {
+    type: 'text',
+    value: z.notiz || '',
+    maxlength: '2000',
+    placeholder: 'eigene Notiz …',
+    'aria-label': 'Eigene Notiz',
+    onchange: (ev) => { z.notiz = ev.target.value; speichereEigenes(z.id, z); },
+  });
+}
+
 async function zeigeVergleich() {
   const d = await (await fetch('/api/points/vergleich')).json();
   const ziel = document.getElementById('vergleich-inhalt');
@@ -1100,6 +1147,12 @@ async function zeigeVergleich() {
   for (const z of d.zeilen) {
     const tr = el('tr', {});
     for (const c of spalten) {
+      /* Die beiden einzigen Felder, die der Nutzer selbst füllt. Sie werden
+         direkt in der Tabelle bearbeitet — ein Dialog dafür wäre ein Umweg. */
+      if (c.key === 'bewertung' || c.key === 'notiz') {
+        tr.append(el('td', { class: 'eigen' }, eigenesFeld(z, c.key)));
+        continue;
+      }
       const v = z[c.key];
       const num = typeof v === 'number';
       const klassen = [num ? 'num' : 'text'];
@@ -1921,6 +1974,86 @@ function zeigeGehweg(d) {
     ...(g.hinweise || []).map((h) => el('div', { class: 'notiz' }, h)),
     zen.hinweis ? el('div', { class: 'notiz' }, zen.hinweis) : null,
     ...warnungen(d.warnings || []));
+  setQuelle(id, d.provenance);
+}
+
+/* Zwei Fragen, die eine Standortentscheidung kippen: liegt die Flaeche im
+   Hochwassergebiet, und gilt ein Bebauungsplan. Beides sind Auskuenfte zum
+   Nachgehen, keine Entscheidungen — die Hinweise sagen das. */
+function zeigePlanung(d) {
+  const id = 'planung';
+  if (!d.ok) {
+    setStatus(id, 'fehler', 'nicht erreichbar');
+    setInhalt(id, fehlerbox(d.error));
+    setQuelle(id, d.provenance);
+    return;
+  }
+  const p = d.data;
+  if (!p) {
+    setStatus(id, 'leer', 'außerhalb Bayerns');
+    setInhalt(id, ...warnungen(d.warnings || []));
+    setQuelle(id, d.provenance);
+    return;
+  }
+  setStatus(id, 'ok', 'geladen');
+
+  const hw = p.hochwasser || {};
+  const bp = p.bebauungsplan;
+  const teile = [];
+
+  if (hw.betroffen) {
+    const tab = el('table', { class: 'daten' },
+      el('tr', {}, el('th', {}, 'Gewässer'), el('th', {}, 'Jährlichkeit'),
+        el('th', {}, 'ermittelt')));
+    for (const g of hw.gebiete) {
+      tab.append(el('tr', {},
+        el('td', {}, g.gewaesser || '—'),
+        el('td', {}, g.jaehrlichkeit || '—'),
+        el('td', {}, g.ermittelt || '—')));
+    }
+    teile.push(el('div', { class: 'warnung' },
+      el('strong', {}, 'Der Punkt liegt in einem Hochwassergefahrengebiet. '),
+      hw.hq_haeufig
+        ? 'Darunter HQhäufig — das ist die ernsteste Stufe.'
+        : 'Für Keller, Lager, Kühltechnik und die Versicherungsprämie relevant.'));
+    teile.push(tab);
+    const amt = (hw.gebiete.find((g) => g.amt) || {}).amt;
+    if (amt) {
+      teile.push(el('p', { class: 'hinweis-klein' },
+        'Zuständig: ',
+        el('a', { href: amt, target: '_blank', rel: 'noopener' }, 'Wasserwirtschaftsamt')));
+    }
+  } else {
+    teile.push(el('div', { class: 'notiz' },
+      'Kein Hochwassergefahrengebiet am Punkt (geprüft für HQhäufig, HQ100 und '
+      + 'HQextrem). Das ist eine Aussage über die berechneten Flächen, keine Zusage.'));
+  }
+
+  teile.push(el('h3', { class: 'hinweis-klein' }, 'Bebauungsplan'));
+  if (bp === undefined || bp === null) {
+    teile.push(el('div', { class: 'notiz' },
+      'Für diesen Punkt nicht abgefragt — die Umgriffe stammen aus dem Geoportal '
+      + 'der Landeshauptstadt München.'));
+  } else if (bp.vorhanden) {
+    teile.push(el('ul', { class: 'liste' }, bp.plaene.map((x) => el('li', {},
+      el('span', { class: 'haupt' },
+        el('div', { class: 'name' }, `Plan ${x.nummer || 'ohne Nummer'}`),
+        x.verfahren ? el('div', { class: 'meta' }, `Verfahren ${x.verfahren}`) : null)))));
+  } else {
+    teile.push(el('div', { class: 'notiz' },
+      'Für diese Fläche ist kein Bebauungsplan-Umgriff ausgewiesen.'));
+  }
+
+  teile.push(...(p.hinweise || []).map((h) => {
+    const st = h.split('**');
+    return el('div', { class: 'notiz' },
+      st.map((s, i) => (i % 2 ? el('strong', {}, s) : s)));
+  }));
+  teile.push(el('ul', { class: 'liste' }, (p.portale || []).map((x) => el('li', {},
+    el('span', { class: 'haupt' },
+      el('a', { href: x.url, target: '_blank', rel: 'noopener' }, x.titel))))));
+
+  setInhalt(id, ...teile, ...warnungen(d.warnings || []));
   setQuelle(id, d.provenance);
 }
 
