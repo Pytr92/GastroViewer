@@ -137,3 +137,44 @@ def test_haversine_gegen_bekannte_distanz():
     # Sendlinger Tor -> Marienplatz, laut Karte rund 600 m
     d = haversine_m(48.1334, 11.5674, 48.1374, 11.5755)
     assert 600 < d < 800
+
+
+def test_stats_weist_die_letzten_24_stunden_je_dienst_aus(tmp_path):
+    """Overpass und Nominatim sind Spendenprojekte. Wer nicht sieht, wie viel
+    er ihnen abverlangt, merkt auch nicht, wenn er sie strapaziert."""
+    import time
+
+    from gastroviewer.cache import Cache
+
+    c = Cache(tmp_path / "t.sqlite")
+    jetzt = time.time()
+    for _ in range(5):
+        c.log_outbound("overpass", "https://overpass-api.de/api/interpreter", status=200)
+    for _ in range(2):
+        c.log_outbound("gehweg", "https://overpass-api.de/api/interpreter", status=200)
+    c.log_outbound("nominatim", "https://nominatim.openstreetmap.org/reverse", status=200)
+
+    # Ein alter Eintrag darf nicht mitzählen.
+    with c._connect() as conn:
+        conn.execute(
+            "INSERT INTO outbound_log (ts, source, url) VALUES (?, 'overpass', 'alt')",
+            (jetzt - 48 * 3600,),
+        )
+
+    s = c.stats()
+    assert s["outbound_requests_total"] == 9, "die Gesamtzahl zählt alles"
+    assert s["outbound_24h"] == 8, "der 48 h alte Eintrag gehört nicht in das Fenster"
+    assert s["outbound_24h_je_dienst"]["overpass"] == 5
+    assert s["outbound_24h_je_dienst"]["nominatim"] == 1
+    assert s["overpass_24h"] == 7, (
+        "der Gehwegblock geht ebenfalls an Overpass und muss mitgezählt werden"
+    )
+
+
+def test_stats_ohne_verkehr_meldet_null_statt_zu_fehlen(tmp_path):
+    from gastroviewer.cache import Cache
+
+    s = Cache(tmp_path / "leer.sqlite").stats()
+    assert s["outbound_24h"] == 0
+    assert s["outbound_24h_je_dienst"] == {}
+    assert s["overpass_24h"] == 0

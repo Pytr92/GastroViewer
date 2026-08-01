@@ -176,6 +176,12 @@ class Eingaben:
     oeffnungsstunden: float = 12.0
     mietanteil_min_prozent: float = 10.0
     mietanteil_max_prozent: float = 14.0
+    # Prüfstein: der tatsächliche Jahresumsatz eines Betriebs, den man kennt —
+    # der eigene, ein übernommener, ein befreundeter. Damit lässt sich das
+    # Modell einmal gegen die Wirklichkeit halten, statt es nur zu verfeinern.
+    # Er geht in **keine** Rechnung ein, sondern wird nur gegenübergestellt.
+    kalibrierung_umsatz_eur: float | None = None
+    kalibrierung_bezeichnung: str | None = None
 
     def naiver_marktanteil_prozent(self) -> float:
         return 100.0 / (max(0, int(self.wettbewerber)) + 1)
@@ -183,6 +189,61 @@ class Eingaben:
 
 def _spanne(a: float, b: float) -> tuple[float, float]:
     return (a, b) if a <= b else (b, a)
+
+
+def kalibrierung(
+    tatsaechlich: float | None,
+    umsatz_min: float,
+    umsatz_max: float,
+    bezeichnung: str | None = None,
+) -> dict[str, Any] | None:
+    """Hält die Rechnung gegen einen echten, bekannten Jahresumsatz.
+
+    Das Modell rechnet mit Bundesdurchschnitten und kennt weder Lage noch
+    Passantenströme. Ob das für **diesen** Betriebstyp um Faktor 1,2 oder um
+    Faktor 5 danebenliegt, sagt ein einziger bekannter Umsatz mehr als jede
+    weitere Verfeinerung der Formel.
+
+    Der Wert fließt in keine Rechnung ein. Er wird gegenübergestellt, und der
+    Faktor wird benannt — inklusive der Richtung.
+    """
+    if not isinstance(tatsaechlich, (int, float)) or tatsaechlich <= 0:
+        return None
+    mitte = (umsatz_min + umsatz_max) / 2
+    if mitte <= 0:
+        return None
+
+    faktor = tatsaechlich / mitte
+    innerhalb = umsatz_min <= tatsaechlich <= umsatz_max
+    if innerhalb:
+        befund = (
+            "Der bekannte Umsatz liegt **innerhalb** der Spanne. Mehr sagt das "
+            "nicht — die Spanne ist bewusst weit."
+        )
+    elif faktor > 1:
+        befund = (
+            f"Die Rechnung liegt um Faktor {faktor:.2f} **zu niedrig**. Für "
+            "diesen Betriebstyp und diese Lage ist sie also zu vorsichtig."
+        )
+    else:
+        befund = (
+            f"Die Rechnung liegt um Faktor {1 / faktor:.2f} **zu hoch**. Sie "
+            "überschätzt, was an diesem Standort zu erwarten wäre."
+        )
+    return {
+        "bezeichnung": bezeichnung or "bekannter Betrieb",
+        "tatsaechlich_eur": round(tatsaechlich),
+        "gerechnet_mitte_eur": round(mitte),
+        "gerechnete_spanne_eur": [round(umsatz_min), round(umsatz_max)],
+        "faktor": round(faktor, 2),
+        "innerhalb_der_spanne": innerhalb,
+        "befund": befund,
+        "hinweis": (
+            "Ein einzelner Vergleichswert kalibriert nichts — er zeigt nur die "
+            "Größenordnung des Fehlers. Der Wert geht in keine Rechnung ein und "
+            "wird nicht gespeichert."
+        ),
+    }
 
 
 def rechne(e: Eingaben) -> dict[str, Any]:
@@ -231,6 +292,9 @@ def rechne(e: Eingaben) -> dict[str, Any]:
     miete_min, miete_max = _spanne(e.mietanteil_min_prozent, e.mietanteil_max_prozent)
 
     return {
+        "kalibrierung": kalibrierung(
+            e.kalibrierung_umsatz_eur, umsatz_min, umsatz_max, e.kalibrierung_bezeichnung
+        ),
         "ok": True,
         "eingaben": {
             "einwohner": e.einwohner,

@@ -232,6 +232,20 @@ gleicher Einwohner- und Wettbewerbszahl bekommen dasselbe Ergebnis, auch wenn ei
 Fußgängerzone liegt und einer an der Umgehungsstraße. Genau deshalb ist das Ergebnis ein
 **Vergleichsmaß und keine Prognose**.
 
+### Prüfstein: gegen einen echten Betrieb halten
+
+Die Rechnung arbeitet mit Bundesdurchschnitten und kennt weder Lage noch Passantenströme.
+Ob sie für einen bestimmten Betriebstyp um Faktor 1,2 oder um Faktor 5 danebenliegt, sagt
+**ein einziger bekannter Umsatz** mehr als jede weitere Verfeinerung der Formel. Dafür gibt
+es im Schätzungsreiter zwei Felder: tatsächlicher Jahresumsatz eines Betriebs, den du
+kennst, und wie er heißt.
+
+Der Wert **geht in keine Rechnung ein** und wird nicht gespeichert — er wird
+gegenübergestellt, und das Verhältnis wird benannt. Beispiel Marienplatz, 600 m: die
+Rechnung ergibt 63.416 bis 362.227 € im Jahr; ein realer Betrieb mit 450.000 € liegt damit
+um Faktor 2,11 darüber, die Rechnung ist für diesen Fall also zu vorsichtig. Dass ein Wert
+*innerhalb* der Spanne liegt, bestätigt dagegen nichts — die Spanne ist bewusst weit.
+
 Der Marktanteil ist die einzige Größe, für die es keine Datenquelle gibt. Er wird nicht
 geschätzt, sondern verlangt: Vorgabe ist die naive Gleichverteilung `1/(Wettbewerber+1)`,
 aufgespannt mit einem sichtbaren Unsicherheitsfaktor.

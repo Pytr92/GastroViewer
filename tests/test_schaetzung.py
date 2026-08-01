@@ -228,3 +228,50 @@ def test_vorgaben_ohne_daten_bricht_nicht():
     assert "keine Zensuszelle" in v["einwohner_herkunft"]
     d = rechne(basis(einwohner=v["einwohner"], wettbewerber=v["wettbewerber"]))
     assert d["ok"] and d["ergebnis"]["jahresumsatz_eur"] == [0, 0]
+
+
+# ------------------------------------------------------------ Prüfstein
+
+
+def test_kalibrierung_erkennt_zu_niedrige_rechnung():
+    """Ein bekannter Umsatz sagt mehr über die Brauchbarkeit als jede weitere
+    Verfeinerung der Formel."""
+    k = schaetzung.kalibrierung(300_000, 50_000, 150_000, "eigener Imbiss")
+    assert k["faktor"] == 3.0
+    assert k["innerhalb_der_spanne"] is False
+    assert "zu niedrig" in k["befund"]
+    assert k["bezeichnung"] == "eigener Imbiss"
+
+
+def test_kalibrierung_erkennt_zu_hohe_rechnung():
+    k = schaetzung.kalibrierung(50_000, 150_000, 250_000)
+    assert k["faktor"] == 0.25
+    assert "zu hoch" in k["befund"]
+    assert "4.00" in k["befund"], "die Richtung wird als Faktor benannt"
+
+
+def test_kalibrierung_innerhalb_der_spanne_verspricht_nichts():
+    k = schaetzung.kalibrierung(120_000, 100_000, 150_000)
+    assert k["innerhalb_der_spanne"] is True
+    assert "Mehr sagt das nicht" in k["befund"], (
+        "eine weite Spanne zu treffen ist keine Bestätigung"
+    )
+
+
+def test_ohne_vergleichswert_gibt_es_keine_kalibrierung():
+    assert schaetzung.kalibrierung(None, 1, 2) is None
+    assert schaetzung.kalibrierung(0, 1, 2) is None
+    assert schaetzung.kalibrierung(-5, 1, 2) is None
+    assert schaetzung.kalibrierung("viel", 1, 2) is None
+
+
+def test_pruefstein_veraendert_das_ergebnis_nicht():
+    """Er wird gegenübergestellt, nicht eingerechnet."""
+    basis = dict(einwohner=10_000, wettbewerber=30, besuche_je_einwohner=60.3,
+                 bon_min=7.15, bon_max=10.21)
+    ohne = schaetzung.rechne(schaetzung.Eingaben(**basis))
+    mit = schaetzung.rechne(schaetzung.Eingaben(
+        **basis, kalibrierung_umsatz_eur=999_999, kalibrierung_bezeichnung="Test"))
+    assert ohne["ergebnis"] == mit["ergebnis"]
+    assert ohne["kalibrierung"] is None
+    assert mit["kalibrierung"]["tatsaechlich_eur"] == 999_999

@@ -51,6 +51,10 @@ class SchaetzEingaben(BaseModel):
     oeffnungsstunden: float = Field(12.0, gt=0, le=24)
     mietanteil_min_prozent: float = Field(10.0, ge=0, le=100)
     mietanteil_max_prozent: float = Field(14.0, ge=0, le=100)
+    # Prüfstein gegen die Wirklichkeit. Geht in keine Rechnung ein und wird
+    # nicht gespeichert — er wird nur gegenübergestellt.
+    kalibrierung_umsatz_eur: float | None = Field(None, ge=0)
+    kalibrierung_bezeichnung: str | None = Field(None, max_length=120)
 
 
 class SavePoint(BaseModel):

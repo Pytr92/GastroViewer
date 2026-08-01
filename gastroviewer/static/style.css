@@ -563,3 +563,6 @@ dialog::backdrop { background: rgba(0,0,0,.35); }
   opacity: .8;
   display: inline-block;
 }
+
+/* Hinweis in der Fußzeile, wenn viel Verkehr zu den Spendendiensten geht */
+#fuss-stats .viel-verkehr { color: var(--warn); font-weight: 600; }

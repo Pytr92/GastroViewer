@@ -130,10 +130,26 @@ class Cache:
                 (now,),
             ).fetchall()
             total_out = conn.execute("SELECT COUNT(*) n FROM outbound_log").fetchone()["n"]
+            # Was in den letzten 24 Stunden wirklich hinausging, je Dienst.
+            # Overpass und Nominatim sind Spendenprojekte; wer das nicht sieht,
+            # merkt auch nicht, wenn er sie strapaziert.
+            seit = now - 24 * 3600
+            heute = conn.execute(
+                "SELECT source, COUNT(*) n FROM outbound_log WHERE ts >= ?"
+                " GROUP BY source ORDER BY n DESC",
+                (seit,),
+            ).fetchall()
+        je_dienst = {r["source"]: r["n"] for r in heute}
         return {
             "entries": [dict(r) for r in rows],
             "total": sum(r["n"] for r in rows),
             "outbound_requests_total": total_out,
+            "outbound_24h": sum(je_dienst.values()),
+            "outbound_24h_je_dienst": je_dienst,
+            # Der Gehwegblock schlägt mit 1–3 MB je Abruf am stärksten zu Buche.
+            "overpass_24h": (
+                je_dienst.get("overpass", 0) + je_dienst.get("gehweg", 0)
+            ),
         }
 
     # -------------------------------------------------------- Outbound-Log

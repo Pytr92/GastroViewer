@@ -19,6 +19,11 @@ const NF2 = new Intl.NumberFormat('de-DE', { minimumFractionDigits: 2, maximumFr
 
 /* Feste Nachkommastellen, wenn eine Vergleichsspalte sie vorgibt. Ohne die
    feste Untergrenze würde 0,50 als „0,5" erscheinen und 0,07 als „0,1". */
+/* Ab dieser Zahl Overpass-Abrufe in 24 Stunden weist die Fußzeile darauf hin.
+   Gewählte Schwelle, kein gemessener Wert — sie steht in der Meldung mit drin.
+   Ein normaler Arbeitsgang mit einer Handvoll Kandidaten bleibt darunter. */
+const OVERPASS_WARNSCHWELLE = 40;
+
 const NF_FEST = new Map();
 function nfFest(n) {
   if (!NF_FEST.has(n)) {
@@ -1186,8 +1191,29 @@ document.getElementById('vergleich-zu').addEventListener('click',
 async function aktualisiereFuss() {
   try {
     const s = await (await fetch('/api/stats')).json();
-    document.getElementById('fuss-stats').textContent =
-      `Cache: ${s.total} Einträge · echte Abrufe seit Start: ${s.outbound_requests_total}`;
+    /* Overpass und Nominatim sind Spendenprojekte. Wer nicht sieht, wie viel
+       er ihnen abverlangt, merkt auch nicht, wenn er sie strapaziert. Deshalb
+       steht die Zahl der letzten 24 Stunden je Dienst in der Fußzeile. */
+    const je = s.outbound_24h_je_dienst || {};
+    const teile = Object.entries(je)
+      .sort((a, b) => b[1] - a[1])
+      .map(([q, n]) => `${q} ${NF.format(n)}`);
+    const ziel = document.getElementById('fuss-stats');
+    ziel.replaceChildren(
+      el('span', {}, `Cache: ${NF.format(s.total)} Einträge`),
+      el('span', {}, ` · echte Abrufe seit Start: ${NF.format(s.outbound_requests_total)}`),
+      el('span', {
+        class: s.overpass_24h >= OVERPASS_WARNSCHWELLE ? 'viel-verkehr' : '',
+        title: teile.length ? `Letzte 24 h: ${teile.join(' · ')}`
+          : 'Letzte 24 h: keine Abrufe',
+      }, ` · 24 h: ${NF.format(s.outbound_24h || 0)}`
+         + (teile.length ? ` (${teile.slice(0, 3).join(', ')})` : '')),
+      s.overpass_24h >= OVERPASS_WARNSCHWELLE
+        ? el('span', { class: 'viel-verkehr' },
+          ` · ${NF.format(s.overpass_24h)} Overpass-Abrufe in 24 h — bitte den `
+          + 'Spendendienst schonen, gemerkte Punkte kommen aus dem Cache')
+        : null,
+    );
   } catch { /* Fußzeile ist nicht kritisch */ }
 }
 
@@ -1338,7 +1364,35 @@ function baueSchaetzFormular() {
       'Alle Referenzwerte am 01.08.2026 selbst nachgeschlagen. Sie sind Eingabewerte '
       + 'und überschreibbar — verändert sich der Markt, gehören hier neue Zahlen hinein.'));
 
-  ziel.replaceChildren(banner, eingaben, ergebnis, formel, grenzen, quellen);
+  /* Prüfstein gegen die Wirklichkeit. Das Modell rechnet mit
+     Bundesdurchschnitten und kennt weder Lage noch Passantenströme; ob es für
+     einen bestimmten Betriebstyp um Faktor 1,2 oder um Faktor 5 danebenliegt,
+     sagt ein einziger bekannter Umsatz mehr als jede weitere Verfeinerung. */
+  const kalibrierung = schaetzBlock('Prüfstein: gegen einen echten Betrieb halten',
+    el('p', { class: 'hinweis-klein' },
+      'Trage den tatsächlichen Jahresumsatz eines Betriebs ein, den du kennst — den '
+      + 'eigenen, einen übernommenen, einen befreundeten — und stelle die Rechnung '
+      + 'daneben. Der Wert geht in keine Rechnung ein und wird nicht gespeichert.'),
+    el('div', { class: 'eingabe-gitter' },
+      el('div', { class: 'feld' },
+        el('label', { for: 'sf-kalib-umsatz' }, 'Tatsächlicher Jahresumsatz (€)'),
+        el('input', {
+          type: 'number', id: 'sf-kalib-umsatz', step: '1000', min: '0',
+          placeholder: 'leer lassen, wenn unbekannt',
+          oninput: () => rechneSchaetzung(),
+        })),
+      el('div', { class: 'feld' },
+        el('label', { for: 'sf-kalib-name' }, 'Um welchen Betrieb geht es?'),
+        el('input', {
+          type: 'text', id: 'sf-kalib-name', maxlength: '120',
+          placeholder: 'z. B. eigener Imbiss Sendling',
+          oninput: () => rechneSchaetzung(),
+        }))),
+    el('div', { class: 'notiz', id: 'kalib-ergebnis' },
+      'Ohne Vergleichswert bleibt offen, ob die Rechnung für deinen Betriebstyp '
+      + 'überhaupt in der richtigen Größenordnung liegt.'));
+
+  ziel.replaceChildren(banner, eingaben, ergebnis, kalibrierung, formel, grenzen, quellen);
 }
 
 let schaetzTimer = null;
@@ -1356,6 +1410,12 @@ async function schaetzungAbschicken() {
       continue;
     }
     koerper[f.key] = Number(roh);
+  }
+  const kalibUmsatz = document.getElementById('sf-kalib-umsatz')?.value;
+  if (kalibUmsatz !== '' && kalibUmsatz !== undefined) {
+    koerper.kalibrierung_umsatz_eur = Number(kalibUmsatz);
+    const name = document.getElementById('sf-kalib-name')?.value?.trim();
+    if (name) koerper.kalibrierung_bezeichnung = name;
   }
   const ziel = document.querySelector('#schaetz-ergebnis .block-inhalt');
   if (!ziel) return;
@@ -1377,9 +1437,38 @@ async function schaetzungAbschicken() {
   }
 }
 
+function zeigeKalibrierung(k) {
+  const ziel = document.getElementById('kalib-ergebnis');
+  if (!ziel) return;
+  if (!k) {
+    ziel.className = 'notiz';
+    ziel.textContent = 'Ohne Vergleichswert bleibt offen, ob die Rechnung für '
+      + 'deinen Betriebstyp überhaupt in der richtigen Größenordnung liegt.';
+    return;
+  }
+  ziel.className = k.innerhalb_der_spanne ? 'notiz' : 'warnung';
+  const tab = el('table', { class: 'daten' },
+    el('tr', {}, el('th', {}, k.bezeichnung), el('th', { class: 'num' }, '€ im Jahr')),
+    el('tr', {}, el('td', {}, 'tatsächlich'),
+      el('td', { class: 'num' }, NF.format(k.tatsaechlich_eur))),
+    el('tr', {}, el('td', {}, 'gerechnete Spanne'),
+      el('td', { class: 'num' },
+        `${NF.format(k.gerechnete_spanne_eur[0])} – ${NF.format(k.gerechnete_spanne_eur[1])}`)),
+    el('tr', {}, el('td', {}, 'gerechnete Mitte'),
+      el('td', { class: 'num' }, NF.format(k.gerechnet_mitte_eur))),
+    el('tr', {}, el('td', {}, el('strong', {}, 'Verhältnis')),
+      el('td', { class: 'num' }, el('strong', {}, NF2.format(k.faktor)))));
+  // Der Befundtext trägt **Betonung** in Markdown-Manier; hier reicht fett.
+  const teile = k.befund.split('**');
+  const satz = el('p', {}, teile.map((s, i) => (i % 2 ? el('strong', {}, s) : s)));
+  ziel.replaceChildren(tab, satz,
+    el('p', { class: 'hinweis-klein' }, k.hinweis));
+}
+
 function zeigeSchaetzErgebnis(d, ziel) {
   const e = d.ergebnis;
   const z = d.zwischenschritte;
+  zeigeKalibrierung(d.kalibrierung);
 
   // §9: Die Umrechnung in Bestellungen ist Pflichtausgabe und steht deshalb
   // vor dem Umsatz — sie ist die Zahl, die ein Betreiber beurteilen kann.

@@ -147,9 +147,24 @@ def pruefe_schaetzung_getrennt(page) -> str:
     fordere("keine Prognose" in s, "Schätzungsreiter ohne Warnhinweis")
     fordere("bis" in s, "Ergebnis ist kein Spannenwert")
     fordere("frei gewählt" in s, "Annahmen ohne Datengrundlage nicht markiert")
+
+    # Prüfstein: ein bekannter Umsatz muss gegenübergestellt werden, ohne in
+    # die Rechnung einzugehen.
+    fordere(page.query_selector("#sf-kalib-umsatz") is not None,
+            "Prüfstein-Feld fehlt im Schätzungsreiter")
+    vorher = text(page, "#schaetz-ergebnis")
+    page.eval_on_selector("#sf-kalib-umsatz", """e => {
+        e.value = 450000; e.dispatchEvent(new Event('input', { bubbles: true }));
+    }""")
+    page.wait_for_timeout(1500)
+    k = text(page, "#kalib-ergebnis")
+    fordere("Verhältnis" in k, f"Prüfstein rechnet nicht: {k[:70]}")
+    fordere(text(page, "#schaetz-ergebnis") == vorher,
+            "der Prüfstein darf das Ergebnis nicht verändern")
+
     page.click("#reiter button[data-reiter=daten]")
     page.wait_for_timeout(600)
-    return "Schätzung getrennt, Ergebnis als Spanne"
+    return "Schätzung getrennt, Spanne, Prüfstein wirkt ohne einzugreifen"
 
 
 def pruefe_deckkraftregler(page) -> str:
@@ -269,6 +284,18 @@ def pruefe_muenchen_erweiterungen(page) -> str:
     return f"Radzählung {rad}, Verkehrsmenge {vm}"
 
 
+def pruefe_verkehrszaehler(page) -> str:
+    """Overpass und Nominatim sind Spendenprojekte — die Last muss sichtbar sein."""
+    t = text(page, "#fuss-stats")
+    fordere("Cache:" in t, "Cachestand fehlt in der Fußzeile")
+    fordere("24 h" in t, "Die Last der letzten 24 Stunden fehlt in der Fußzeile")
+    titel = page.eval_on_selector_all(
+        "#fuss-stats span", "e=>e.map(x=>x.title).filter(Boolean)")
+    fordere(any("Letzte 24 h" in x for x in titel),
+            "keine Aufschlüsselung je Dienst im Tooltip")
+    return t.replace("\n", " ")[:90]
+
+
 def pruefe_bodenrichtwert_ebene(page) -> str:
     """In Nordrhein-Westfalen gibt es einen abfragbaren Landesdienst."""
     setze_punkt(page, *KOELN)
@@ -290,6 +317,7 @@ PRUEFUNGEN = [
     ("Deckkraftregler", pruefe_deckkraftregler),
     ("Vergleichstabelle", pruefe_vergleich),
     ("München-Erweiterungen", pruefe_muenchen_erweiterungen),
+    ("Verkehrszähler in der Fußzeile", pruefe_verkehrszaehler),
     ("Erreichbarkeit zu Fuß", pruefe_gehweg),
     ("Bodenrichtwert-Ebene (NRW)", pruefe_bodenrichtwert_ebene),
 ]
