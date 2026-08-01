@@ -11,8 +11,12 @@ LAT, LON, R = 48.1334, 11.5674, 600
 
 
 def test_fixture_ist_die_echte_antwort(overpass_combined):
+    """Absicherung gegen versehentlich ausgedachte Testdaten. Die Zahl stammt aus
+    der aufgezeichneten Antwort: 843 Elemente, nachdem die Abfrage um Märkte,
+    Busbahnhöfe, Tankstellen, Behörden und Alltagsversorger erweitert wurde
+    (vorher 801)."""
     assert overpass_combined["osm3s"]["copyright"].startswith("The data included")
-    assert len(overpass_combined["elements"]) == 801
+    assert len(overpass_combined["elements"]) == 843
 
 
 def test_abfrage_enthaelt_alle_geforderten_kategorien():
@@ -56,6 +60,31 @@ def test_gastronomie_wird_vollstaendig_erfasst(overpass_combined):
     )
     assert len(cls["gastronomie"]) == erwartet
     assert erwartet > 100, "Innenstadt-Fixture sollte viele Betriebe enthalten"
+
+
+def test_abfrage_enthaelt_die_ergaenzten_frequenzbringer():
+    """Über §4.2 hinaus ergänzt: Märkte, Busbahnhöfe, Tankstellen, Behörden und
+    Alltagsversorger. Am Sendlinger Tor sind das 46 Objekte im 600-m-Umkreis,
+    die vorher unsichtbar waren."""
+    q = overpass.build_query(LAT, LON, R)
+    for tag in ("marketplace", "bus_station", "fuel", "pharmacy", "bank",
+                "post_office", "townhall", "courthouse", "kiosk", "greengrocer"):
+        assert tag in q, f"{tag} fehlt in der Abfrage"
+
+
+def test_ergaenzte_kategorien_werden_klassifiziert(overpass_combined):
+    cls = overpass.classify(overpass_combined["elements"], LAT, LON, R)
+    kategorien = {f["kategorie"] for f in cls["frequenzbringer"]}
+    assert "Markt & Alltagsversorgung" in kategorien
+    assert "Verkehr & Parken" in kategorien
+    arten = {f["art"] for f in cls["frequenzbringer"]}
+    assert arten & {"Apotheke", "Bank", "Post", "Kiosk"}, "keine der Ergänzungen erkannt"
+
+
+def test_jeder_frequenzbringer_hat_kategorie_und_art(overpass_combined):
+    cls = overpass.classify(overpass_combined["elements"], LAT, LON, R)
+    for f in cls["frequenzbringer"]:
+        assert f["kategorie"] and f["art"], f
 
 
 def test_leerstand_hat_vorrang_vor_einkauf(overpass_combined):

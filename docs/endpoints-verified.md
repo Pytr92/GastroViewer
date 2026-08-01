@@ -457,6 +457,27 @@ Margaretenstr. (Harras)         „Derzeit keine Daten"
 
 ---
 
+## Nachtrag 2026-08-01: Frequenzbringer erweitert
+
+Die Liste in §4.2 deckt Bildung, Gesundheit, Kultur, Einkauf, Sport, Büro und Tourismus
+ab. Für einen Schnellgastronomie-Standort fehlen darin Objekte, die Laufkundschaft und
+wiederkehrende Wege erzeugen. Gegenprobe mit einer eigenen Overpass-Abfrage am
+Sendlinger Tor, r=600:
+
+```
+amenity: marketplace, bus_station, fuel, pharmacy, bank, post_office,
+         townhall, courthouse, community_centre
+shop:    kiosk, greengrocer, deli, beverages
+→ 46 zusätzliche Objekte (39 Knoten, 7 Wege)
+```
+
+Aufgenommen mit einer eigenen Kategorie „Markt & Alltagsversorgung" und „Behörden".
+Die kombinierte Abfrage liefert damit **843 statt 801 Elemente**, die Frequenzbringer
+steigen von 354 auf 396. Das Fixture `raw_overpass_combined.json` wurde neu
+aufgezeichnet (Stand 2026-08-01T09:16:36Z).
+
+---
+
 ## Fazit für die Umsetzung
 
 1. Alle fünf Pflichtendpunkte funktionieren. Kein Feature muss gestrichen werden.

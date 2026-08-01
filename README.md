@@ -123,6 +123,7 @@ Läuft der Fahrplan ab, meldet der Block das und der Import wird einfach wiederh
 |---|---|---|---|
 | [Zensus 2022, 100-m-Gitter](https://services2.arcgis.com/jUpNdisbWqRpMo35/arcgis/rest/services/Zensus2022_grid_final/FeatureServer) | Bevölkerung, Alter, Haushalte, Miete, Leerstand, Baualter | © Statistische Ämter des Bundes und der Länder 2024 · dl-de/by-2-0 · GeoBasis-DE/BKG 2024 | 30 Tage |
 | [OpenStreetMap / Overpass](https://overpass-api.de/) | Gastronomie, Frequenzbringer, ÖPNV, Leerstand, Linien | ODbL 1.0, © OpenStreetMap-Mitwirkende | 24 h |
+| ↳ Frequenzbringer | über §4.2 hinaus auch Märkte, Busbahnhöfe, Tankstellen, Apotheken, Banken, Post, Behörden, Kioske | ODbL 1.0 | 24 h |
 | [Nominatim](https://nominatim.openstreetmap.org/) | Adresse, Gemeinde, Ortsteil, PLZ | ODbL 1.0, © OpenStreetMap-Mitwirkende | 30 Tage |
 | [gtfs.de](https://gtfs.de/) | Abfahrten je Haltestelle und Stunde | CC BY 4.0, Datengrundlage DELFI e.V. | lokal, kein Cache |
 | Bodenrichtwert-WMS von 7 Ländern | Kartenebene und Wert am Punkt | je Land, siehe unten | kein Cache |

@@ -1,8 +1,9 @@
 """OpenStreetMap über Overpass.
 
 Eine einzige kombinierte Abfrage je Punkt statt einer pro Kategorie — Overpass ist
-ein Spendenprojekt (Spec §4.2). In Phase 0 gemessen: 801 Elemente in 5,5 s für
-r=600 in der Münchner Innenstadt, inklusive der Linienrelationen.
+ein Spendenprojekt (Spec §4.2). Gemessen für r=600 in der Münchner Innenstadt:
+843 Elemente inklusive der Linienrelationen (801 vor der Erweiterung der
+Frequenzbringer um Märkte, Behörden und Alltagsversorger).
 
 Phase-0-Befunde, die den Code prägen:
 
@@ -47,7 +48,13 @@ GASTRO_LABELS = {
     "food_court": "Food-Court",
 }
 
-# Frequenzbringer nach Kategorie (Spec §4.2 / Panel-Block 5)
+# Frequenzbringer nach Kategorie.
+#
+# Die mit ★ markierten Einträge stehen nicht in der Liste aus §4.2, sind für
+# einen Schnellgastronomie-Standort aber ebenso relevant: Märkte, Busbahnhöfe
+# und Tankstellen erzeugen Laufkundschaft, Behörden und Alltagsversorger
+# bringen wiederkehrende Wege. Gemessen am Sendlinger Tor waren das 46 Objekte
+# im 600-m-Umkreis, die das Werkzeug vorher nicht gesehen hat.
 FREQ_AMENITIES = {
     "school": ("Bildung", "Schule"),
     "university": ("Bildung", "Universität"),
@@ -56,10 +63,19 @@ FREQ_AMENITIES = {
     "hospital": ("Gesundheit", "Krankenhaus"),
     "clinic": ("Gesundheit", "Klinik"),
     "doctors": ("Gesundheit", "Arztpraxis"),
+    "pharmacy": ("Gesundheit", "Apotheke"),                      # ★
     "cinema": ("Kultur & Freizeit", "Kino"),
     "theatre": ("Kultur & Freizeit", "Theater"),
     "library": ("Kultur & Freizeit", "Bibliothek"),
+    "community_centre": ("Kultur & Freizeit", "Bürgerhaus"),     # ★
     "parking": ("Verkehr & Parken", "Parkplatz"),
+    "bus_station": ("Verkehr & Parken", "Busbahnhof"),           # ★
+    "fuel": ("Verkehr & Parken", "Tankstelle"),                  # ★
+    "marketplace": ("Markt & Alltagsversorgung", "Marktplatz"),  # ★
+    "bank": ("Markt & Alltagsversorgung", "Bank"),               # ★
+    "post_office": ("Markt & Alltagsversorgung", "Post"),        # ★
+    "townhall": ("Behörden", "Rathaus"),                         # ★
+    "courthouse": ("Behörden", "Gericht"),                       # ★
 }
 FREQ_SHOPS = {
     "supermarket": ("Einkauf", "Supermarkt"),
@@ -68,6 +84,10 @@ FREQ_SHOPS = {
     "convenience": ("Einkauf", "Nahversorger"),
     "bakery": ("Einkauf", "Bäckerei"),
     "butcher": ("Einkauf", "Metzgerei"),
+    "kiosk": ("Markt & Alltagsversorgung", "Kiosk"),             # ★
+    "greengrocer": ("Markt & Alltagsversorgung", "Obst & Gemüse"),  # ★
+    "deli": ("Markt & Alltagsversorgung", "Feinkost"),           # ★
+    "beverages": ("Markt & Alltagsversorgung", "Getränkemarkt"), # ★
 }
 FREQ_LEISURE = {
     "fitness_centre": ("Sport", "Fitnessstudio"),
