@@ -49,12 +49,36 @@ def hole_text(pfad: str, timeout: float = 180) -> str:
         return r.read().decode("utf-8")
 
 
-def pruefe(nr: str, titel: str, bedingung: bool, beleg: str) -> None:
-    ergebnisse.append((f"{nr} {titel}", bool(bedingung), beleg))
-    zeichen = "OK   " if bedingung else "FEHLT"
+def pruefe(nr: str, titel: str, bedingung: bool | None, beleg: str) -> None:
+    """``bedingung=None`` bedeutet „nicht prüfbar" — etwa weil eine externe
+    Quelle gerade nicht antwortet. Das ist weder bestanden noch durchgefallen
+    und muss unterscheidbar bleiben, sonst führt ein Dienstausfall entweder zu
+    einem falschen Alarm oder zu einem falschen Freispruch."""
+    # Auf bool zwingen: manche Bedingungen sind Ausdrücke wie ``ok and warnungen``
+    # und liefern eine Liste. Die wäre wahrheitswertig wahr, aber nicht ``is True``
+    # — die Anzeige und die Zählung würden auseinanderlaufen.
+    ergebnisse.append((f"{nr} {titel}", None if bedingung is None else bool(bedingung), beleg))
+    zeichen = "OFFEN" if bedingung is None else ("OK   " if bedingung else "FEHLT")
     print(f"[{zeichen}] {nr} {titel}")
     for zeile in beleg.splitlines():
         print(f"         {zeile}")
+
+
+def direkt(beschreibung: str, aufruf, versuche: int = 3):
+    """Direktabruf einer Originalquelle mit Wiederholung.
+
+    Overpass antwortet unter Last mit HTTP 504. Das ist kein Mangel der
+    Anwendung — die Prüfung darf daran nicht abstürzen.
+    """
+    letzter = None
+    for i in range(versuche):
+        try:
+            return aufruf(), None
+        except Exception as exc:  # noqa: BLE001 — Ursache wird ausgegeben
+            letzter = f"{type(exc).__name__}: {exc}"
+            if i < versuche - 1:
+                time.sleep(5 * (i + 1))
+    return None, f"{beschreibung} nicht erreichbar ({letzter})"
 
 
 print(f"Abnahmeprüfung gegen {BASE}\n" + "=" * 72)
@@ -97,47 +121,77 @@ zensus_form = urllib.parse.urlencode({
     "spatialRel": "esriSpatialRelIntersects", "outFields": "Einwohner",
     "returnGeometry": "false", "resultRecordCount": "2000",
 }).encode()
-roh = json.loads(
-    opener.open(urllib.request.Request(
-        "https://services2.arcgis.com/jUpNdisbWqRpMo35/arcgis/rest/services"
-        "/Zensus2022_grid_final/FeatureServer/0/query",
-        data=zensus_form, headers=KOPFZEILEN), timeout=90
-    ).read().decode()
+roh, zensus_problem = direkt(
+    "Zensus-Dienst",
+    lambda: json.loads(
+        opener.open(urllib.request.Request(
+            "https://services2.arcgis.com/jUpNdisbWqRpMo35/arcgis/rest/services"
+            "/Zensus2022_grid_final/FeatureServer/0/query",
+            data=zensus_form, headers=KOPFZEILEN), timeout=90
+        ).read().decode()
+    ),
 )
-quelle_summe = sum(
-    f["attributes"]["Einwohner"] for f in roh["features"]
-    if f["attributes"].get("Einwohner") is not None
-)
-quelle_zellen = len(roh["features"])
 angezeigt = d["bloecke"]["zensus"]["data"]["bevoelkerung"]["einwohner"]
-zensus_passt = angezeigt["wert"] == quelle_summe and angezeigt["zellen"] == quelle_zellen
+if roh is None:
+    quelle_summe = quelle_zellen = None
+    zensus_passt = None
+else:
+    quelle_summe = sum(
+        f["attributes"]["Einwohner"] for f in roh["features"]
+        if f["attributes"].get("Einwohner") is not None
+    )
+    quelle_zellen = len(roh["features"])
+    zensus_passt = (
+        angezeigt["wert"] == quelle_summe and angezeigt["zellen"] == quelle_zellen
+    )
 
 abfrage = (
     f'[out:json][timeout:60];nwr["amenity"="fast_food"](around:{r0},{lat0},{lon0});'
     "out count;"
 )
-roh_osm = json.loads(
-    opener.open(urllib.request.Request(
-        "https://overpass-api.de/api/interpreter",
-        data=urllib.parse.urlencode({"data": abfrage}).encode(),
-        headers=KOPFZEILEN), timeout=90
-    ).read().decode()
+roh_osm, osm_problem = direkt(
+    "Overpass",
+    lambda: json.loads(
+        opener.open(urllib.request.Request(
+            "https://overpass-api.de/api/interpreter",
+            data=urllib.parse.urlencode({"data": abfrage}).encode(),
+            headers=KOPFZEILEN), timeout=90
+        ).read().decode()
+    ),
 )
-quelle_ff = int(roh_osm["elements"][0]["tags"]["total"])
 angezeigt_ff = (
     d["bloecke"]["osm"]["data"]["zusammenfassung"]["gastronomie"]["nach_typ"]
     .get("Schnellrestaurant", 0)
 )
-osm_passt = angezeigt_ff == quelle_ff
+if roh_osm is None:
+    quelle_ff = None
+    osm_passt = None
+else:
+    quelle_ff = int(roh_osm["elements"][0]["tags"]["total"])
+    osm_passt = angezeigt_ff == quelle_ff
 
+if zensus_passt is None and osm_passt is None:
+    urteil = None
+elif zensus_passt is False or osm_passt is False:
+    urteil = False
+else:
+    urteil = True
 pruefe(
     "§7.1",
     "Jede Zahl ist auf eine reale API-Antwort zurückführbar",
-    zensus_passt and osm_passt,
-    f"Zensus direkt abgefragt: {quelle_zellen} Zellen, Summe Einwohner {quelle_summe:.0f}\n"
-    f"  Anwendung zeigt: {angezeigt['zellen']} Zellen, {angezeigt['wert']:.0f} Einwohner\n"
-    f"  Overpass `out count` fast_food: {quelle_ff}\n"
-    f"  Anwendung zeigt Schnellrestaurants: {angezeigt_ff}",
+    urteil,
+    (
+        f"Zensus direkt abgefragt: {quelle_zellen} Zellen, Summe Einwohner {quelle_summe:.0f}"
+        if roh is not None
+        else f"Zensus: {zensus_problem}"
+    )
+    + f"\n  Anwendung zeigt: {angezeigt['zellen']} Zellen, {angezeigt['wert']:.0f} Einwohner\n"
+    + (
+        f"  Overpass `out count` fast_food: {quelle_ff}"
+        if roh_osm is not None
+        else f"  Overpass: {osm_problem}"
+    )
+    + f"\n  Anwendung zeigt Schnellrestaurants: {angezeigt_ff}",
 )
 
 # ------------------------------------------------------------------- §7.2
@@ -321,11 +375,20 @@ pruefe(
 
 # --------------------------------------------------------------- Ergebnis
 print("\n" + "=" * 72)
-offen = [t for t, ok, _ in ergebnisse if not ok]
-print(f"{len(ergebnisse) - len(offen)} von {len(ergebnisse)} Kriterien erfüllt.")
-if offen:
-    print("Offen:")
-    for t in offen:
+erfuellt = [t for t, ok, _ in ergebnisse if ok is True]
+gescheitert = [t for t, ok, _ in ergebnisse if ok is False]
+ungeprueft = [t for t, ok, _ in ergebnisse if ok is None]
+print(f"{len(erfuellt)} von {len(ergebnisse)} Kriterien erfüllt.")
+if ungeprueft:
+    print("Nicht prüfbar (externe Quelle antwortet gerade nicht):")
+    for t in ungeprueft:
+        print(f"  ? {t}")
+if gescheitert:
+    print("Nicht erfüllt:")
+    for t in gescheitert:
         print(f"  - {t}")
     sys.exit(1)
+if ungeprueft:
+    print("Kein Kriterium verletzt; die offenen Punkte später wiederholen.")
+    sys.exit(2)
 print("Alle Abnahmekriterien aus §7 erfüllt.")

@@ -7,8 +7,12 @@ Das Skript prüft jedes Kriterium aus §7 der Spec mit echten Aufrufen.
 Kriterium §7.1 vergleicht die angezeigten Zahlen mit einem direkten,
 unabhängigen Aufruf von Zensus und Overpass — kein Selbstzeugnis der Anwendung.
 
+Antwortet eine Originalquelle gerade nicht (Overpass liefert unter Last HTTP 504),
+wird das Kriterium als **nicht prüfbar** ausgewiesen und der Lauf endet mit Code 2.
+Weder ein falscher Alarm noch ein falscher Freispruch.
+
 ```
-Abnahmeprüfung gegen http://127.0.0.1:8012
+Abnahmeprüfung gegen http://127.0.0.1:8013
 ========================================================================
 
 Vier Lagetypen laden …
@@ -29,13 +33,13 @@ Vier Lagetypen laden …
          in der Fußzeile von index.html: OSM/ODbL=ja, Zensus=ja
 [OK   ] §7.4 Nominatim ≤ 1 req/s gedrosselt, User-Agent gesetzt
          3 echte Suchen nacheinander (refresh=true): 2.07s (Untergrenze 2,0s)
-           Limiter: {'min_interval_s': 1.0, 'acquisitions': 4, 'throttled': 2}
+           Limiter: {'min_interval_s': 1.0, 'acquisitions': 6, 'throttled': 4}
            User-Agent: gastroviewer/0.1.0 (https://github.com/Pytr92/GastroViewer)
 [OK   ] §7.5 Cache greift: zweiter Aufruf ohne Outbound-Traffic
-         erzwungener Abruf: Zähler 75 → 76 (+1)
-           danach derselbe Aufruf: Zähler bleibt bei 76
-           ganzer Punkt aus dem Cache: 111 ms, outbound_requests=0
-           nachprüfbar unter http://127.0.0.1:8012/api/outbound
+         erzwungener Abruf: Zähler 83 → 84 (+1)
+           danach derselbe Aufruf: Zähler bleibt bei 84
+           ganzer Punkt aus dem Cache: 112 ms, outbound_requests=0
+           nachprüfbar unter http://127.0.0.1:8013/api/outbound
 [OK   ] §7.6 Ausfall einer Quelle bricht die Seite nicht
          Overpass auf toten Endpunkt gezwungen: osm.ok=False
            Meldung: Verbindung nicht möglich — Dienst nicht erreichbar, DNS- oder Proxy-Pr
@@ -68,3 +72,11 @@ Alle Abnahmekriterien aus §7 erfüllt.
   hier in ein Timeout, `overpass-api.de` funktioniert. Siehe Befund A-1 in
   `endpoints-verified.md`. Der Reihum-Fallback ist eingebaut und mit Ersatzobjekten
   getestet (`tests/test_overpass.py`).
+
+## Umsatzschätzung (§9)
+
+Die Auflagen aus §9 sind nicht Teil der §7-Kriterien, sondern in
+`tests/test_schaetzung.py` festgehalten: Ausgabe immer als Spanne, Bestellungen je
+Tag und je Öffnungsstunde als Pflichtausgabe, Formel in der Ausgabe, Beschriftung als
+Vergleichsmaß, jede benutzte Annahme wird auch ausgewiesen. Dazu die Gegenprobe, dass
+keine Schätzgröße in den Datenteil sickert (`test_schaetzung_beruehrt_den_datenteil_nicht`).
