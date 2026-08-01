@@ -401,6 +401,8 @@ VERGLEICH_SPALTEN = [
     {"key": "haltestellen", "titel": "Haltestellen"},
     {"key": "linien", "titel": "Linien (eindeutig)"},
     {"key": "abfahrten", "titel": "Abfahrten/Tag (GTFS)"},
+    {"key": "rad_je_tag", "titel": "Radfahrende/Tag (Messung)"},
+    {"key": "rad_entfernung", "titel": "Entfernung Zählstelle (m)"},
     {"key": "leerstand_osm", "titel": "Leerstände (OSM)"},
     {"key": "erzeugt", "titel": "Abgerufen am"},
 ]
@@ -413,6 +415,7 @@ def _row_for(saved: dict[str, Any]) -> dict[str, Any]:
     z = (bl.get("zensus") or {}).get("data") or {}
     o = (bl.get("osm") or {}).get("data") or {}
     g = (bl.get("gtfs") or {}).get("data") or {}
+    rad = ((bl.get("radzaehlung") or {}).get("data") or {}).get("naechste") or {}
     bev = z.get("bevoelkerung") or {}
     woh = z.get("wohnen") or {}
     zus = o.get("zusammenfassung") or {}
@@ -436,6 +439,8 @@ def _row_for(saved: dict[str, Any]) -> dict[str, Any]:
         "haltestellen": (zus.get("oepnv") or {}).get("haltestellen"),
         "linien": (zus.get("oepnv") or {}).get("linien_eindeutig"),
         "abfahrten": (g or {}).get("abfahrten_gesamt"),
+        "rad_je_tag": rad.get("je_tag_vorjahr"),
+        "rad_entfernung": rad.get("distanz_m"),
         "leerstand_osm": (zus.get("leerstand") or {}).get("gesamt"),
         "erzeugt": (p.get("meta") or {}).get("erzeugt"),
         "lat": saved.get("lat"),
@@ -504,12 +509,20 @@ def point_to_csv(data: dict[str, Any]) -> str:
 
     gsrc, gstand, glic = prov("gtfs")
     g = (bl.get("gtfs") or {}).get("data") or {}
+    rad = ((bl.get("radzaehlung") or {}).get("data") or {}).get("naechste") or {}
     if g:
         w.writerow(["Verkehr", "Abfahrten gesamt", g.get("abfahrten_gesamt"), "je Tag",
                     g.get("referenzdatum", ""), gsrc, gstand, glic])
         for h, n in (g.get("abfahrten_je_stunde") or {}).items():
             w.writerow(["Verkehr", f"Abfahrten {h}:00", n, "je Stunde",
                         g.get("referenzdatum", ""), gsrc, gstand, glic])
+
+    rsrc, rstand, rlic = prov("radzaehlung")
+    r = (bl.get("radzaehlung") or {}).get("data") or {}
+    for s_ in r.get("in_reichweite") or []:
+        w.writerow(["Radverkehr", f"Zählstelle {s_['name']}", s_.get("je_tag_vorjahr"),
+                    "Radfahrende je Tag", f"{s_['distanz_m']} m entfernt",
+                    rsrc, rstand, rlic])
 
     for i, hinweis in enumerate(data.get("grenzen") or [], 1):
         w.writerow(["Grenzen", f"Hinweis {i}", hinweis, "", "", "", "", ""])

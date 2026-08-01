@@ -71,10 +71,33 @@ def _download(url: str, target: Path) -> Path:
     return target
 
 
+# Voreingestellte Ausschnitte. Spart das Nachschlagen von Koordinaten und
+# verhindert den häufigsten Fehler beim Import: die vertauschte Reihenfolge.
+REGIONEN: dict[str, tuple[str, tuple[float, float, float, float]]] = {
+    "muenchen": ("München und unmittelbares Umland", (47.98, 11.28, 48.32, 11.82)),
+    "muenchen-region": ("Region München mit S-Bahn-Umland", (47.80, 11.00, 48.55, 12.10)),
+    "oberbayern": ("Regierungsbezirk Oberbayern", (47.27, 10.75, 48.95, 13.20)),
+    "bayern": ("Freistaat Bayern", (47.27, 8.97, 50.57, 13.84)),
+}
+
+
 def cmd_import_gtfs(args: argparse.Namespace, settings: Settings) -> int:
     from .sources import gtfs
 
     bbox = None
+    if args.region:
+        if args.region not in REGIONEN:
+            print(
+                f"Unbekannte Region: {args.region}. Möglich: "
+                + ", ".join(sorted(REGIONEN)),
+                file=sys.stderr,
+            )
+            return 2
+        beschreibung, bbox = REGIONEN[args.region]
+        print(f"Ausschnitt: {beschreibung} {bbox}")
+        if args.bbox:
+            print("--bbox überschreibt --region", file=sys.stderr)
+            bbox = None
     if args.bbox:
         try:
             parts = [float(x) for x in args.bbox.split(",")]
@@ -198,9 +221,13 @@ def build_parser() -> argparse.ArgumentParser:
     g.add_argument("--url", help="abweichende Feed-URL")
     g.add_argument("--file", help="bereits geladenes ZIP verwenden")
     g.add_argument(
+        "--region",
+        help="voreingestellter Ausschnitt: " + ", ".join(sorted(REGIONEN)),
+    )
+    g.add_argument(
         "--bbox",
         help="min_lat,min_lon,max_lat,max_lon — Import auf eine Region begrenzen "
-        "(dringend empfohlen, sonst mehrere GB)",
+        "(dringend empfohlen, sonst mehrere GB); überschreibt --region",
     )
     g.add_argument("--keep", action="store_true", help="ZIP nach dem Import behalten")
     g.set_defaults(func=cmd_import_gtfs)

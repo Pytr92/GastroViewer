@@ -74,7 +74,7 @@ gastroviewer serve --port 8080           # anderer Port
 gastroviewer status                      # Cache- und GTFS-Status
 gastroviewer clear-cache                 # Cache leeren
 gastroviewer clear-cache --quelle zensus # nur eine Quelle
-gastroviewer import-gtfs --bbox 47.9,11.2,48.4,11.9
+gastroviewer import-gtfs --region muenchen
 gastroviewer check-wms                   # Bodenrichtwert-Dienste gegenprüfen
 ```
 
@@ -87,7 +87,13 @@ Der ÖPNV-Block bleibt leer, bis ein Fahrplan importiert ist. Alles andere funkt
 auch ohne.
 
 ```bash
-# Empfohlen: auf die Zielregion begrenzen (min_lat,min_lon,max_lat,max_lon)
+# Empfohlen: voreingestellter Ausschnitt
+gastroviewer import-gtfs --region muenchen          # Stadt und Umland
+gastroviewer import-gtfs --region muenchen-region   # mit S-Bahn-Umland
+gastroviewer import-gtfs --region oberbayern
+gastroviewer import-gtfs --region bayern
+
+# Oder eigene Bounding-Box (min_lat,min_lon,max_lat,max_lon)
 gastroviewer import-gtfs --bbox 47.9,11.2,48.4,11.9
 
 # Ganz Deutschland — dauert deutlich länger und braucht mehrere Gigabyte

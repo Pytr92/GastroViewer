@@ -413,6 +413,50 @@ Layername nicht mehr stimmt — Brandenburg hat seine Dienst-URL 2025 umgestellt
 
 ---
 
+## München und Bayern (Recherche 2026-08-01)
+
+Gesucht wurde gezielt nach Quellen, die das Werkzeug für die Zielregion besser machen.
+Geprüft und **aufgenommen**:
+
+| Quelle | Prüfung | Ergebnis |
+|---|---|---|
+| Raddauerzählstellen München, WFS `mor_wfs:raddauerzaehlstellen` | GetFeature, GeoJSON | HTTP 200, **6 Features** mit Jahres- und Monatssummen, dl-de/by-2-0 |
+| Luftbild Bayern DOP 40 cm, `geoservices.bayern.de/od/wms/dop/v1/dop40` | GetCapabilities | WMS 1.3.0, Layer `by_dop40c`, EPSG:3857, **kostenfrei, CC BY 4.0** |
+| ALKIS-Parzellarkarte Bayern, `…/od/wms/alkis/v1/parzellarkarte` | GetCapabilities | WMS 1.3.0, Layer `by_alkis_parzellarkarte_farbe`, max. Maßstab 1:5.000 → ab Zoom 17 |
+
+Beispielwerte der Zählstellen (unverändert übernommen):
+
+```
+Erhardtstr. (Deutsches Museum)   1.415.000 Radfahrende 2025  →  3.877 je Tag
+Rudolf-Harbig-Weg (Olympiapark)    831.000                   →  2.277 je Tag
+Birketweg (Hirschgarten)           558.000                   →  1.529 je Tag
+Arnulfstr. 9–11 Südseite           432.000                   →  1.184 je Tag
+Margaretenstr. (Harras)         „Derzeit keine Daten"
+```
+
+**Befunde:**
+
+- Die Felder kommen als **Zeichenketten**, teils mit HTML im Infofeld und mit
+  „Derzeit keine Daten" statt eines Werts. Letzteres darf nicht zu 0 werden — eine
+  gestörte Zählstelle ist etwas anderes als eine leere Straße.
+- Der WFS-Typname lautet `mor_wfs:raddauerzaehlstellen`, **nicht**
+  `mor_wfs:vab_raddauerzaehlstellen` wie in der Ressourcen-URL des Open-Data-Portals;
+  letzterer antwortet mit `Feature type unknown`.
+- `geoservices.bayern.de/od/wms/dtk` und `.../adv_dop80` antworten mit HTTP 500,
+  `.../blfd/v1/denkmaldaten` und `.../dflk/v1/dflk` mit HTTP 404 — nicht aufgenommen.
+
+### Geprüft und **nicht** aufgenommen
+
+| Quelle | Grund |
+|---|---|
+| hystreet | Im kostenfreien Modell ist die gewerbliche Nutzung untersagt (Notizen §1). Bleibt Link. |
+| Open-Data-Portal München, Suche „passanten", „frequenz", „einzelhandel", „kaufkraft" | jeweils **0 Treffer** — es gibt dort keine Passanten- oder Kaufkraftdaten |
+| Indikatorenatlas München (68 Datensätze) | Kleinräumige Demografie je Stadtbezirksviertel. Das Zensus-100-m-Gitter ist feiner und liegt schon vor. |
+| Beschäftigte am Arbeitsort (Regionalstatistik/GENESIS) | Der eigentlich fehlende Mittagsgeschäft-Indikator, aber nur mit Konto abrufbar. Bleibt Link auf den Pendleratlas. |
+| Denkmalliste Bayern (BLfD) | Kein offener OGC-Dienst gefunden. |
+
+---
+
 ## Fazit für die Umsetzung
 
 1. Alle fünf Pflichtendpunkte funktionieren. Kein Feature muss gestrichen werden.

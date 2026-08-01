@@ -132,9 +132,10 @@ class PointService:
             self.zensus(lat, lon, radius, refresh),
             self.osm(lat, lon, radius, refresh),
             self.gtfs(lat, lon, radius),
+            self.radzaehlung(lat, lon, radius, refresh),
             return_exceptions=True,
         )
-        names = ["adresse", "zensus", "osm", "gtfs"]
+        names = ["adresse", "zensus", "osm", "gtfs", "radzaehlung"]
         blocks: dict[str, Any] = {}
         for name, res in zip(names, results):
             if isinstance(res, BaseException):

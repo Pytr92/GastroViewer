@@ -430,3 +430,36 @@ def test_wms_ebenen_endpunkt(client):
     assert {e["schluessel"] for e in d["ebenen"]} == {"by_dop40", "by_alkis"}
     d2 = client.get("/api/wms/ebenen", params={"bundesland_code": "05"}).json()
     assert d2["ebenen"] == []
+
+
+def test_radzaehlung_ist_teil_des_punktes_und_des_exports(client, monkeypatch):
+    """Die gemessene Frequenz muss auch in Export und Vergleich landen — sonst
+    fehlt beim Standortvergleich ausgerechnet die einzige Messgröße."""
+    from gastroviewer.sources.base import Provenance, SourceResult
+
+    async def fake_rad(self, lat, lon, radius, refresh=False):
+        return SourceResult(
+            name="radzaehlung", ok=True,
+            data={"naechste": {"name": "Erhardtstr.", "distanz_m": 1294,
+                               "je_tag_vorjahr": 3877, "summe_vorjahr": 1415000},
+                  "in_reichweite": [{"name": "Erhardtstr.", "distanz_m": 1294,
+                                     "je_tag_vorjahr": 3877}]},
+            provenance=Provenance(source="Raddauerzählstellen München",
+                                  license="dl-de/by-2-0", stand="2025"),
+        )
+
+    from gastroviewer.service import PointService
+    monkeypatch.setattr(PointService, "radzaehlung", fake_rad)
+
+    d = client.get("/api/point", params={"lat": LAT, "lon": LON, "r": R}).json()
+    assert d["bloecke"]["radzaehlung"]["data"]["naechste"]["je_tag_vorjahr"] == 3877
+
+    csv_text = client.get("/api/export/point.csv",
+                          params={"lat": LAT, "lon": LON, "r": R}).text
+    assert "Radverkehr" in csv_text and "3877" in csv_text
+
+    client.post("/api/points", json={"label": "A", "lat": LAT, "lon": LON, "radius": R})
+    v = client.get("/api/points/vergleich").json()
+    assert "rad_je_tag" in {c["key"] for c in v["spalten"]}
+    assert v["zeilen"][0]["rad_je_tag"] == 3877
+    assert v["zeilen"][0]["rad_entfernung"] == 1294

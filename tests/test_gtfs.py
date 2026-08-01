@@ -193,3 +193,38 @@ def test_stunden_ueber_24_werden_auf_den_tag_umgelegt(importiert):
     # Egal ob vorhanden oder nicht: es darf keinen Stundenschlüssel jenseits 23 geben.
     assert set(g["abfahrten_je_stunde"]) == {f"{h:02d}" for h in range(24)}
     assert spaet >= 0
+
+
+# ------------------------------------------------- Voreingestellte Regionen
+
+
+def test_regionen_sind_plausibel_und_richtig_herum():
+    """Die häufigste Fehlbedienung beim Import ist die vertauschte Reihenfolge
+    der Bounding-Box. Die Voreinstellungen dürfen den Fehler nicht enthalten."""
+    from gastroviewer.__main__ import REGIONEN
+
+    assert "muenchen" in REGIONEN
+    for name, (beschreibung, (min_lat, min_lon, max_lat, max_lon)) in REGIONEN.items():
+        assert beschreibung, name
+        assert min_lat < max_lat, f"{name}: Breitengrade vertauscht"
+        assert min_lon < max_lon, f"{name}: Längengrade vertauscht"
+        assert 47.0 < min_lat < max_lat < 55.5, f"{name}: außerhalb Deutschlands"
+        assert 5.5 < min_lon < max_lon < 15.5, f"{name}: außerhalb Deutschlands"
+
+
+def test_muenchen_liegt_in_allen_bayerischen_ausschnitten():
+    from gastroviewer.__main__ import REGIONEN
+
+    lat, lon = 48.1334, 11.5674  # Sendlinger Tor
+    for name in ("muenchen", "muenchen-region", "oberbayern", "bayern"):
+        a, b, c, d = REGIONEN[name][1]
+        assert a <= lat <= c and b <= lon <= d, f"{name} enthält München nicht"
+
+
+def test_ausschnitte_sind_ineinander_geschachtelt():
+    from gastroviewer.__main__ import REGIONEN
+
+    klein = REGIONEN["muenchen"][1]
+    gross = REGIONEN["bayern"][1]
+    assert gross[0] <= klein[0] and gross[1] <= klein[1]
+    assert gross[2] >= klein[2] and gross[3] >= klein[3]
