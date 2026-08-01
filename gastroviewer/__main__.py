@@ -47,6 +47,10 @@ def cmd_serve(args: argparse.Namespace, settings: Settings) -> int:
 
 def _download(url: str, target: Path) -> Path:
     print(f"Lade {url}")
+    # Fortschritt nur im Terminal überschreibend ausgeben. In eine Datei oder
+    # Pipe umgeleitet würde \r sonst hunderte Zeilen Rauschen erzeugen.
+    tty = sys.stdout.isatty()
+    naechste_meldung = 10
     with urllib.request.urlopen(url) as resp:  # noqa: S310 — feste, konfigurierte URL
         total = int(resp.headers.get("Content-Length") or 0)
         done = 0
@@ -54,10 +58,16 @@ def _download(url: str, target: Path) -> Path:
             while chunk := resp.read(1024 * 256):
                 fh.write(chunk)
                 done += len(chunk)
-                if total:
-                    pct = done / total * 100
+                if not total:
+                    continue
+                pct = done / total * 100
+                if tty:
                     print(f"  {_fmt_bytes(done)} / {_fmt_bytes(total)} ({pct:.0f} %)", end="\r")
-    print()
+                elif pct >= naechste_meldung:
+                    print(f"  {_fmt_bytes(done)} / {_fmt_bytes(total)} ({pct:.0f} %)")
+                    naechste_meldung += 10
+    if tty:
+        print()
     return target
 
 
