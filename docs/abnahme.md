@@ -12,7 +12,7 @@ wird das Kriterium als **nicht prüfbar** ausgewiesen und der Lauf endet mit Cod
 Weder ein falscher Alarm noch ein falscher Freispruch.
 
 ```
-Abnahmeprüfung gegen http://127.0.0.1:8013
+Abnahmeprüfung gegen http://127.0.0.1:8015
 ========================================================================
 
 Vier Lagetypen laden …
@@ -32,14 +32,14 @@ Vier Lagetypen laden …
 [OK   ] §7.3 Attribution OSM/ODbL und Zensus-Copyright sichtbar
          in der Fußzeile von index.html: OSM/ODbL=ja, Zensus=ja
 [OK   ] §7.4 Nominatim ≤ 1 req/s gedrosselt, User-Agent gesetzt
-         3 echte Suchen nacheinander (refresh=true): 2.07s (Untergrenze 2,0s)
-           Limiter: {'min_interval_s': 1.0, 'acquisitions': 6, 'throttled': 4}
+         3 echte Suchen nacheinander (refresh=true): 2.12s (Untergrenze 2,0s)
+           Limiter: {'min_interval_s': 1.0, 'acquisitions': 4, 'throttled': 2}
            User-Agent: gastroviewer/0.1.0 (https://github.com/Pytr92/GastroViewer)
 [OK   ] §7.5 Cache greift: zweiter Aufruf ohne Outbound-Traffic
-         erzwungener Abruf: Zähler 83 → 84 (+1)
-           danach derselbe Aufruf: Zähler bleibt bei 84
-           ganzer Punkt aus dem Cache: 112 ms, outbound_requests=0
-           nachprüfbar unter http://127.0.0.1:8013/api/outbound
+         erzwungener Abruf: Zähler 122 → 123 (+1)
+           danach derselbe Aufruf: Zähler bleibt bei 123
+           ganzer Punkt aus dem Cache: 172 ms, outbound_requests=0
+           nachprüfbar unter http://127.0.0.1:8015/api/outbound
 [OK   ] §7.6 Ausfall einer Quelle bricht die Seite nicht
          Overpass auf toten Endpunkt gezwungen: osm.ok=False
            Meldung: Verbindung nicht möglich — Dienst nicht erreichbar, DNS- oder Proxy-Pr
@@ -72,6 +72,13 @@ Alle Abnahmekriterien aus §7 erfüllt.
   hier in ein Timeout, `overpass-api.de` funktioniert. Siehe Befund A-1 in
   `endpoints-verified.md`. Der Reihum-Fallback ist eingebaut und mit Ersatzobjekten
   getestet (`tests/test_overpass.py`).
+
+## Bodenrichtwert-Kartendienste (Phase 4)
+
+`gastroviewer check-wms` prüft die sieben eingebundenen Landesdienste einzeln mit
+`GetCapabilities` und meldet, wenn eine URL oder ein Layername nicht mehr stimmt.
+Letzter Lauf am 01.08.2026: **7 von 7 in Ordnung.** Die vollständigen Prüfergebnisse
+inklusive `GetMap`- und `GetFeatureInfo`-Belegen stehen in `endpoints-verified.md`.
 
 ## Umsatzschätzung (§9)
 
