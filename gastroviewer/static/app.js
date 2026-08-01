@@ -998,44 +998,116 @@ const HOCH_IST_AUFFAELLIG = new Set([
   'abfahrten_je_einwohner', 'abfahrten_mittag', 'mittagsanteil',
 ]);
 
+/* Sichtbare Spaltengruppen. Die Tabelle ist auf 36 Spalten gewachsen; ohne
+   Gruppen scrollt man an der Bezeichnung vorbei und findet nichts wieder.
+   Abgeschaltet werden nur ganze Gruppen — einzelne Spalten würden die Tabelle
+   in beliebig viele Zustände zerfallen lassen. */
+const GRUPPEN_SPEICHER = 'gastroviewer.vergleichsgruppen';
+let sichtbareGruppen = null;
+
+function ladeGruppenwahl(gruppen) {
+  if (sichtbareGruppen) return sichtbareGruppen;
+  let gemerkt = null;
+  try {
+    gemerkt = JSON.parse(localStorage.getItem(GRUPPEN_SPEICHER) || 'null');
+  } catch { gemerkt = null; }
+  const gueltig = new Set(gruppen.map((g) => g.key));
+  sichtbareGruppen = new Set(
+    Array.isArray(gemerkt) && gemerkt.every((k) => gueltig.has(k))
+      ? gemerkt
+      : gruppen.filter((g) => g.vorgabe).map((g) => g.key),
+  );
+  // Feste Gruppen lassen sich nicht abwählen — ohne Bezeichnung ist die
+  // Tabelle nicht lesbar.
+  for (const g of gruppen) if (g.fest) sichtbareGruppen.add(g.key);
+  return sichtbareGruppen;
+}
+
+function merkeGruppenwahl() {
+  localStorage.setItem(GRUPPEN_SPEICHER, JSON.stringify([...sichtbareGruppen]));
+}
+
 async function zeigeVergleich() {
   const d = await (await fetch('/api/points/vergleich')).json();
   const ziel = document.getElementById('vergleich-inhalt');
+  const gruppen = d.gruppen || [];
+  const sichtbar = ladeGruppenwahl(gruppen);
+
   if (!d.zeilen.length) {
     ziel.replaceChildren(el('p', { class: 'hinweis-klein' },
       'Noch kein Punkt gemerkt. „Punkt merken" legt den aktuellen Standort ab.'));
-  } else {
-    const beste = {};
-    for (const key of HOCH_IST_AUFFAELLIG) {
-      const werte = d.zeilen.map((z) => z[key]).filter((v) => typeof v === 'number');
-      if (werte.length > 1) beste[key] = Math.max(...werte);
-    }
-    const tab = el('table');
-    tab.append(el('tr', {}, d.spalten.map((c) => el('th', {}, c.titel)), el('th', {}, '')));
-    for (const z of d.zeilen) {
-      const tr = el('tr', {});
-      for (const c of d.spalten) {
-        const v = z[c.key];
-        const num = typeof v === 'number';
-        const klassen = [num ? 'num' : 'text'];
-        if (beste[c.key] !== undefined && v === beste[c.key]) klassen.push('best');
-        tr.append(el('td', {
-          class: klassen.join(' '),
-          title: v === null || v === undefined ? '' : String(v),
-        }, v === null || v === undefined ? '—'
-           : num ? (c.stellen === undefined ? NF1 : nfFest(c.stellen)).format(v)
-           : String(v)));
-      }
-      tr.append(el('td', {}, el('button', {
-        onclick: async () => {
-          await fetch(`/api/points/${z.id}`, { method: 'DELETE' });
+    document.getElementById('vergleich-dialog').showModal();
+    return;
+  }
+
+  const spalten = d.spalten.filter((c) => sichtbar.has(c.gruppe));
+
+  /* Schalterleiste: je Gruppe ein Häkchen mit der Zahl ihrer Spalten. */
+  const schalter = el('div', { class: 'gruppenwahl' },
+    el('span', { class: 'gruppenwahl-titel' }, 'Spalten:'),
+    gruppen.map((g) => {
+      const anzahl = d.spalten.filter((c) => c.gruppe === g.key).length;
+      const box = el('input', {
+        type: 'checkbox',
+        checked: sichtbar.has(g.key),
+        disabled: !!g.fest,
+        id: `gruppe-${g.key}`,
+        onchange: (ev) => {
+          if (ev.target.checked) sichtbar.add(g.key); else sichtbar.delete(g.key);
+          merkeGruppenwahl();
           zeigeVergleich();
         },
-      }, 'löschen')));
-      tab.append(tr);
-    }
-    ziel.replaceChildren(tab);
+      });
+      return el('label', { class: g.fest ? 'fest' : '', for: `gruppe-${g.key}` },
+        box, ` ${g.titel} (${anzahl})`);
+    }),
+    el('span', { class: 'gruppenwahl-zahl' },
+      `${spalten.length} von ${d.spalten.length} Spalten · CSV enthält immer alle`));
+
+  const beste = {};
+  for (const key of HOCH_IST_AUFFAELLIG) {
+    const werte = d.zeilen.map((z) => z[key]).filter((v) => typeof v === 'number');
+    if (werte.length > 1) beste[key] = Math.max(...werte);
   }
+
+  const tab = el('table', { class: 'vergleich-tabelle' });
+
+  /* Gruppenzeile über den Spaltenköpfen — sonst weiß man nach dem dritten
+     Scrollschritt nicht mehr, worauf man schaut. */
+  const gruppenzeile = el('tr', { class: 'gruppenzeile' });
+  for (const g of gruppen) {
+    const n = spalten.filter((c) => c.gruppe === g.key).length;
+    if (n) gruppenzeile.append(el('th', { colspan: String(n), class: `gr-${g.key}` }, g.titel));
+  }
+  gruppenzeile.append(el('th', {}, ''));
+  tab.append(gruppenzeile);
+
+  tab.append(el('tr', {}, spalten.map((c) => el('th', {}, c.titel)), el('th', {}, '')));
+
+  for (const z of d.zeilen) {
+    const tr = el('tr', {});
+    for (const c of spalten) {
+      const v = z[c.key];
+      const num = typeof v === 'number';
+      const klassen = [num ? 'num' : 'text'];
+      if (beste[c.key] !== undefined && v === beste[c.key]) klassen.push('best');
+      tr.append(el('td', {
+        class: klassen.join(' '),
+        title: v === null || v === undefined ? '' : String(v),
+      }, v === null || v === undefined ? '—'
+         : num ? (c.stellen === undefined ? NF1 : nfFest(c.stellen)).format(v)
+         : String(v)));
+    }
+    tr.append(el('td', {}, el('button', {
+      onclick: async () => {
+        await fetch(`/api/points/${z.id}`, { method: 'DELETE' });
+        zeigeVergleich();
+      },
+    }, 'löschen')));
+    tab.append(tr);
+  }
+
+  ziel.replaceChildren(schalter, el('div', { class: 'tabelle-rahmen' }, tab));
   document.getElementById('vergleich-dialog').showModal();
 }
 

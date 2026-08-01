@@ -456,6 +456,43 @@ dialog::backdrop { background: rgba(0,0,0,.35); }
 .tabelle-rahmen td.num { text-align: right; font-variant-numeric: tabular-nums; }
 .tabelle-rahmen td.best { background: #eaf5ed; font-weight: 600; }
 
+/* --- Vergleichstabelle: Gruppen und feste erste Spalte --- */
+
+/* Ohne festgestellte Bezeichnung weiß man nach dem dritten Scrollschritt nicht
+   mehr, welche Zeile welcher Standort ist. */
+.vergleich-tabelle th:first-child,
+.vergleich-tabelle td:first-child {
+  position: sticky;
+  left: 0;
+  z-index: 2;
+  background: #fff;
+  border-right: 2px solid var(--rand);
+}
+.vergleich-tabelle th:first-child { z-index: 3; background: var(--bg); }
+.vergleich-tabelle tr.gruppenzeile th {
+  top: 0;
+  text-align: center;
+  font-size: 12px;
+  letter-spacing: .02em;
+  background: #eef2f6;
+  border-bottom: 2px solid var(--rand);
+}
+/* Die Spaltenköpfe rutschen unter die Gruppenzeile, nicht darüber. */
+.vergleich-tabelle tr:nth-child(2) th { top: 27px; }
+
+.gruppenwahl {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 14px;
+  margin-bottom: 9px;
+  font-size: 12.5px;
+}
+.gruppenwahl-titel { font-weight: 600; }
+.gruppenwahl label { display: inline-flex; align-items: center; gap: 4px; cursor: pointer; }
+.gruppenwahl label.fest { color: #7a838c; cursor: default; }
+.gruppenwahl-zahl { margin-left: auto; color: #5b6570; }
+
 /* -------------------------------------------------------------- Fuss */
 
 #fuss {

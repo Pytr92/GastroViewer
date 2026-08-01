@@ -328,7 +328,11 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     async def vergleich(request: Request):
         cache: AsyncCache = request.app.state.cache
         rows = await asyncio.to_thread(cache.sync.list_points)
-        return {"spalten": VERGLEICH_SPALTEN, "zeilen": [_row_for(r) for r in rows]}
+        return {
+            "spalten": VERGLEICH_SPALTEN,
+            "gruppen": VERGLEICH_GRUPPEN,
+            "zeilen": [_row_for(r) for r in rows],
+        }
 
     # ---------------------------------------------------------- Export
 
@@ -425,51 +429,83 @@ def je_bezugsgroesse(
     return round(zaehler / nenner * faktor, stellen)
 
 
+# Spaltengruppen. Die Tabelle ist über die Ausbaustufen auf 37 Spalten
+# gewachsen; ohne Gruppierung scrollt man an der Bezeichnung vorbei und findet
+# nichts wieder. "vorgabe" bestimmt, welche Gruppen beim Öffnen sichtbar sind —
+# ausgeschaltet werden nur Gruppen, nie einzelne Spalten, damit die Tabelle
+# nicht in beliebig viele Zustände zerfällt.
+VERGLEICH_GRUPPEN = [
+    {"key": "standort", "titel": "Standort", "vorgabe": True, "fest": True},
+    {"key": "bevoelkerung", "titel": "Bevölkerung & Wohnen", "vorgabe": True},
+    {"key": "wettbewerb", "titel": "Wettbewerb", "vorgabe": True},
+    {"key": "erreichbarkeit", "titel": "Erreichbarkeit zu Fuß", "vorgabe": False},
+    {"key": "verkehr", "titel": "Verkehr & ÖPNV", "vorgabe": True},
+    {"key": "sonstiges", "titel": "Weiteres", "vorgabe": False},
+]
+
 VERGLEICH_SPALTEN = [
-    {"key": "label", "titel": "Bezeichnung"},
-    {"key": "adresse", "titel": "Adresse"},
-    {"key": "gemeinde", "titel": "Gemeinde"},
-    {"key": "ags", "titel": "Gemeindeschlüssel"},
-    {"key": "radius", "titel": "Radius (m)"},
-    {"key": "einwohner", "titel": "Einwohner"},
-    {"key": "durchschnittsalter", "titel": "Durchschnittsalter"},
-    {"key": "haushaltsgroesse", "titel": "Haushaltsgröße"},
+    # --- Standort (immer sichtbar, erste Spalte bleibt beim Scrollen stehen) ---
+    {"key": "label", "titel": "Bezeichnung", "gruppe": "standort"},
+    {"key": "adresse", "titel": "Adresse", "gruppe": "standort"},
+    {"key": "gemeinde", "titel": "Gemeinde", "gruppe": "standort"},
+    {"key": "radius", "titel": "Radius (m)", "gruppe": "standort"},
+
+    # --- Bevölkerung und Wohnen ---
+    {"key": "einwohner", "titel": "Einwohner", "gruppe": "bevoelkerung"},
+    {"key": "durchschnittsalter", "titel": "Durchschnittsalter", "gruppe": "bevoelkerung"},
+    {"key": "haushaltsgroesse", "titel": "Haushaltsgröße", "gruppe": "bevoelkerung"},
     # "stellen" legt die Nachkommastellen in Tabelle und Export fest. Ohne die
     # Angabe rundet die Oberfläche auf eine Stelle — bei kleinen Verhältniszahlen
     # verschwindet damit genau der Unterschied, den man vergleichen will.
-    {"key": "miete_qm", "titel": "Nettokaltmiete €/m²", "stellen": 2},
-    {"key": "leerstandsquote", "titel": "Leerstandsquote %", "stellen": 2},
-    {"key": "gastro_gesamt", "titel": "Gastronomie gesamt"},
-    {"key": "fast_food", "titel": "davon Schnellrestaurants"},
-    {"key": "ketten", "titel": "davon Ketten"},
-    {"key": "gastro_bis_150", "titel": "Gastronomie bis 150 m"},
-    {"key": "gastro_bis_300", "titel": "Gastronomie bis 300 m"},
-    {"key": "naechster_wettbewerber", "titel": "Nächster Betrieb (m)"},
+    {"key": "miete_qm", "titel": "Nettokaltmiete €/m²", "stellen": 2,
+     "gruppe": "bevoelkerung"},
+    {"key": "leerstandsquote", "titel": "Leerstandsquote %", "stellen": 2,
+     "gruppe": "bevoelkerung"},
+
+    # --- Wettbewerb ---
+    {"key": "gastro_gesamt", "titel": "Gastronomie gesamt", "gruppe": "wettbewerb"},
+    {"key": "fast_food", "titel": "davon Schnellrestaurants", "gruppe": "wettbewerb"},
+    {"key": "gastro_bis_150", "titel": "Gastronomie bis 150 m", "gruppe": "wettbewerb"},
+    {"key": "gastro_bis_300", "titel": "Gastronomie bis 300 m", "gruppe": "wettbewerb"},
+    {"key": "naechster_wettbewerber", "titel": "Nächster Betrieb (m)",
+     "gruppe": "wettbewerb"},
     {"key": "wettbewerb_je_1000", "titel": "Wettbewerber je 1.000 Einw. (berechnet)",
-     "stellen": 1},
+     "stellen": 1, "gruppe": "wettbewerb"},
     {"key": "fastfood_je_1000", "titel": "Schnellrestaurants je 1.000 Einw. (berechnet)",
-     "stellen": 2},
-    {"key": "frequenzbringer", "titel": "Frequenzbringer"},
-    {"key": "haltestellen", "titel": "Haltestellen"},
-    {"key": "linien", "titel": "Linien (eindeutig)"},
-    {"key": "abfahrten", "titel": "Abfahrten/Tag (GTFS)"},
-    {"key": "abfahrten_mittag", "titel": "Abfahrten 11–14 Uhr"},
-    {"key": "mittagsanteil", "titel": "Anteil Mittag % (berechnet)", "stellen": 1},
-    {"key": "abfahrten_je_einwohner", "titel": "Abfahrten je Einwohner (berechnet)",
-     "stellen": 2},
-    {"key": "dtv_kfz", "titel": "Kfz/Tag stärkste Zählstelle"},
-    {"key": "dtv_sv_anteil", "titel": "Schwerverkehr %"},
-    {"key": "rad_je_tag", "titel": "Radfahrende/Tag (Messung)"},
-    {"key": "rad_entfernung", "titel": "Entfernung Zählstelle (m)"},
-    {"key": "neubau_anteil", "titel": "Gebäude ab 2020 %", "stellen": 1},
-    # Nur belegt, wenn der Gehwegblock für diesen Punkt geladen war.
-    {"key": "einwohner_gehweg", "titel": "Einwohner zu Fuß erreichbar"},
+     "stellen": 2, "gruppe": "wettbewerb"},
+
+    # --- Erreichbarkeit zu Fuß (nur belegt, wenn Block 4b geladen war) ---
+    {"key": "einwohner_gehweg", "titel": "Einwohner zu Fuß erreichbar",
+     "gruppe": "erreichbarkeit"},
     {"key": "erschliessung_einwohner", "titel": "Erschließungsgrad Einwohner %",
-     "stellen": 1},
-    {"key": "gastro_gehweg", "titel": "Gastronomie zu Fuß erreichbar"},
-    {"key": "umwegfaktor", "titel": "Umwegfaktor (Median)", "stellen": 2},
-    {"key": "leerstand_osm", "titel": "Leerstände (OSM)"},
-    {"key": "erzeugt", "titel": "Abgerufen am"},
+     "stellen": 1, "gruppe": "erreichbarkeit"},
+    {"key": "gastro_gehweg", "titel": "Gastronomie zu Fuß erreichbar",
+     "gruppe": "erreichbarkeit"},
+    {"key": "umwegfaktor", "titel": "Umwegfaktor (Median)", "stellen": 2,
+     "gruppe": "erreichbarkeit"},
+
+    # --- Verkehr und ÖPNV ---
+    {"key": "frequenzbringer", "titel": "Frequenzbringer", "gruppe": "verkehr"},
+    {"key": "haltestellen", "titel": "Haltestellen", "gruppe": "verkehr"},
+    {"key": "linien", "titel": "Linien (eindeutig)", "gruppe": "verkehr"},
+    {"key": "abfahrten", "titel": "Abfahrten/Tag (GTFS)", "gruppe": "verkehr"},
+    {"key": "abfahrten_mittag", "titel": "Abfahrten 11–14 Uhr", "gruppe": "verkehr"},
+    {"key": "mittagsanteil", "titel": "Anteil Mittag % (berechnet)", "stellen": 1,
+     "gruppe": "verkehr"},
+    {"key": "abfahrten_je_einwohner", "titel": "Abfahrten je Einwohner (berechnet)",
+     "stellen": 2, "gruppe": "verkehr"},
+    {"key": "dtv_kfz", "titel": "Kfz/Tag stärkste Zählstelle", "gruppe": "verkehr"},
+    {"key": "dtv_sv_anteil", "titel": "Schwerverkehr %", "gruppe": "verkehr"},
+    {"key": "rad_je_tag", "titel": "Radfahrende/Tag (Messung)", "gruppe": "verkehr"},
+
+    # --- Weiteres ---
+    {"key": "ags", "titel": "Gemeindeschlüssel", "gruppe": "sonstiges"},
+    {"key": "ketten", "titel": "davon Ketten", "gruppe": "sonstiges"},
+    {"key": "rad_entfernung", "titel": "Entfernung Zählstelle (m)", "gruppe": "sonstiges"},
+    {"key": "neubau_anteil", "titel": "Gebäude ab 2020 %", "stellen": 1,
+     "gruppe": "sonstiges"},
+    {"key": "leerstand_osm", "titel": "Leerstände (OSM)", "gruppe": "sonstiges"},
+    {"key": "erzeugt", "titel": "Abgerufen am", "gruppe": "sonstiges"},
 ]
 
 

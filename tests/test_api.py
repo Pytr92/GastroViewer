@@ -656,3 +656,47 @@ def test_deckkraftregler_ist_vorhanden_und_beruehrt_die_grundkarte_nicht():
     css = (Path(__file__).resolve().parents[1]
            / "gastroviewer" / "static" / "style.css").read_text(encoding="utf-8")
     assert ".deckkraft-regler" in css
+
+
+# ------------------------------------------------------- Spaltengruppen
+
+
+def test_jede_vergleichsspalte_gehoert_zu_einer_gruppe(client):
+    """Sonst fällt sie aus der Tabelle heraus, sobald gefiltert wird."""
+    from gastroviewer.api import VERGLEICH_GRUPPEN, VERGLEICH_SPALTEN
+
+    bekannt = {g["key"] for g in VERGLEICH_GRUPPEN}
+    ohne = [c["key"] for c in VERGLEICH_SPALTEN if c.get("gruppe") not in bekannt]
+    assert not ohne, f"Spalten ohne gültige Gruppe: {ohne}"
+
+
+def test_gruppen_kommen_mit_der_vergleichsantwort(client):
+    v = client.get("/api/points/vergleich").json()
+    assert v["gruppen"], "die Oberfläche braucht die Gruppen zum Schalten"
+    fest = [g for g in v["gruppen"] if g.get("fest")]
+    assert len(fest) == 1 and fest[0]["key"] == "standort", (
+        "genau eine Gruppe muss unabschaltbar sein — ohne Bezeichnung ist die "
+        "Tabelle nicht lesbar"
+    )
+    assert v["spalten"][0]["key"] == "label", "die feste Spalte muss vorne stehen"
+
+
+def test_vorgabe_zeigt_deutlich_weniger_als_alle_spalten(client):
+    from gastroviewer.api import VERGLEICH_GRUPPEN, VERGLEICH_SPALTEN
+
+    vorgabe = {g["key"] for g in VERGLEICH_GRUPPEN if g["vorgabe"] or g.get("fest")}
+    sichtbar = [c for c in VERGLEICH_SPALTEN if c["gruppe"] in vorgabe]
+    assert len(sichtbar) < len(VERGLEICH_SPALTEN), "die Vorgabe muss etwas ausblenden"
+    assert "erreichbarkeit" not in vorgabe, (
+        "die Gehwegspalten sind meist leer und gehören nicht in die Vorgabe"
+    )
+
+
+def test_csv_enthaelt_immer_alle_spalten(client):
+    """Die Auswahl in der Oberfläche darf den Export nicht beschneiden."""
+    from gastroviewer.api import VERGLEICH_SPALTEN
+
+    client.post("/api/points", json={"label": "A", "lat": LAT, "lon": LON, "radius": R})
+    kopf = client.get("/api/export/vergleich.csv").text.splitlines()[0]
+    for c in VERGLEICH_SPALTEN:
+        assert c["titel"] in kopf, f"{c['titel']} fehlt im CSV"
