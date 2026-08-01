@@ -704,7 +704,7 @@ function zeigeGtfs(d) {
   const kz = el('div', { class: 'kennzahlen' },
     kennzahl(`Abfahrten am ${g.referenzdatum}`, g.abfahrten_gesamt),
     kennzahl('davon 6–24 Uhr', g.abfahrten_06_24),
-    kennzahl('Haltestellen', g.haltestellen_gesamt),
+    kennzahl('bediente Haltestellen', g.haltestellen_gesamt),
     kennzahl('Spitzenstunde', g.spitzenstunde ? g.spitzenstunde.abfahrten : null));
 
   // Balken 6–24 Uhr, Spec §4.4
@@ -723,7 +723,7 @@ function zeigeGtfs(d) {
   const haltTab = el('table', { class: 'daten' },
     el('tr', {}, el('th', {}, 'Haltestelle'), el('th', { class: 'num' }, 'm'),
       el('th', { class: 'num' }, 'Abfahrten')));
-  for (const h of g.haltestellen.slice(0, 12)) {
+  for (const h of g.haltestellen.filter((h) => h.abfahrten > 0).slice(0, 12)) {
     haltTab.append(el('tr', {},
       el('td', {}, `${h.name}${h.linien.length ? ` (${h.linien.slice(0, 8).join(', ')})` : ''}`),
       el('td', { class: 'num' }, NF.format(h.distanz_m)),

@@ -107,6 +107,7 @@ def import_feed(
     zip_path: Path,
     *,
     bbox: tuple[float, float, float, float] | None = None,
+    quelle: str | None = None,
     progress: Callable[[str], None] = print,
 ) -> dict[str, Any]:
     """Importiert ein GTFS-ZIP in ``gtfs.sqlite``.
@@ -114,6 +115,10 @@ def import_feed(
     ``bbox`` = (min_lat, min_lon, max_lat, max_lon) begrenzt den Import auf eine
     Region. Ohne Begrenzung wird ganz Deutschland importiert — das dauert und
     braucht mehrere Gigabyte.
+
+    ``quelle`` ist die Herkunftsangabe für die Quellenfußzeile. Bei einem
+    Download muss das die Feed-URL sein — der temporäre ZIP-Pfad ist nach dem
+    Import gelöscht und sagt niemandem etwas.
     """
     settings.ensure_dirs()
     db_path = settings.gtfs_db_path
@@ -257,7 +262,7 @@ def import_feed(
     ref = _reference_date(conn)
     meta = {
         "importiert_am": now_iso(),
-        "quelle": str(zip_path),
+        "quelle": quelle or str(zip_path),
         "bbox": ",".join(str(x) for x in bbox) if bbox else "",
         "referenzdatum": ref["date"],
         "referenz_wochentag": ref["weekday_de"],
@@ -468,6 +473,14 @@ def load(settings: Settings, lat: float, lon: float, radius: int) -> SourceResul
             )
         haltestellen.sort(key=lambda h: (-h["abfahrten"], h["distanz_m"]))
 
+        # GTFS kennt neben Bahnsteigen (location_type 0) auch übergeordnete
+        # Stationen (location_type 1). Stationen tragen nie eigene Abfahrten —
+        # sie als Haltestellen mitzuzählen, würde die Zahl aufblähen. Deshalb
+        # zählt „haltestellen_gesamt" nur, was am Referenztag wirklich bedient
+        # wird; der Rest wird getrennt ausgewiesen statt stillschweigend entfernt.
+        bedient = [h for h in haltestellen if h["abfahrten"] > 0]
+        ohne = len(haltestellen) - len(bedient)
+
         data = {
             "referenzdatum": f"{date[6:8]}.{date[4:6]}.{date[0:4]}",
             "referenz_wochentag": WEEKDAYS_DE[weekday_idx],
@@ -475,7 +488,9 @@ def load(settings: Settings, lat: float, lon: float, radius: int) -> SourceResul
             "abfahrten_je_stunde": {f"{h:02d}": hours[h] for h in range(24)},
             "abfahrten_06_24": sum(hours[6:24]),
             "haltestellen": haltestellen,
-            "haltestellen_gesamt": len(haltestellen),
+            "haltestellen_gesamt": len(bedient),
+            "haltestellen_ohne_abfahrten": ohne,
+            "haltestellen_im_umkreis": len(haltestellen),
             "nach_verkehrsmittel": dict(sorted(route_types.items(), key=lambda kv: -kv[1])),
             "spitzenstunde": (
                 {"stunde": f"{hours.index(max(hours)):02d}:00", "abfahrten": max(hours)}
@@ -488,6 +503,16 @@ def load(settings: Settings, lat: float, lon: float, radius: int) -> SourceResul
             ok=True,
             data=data,
             duration_ms=int((time.perf_counter() - started) * 1000),
+            warnings=(
+                [
+                    f"{ohne} von {len(haltestellen)} Einträgen im Umkreis haben am "
+                    f"Referenztag keine Abfahrt. Das sind übergeordnete Stationen "
+                    "(GTFS location_type 1, reine Container ohne eigene Fahrten) oder "
+                    "Haltestellen, die an diesem Tag nicht bedient werden."
+                ]
+                if ohne
+                else []
+            ),
             provenance=_gtfs_provenance(meta, date, weekday_idx),
         )
     finally:

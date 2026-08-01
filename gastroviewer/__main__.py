@@ -91,12 +91,16 @@ def cmd_import_gtfs(args: argparse.Namespace, settings: Settings) -> int:
         if not zip_path.exists():
             print(f"Datei nicht gefunden: {zip_path}", file=sys.stderr)
             return 2
+        quelle = str(zip_path)
     else:
+        quelle = args.url or settings.gtfs_url
         tmpdir = Path(tempfile.mkdtemp(prefix="gastroviewer-gtfs-"))
-        zip_path = _download(args.url or settings.gtfs_url, tmpdir / "gtfs.zip")
+        zip_path = _download(quelle, tmpdir / "gtfs.zip")
 
     try:
-        stats = gtfs.import_feed(settings, zip_path, bbox=bbox, progress=print)
+        stats = gtfs.import_feed(
+            settings, zip_path, bbox=bbox, quelle=quelle, progress=print
+        )
     except Exception as exc:  # noqa: BLE001 — CLI soll die Ursache zeigen
         print(f"Import fehlgeschlagen: {type(exc).__name__}: {exc}", file=sys.stderr)
         return 1
