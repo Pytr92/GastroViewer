@@ -1,0 +1,573 @@
+{
+  "version": 0.6,
+  "generator": "Overpass API 0.7.62.11 87bfad18",
+  "osm3s": {
+    "timestamp_osm_base": "2026-08-01T07:24:36Z",
+    "copyright": "The data included in this document is from www.openstreetmap.org. The data is made available under ODbL."
+  },
+  "elements": [
+
+{
+  "type": "node",
+  "id": 260651990,
+  "lat": 48.1377004,
+  "lon": 11.5645217,
+  "tags": {
+    "addr:city": "München",
+    "addr:country": "DE",
+    "addr:housenumber": "6",
+    "addr:postcode": "80331",
+    "addr:street": "Sonnenstraße",
+    "amenity": "fast_food",
+    "brand": "Burger King",
+    "brand:wikidata": "Q177054",
+    "brand:wikipedia": "en:Burger King",
+    "check_date": "2025-05-26",
+    "cuisine": "burger",
+    "diet:vegan": "limited",
+    "diet:vegetarian": "yes",
+    "name": "Burger King",
+    "opening_hours": "Su-We 09:00-01:00; Th 09:00-04:00; Fr-Sa 09:00-06:00; Su 10:00-01:00",
+    "takeaway": "yes",
+    "wheelchair": "limited"
+  }
+},
+{
+  "type": "node",
+  "id": 313331397,
+  "lat": 48.1301976,
+  "lon": 11.5734158,
+  "tags": {
+    "addr:city": "München",
+    "addr:country": "DE",
+    "addr:housenumber": "17",
+    "addr:postcode": "80469",
+    "addr:street": "Fraunhoferstraße",
+    "amenity": "fast_food",
+    "check_date": "2024-05-30",
+    "contact:email": "info@bergwolf-muenchen.de",
+    "contact:facebook": "https://de-de.facebook.com/LateNightCurryWurst/",
+    "contact:phone": "+49 89 232 598 58",
+    "cuisine": "sausage",
+    "description": "Würstl, Pommes und Getränke für Genießer und Nachtschwärmer",
+    "diet:vegetarian": "yes",
+    "indoor_seating": "yes",
+    "name": "Bergwolf",
+    "opening_hours": "Tu-Fr 12:00-14:30; Mo-We 18:00-00:00; Th 18:00-02:00; Fr 18:00-04:00; Sa 12:00-04:00; Su, PH 17:00-22:00; Su 15:00-21:00",
+    "smoking": "no",
+    "takeaway": "yes",
+    "wheelchair": "limited"
+  }
+},
+{
+  "type": "node",
+  "id": 447786255,
+  "lat": 48.1365548,
+  "lon": 11.5735445,
+  "tags": {
+    "addr:city": "München",
+    "addr:housenumber": "7",
+    "addr:postcode": "80331",
+    "addr:street": "Rosenstraße",
+    "air_conditioning": "yes",
+    "amenity": "fast_food",
+    "brand": "Vinzenzmurr",
+    "brand:wikidata": "Q2527361",
+    "brand:wikipedia": "de:Vinzenzmurr",
+    "check_date": "2026-05-16",
+    "contact:phone": "+49 89 260 47 65",
+    "contact:website": "https://vinzenzmurr.de/",
+    "indoor_seating": "yes",
+    "name": "Vinzenzmurr",
+    "opening_hours": "Mo-Sa 09:00-19:00",
+    "outdoor_seating": "yes",
+    "shop": "butcher",
+    "smoking": "no",
+    "toilets": "yes",
+    "toilets:wheelchair": "no",
+    "wheelchair": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 648540122,
+  "lat": 48.1372681,
+  "lon": 11.5634234,
+  "tags": {
+    "air_conditioning": "yes",
+    "amenity": "fast_food",
+    "brand": "Subway",
+    "brand:wikidata": "Q244457",
+    "brand:wikipedia": "en:Subway (restaurant)",
+    "check_date": "2025-09-27",
+    "cuisine": "sandwich",
+    "diet:vegetarian": "yes",
+    "indoor_seating": "yes",
+    "name": "Subway",
+    "opening_hours": "Mo-Sa 09:00-24:00; Su,PH 11:00-24:00",
+    "outdoor_seating": "no",
+    "payment:cash": "yes",
+    "payment:contactless": "yes",
+    "payment:credit_cards": "yes",
+    "payment:debit_cards": "yes",
+    "payment:girocard": "yes",
+    "takeaway": "yes",
+    "wheelchair": "limited"
+  }
+},
+{
+  "type": "node",
+  "id": 656295786,
+  "lat": 48.1377157,
+  "lon": 11.5690499,
+  "tags": {
+    "addr:city": "München",
+    "addr:housenumber": "4",
+    "addr:postcode": "80331",
+    "addr:street": "Eisenmannstraße",
+    "amenity": "fast_food",
+    "check_date:opening_hours": "2026-06-26",
+    "cuisine": "asian;sushi",
+    "diet:vegan": "yes",
+    "diet:vegetarian": "yes",
+    "indoor_seating": "yes",
+    "name": "Mr. Asia",
+    "opening_hours": "Mo-Sa 10:00-19:00",
+    "outdoor_seating": "yes",
+    "phone": "+49 89 21112066",
+    "smoking": "outside",
+    "takeaway": "yes",
+    "website": "https://www.mr-asia.net/",
+    "wheelchair": "no"
+  }
+},
+{
+  "type": "node",
+  "id": 701015695,
+  "lat": 48.1380682,
+  "lon": 11.5713019,
+  "tags": {
+    "addr:city": "München",
+    "addr:housenumber": "1",
+    "addr:postcode": "80331",
+    "addr:street": "Neuhauser Straße",
+    "amenity": "fast_food",
+    "brand": "Five Guys",
+    "brand:wikidata": "Q1131810",
+    "brand:wikipedia": "en:Five Guys",
+    "check_date": "2026-03-30",
+    "cuisine": "burger",
+    "delivery": "yes",
+    "diet:vegan": "yes",
+    "diet:vegetarian": "yes",
+    "drive_through": "no",
+    "indoor_seating": "yes",
+    "name": "Five Guys",
+    "official_name": "Five Guys Burgers and Fries",
+    "old_name": "Desigual",
+    "opening_hours": "Mo-Th 10:30-23:00, Su,PH 10:30-23:00, Fr,Sa 10:30-24:00",
+    "outdoor_seating": "no",
+    "payment:apple_pay": "yes",
+    "payment:cards": "yes",
+    "payment:cash": "yes",
+    "payment:debit_cards": "yes",
+    "payment:girocard": "yes",
+    "payment:google_pay": "yes",
+    "payment:mastercard": "yes",
+    "payment:visa": "yes",
+    "phone": "+49 89 23548362",
+    "takeaway": "yes",
+    "website": "https://restaurants.fiveguys.de/bayern/neuhauser-straße-1",
+    "wheelchair": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 916461957,
+  "lat": 48.1325317,
+  "lon": 11.5666724,
+  "tags": {
+    "addr:city": "München",
+    "addr:country": "DE",
+    "addr:housenumber": "2",
+    "addr:postcode": "80337",
+    "addr:street": "Thalkirchner Straße",
+    "amenity": "fast_food",
+    "cuisine": "kebab",
+    "indoor_seating": "yes",
+    "name": "Alpen Bistro Imbiss",
+    "opening_hours": "Mo-Fr 11:30-22:00; Sa,Su 12:00-22:00",
+    "outdoor_seating": "yes",
+    "wheelchair": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 1108403239,
+  "lat": 48.1315575,
+  "lon": 11.5633978,
+  "tags": {
+    "addr:housenumber": "21",
+    "addr:street": "Lindwurmstraße",
+    "amenity": "fast_food",
+    "check_date": "2025-10-28",
+    "name": "Tina 3D's",
+    "phone": "+49 176 32283863"
+  }
+},
+{
+  "type": "node",
+  "id": 1138722189,
+  "lat": 48.1323609,
+  "lon": 11.5648878,
+  "tags": {
+    "addr:city": "München",
+    "addr:country": "DE",
+    "addr:housenumber": "7",
+    "addr:postcode": "80337",
+    "addr:street": "Lindwurmstraße",
+    "amenity": "fast_food",
+    "check_date": "2026-04-26",
+    "check_date:opening_hours": "2023-03-19",
+    "cuisine": "turkish",
+    "diet:halal": "yes",
+    "diet:pescetarian": "yes",
+    "diet:vegetarian": "yes",
+    "name": "Berlin Döner Express",
+    "opening_hours": "Mo-Su 09:00-21:00",
+    "phone": "+49 176 721 38 262"
+  }
+},
+{
+  "type": "node",
+  "id": 1170520453,
+  "lat": 48.1306852,
+  "lon": 11.5612988,
+  "tags": {
+    "amenity": "fast_food",
+    "check_date:opening_hours": "2023-03-19",
+    "cuisine": "asian",
+    "name": "Asia Sushi Wok",
+    "opening_hours": "Mo-Fr 11:00-22:00; Sa,Su,PH 12:00-22:00",
+    "wheelchair": "no"
+  }
+},
+{
+  "type": "node",
+  "id": 1193055367,
+  "lat": 48.1305592,
+  "lon": 11.5727999,
+  "tags": {
+    "amenity": "fast_food",
+    "check_date:opening_hours": "2026-02-22",
+    "indoor_seating": "yes",
+    "name": "Hey Lia",
+    "opening_hours:signed": "no",
+    "outdoor_seating": "yes",
+    "source": "local_knowledge",
+    "wheelchair": "no"
+  }
+},
+{
+  "type": "node",
+  "id": 1713195920,
+  "lat": 48.1340002,
+  "lon": 11.5655549,
+  "tags": {
+    "addr:city": "München",
+    "addr:housenumber": "8",
+    "addr:postcode": "80336",
+    "addr:street": "Sendlinger-Tor-Platz",
+    "amenity": "fast_food",
+    "check_date": "2026-06-08",
+    "cuisine": "turkish;kebab",
+    "diet:halal": "yes",
+    "diet:vegan": "no",
+    "diet:vegetarian": "yes",
+    "indoor_seating": "yes",
+    "name": "Sila restaurant",
+    "opening_hours": "24/7",
+    "outdoor_seating": "yes",
+    "website": "https://silarestaurant.com/",
+    "wheelchair": "limited"
+  }
+},
+{
+  "type": "node",
+  "id": 1813651773,
+  "lat": 48.1338386,
+  "lon": 11.5637798,
+  "tags": {
+    "addr:city": "München",
+    "addr:country": "DE",
+    "addr:housenumber": "7",
+    "addr:postcode": "80336",
+    "addr:street": "Mathildenstraße",
+    "amenity": "fast_food",
+    "check_date:opening_hours": "2026-06-08",
+    "cuisine": "burger;sandwich;regional",
+    "diet:vegan": "yes",
+    "diet:vegetarian": "yes",
+    "drive_through": "no",
+    "indoor_seating": "yes",
+    "internet_access": "wlan",
+    "level": "0",
+    "name": "Backs Streetfood Bakery",
+    "opening_hours": "Mo-Th 08:00-16:30",
+    "operator": "Udo Funke",
+    "outdoor_seating": "yes",
+    "toilets": "no",
+    "website": "http://www.backs-bio.de/",
+    "wheelchair": "limited"
+  }
+},
+{
+  "type": "node",
+  "id": 2335088557,
+  "lat": 48.1309009,
+  "lon": 11.5696735,
+  "tags": {
+    "addr:city": "München",
+    "addr:housenumber": "33",
+    "addr:postcode": "80469",
+    "addr:street": "Müllerstraße",
+    "amenity": "fast_food",
+    "check_date": "2026-02-22",
+    "check_date:diet:vegetarian": "2026-02-22",
+    "check_date:opening_hours": "2026-02-22",
+    "diet:vegetarian": "yes",
+    "name": "Sushi Sakura",
+    "opening_hours": "Mo-Fr 11:00-21:00; Su,PH 15:00-21:00",
+    "wheelchair": "no"
+  }
+},
+{
+  "type": "node",
+  "id": 3417339165,
+  "lat": 48.1312900,
+  "lon": 11.5683237,
+  "tags": {
+    "addr:city": "München",
+    "addr:country": "DE",
+    "addr:housenumber": "43",
+    "addr:postcode": "80469",
+    "addr:street": "Müllerstraße",
+    "amenity": "fast_food",
+    "check_date": "2024-05-04",
+    "check_date:opening_hours": "2023-03-19",
+    "contact:website": "https://bazibox.de/",
+    "cuisine": "regional",
+    "diet:vegetarian": "yes",
+    "indoor_seating": "yes",
+    "name": "Bazi’s Schlemmer Kucherl",
+    "opening_hours": "Mo-Th 11:30-01:00, Fr 11:30-05:00, Sa 14:00-05:00",
+    "outdoor_seating": "no",
+    "smoking": "outside",
+    "takeaway": "yes",
+    "toilets:wheelchair": "no",
+    "wheelchair": "limited"
+  }
+},
+{
+  "type": "node",
+  "id": 3916664189,
+  "lat": 48.1373053,
+  "lon": 11.5710756,
+  "tags": {
+    "amenity": "fast_food",
+    "check_date": "2026-06-26",
+    "check_date:opening_hours": "2026-06-26",
+    "cuisine": "regional",
+    "name": "Wolf's Brotzeitladen",
+    "opening_hours": "Mo-Fr 07:00-16:00",
+    "takeaway": "yes",
+    "website": "https://www.wolfs-brotzeitladen.de/",
+    "wheelchair": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 4217451107,
+  "lat": 48.1372600,
+  "lon": 11.5640540,
+  "tags": {
+    "amenity": "fast_food",
+    "check_date": "2025-05-26",
+    "indoor_seating": "yes",
+    "name": "La Fiesta",
+    "opening_hours": "Mo-Th 11:00-02:00; Fr-Sa 11:00-04:00; Su 16:00-22:00",
+    "outdoor_seating": "yes",
+    "wheelchair": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 4369811798,
+  "lat": 48.1306018,
+  "lon": 11.5727492,
+  "tags": {
+    "addr:housenumber": "11",
+    "addr:street": "Fraunhoferstraße",
+    "amenity": "fast_food",
+    "cuisine": "korean",
+    "indoor_seating": "yes",
+    "name": "Yuyumi",
+    "outdoor_seating": "yes",
+    "website": "https://www.yuyumi.de/",
+    "wheelchair": "limited"
+  }
+},
+{
+  "type": "node",
+  "id": 4736255415,
+  "lat": 48.1303306,
+  "lon": 11.5740352,
+  "tags": {
+    "addr:city": "München",
+    "addr:country": "DE",
+    "addr:housenumber": "45",
+    "addr:postcode": "80469",
+    "addr:street": "Klenzestraße",
+    "amenity": "fast_food",
+    "name": "The Sandwich Bar",
+    "opening_hours": "Mo-Fr 11:00-20:00"
+  }
+},
+{
+  "type": "node",
+  "id": 5056921058,
+  "lat": 48.1311558,
+  "lon": 11.5637553,
+  "tags": {
+    "addr:city": "München",
+    "addr:country": "DE",
+    "addr:housenumber": "1",
+    "addr:postcode": "80337",
+    "addr:street": "Maistraße",
+    "amenity": "fast_food",
+    "check_date": "2026-04-23",
+    "check_date:opening_hours": "2026-04-23",
+    "contact:phone": "+49 89 515 196 90",
+    "cuisine": "pizza",
+    "delivery": "yes",
+    "diet:vegetarian": "yes",
+    "name": "Toskana Pizza Service",
+    "opening_hours": "Mo-Sa 10:45-22:45; Su 13:00-21:45",
+    "takeaway": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 8032746139,
+  "lat": 48.1368870,
+  "lon": 11.5725327,
+  "tags": {
+    "amenity": "fast_food",
+    "cuisine": "kebab",
+    "indoor_seating": "yes",
+    "name": "Aladdin's Futterhütt'n",
+    "opening_hours": "Mo-Sa 09:00-22:00; Su,PH off",
+    "outdoor_seating": "yes",
+    "wheelchair": "no"
+  }
+},
+{
+  "type": "node",
+  "id": 9626169771,
+  "lat": 48.1359841,
+  "lon": 11.5744378,
+  "tags": {
+    "addr:city": "München",
+    "addr:housenumber": "6",
+    "addr:postcode": "80331",
+    "addr:street": "Rindermarkt",
+    "amenity": "fast_food",
+    "contact:instagram": "https://www.instagram.com/sendlings.spezial",
+    "cuisine": "kebab",
+    "name": "Sendling's Spezial Döner",
+    "opening_hours": "Mo-Su 11:00-21:00"
+  }
+},
+{
+  "type": "node",
+  "id": 14031421780,
+  "lat": 48.1312386,
+  "lon": 11.5685291,
+  "tags": {
+    "addr:city": "München",
+    "addr:country": "DE",
+    "addr:housenumber": "43",
+    "addr:postcode": "80469",
+    "addr:street": "Müllerstraße",
+    "amenity": "fast_food",
+    "cuisine": "kebab",
+    "description": "Tantuni & Kebap",
+    "name": "M43",
+    "wheelchair": "yes"
+  }
+},
+{
+  "type": "way",
+  "id": 271129782,
+  "center": {
+    "lat": 48.1383731,
+    "lon": 11.5654995
+  },
+  "tags": {
+    "amenity": "fast_food",
+    "check_date:opening_hours": "2025-12-23",
+    "cuisine": "mexican",
+    "diet:vegetarian": "yes",
+    "indoor": "room",
+    "indoor_seating": "yes",
+    "layer": "-1",
+    "level": "-1",
+    "name": "Pure Burrito",
+    "opening_hours": "Mo-Sa 10:00-20:00",
+    "outdoor_seating": "no",
+    "takeaway": "yes",
+    "wheelchair": "yes"
+  }
+},
+{
+  "type": "way",
+  "id": 271129792,
+  "center": {
+    "lat": 48.1378797,
+    "lon": 11.5654258
+  },
+  "tags": {
+    "alt_name": "Dunkin' Donuts",
+    "amenity": "fast_food",
+    "brand": "Dunkin'",
+    "brand:wikidata": "Q847743",
+    "check_date": "2025-05-26",
+    "cuisine": "donut;coffee_shop",
+    "indoor": "room",
+    "layer": "-1",
+    "level": "-1",
+    "name": "Dunkin'",
+    "takeaway": "yes",
+    "wheelchair": "yes"
+  }
+},
+{
+  "type": "way",
+  "id": 1280337381,
+  "center": {
+    "lat": 48.1335909,
+    "lon": 11.5673216
+  },
+  "tags": {
+    "amenity": "fast_food",
+    "check_date": "2026-06-22",
+    "indoor": "room",
+    "indoor_seating": "yes",
+    "level": "-1",
+    "name": "Au's Superfood",
+    "outdoor_seating": "no"
+  }
+}
+
+  ]
+}

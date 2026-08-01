@@ -1,0 +1,320 @@
+# Phase 0 — Endpunkte verifiziert
+
+Datum der Prüfung: **2026-08-01**
+Umgebung: Linux-Container, ausgehender Verkehr über HTTP-Proxy (`HTTPS_PROXY`).
+Alle Rohantworten liegen als Fixtures unter `fixtures/` und sind die Grundlage der Tests
+(§10 der Spec: keine ausgedachten Testdaten).
+
+Regel aus §3 der Spec: **Wo die echte Antwort von der Spec abweicht, gilt die echte Antwort.**
+
+| # | Quelle | Status | Ergebnis |
+|---|---|---|---|
+| 1 | Overpass Grundabfrage | ✅ | HTTP 200, 2,0 s |
+| 2 | Overpass Rekursion → Routenrelationen | ✅ | HTTP 200, funktioniert entgegen der Risikoannahme |
+| 3 | Zensus 2022 Gitterabfrage | ✅ | HTTP 200, 118 Zellen bei r=600 |
+| 4 | Zensus Feldliste | ✅ | 49 Felder, §4.1 vollständig bestätigt |
+| 5 | Nominatim search/reverse | ✅ | HTTP 200; ohne User-Agent HTTP 403 |
+| — | Overpass-Spiegel (kumi, private.coffee) | ⚠️ | in dieser Umgebung Timeout, siehe A-1 |
+| — | GTFS (gtfs.de) | ✅ | Feeds live, Größen und Stand siehe unten |
+| — | Bodenrichtwert-Portale | ✅ | alle 5 bestätigten URLs HTTP 200 |
+
+---
+
+## 1) Overpass — Grundabfrage
+
+`POST https://overpass-api.de/api/interpreter` · **HTTP 200** · 2,04 s · 14.231 Bytes
+Fixture: `fixtures/raw_overpass_fastfood.json`
+
+```
+[out:json][timeout:60];
+nwr["amenity"="fast_food"](around:600,48.1334,11.5674);out center tags;
+```
+
+Antwortkopf:
+
+```json
+{
+  "version": 0.6,
+  "generator": "Overpass API 0.7.62.11 87bfad18",
+  "osm3s": {
+    "timestamp_osm_base": "2026-08-01T07:24:36Z",
+    "copyright": "The data included in this document is from www.openstreetmap.org. The data is made available under ODbL."
+  },
+  "elements": [ … ]
+}
+```
+
+Beispielelement (gekürzt):
+
+```json
+{"type":"node","id":260651990,"lat":48.1377004,"lon":11.5645217,
+ "tags":{"amenity":"fast_food","brand":"Burger King","cuisine":"burger",
+         "name":"Burger King","opening_hours":"Su-We 09:00-01:00; Th 09:00-04:00; …",
+         "takeaway":"yes","wheelchair":"limited","addr:street":"Sonnenstraße", …}}
+```
+
+**Befund:** wie in §4.2 beschrieben. `nwr` wird akzeptiert, `out center tags` liefert bei
+Ways/Relations ein `center`-Objekt statt `lat`/`lon` — der Parser muss beides behandeln.
+`timestamp_osm_base` ist der brauchbare „Stand" für die UI-Fußzeile.
+
+---
+
+## 2) Overpass — Rekursion Haltestelle → Linienrelationen
+
+`POST https://overpass-api.de/api/interpreter` · **HTTP 200** · 4,31 s · 70.981 Bytes
+Fixture: `fixtures/raw_overpass_routes.json`
+
+```
+[out:json][timeout:60];
+node["public_transport"~"^(platform|stop_position)$"](around:600,48.1334,11.5674)->.sp;
+rel(bn.sp)["type"="route"]->.rt;
+.rt out tags;
+```
+
+Ergebnis: **66 Relationen**, alle mit `tags.route`:
+
+```
+route:  tram 30 · bus 20 · subway 16
+ref:    U1, U2, U3, U6, 16, 17, 18, 27, 28, 52, 62, 132, N17, N20, N27, N40, N41, N45 …
+```
+
+**Befund gegen die Spec:** §4.2 markiert diese Rekursion als **[U, Risiko]** und stellt den
+Rückfall auf reine Haltestellenzählung in Aussicht. **Das Risiko ist nicht eingetreten** —
+die Syntax wird akzeptiert und liefert `tags.route` und `tags.ref`. Das Feature
+„ÖPNV-Linien" wird also voll gebaut. Nützliche Zusatzfelder in der Antwort:
+`network`, `network:short`, `colour`, `from`, `to`, `gtfs:route_id` (letzteres ist später
+die Brücke zum GTFS-Import aus Phase 3).
+
+Kostenhinweis: 4,3 s gegenüber 2,0 s der Grundabfrage. Die Abfrage gehört in den Cache und
+sollte nicht bei jedem Kartenklick blind mitlaufen.
+
+---
+
+## 3) Zensus 2022 — 100-m-Gitter im Umkreis
+
+`POST …/Zensus2022_grid_final/FeatureServer/0/query` · **HTTP 200** · 1,31 s
+Fixture: `fixtures/raw_zensus_600.json`
+
+Parameter exakt wie in §3 der Spec. Ergebnis bei r=600:
+
+```
+exceededTransferLimit : nicht im JSON vorhanden (nur gesetzt, wenn true)
+features              : 118
+geometryType          : esriGeometryPolygon
+spatialReference      : {"wkid":4326,"latestWkid":4326}
+```
+
+Erstes Feature:
+
+```json
+{"attributes":{"ags":"09162000","Einwohner":5,"Durchschnittsalter":31,
+               "a18bis29":0,"a30bis49":0,"durchschnMieteQM":null,"Leerstandsquote":null},
+ "geometry":{"rings":[[[11.5672095930734,48.133213112724],
+                       [11.5672373608971,48.1341126644017], …]]}}
+```
+
+**Befunde:**
+
+- **`inSR`/`outSR=4326` funktioniert** — die als **[U]** markierte Projektionsannahme aus
+  §4.1 ist bestätigt. Der Service liegt intern in 102100/3857, gibt aber auf Wunsch
+  WGS84-Ringe zurück, die Leaflet direkt zeichnen kann.
+- **`null` ist ein regulärer Wert.** `durchschnMieteQM` und `Leerstandsquote` sind in dieser
+  Zelle leer. Die UI muss „keine Angabe" von „0" unterscheiden — ein Nullwert darf nicht als
+  Miete von 0 €/m² in einen Mittelwert einfließen.
+- **Die stochastische Überlagerung ist sichtbar.** Die Beispielzelle meldet 5 Einwohner,
+  Durchschnittsalter 31, aber `a18bis29 = 0` und `a30bis49 = 0`. Genau der in §4.1
+  beschriebene Effekt der Cell-Key-Methode. Der Hinweis gehört wie gefordert in die UI.
+- `exceededTransferLimit` fehlt im JSON, wenn es `false` wäre. Der Code muss also
+  `d.get("exceededTransferLimit") is True` prüfen, nicht auf Existenz des Schlüssels.
+
+### Grenzwerttest `exceededTransferLimit` und Paginierung
+
+| Radius | Features | `exceededTransferLimit` | rechnerisch laut Spec |
+|---|---|---|---|
+| 600 m | 118 | – | ~113 |
+| 1400 m | 463 | – | ~616 |
+| 2500 m | 1400 | – | ~1963 |
+| 3000 m | 2000 | **true** | ~2827 |
+
+`returnCountOnly=true` bei r=3000 → `{"count":2006}`
+`resultOffset=2000` bei r=3000 → 6 weitere Features, kein Limit mehr.
+
+Fixtures: `zensus_r1400_nogeom.json`, `zensus_r2500_nogeom.json`,
+`zensus_r3000_exceeded.json`, `zensus_r3000_offset2000.json`
+
+**Befunde:**
+
+- **Paginierung über `resultOffset` funktioniert** und wird implementiert. Kein Radius-Limit
+  nötig, kein Datenverlust.
+- **Die Zellzahl liegt deutlich unter der Rechnung der Spec** (463 statt ~616 bei 1400 m).
+  Ursache ist die in §4.1 genannte Eigenschaft: Zellen ohne Einwohner fehlen im Datensatz
+  komplett. Die Spec-Warnung „der Puffer ist dünn" ist damit entschärft — der reale Puffer
+  ist größer als angenommen. Die Paginierung wird trotzdem gebaut, weil dichte Innenstädte
+  näher am Limit liegen können.
+
+---
+
+## 4) Zensus — Feldliste
+
+`GET …/FeatureServer/0?f=pjson` · **HTTP 200** · 0,62 s
+Fixture: `fixtures/raw_zensus_meta.json`
+
+```
+name            : Zensus2022_100mGitter
+geometryType    : esriGeometryPolygon
+maxRecordCount  : 2000
+extent SR       : {"wkid":102100,"latestWkid":3857}
+```
+
+Alle 49 Felder:
+
+```
+OBJECTID, id, GITTER_ID_100m, ags, Einwohner, AnteilAuslaender, Durchschnittsalter,
+Unter18, a18bis29, a30bis49, a50bis64, a65undaelter, AnteilUnter18, AnteilUeber65,
+DurchschnHHGroesse, durchschnMieteQM, durchschnFlaechejeWohn, durchschnFlaechejeBew,
+Eigentuemerquote, Leerstandsquote, MALeerstQuote, Insgesamt_Energietraeger, Gas, Heizoel,
+Holz_Holzpellets, Biomasse_Biogas, Solar_Geothermie_Waermepumpen, Strom, Kohle,
+Fernwaerme, kein_Energietraeger, Insgesamt_Heizungsart, Fernheizung, Etagenheizung,
+Blockheizung, Zentralheizung, Einzel_Mehrraumoefen, keine_Heizung, Insgesamt_Gebaeude,
+Vor1919, a1919bis1948, a1949bis1978, a1979bis1990, a1991bis2000, a2001bis2010,
+a2011bis2019, a2020undspaeter, Shape__Area, Shape__Length
+```
+
+**Befund:** Die Feldliste aus §4.1 stimmt **vollständig und in exakter Schreibweise**.
+`maxRecordCount = 2000` bestätigt. Zusätzlich nutzbar und in der Spec nicht genannt:
+`GITTER_ID_100m` (stabiler Zellschlüssel, besser als `OBJECTID` als Cache-/Dedup-Key) und
+die vollständigen Energieträger-/Heizungsart-Felder.
+
+`copyrightText` des Service ist **leer** — die in §4.1 genannte Lizenzangabe
+„© Statistische Ämter des Bundes und der Länder 2024 & GeoBasis-DE/BKG 2024" kommt also
+nicht aus der API und wird als Konstante in der Quellenangabe geführt. Das ist der einzige
+zulässige Fall einer Konstante: eine Lizenzzeile, kein Messwert.
+
+---
+
+## 5) Nominatim
+
+Fixtures: `fixtures/raw_nominatim_search.json`, `fixtures/raw_nominatim_reverse.json`
+
+`GET /search?format=jsonv2&limit=1&countrycodes=de&addressdetails=1&q=Sendlinger+Str+10+München`
+**HTTP 200** · 0,93 s
+
+```json
+[{"place_id":126946365,
+  "licence":"Data © OpenStreetMap contributors, ODbL 1.0. http://osm.org/copyright",
+  "lat":"48.1360641","lon":"11.5714570","name":"Cole & Porter",
+  "display_name":"Cole & Porter, 10, Sendlinger Straße, Hackenviertel, Altstadt-Lehel, München, Bayern, 80331, Deutschland",
+  "address":{"house_number":"10","road":"Sendlinger Straße","quarter":"Hackenviertel",
+             "suburb":"Altstadt-Lehel","city":"München","state":"Bayern",
+             "ISO3166-2-lvl4":"DE-BY","postcode":"80331","country_code":"de"}}]
+```
+
+`GET /reverse?format=jsonv2&lat=48.1334&lon=11.5674&addressdetails=1&zoom=18`
+**HTTP 200** · 0,62 s → `Sendlinger Tor, Blumenstraße, …, München, Bayern, 80336`
+
+**Befunde:**
+
+- **`addressdetails=1` ist Pflicht**, sonst fehlt das `address`-Objekt und damit Gemeinde,
+  Ortsteil und PLZ für die Kopfzeile. In den Spec-Beispielaufrufen fehlt der Parameter.
+- **Nominatim liefert keinen Gemeindeschlüssel (AGS/ARS).** Die Kopfzeile aus §5 braucht ihn
+  aber. Quelle dafür ist das Zensus-Feld `ags` — die beiden Blöcke müssen zusammengeführt
+  werden. `ISO3166-2-lvl4` (`DE-BY`) liefert zusätzlich das Bundesland direkt und dient als
+  Gegenprobe zur Ableitung aus `ags[0:2]` (§4.5).
+- **Ohne `User-Agent` antwortet der Dienst mit HTTP 403** — geprüft. Die Nutzungsbedingung
+  aus §4.3 ist serverseitig durchgesetzt, nicht bloß eine Bitte. Rate-Limiter und
+  `User-Agent` sind damit Funktionsvoraussetzung, nicht Kür.
+- `licence` kommt in jeder Antwort mit und wird als Quellenangabe durchgereicht statt
+  hartkodiert.
+
+---
+
+## CORS
+
+| Dienst | `Access-Control-Allow-Origin` |
+|---|---|
+| Overpass | `*` |
+| Nominatim | `*` |
+| Zensus/ArcGIS | `*` |
+
+Alle drei erlauben Direktzugriff aus dem Browser. **Der Proxy bleibt trotzdem**, wie in §3
+der Spec vorgesehen: er trägt Cache, Rate-Limiter und Fehlerbehandlung. Ohne ihn ließe sich
+das Nominatim-Limit von 1 req/s nicht durchsetzen und jeder Reload erzeugte Outbound-Last.
+
+---
+
+## Abweichungen und Umgebungsbefunde
+
+**A-1 · Overpass-Spiegel nicht erreichbar (Umgebung, kein Spec-Fehler)**
+`overpass.kumi.systems` und `overpass.private.coffee` antworten auf `GET /` mit HTTP 200,
+aber `/api/interpreter` läuft mit GET wie mit POST in ein Timeout (>40 s, 0 Bytes).
+`overpass-api.de` funktioniert im selben Lauf zuverlässig. Das sieht nach einer Eigenheit
+des ausgehenden Proxys in dieser Umgebung aus, nicht nach einem Ausfall der Spiegel.
+→ Der Reihum-Fallback aus §4.2 wird **wie geplant implementiert**, mit knappem Timeout und
+konfigurierbarer Reihenfolge. Auf einer normalen Internetverbindung (macOS, Linux, Windows)
+sollten die Spiegel greifen. Die Konfiguration erlaubt, Spiegel abzuschalten.
+
+**A-2 · `exceededTransferLimit` fehlt bei `false`**
+Der Schlüssel erscheint nur, wenn er `true` ist. Prüfung auf Schlüsselexistenz wäre falsch.
+
+**A-3 · Zellzahl niedriger als in der Spec gerechnet** (463 statt ~616 bei 1400 m), weil
+unbewohnte Zellen fehlen. Siehe oben.
+
+**A-4 · `addressdetails=1` fehlt in den Spec-Beispielen** für Nominatim.
+
+**A-5 · Kein AGS aus Nominatim** — muss aus dem Zensus-Block kommen.
+
+**A-6 · `copyrightText` des Zensus-Service ist leer** — Lizenzzeile stammt aus der Spec, nicht
+aus der API.
+
+**A-7 · Overpass-Rekursion ist kein Risiko** — §4.2 [U, Risiko] ist positiv aufgelöst.
+
+---
+
+## GTFS (Phase 3) — Vorabprüfung
+
+`https://gtfs.de/de/feeds/de_full/` · HTTP 200. Angaben der Seite:
+Feed „Deutschland komplett", 1,6 Mio. Trips, 632 Tsd. Stops, Datengrundlage NeTEx-Datensatz
+DELFI e.V., Lizenz Creative Commons 4.0, letzte Aktualisierung **Sat Aug 1 07:56:58 CEST 2026**
+(also täglich frisch, nicht nur montags wie in §4.4 vermutet).
+
+Direkte Download-URLs, alle **HTTP 200** (nur HEAD geprüft, nichts geladen):
+
+| Feed | URL | Größe | Last-Modified |
+|---|---|---|---|
+| Deutschland komplett | `https://download.gtfs.de/germany/free/latest.zip` | 259,3 MB | 2026-08-01 05:56 GMT |
+| Nahverkehr | `https://download.gtfs.de/germany/nv_free/latest.zip` | 248,6 MB | 2026-08-01 05:57 GMT |
+| Regionalverkehr | `https://download.gtfs.de/germany/rv_free/latest.zip` | 10,5 MB | 2026-08-01 05:57 GMT |
+| Fernverkehr | `https://download.gtfs.de/germany/fv_free/latest.zip` | 0,37 MB | 2026-08-01 05:56 GMT |
+
+**Befund:** Die Spec nennt „1-GB-Download"; real sind es 259 MB für den Komplettfeed. Der
+Import bleibt trotzdem ein eigener CLI-Schritt, weil `stop_times.txt` entpackt im
+Gigabyte-Bereich liegt. **Keine Registrierung nötig** — der DELFI-Weg aus §4.4 ist damit
+optional, gtfs.de reicht für Phase 3.
+
+---
+
+## Bodenrichtwert-Portale (§4.5)
+
+Alle fünf in der Spec als **[V]** geführten URLs geprüft, alle **HTTP 200**:
+
+| Portal | URL |
+|---|---|
+| BORIS-D | `https://bodenrichtwerte-boris.de/boris-d/?lang=de` |
+| Baden-Württemberg | `https://www.gutachterausschuesse-bw.de/` |
+| Hessen | `https://hvbg.hessen.de/immobilienwerte/boris-hessen` |
+| Berlin | `https://www.berlin.de/gutachterausschuss/marktinformationen/bodenrichtwerte/` |
+| Brandenburg | `https://boris.brandenburg.de/` |
+
+Für die übrigen Länder wird wie in §4.5 gefordert **keine URL geraten**, sondern ein
+Suchlink erzeugt.
+
+---
+
+## Fazit für die Umsetzung
+
+1. Alle fünf Pflichtendpunkte funktionieren. Kein Feature muss gestrichen werden.
+2. Das einzige in der Spec markierte Risiko (Overpass-Rekursion) ist entfallen.
+3. Zusätzlich zu implementieren, weil real vorgefunden: `resultOffset`-Paginierung,
+   `null`-Behandlung bei Zensuswerten, `center`-Fallback bei Overpass-Ways/Relations,
+   `addressdetails=1`, AGS-Übernahme aus dem Zensus-Block.
+4. Der Nominatim-Rate-Limiter ist Funktionsvoraussetzung (403 ohne `User-Agent`).
