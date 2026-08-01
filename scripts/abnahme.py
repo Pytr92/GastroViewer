@@ -60,12 +60,20 @@ def pruefe(nr: str, titel: str, bedingung: bool, beleg: str) -> None:
 print(f"Abnahmeprüfung gegen {BASE}\n" + "=" * 72)
 
 # ---------------------------------------------------------------- Vorlauf
+# Bewusst ohne refresh: Overpass ist ein Spendenprojekt (Spec §4.2 „keine
+# Abfrage-Schleifen"). Beim ersten Lauf holt der Cache die Daten ohnehin echt;
+# bei jedem weiteren waere ein erzwungener Neuabruf reine Last ohne Erkenntnis.
+# Den einen echten Abruf, den §7.5 braucht, holt der Test unten gezielt nach.
 daten: dict[str, dict] = {}
-print("\nVier Lagetypen laden (kalt, echte Abrufe) …")
+print("\nVier Lagetypen laden …")
 for name, lat, lon, r in PUNKTE:
     t0 = time.perf_counter()
-    daten[name] = hole(f"/api/point?lat={lat}&lon={lon}&r={r}&refresh=true")
-    print(f"  {name:24} {time.perf_counter() - t0:5.1f}s")
+    daten[name] = hole(f"/api/point?lat={lat}&lon={lon}&r={r}")
+    aus_cache = daten[name]["meta"]["aus_cache"]
+    print(
+        f"  {name:24} {time.perf_counter() - t0:5.1f}s "
+        f"({'aus dem Cache' if aus_cache else 'echt abgerufen'})"
+    )
 
 # ------------------------------------------------------------------- §7.1
 # Herkunftsnachweis: die angezeigten Zahlen werden gegen einen direkten,
@@ -170,9 +178,11 @@ pruefe(
 # ------------------------------------------------------------------- §7.4
 gesundheit = hole("/api/health")
 ua = gesundheit["user_agent"]
+# refresh=true erzwingt echte Abrufe. Ohne das antwortet der Cache und es geht
+# gar nichts hinaus — dann misst der Test den Cache statt den Rate-Limiter.
 t0 = time.perf_counter()
 for begriff in ("Augsburg Rathaus", "Regensburg Dom", "Ingolstadt Rathaus"):
-    hole(f"/api/geocode?q={begriff.replace(' ', '+')}")
+    hole(f"/api/geocode?q={begriff.replace(' ', '+')}&refresh=true")
 dauer = time.perf_counter() - t0
 stats = hole("/api/stats")
 lim = stats["rate_limiter"].get("nominatim", {})
@@ -180,22 +190,34 @@ pruefe(
     "§7.4",
     "Nominatim ≤ 1 req/s gedrosselt, User-Agent gesetzt",
     dauer >= 2.0 and lim.get("min_interval_s") == 1.0 and "gastroviewer/" in ua,
-    f"3 Suchen nacheinander: {dauer:.2f}s (Untergrenze 2,0s)\n"
+    f"3 echte Suchen nacheinander (refresh=true): {dauer:.2f}s (Untergrenze 2,0s)\n"
     f"  Limiter: {lim}\n"
     f"  User-Agent: {ua}",
 )
 
 # ------------------------------------------------------------------- §7.5
-vorher = hole("/api/stats")["outbound_requests_total"]
+# Ein erzwungener Abruf, danach ein normaler: der Zaehler darf sich beim zweiten
+# nicht bewegen. Nur die Zensus-Quelle wird erneuert - das genuegt als Beweis und
+# belastet Overpass nicht.
 lat, lon, r = PUNKTE[0][1], PUNKTE[0][2], PUNKTE[0][3]
-zweiter = hole(f"/api/point?lat={lat}&lon={lon}&r={r}")
-nachher = hole("/api/stats")["outbound_requests_total"]
+vor_kalt = hole("/api/stats")["outbound_requests_total"]
+hole(f"/api/point/zensus?lat={lat}&lon={lon}&r={r}&refresh=true")
+nach_kalt = hole("/api/stats")["outbound_requests_total"]
+hole(f"/api/point/zensus?lat={lat}&lon={lon}&r={r}")
+nach_warm = hole("/api/stats")["outbound_requests_total"]
+ganzer = hole(f"/api/point?lat={lat}&lon={lon}&r={r}")
+nach_punkt = hole("/api/stats")["outbound_requests_total"]
 pruefe(
     "§7.5",
     "Cache greift: zweiter Aufruf ohne Outbound-Traffic",
-    nachher == vorher and zweiter["meta"]["outbound_requests"] == 0,
-    f"Outbound-Protokoll vorher {vorher}, nachher {nachher}\n"
-    f"  Antwortzeit: {zweiter['meta']['dauer_ms']} ms, aus_cache={zweiter['meta']['aus_cache']}\n"
+    nach_kalt > vor_kalt
+    and nach_warm == nach_kalt
+    and nach_punkt == nach_warm
+    and ganzer["meta"]["outbound_requests"] == 0,
+    f"erzwungener Abruf: Zähler {vor_kalt} → {nach_kalt} (+{nach_kalt - vor_kalt})\n"
+    f"  danach derselbe Aufruf: Zähler bleibt bei {nach_warm}\n"
+    f"  ganzer Punkt aus dem Cache: {ganzer['meta']['dauer_ms']} ms, "
+    f"outbound_requests={ganzer['meta']['outbound_requests']}\n"
     f"  nachprüfbar unter {BASE}/api/outbound",
 )
 
@@ -242,6 +264,15 @@ for name, _lat, _lon, _r in PUNKTE:
     )
     if not d["bloecke"]["zensus"]["ok"] or not d["bloecke"]["osm"]["ok"]:
         alle_ok = False
+        zeilen.append(
+            "    ↳ Quelle ausgefallen: "
+            + "; ".join(
+                f"{k}: {(v['error'] or {}).get('message')}"
+                for k, v in d["bloecke"].items()
+                if not v["ok"]
+            )
+            + "  (Dienst gerade nicht verfügbar — Prüfung später wiederholen)"
+        )
 laendlich = daten["ländlich"]
 laendlich_sauber = (
     laendlich["bloecke"]["osm"]["ok"]

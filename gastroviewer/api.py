@@ -189,8 +189,12 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         }
 
     @app.get("/api/geocode")
-    async def geocode(request: Request, q: str = Query(..., min_length=2)):
-        return (await svc(request).suche(q)).to_dict()
+    async def geocode(
+        request: Request,
+        q: str = Query(..., min_length=2),
+        refresh: bool = Query(False),
+    ):
+        return (await svc(request).suche(q, refresh)).to_dict()
 
     # ------------------------------------------------------- Vergleich
 
