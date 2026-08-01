@@ -18,7 +18,7 @@ from typing import Any, Awaitable, Callable
 from .cache import AsyncCache, cache_key
 from .config import Settings
 from .http import Outbound
-from .sources import boris, links, muenchen, nominatim, overpass, zensus
+from .sources import bayern, boris, links, muenchen, nominatim, overpass, zensus
 from .sources.base import Provenance, SourceError, SourceResult
 
 Loader = Callable[[], Awaitable[SourceResult]]
@@ -111,6 +111,15 @@ class PointService:
             refresh=refresh,
         )
 
+    async def verkehrsmenge(self, lat: float, lon: float, radius: int, refresh: bool = False):
+        key = cache_key("baysis", lat, lon, radius)
+        return await self._cached(
+            "baysis",
+            key,
+            lambda: bayern.verkehrsmengen(self.outbound, self.settings, lat, lon, radius),
+            refresh=refresh,
+        )
+
     async def gtfs(self, lat: float, lon: float, radius: int):
         """Rein lokal (SQLite aus dem Import) — kein Cache, kein Outbound."""
         from .sources import gtfs as gtfs_mod
@@ -133,9 +142,10 @@ class PointService:
             self.osm(lat, lon, radius, refresh),
             self.gtfs(lat, lon, radius),
             self.radzaehlung(lat, lon, radius, refresh),
+            self.verkehrsmenge(lat, lon, radius, refresh),
             return_exceptions=True,
         )
-        names = ["adresse", "zensus", "osm", "gtfs", "radzaehlung"]
+        names = ["adresse", "zensus", "osm", "gtfs", "radzaehlung", "verkehrsmenge"]
         blocks: dict[str, Any] = {}
         for name, res in zip(names, results):
             if isinstance(res, BaseException):

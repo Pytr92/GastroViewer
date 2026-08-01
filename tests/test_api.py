@@ -426,8 +426,9 @@ def test_bodenrichtwerte_ohne_bundesland_haben_dieselbe_form(client):
 
 def test_wms_ebenen_endpunkt(client):
     d = client.get("/api/wms/ebenen", params={"bundesland_code": "09"}).json()
-    assert len(d["ebenen"]) == 2
-    assert {e["schluessel"] for e in d["ebenen"]} == {"by_dop40", "by_alkis"}
+    assert len(d["ebenen"]) == 4
+    assert {e["schluessel"] for e in d["ebenen"]} == {
+        "by_dop40", "by_verkehrsmengen", "by_laerm", "by_alkis"}
     d2 = client.get("/api/wms/ebenen", params={"bundesland_code": "05"}).json()
     assert d2["ebenen"] == []
 
@@ -463,3 +464,34 @@ def test_radzaehlung_ist_teil_des_punktes_und_des_exports(client, monkeypatch):
     assert "rad_je_tag" in {c["key"] for c in v["spalten"]}
     assert v["zeilen"][0]["rad_je_tag"] == 3877
     assert v["zeilen"][0]["rad_entfernung"] == 1294
+
+
+def test_verkehrsmenge_ist_teil_des_punktes_und_des_exports(client, monkeypatch):
+    from gastroviewer.service import PointService
+    from gastroviewer.sources.base import Provenance, SourceResult
+
+    async def fake_vm(self, lat, lon, radius, refresh=False):
+        return SourceResult(
+            name="verkehrsmenge", ok=True,
+            data={"zaehlstellen": [{"strasse": "A 9", "zaehlstelle": "9001",
+                                    "distanz_m": 701, "dtv_kfz": 111624,
+                                    "schwerverkehr_anteil": 2.9, "im_radius": False}],
+                  "staerkste": {"strasse": "A 9", "dtv_kfz": 111624,
+                                "schwerverkehr_anteil": 2.9, "distanz_m": 701},
+                  "naechste": {"strasse": "A 9", "dtv_kfz": 111624, "distanz_m": 701}},
+            provenance=Provenance(source="BAYSIS", license="CC BY 4.0", stand="2021"),
+        )
+
+    monkeypatch.setattr(PointService, "verkehrsmenge", fake_vm)
+
+    d = client.get("/api/point", params={"lat": LAT, "lon": LON, "r": R}).json()
+    assert d["bloecke"]["verkehrsmenge"]["data"]["staerkste"]["dtv_kfz"] == 111624
+
+    csv_text = client.get("/api/export/point.csv",
+                          params={"lat": LAT, "lon": LON, "r": R}).text
+    assert "Verkehrsmenge" in csv_text and "111624" in csv_text
+
+    client.post("/api/points", json={"label": "A", "lat": LAT, "lon": LON, "radius": R})
+    v = client.get("/api/points/vergleich").json()
+    assert v["zeilen"][0]["dtv_kfz"] == 111624
+    assert v["zeilen"][0]["dtv_sv_anteil"] == 2.9

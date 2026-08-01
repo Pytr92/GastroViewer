@@ -445,10 +445,40 @@ Margaretenstr. (Harras)         „Derzeit keine Daten"
 - `geoservices.bayern.de/od/wms/dtk` und `.../adv_dop80` antworten mit HTTP 500,
   `.../blfd/v1/denkmaldaten` und `.../dflk/v1/dflk` mit HTTP 404 — nicht aufgenommen.
 
+### Zweite Recherchestufe 2026-08-01: Verkehr, Lärm, Statistik
+
+| Quelle | Prüfung | Ergebnis |
+|---|---|---|
+| **BAYSIS Verkehrsdaten WFS**, `gisportal-stmb.bayern.de/server/services/WFS/BAYSIS_Verkehrsdaten/MapServer/WFSServer` | GetCapabilities, GetFeature GeoJSON, `resultType=hits` | WFS 2.0.0, **9.441 Zählstellen in Bayern**, Felder `DTV_Kfz`, `DTV_LV`, `DTV_SV`, CC BY 4.0 |
+| **BAYSIS Verkehrsdaten WMS**, `…/WMS/BAYSIS_Verkehrsdaten/MapServer/WMSServer` | GetCapabilities | Bandbreitenkarten `svz2021_dtv_{bab,b,st,k}_25`, max. Maßstab 1:23.623 → ab Zoom 15 |
+| **Lärmkartierung LfU Bayern**, `lfu.bayern.de/gdi/wms/laerm/hauptverkehrsstrassen` | GetCapabilities | WMS 1.3.0, `mroadbylden2022` (Tag-Abend-Nacht-Pegel), abfragbar, CC BY 4.0 |
+| BAYSIS Straßennetz WFS | GetCapabilities | HTTP 200 — vorerst nicht eingebunden, die Straßenklasse steht schon im Zählstellenfeld |
+
+Belegte Werte, unverändert (Zählstellen nahe Fröttmaning):
+
+```
+A 9    701 m   111.624 Kfz/Tag   davon 5.653 Schwerverkehr   ( 5,1 %)
+A 9  1.251 m    95.839 Kfz/Tag   davon 4.686 Schwerverkehr   ( 4,9 %)
+A 99 1.638 m    79.216 Kfz/Tag   davon 10.742 Schwerverkehr  (13,6 %)
+```
+
+**Befunde:**
+
+- Am Sendlinger Tor liefert der Dienst **keine** Zählstelle im 2-km-Umkreis. Das ist
+  richtig und wird als solches ausgewiesen: gezählt wird das klassifizierte Straßennetz —
+  Autobahnen, Bundes-, Staats- und Kreisstraßen. Innerstädtische Gemeindestraßen und
+  Fußgängerzonen kommen darin nicht vor.
+- Der Bounding-Box-Filter braucht die CRS-Angabe im Parameter selbst
+  (`bbox=…,urn:ogc:def:crs:EPSG::4326`), sonst kippt die Achsenreihenfolge.
+- Der Schwerverkehrsanteil trennt Fernverkehrsachsen von Pendlerachsen deutlich:
+  A 99 (Autobahnring) 13,6 %, A 9 an derselben Stelle 5,1 %.
+
 ### Geprüft und **nicht** aufgenommen
 
 | Quelle | Grund |
 |---|---|
+| **GENESIS-Webservice Bayern**, `statistikdaten.bayern.de/genesisWS/rest/2020` | Antwortet auf `helloworld/whoami` und auf das historische Gastkonto mit „Access forbidden". Beschäftigte am Arbeitsort — der eigentliche Mittagsgeschäft-Indikator — bleiben damit ohne Konto unerreichbar. |
+| **Denkmalatlas Bayern (BLfD)** | Zwei plausible Dienstpfade geprüft, beide HTTP 404. Kein offener OGC-Dienst gefunden. |
 | hystreet | Im kostenfreien Modell ist die gewerbliche Nutzung untersagt (Notizen §1). Bleibt Link. |
 | Open-Data-Portal München, Suche „passanten", „frequenz", „einzelhandel", „kaufkraft" | jeweils **0 Treffer** — es gibt dort keine Passanten- oder Kaufkraftdaten |
 | Indikatorenatlas München (68 Datensätze) | Kleinräumige Demografie je Stadtbezirksviertel. Das Zensus-100-m-Gitter ist feiner und liegt schon vor. |

@@ -238,6 +238,49 @@ ZUSATZEBENEN: dict[str, list[dict[str, Any]]] = {
             ),
         },
         {
+            "schluessel": "by_verkehrsmengen",
+            "titel": "Verkehrsmengen 2021 (DTV)",
+            "url": (
+                "https://gisportal-stmb.bayern.de/server/services/WMS/"
+                "BAYSIS_Verkehrsdaten/MapServer/WMSServer"
+            ),
+            "version": "1.3.0",
+            "layers": (
+                "svz2021_dtv_bab_25,svz2021_dtv_b_25,svz2021_dtv_st_25,"
+                "svz2021_dtv_k_25,svz2021_zaehlstellen"
+            ),
+            "format": "image/png",
+            "transparent": True,
+            "als_grundkarte": False,
+            "max_scale": 23_623.511905,
+            "lizenz": "CC BY 4.0",
+            "attribution": (
+                "Verkehrsmengen © Bayerische Straßenbauverwaltung – BAYSIS (CC BY 4.0)"
+            ),
+            "beschreibung": (
+                "Bandbreitenkarte der durchschnittlichen täglichen Verkehrsstärke im "
+                "klassifizierten Straßennetz, Zählung 2021."
+            ),
+        },
+        {
+            "schluessel": "by_laerm",
+            "titel": "Verkehrslärm Hauptverkehrsstraßen (L_den 2022)",
+            "url": "https://www.lfu.bayern.de/gdi/wms/laerm/hauptverkehrsstrassen",
+            "version": "1.3.0",
+            "layers": "mroadbylden2022",
+            "format": "image/png",
+            "transparent": True,
+            "als_grundkarte": False,
+            "max_scale": None,
+            "lizenz": "CC BY 4.0",
+            "attribution": "Lärmkartierung © Bayerisches Landesamt für Umwelt (CC BY 4.0)",
+            "beschreibung": (
+                "Lärmkartierung nach EU-Umgebungslärmrichtlinie, Tag-Abend-Nacht-Pegel "
+                "2022. Relevant für Außengastronomie — und ein grober Anhalt für die "
+                "Verkehrsbelastung dort, wo keine Zählstelle liegt."
+            ),
+        },
+        {
             "schluessel": "by_alkis",
             "titel": "Flurstücke und Gebäude (ALKIS)",
             "url": "https://geoservices.bayern.de/od/wms/alkis/v1/parzellarkarte",

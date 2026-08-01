@@ -279,10 +279,13 @@ async def test_unauswertbare_antwort_liefert_den_rohtext(settings):
 
 def test_bayern_hat_zusatzebenen():
     e = {x["schluessel"]: x for x in wms.zusatzebenen("09")}
-    assert set(e) == {"by_dop40", "by_alkis"}
-    assert all(x["url"].startswith("https://geoservices.bayern.de/") for x in e.values())
+    assert set(e) == {"by_dop40", "by_verkehrsmengen", "by_laerm", "by_alkis"}
+    assert all(x["url"].startswith("https://") for x in e.values())
     assert all(x["lizenz"] == "CC BY 4.0" for x in e.values())
     assert all("©" in x["attribution"] for x in e.values())
+    # Vermessungsverwaltung, Straßenbauverwaltung und Landesamt für Umwelt —
+    # drei verschiedene Stellen, deshalb drei verschiedene Hosts.
+    assert len({x["url"].split("/")[2] for x in e.values()}) == 3
 
 
 def test_zusatzebenen_min_zoom_kommt_aus_dem_dienst():
@@ -303,3 +306,13 @@ def test_luftbild_ist_grundkarte_alkis_ist_overlay():
 def test_laender_ohne_zusatzebenen_liefern_leere_liste():
     assert wms.zusatzebenen("05") == []
     assert wms.zusatzebenen(None) == []
+
+
+def test_bayern_kartenebenen_vollstaendig():
+    e = {x["schluessel"]: x for x in wms.zusatzebenen("09")}
+    assert set(e) == {"by_dop40", "by_verkehrsmengen", "by_laerm", "by_alkis"}
+    assert all(x["lizenz"] == "CC BY 4.0" for x in e.values())
+    # Verkehrsmengenkarte zeichnet nur bis 1:23.623 -> ab Zoom 15
+    assert e["by_verkehrsmengen"]["min_zoom"] == 15
+    assert "BAYSIS" in e["by_verkehrsmengen"]["attribution"]
+    assert "Landesamt für Umwelt" in e["by_laerm"]["attribution"]

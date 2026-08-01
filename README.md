@@ -129,6 +129,8 @@ Läuft der Fahrplan ab, meldet der Block das und der Import wird einfach wiederh
 | Bodenrichtwert-WMS von 7 Ländern | Kartenebene und Wert am Punkt | je Land, siehe unten | kein Cache |
 | [Raddauerzählstellen München](https://opendata.muenchen.de/dataset/daten-der-raddauerzaehlstellen-muenchen-jahreszahlen) | gemessene Radverkehrsfrequenz | dl-de/by-2-0, © LH München | 24 h |
 | [Luftbild und ALKIS Bayern](https://geodaten.bayern.de/opengeodata/) | Kartenebenen | CC BY 4.0, © Bayerische Vermessungsverwaltung | kein Cache |
+| [BAYSIS Straßenverkehrszählung](https://www.baysis.bayern.de/internet/verdat/svz/index.html) | Verkehrsmenge (DTV) je Zählstelle | CC BY 4.0, © Bayerische Straßenbauverwaltung | 24 h |
+| [Lärmkartierung LfU Bayern](https://www.lfu.bayern.de/) | Kartenebene Verkehrslärm | CC BY 4.0, © Bayerisches Landesamt für Umwelt | kein Cache |
 | OSM-Kacheln | Kartenhintergrund (Vorgabe) | ODbL 1.0 | Browser |
 | [basemap.de](https://basemap.de/) (BKG) | amtlicher Kartenhintergrund, umschaltbar | dl-de/by-2-0, © GeoBasis-DE / BKG | Browser |
 
@@ -232,11 +234,25 @@ Beispiel Sendlinger Tor: Erhardtstraße in 1.294 m, 1.415.000 Radfahrende 2025, 
 Querschnitte für 1,6 Mio. Einwohner. Über 3 km bleibt der Block leer statt eine Zahl von
 der anderen Stadtseite zu zeigen.
 
-**Amtliche Kartenebenen Bayerns** (beide CC BY 4.0, kostenfrei):
+**Verkehrsmenge (DTV).** Für einen Standort an einer Ausfallstraße, mit Drive-through
+oder mit Parkplatz ist die durchschnittliche tägliche Verkehrsstärke die
+aussagekräftigste Frequenzgröße überhaupt — und anders als Passantenströme ist sie
+amtlich gemessen und frei verfügbar. BAYSIS liefert **9.441 Zählstellen in Bayern** mit
+Kfz-, Leicht- und Schwerverkehr. Beispiel A9 bei Fröttmaning: 111.624 Kfz/Tag in 701 m,
+davon 5,1 % Schwerverkehr; die A99 daneben hat bei weniger Verkehr 13,6 %.
+
+Gezählt wird nur das **klassifizierte Straßennetz** — Autobahnen, Bundes-, Staats- und
+Kreisstraßen. Am Sendlinger Tor liegt deshalb keine Zählstelle, und der Block sagt das
+auch so. Der Block warnt außerdem vor dem naheliegenden Fehlschluss: vorbeifahrender
+Verkehr ist keine Kundschaft, und der Außengastronomie schadet er eher.
+
+**Amtliche Kartenebenen Bayerns** (alle CC BY 4.0, kostenfrei):
 
 | Ebene | Was sie zeigt | ab Zoom |
 |---|---|---|
 | Luftbild DOP 40 cm | Hof, Terrassenfläche, Stellplätze, Dachaufbauten | 8 |
+| Verkehrsmengen 2021 | Bandbreitenkarte des DTV im klassifizierten Netz | 15 |
+| Verkehrslärm L_den 2022 | Lärmkartierung — relevant für Außengastronomie | 0 |
 | ALKIS-Parzellarkarte | Flurstücksgrenzen und Gebäudegrundrisse | 17 |
 
 Für die Checkliste in `notizen-standort-flaeche.md` §6 — Abluft über Dach, Hoffläche,
@@ -322,7 +338,7 @@ Alles über Umgebungsvariablen, alles optional:
 | Endpunkt | Zweck |
 |---|---|
 | `GET /api/point?lat=&lon=&r=` | alles auf einmal |
-| `GET /api/point/{adresse\|zensus\|osm\|gtfs\|radzaehlung\|links}` | je Quelle einzeln (nutzt die Oberfläche) |
+| `GET /api/point/{adresse\|zensus\|osm\|gtfs\|radzaehlung\|verkehrsmenge\|links}` | je Quelle einzeln (nutzt die Oberfläche) |
 | `GET /api/geocode?q=` | Adresssuche |
 | `GET /api/points` · `POST /api/points` · `DELETE /api/points/{id}` | gemerkte Punkte |
 | `GET /api/points/vergleich` | Vergleichstabelle |
@@ -396,6 +412,7 @@ gastroviewer/
     boris.py         Bodenrichtwert-Portale je Bundesland
     wms.py           verifizierte Landes-Kartendienste, Klickabfrage
     muenchen.py      Raddauerzählstellen der Landeshauptstadt München
+    bayern.py        Verkehrsmengen der Straßenverkehrszählung (BAYSIS)
     links.py         Deep-Links aus Spec §4.6 und den Notizen
   static/            Oberfläche (Leaflet lokal, kein CDN)
 fixtures/            echte API-Antworten aus Phase 0, Grundlage der Tests

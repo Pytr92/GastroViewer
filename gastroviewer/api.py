@@ -195,6 +195,13 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         _validate(lat, lon, r)
         return (await svc(request).radzaehlung(lat, lon, r)).to_dict()
 
+    @app.get("/api/point/verkehrsmenge")
+    async def point_verkehrsmenge(request: Request, lat: float, lon: float, r: int = 600):
+        """Durchschnittliche tägliche Verkehrsstärke aus der bayerischen
+        Straßenverkehrszählung."""
+        _validate(lat, lon, r)
+        return (await svc(request).verkehrsmenge(lat, lon, r)).to_dict()
+
     @app.get("/api/point/links")
     async def point_links(
         request: Request,
@@ -401,6 +408,8 @@ VERGLEICH_SPALTEN = [
     {"key": "haltestellen", "titel": "Haltestellen"},
     {"key": "linien", "titel": "Linien (eindeutig)"},
     {"key": "abfahrten", "titel": "Abfahrten/Tag (GTFS)"},
+    {"key": "dtv_kfz", "titel": "Kfz/Tag stärkste Zählstelle"},
+    {"key": "dtv_sv_anteil", "titel": "Schwerverkehr %"},
     {"key": "rad_je_tag", "titel": "Radfahrende/Tag (Messung)"},
     {"key": "rad_entfernung", "titel": "Entfernung Zählstelle (m)"},
     {"key": "leerstand_osm", "titel": "Leerstände (OSM)"},
@@ -416,6 +425,8 @@ def _row_for(saved: dict[str, Any]) -> dict[str, Any]:
     o = (bl.get("osm") or {}).get("data") or {}
     g = (bl.get("gtfs") or {}).get("data") or {}
     rad = ((bl.get("radzaehlung") or {}).get("data") or {}).get("naechste") or {}
+    vm = ((bl.get("verkehrsmenge") or {}).get("data") or {}) or {}
+    vms = vm.get("staerkste") or {}
     bev = z.get("bevoelkerung") or {}
     woh = z.get("wohnen") or {}
     zus = o.get("zusammenfassung") or {}
@@ -439,6 +450,8 @@ def _row_for(saved: dict[str, Any]) -> dict[str, Any]:
         "haltestellen": (zus.get("oepnv") or {}).get("haltestellen"),
         "linien": (zus.get("oepnv") or {}).get("linien_eindeutig"),
         "abfahrten": (g or {}).get("abfahrten_gesamt"),
+        "dtv_kfz": vms.get("dtv_kfz"),
+        "dtv_sv_anteil": vms.get("schwerverkehr_anteil"),
         "rad_je_tag": rad.get("je_tag_vorjahr"),
         "rad_entfernung": rad.get("distanz_m"),
         "leerstand_osm": (zus.get("leerstand") or {}).get("gesamt"),
@@ -510,6 +523,8 @@ def point_to_csv(data: dict[str, Any]) -> str:
     gsrc, gstand, glic = prov("gtfs")
     g = (bl.get("gtfs") or {}).get("data") or {}
     rad = ((bl.get("radzaehlung") or {}).get("data") or {}).get("naechste") or {}
+    vm = ((bl.get("verkehrsmenge") or {}).get("data") or {}) or {}
+    vms = vm.get("staerkste") or {}
     if g:
         w.writerow(["Verkehr", "Abfahrten gesamt", g.get("abfahrten_gesamt"), "je Tag",
                     g.get("referenzdatum", ""), gsrc, gstand, glic])
@@ -523,6 +538,13 @@ def point_to_csv(data: dict[str, Any]) -> str:
         w.writerow(["Radverkehr", f"Zählstelle {s_['name']}", s_.get("je_tag_vorjahr"),
                     "Radfahrende je Tag", f"{s_['distanz_m']} m entfernt",
                     rsrc, rstand, rlic])
+
+    vsrc, vstand, vlic = prov("verkehrsmenge")
+    v = (bl.get("verkehrsmenge") or {}).get("data") or {}
+    for z in v.get("zaehlstellen") or []:
+        w.writerow(["Verkehrsmenge", f"{z['strasse']} (Zählstelle {z['zaehlstelle']})",
+                    z.get("dtv_kfz"), "Kfz je Tag", f"{z['distanz_m']} m entfernt",
+                    vsrc, vstand, vlic])
 
     for i, hinweis in enumerate(data.get("grenzen") or [], 1):
         w.writerow(["Grenzen", f"Hinweis {i}", hinweis, "", "", "", "", ""])

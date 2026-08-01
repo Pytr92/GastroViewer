@@ -419,6 +419,10 @@ function lade(refresh = false) {
     .then((d) => { if (aktuell()) { state.daten.radzaehlung = d; zeigeRadzaehlung(d); } })
     .catch((e) => aktuell() && zeigeBlockFehler('radzaehlung', e));
 
+  hole('/api/point/verkehrsmenge', { lat, lon, r: radius })
+    .then((d) => { if (aktuell()) { state.daten.verkehrsmenge = d; zeigeVerkehrsmenge(d); } })
+    .catch((e) => aktuell() && zeigeBlockFehler('verkehrsmenge', e));
+
   aktualisiereFuss();
 }
 
@@ -454,6 +458,7 @@ function baueGeruest() {
     block('verkehr', '6 · Verkehr'),
     block('gtfs', '6b · Abfahrten (GTFS)'),
     block('radzaehlung', '6c · Gemessene Radverkehrsfrequenz'),
+    block('verkehrsmenge', '6d · Verkehrsmenge (DTV, Bayern)'),
     block('leerstand', '7 · Leerstände'),
     block('quellen', '8 · Weiterführende Quellen'),
     block('grenzen', 'Bekannte Grenzen dieser Daten'),
@@ -1436,5 +1441,58 @@ function zeigeRadzaehlung(d) {
       el('a', { href: r.rohdaten, target: '_blank', rel: 'noopener' },
         'Rohdaten im Open-Data-Portal München'),
       ' — dort auch 15-Minuten-Werte und Tageswerte mit Wetter.'));
+  setQuelle(id, d.provenance);
+}
+
+/* Verkehrsmenge (BAYSIS) — für einen Standort an einer Ausfallstraße, mit
+ * Drive-through oder Parkplatz die aussagekräftigste Frequenzgröße, die es
+ * amtlich gemessen und frei gibt. */
+function zeigeVerkehrsmenge(d) {
+  const id = 'verkehrsmenge';
+  if (!d.ok) {
+    setStatus(id, 'fehler', 'nicht erreichbar');
+    setInhalt(id, fehlerbox(d.error));
+    setQuelle(id, d.provenance);
+    return;
+  }
+  const v = d.data;
+  if (!v || !v.zaehlstellen.length) {
+    setStatus(id, 'leer', v ? 'keine Zählstelle' : 'nur Bayern');
+    setInhalt(id, ...warnungen(d.warnings));
+    setQuelle(id, d.provenance);
+    return;
+  }
+  setStatus(id, 'ok', 'geladen');
+  const s = v.staerkste || v.naechste;
+  const kz = el('div', { class: 'kennzahlen' },
+    kennzahl('Stärkste Zählstelle', s.dtv_kfz, 'Kfz/Tag'),
+    kennzahl('davon Schwerverkehr', s.dtv_schwerverkehr, 'Kfz/Tag'),
+    kennzahl('Entfernung', s.distanz_m, 'm'),
+    kennzahl('Zählstellen im Umkreis', v.zaehlstellen.length));
+
+  const tab = el('table', { class: 'daten' },
+    el('tr', {}, el('th', {}, 'Straße'), el('th', { class: 'num' }, 'm'),
+      el('th', { class: 'num' }, 'Kfz/Tag'), el('th', { class: 'num' }, 'SV %')));
+  for (const z of v.zaehlstellen.slice(0, 12)) {
+    tab.append(el('tr', {},
+      el('td', {}, `${z.strasse || '(ohne Angabe)'}${z.im_radius ? ' ✓' : ''}`),
+      el('td', { class: 'num' }, NF.format(z.distanz_m)),
+      el('td', { class: 'num' }, z.dtv_kfz === null ? '—' : NF.format(z.dtv_kfz)),
+      el('td', { class: 'num' },
+        z.schwerverkehr_anteil === null ? '—' : NF1.format(z.schwerverkehr_anteil))));
+  }
+
+  setInhalt(id, kz, tab,
+    el('div', { class: 'notiz' }, '✓ = innerhalb des gewählten Radius.'),
+    ...warnungen(d.warnings),
+    el('div', { class: 'warnung' },
+      'Vorbeifahrender Verkehr ist keine Kundschaft. Ohne Zufahrt, Parkplatz oder '
+      + 'Drive-through nutzt eine hohe Verkehrsstärke wenig — und der Außengastronomie '
+      + 'schadet sie eher. Der DTV ist ein Jahresmittel über alle Wochentage.'),
+    el('div', { class: 'notiz' },
+      'Gezählt wird nur das klassifizierte Straßennetz (Autobahnen, Bundes-, Staats- '
+      + 'und Kreisstraßen). Innerstädtische Gemeindestraßen und Fußgängerzonen fehlen. ',
+      el('a', { href: v.portal, target: '_blank', rel: 'noopener' },
+        'Straßenverkehrszählung bei BAYSIS')));
   setQuelle(id, d.provenance);
 }
