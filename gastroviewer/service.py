@@ -18,7 +18,7 @@ from typing import Any, Awaitable, Callable
 from .cache import AsyncCache, cache_key
 from .config import Settings
 from .http import Outbound
-from .sources import bayern, boris, links, muenchen, nominatim, overpass, zensus
+from .sources import bayern, boris, gehweg, links, muenchen, nominatim, overpass, zensus
 from .sources.base import Provenance, SourceError, SourceResult
 
 Loader = Callable[[], Awaitable[SourceResult]]
@@ -119,6 +119,69 @@ class PointService:
             lambda: bayern.verkehrsmengen(self.outbound, self.settings, lat, lon, radius),
             refresh=refresh,
         )
+
+    async def gehweg(self, lat: float, lon: float, radius: int, refresh: bool = False):
+        """Gehstrecken statt Luftlinie.
+
+        Bewusst **nicht** Teil von :meth:`point`: das Wegenetz ist mit 1–3 MB je
+        Punkt die mit Abstand größte Overpass-Antwort des Werkzeugs. Es wird nur
+        geladen, wenn es angefordert wird, und liegt dann lange im Cache — ein
+        Fußwegenetz ändert sich in Wochen, nicht in Stunden.
+
+        Die Bewertung braucht die Objekte aus OSM und die Zensuszellen. Beide
+        kommen aus dem Cache, wenn der Punkt schon geladen war; sonst werden sie
+        hier nachgeholt.
+        """
+        key = cache_key("gehweg", lat, lon, radius)
+
+        async def laden() -> SourceResult:
+            osm_res, zensus_res = await asyncio.gather(
+                self.osm(lat, lon, radius),
+                self.zensus(lat, lon, radius),
+                return_exceptions=True,
+            )
+            objekte: dict[str, list[dict[str, Any]]] = {}
+            if isinstance(osm_res, SourceResult) and osm_res.ok and osm_res.data:
+                for feld in ("gastronomie", "frequenzbringer", "oepnv", "leerstand"):
+                    liste = osm_res.data.get(feld)
+                    if liste:
+                        # Kopien: die Gehstrecke gehört in den Gehweg-Block und
+                        # darf den zwischengespeicherten OSM-Block nicht ändern.
+                        objekte[feld] = [dict(o) for o in liste]
+            zellen = None
+            if isinstance(zensus_res, SourceResult) and zensus_res.ok and zensus_res.data:
+                zellen = zensus_res.data.get("zellen")
+            return await gehweg.load(
+                self.outbound,
+                self.settings,
+                lat,
+                lon,
+                radius,
+                objekte=objekte,
+                zellen=zellen,
+            )
+
+        return await self._cached("gehweg", key, laden, refresh=refresh)
+
+    async def gehweg_aus_cache(
+        self, lat: float, lon: float, radius: int
+    ) -> SourceResult | None:
+        """Nur nachsehen, nie laden.
+
+        Beim Merken eines Punktes darf keine 1–3-MB-Abfrage ausgelöst werden.
+        Wer den Gehwegblock vorher geöffnet hat, bekommt die Werte in die
+        Vergleichstabelle; wer nicht, bekommt dort leere Felder.
+        """
+        hit = await self.cache.get(cache_key("gehweg", lat, lon, radius))
+        if hit is None:
+            return None
+        payload = dict(hit["payload"])
+        prov = payload.pop("provenance", None)
+        result = SourceResult(**payload)
+        if prov:
+            result.provenance = Provenance(**prov)
+            result.provenance.cached = True
+        return result
 
     async def gtfs(self, lat: float, lon: float, radius: int):
         """Rein lokal (SQLite aus dem Import) — kein Cache, kein Outbound."""

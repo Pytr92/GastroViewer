@@ -120,6 +120,12 @@ class Settings:
     ttl_nominatim: int = field(
         default_factory=lambda: _env_int("GASTROVIEWER_TTL_NOMINATIM", 30 * 24 * 3600)
     )
+    # Das Fußwegenetz ist mit 1–3 MB je Punkt die größte Overpass-Antwort des
+    # Werkzeugs und ändert sich in Wochen, nicht in Stunden. Entsprechend lange
+    # bleibt es liegen — das ist Rücksicht auf einen Spendendienst.
+    ttl_gehweg: int = field(
+        default_factory=lambda: _env_int("GASTROVIEWER_TTL_GEHWEG", 14 * 24 * 3600)
+    )
 
     # --- GTFS (Phase 3) ---
     gtfs_url: str = field(
@@ -141,6 +147,8 @@ class Settings:
         return f"gastroviewer/{self.version} ({self.contact})"
 
     def ttl_for(self, source: str) -> int:
+        if source.startswith("gehweg"):
+            return self.ttl_gehweg
         if source.startswith("overpass"):
             return self.ttl_osm
         if source.startswith("nominatim"):

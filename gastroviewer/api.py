@@ -202,6 +202,18 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         _validate(lat, lon, r)
         return (await svc(request).verkehrsmenge(lat, lon, r)).to_dict()
 
+    @app.get("/api/point/gehweg")
+    async def point_gehweg(
+        request: Request, lat: float, lon: float, r: int = 600, refresh: bool = False
+    ):
+        """Gehstrecken statt Luftlinie.
+
+        Bewusst nicht Teil von ``/api/point``: das Fußwegenetz ist die größte
+        Overpass-Antwort des Werkzeugs und wird nur auf Anforderung geladen.
+        """
+        _validate(lat, lon, r)
+        return (await svc(request).gehweg(lat, lon, r, refresh)).to_dict()
+
     @app.get("/api/point/links")
     async def point_links(
         request: Request,
@@ -286,7 +298,13 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     @app.post("/api/points")
     async def save_point(request: Request, body: SavePoint):
         _validate(body.lat, body.lon, body.radius)
-        payload = await svc(request).point(body.lat, body.lon, body.radius)
+        service = svc(request)
+        payload = await service.point(body.lat, body.lon, body.radius)
+        # Gehstrecken nur übernehmen, wenn sie schon berechnet sind — das Merken
+        # eines Punktes darf keine 1–3-MB-Abfrage auslösen.
+        gw = await service.gehweg_aus_cache(body.lat, body.lon, body.radius)
+        if gw is not None:
+            payload["bloecke"]["gehweg"] = gw.to_dict()
         cache: AsyncCache = request.app.state.cache
         pid = await asyncio.to_thread(
             cache.sync.save_point,
@@ -444,6 +462,12 @@ VERGLEICH_SPALTEN = [
     {"key": "rad_je_tag", "titel": "Radfahrende/Tag (Messung)"},
     {"key": "rad_entfernung", "titel": "Entfernung Zählstelle (m)"},
     {"key": "neubau_anteil", "titel": "Gebäude ab 2020 %", "stellen": 1},
+    # Nur belegt, wenn der Gehwegblock für diesen Punkt geladen war.
+    {"key": "einwohner_gehweg", "titel": "Einwohner zu Fuß erreichbar"},
+    {"key": "erschliessung_einwohner", "titel": "Erschließungsgrad Einwohner %",
+     "stellen": 1},
+    {"key": "gastro_gehweg", "titel": "Gastronomie zu Fuß erreichbar"},
+    {"key": "umwegfaktor", "titel": "Umwegfaktor (Median)", "stellen": 2},
     {"key": "leerstand_osm", "titel": "Leerstände (OSM)"},
     {"key": "erzeugt", "titel": "Abgerufen am"},
 ]
@@ -457,6 +481,9 @@ def _row_for(saved: dict[str, Any]) -> dict[str, Any]:
     o = (bl.get("osm") or {}).get("data") or {}
     g = (bl.get("gtfs") or {}).get("data") or {}
     rad = ((bl.get("radzaehlung") or {}).get("data") or {}).get("naechste") or {}
+    gw = ((bl.get("gehweg") or {}).get("data") or {}) or {}
+    gw_gas = gw.get("gastronomie") or {}
+    gw_zen = gw.get("zensus") or {}
     vm = ((bl.get("verkehrsmenge") or {}).get("data") or {}) or {}
     vms = vm.get("staerkste") or {}
     bev = z.get("bevoelkerung") or {}
@@ -509,6 +536,10 @@ def _row_for(saved: dict[str, Any]) -> dict[str, Any]:
         "rad_je_tag": rad.get("je_tag_vorjahr"),
         "rad_entfernung": rad.get("distanz_m"),
         "neubau_anteil": woh.get("neubau_anteil"),
+        "einwohner_gehweg": gw_zen.get("einwohner_gehweg"),
+        "erschliessung_einwohner": gw_zen.get("erschliessungsgrad"),
+        "gastro_gehweg": gw_gas.get("im_gehradius"),
+        "umwegfaktor": gw_gas.get("umwegfaktor_median"),
         "leerstand_osm": (zus.get("leerstand") or {}).get("gesamt"),
         "erzeugt": (p.get("meta") or {}).get("erzeugt"),
         "lat": saved.get("lat"),

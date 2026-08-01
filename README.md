@@ -67,6 +67,7 @@ export GASTROVIEWER_CONTACT="deine@mailadresse.de"     # Windows: set GASTROVIEW
 | „Vergleich" | Kandidaten nebeneinander, mit CSV-Export |
 | „Neu laden" | umgeht den Cache für diesen Punkt |
 | „Export JSON/CSV" | ein Punkt mit Zeitstempel und Quellenangaben je Zeile |
+| „Gehstrecken berechnen" | Block 4b — rechnet die echte Fußwegdistanz statt der Luftlinie |
 | Reiter „Umsatzschätzung" | getrennter Reiter, siehe eigener Abschnitt |
 
 ---
@@ -171,6 +172,7 @@ Antworten unter `fixtures/`.
 | ↳ Frequenzbringer | über §4.2 hinaus auch Märkte, Busbahnhöfe, Tankstellen, Apotheken, Banken, Post, Behörden, Kioske | ODbL 1.0 | 24 h |
 | [Nominatim](https://nominatim.openstreetmap.org/) | Adresse, Gemeinde, Ortsteil, PLZ | ODbL 1.0, © OpenStreetMap-Mitwirkende | 30 Tage |
 | [gtfs.de](https://gtfs.de/) | Abfahrten je Haltestelle und Stunde | CC BY 4.0, Datengrundlage DELFI e.V. | lokal, kein Cache |
+| ↳ Fußwegenetz | Gehstrecke statt Luftlinie (nur auf Anforderung) | ODbL 1.0 | 14 Tage |
 | Bodenrichtwert-WMS von 7 Ländern | Kartenebene und Wert am Punkt | je Land, siehe unten | kein Cache |
 | [Raddauerzählstellen München](https://opendata.muenchen.de/dataset/daten-der-raddauerzaehlstellen-muenchen-jahreszahlen) | gemessene Radverkehrsfrequenz | dl-de/by-2-0, © LH München | 24 h |
 | [Luftbild und ALKIS Bayern](https://geodaten.bayern.de/opengeodata/) | Kartenebenen | CC BY 4.0, © Bayerische Vermessungsverwaltung | kein Cache |
@@ -380,6 +382,56 @@ Gewachsene Viertel liegen bei exakt null, wachsende darüber. Deshalb hängt der
 „größer null" und nicht an einer gewählten Schwelle. Er sagt: hier lag die Einwohnerzahl
 zum Stichtag vermutlich unter der heutigen.
 
+## Erreichbarkeit zu Fuß — der Umkreis ist kein Kreis
+
+Der Radius, mit dem dieses Werkzeug arbeitet, ist ein Kreis auf der Karte. Zu Fuß ist er
+das nicht: Flüsse, Gleise und Schnellstraßen zerschneiden ihn, und hinüber kommt man nur,
+wo eine Brücke steht. In München betrifft das die halbe Stadt.
+
+Der Block **4b · Erreichbarkeit zu Fuß** rechnet deshalb die tatsächliche Gehstrecke. Das
+Fußwegenetz kommt aus derselben Overpass-Quelle wie alles andere, wird zu einem Graphen
+verknüpft, und ein Dijkstra liefert den kürzesten Weg je Knoten — für 12.000 Knoten in
+**rund 5 ms**, in reinem Python. Es braucht **keinen Routing-Dienst** und keine zusätzliche
+Abhängigkeit.
+
+Gemessen am 01.08.2026, Radius 600 m:
+
+| Lage | Umwegfaktor | Einwohner Luftlinie → Fußweg | erschlossen | Gastronomie | erschlossen |
+|---|---|---|---|---|---|
+| Moosach (Stadtrand) | 1,61 | 13.713 → 7.053 | **51,4 %** | 32 → 25 | 78,1 % |
+| Giesing (Wohnviertel) | 1,34 | 22.805 → 10.981 | 48,2 % | 31 → 20 | 64,5 % |
+| Marienplatz (1a) | 1,38 | 10.002 → 3.616 | 36,2 % | 382 → 290 | 75,9 % |
+| Ostbahnhof (Gleise) | 1,34 | 13.648 → 4.254 | 31,2 % | 113 → 53 | 46,9 % |
+| Isarufer (Fluss) | 1,41 | 18.227 → 4.853 | **26,6 %** | 153 → 43 | **28,1 %** |
+
+Am Isarufer sind von 153 Gastronomiebetrieben im Umkreis nur **43 zu Fuß erreichbar** —
+110 stehen auf der anderen Flussseite. Wer die Umkreiszahl liest, hält den Standort für
+dreieinhalbmal so umkämpft, wie er ist.
+
+> **Der Rückgang ist keine Fehlerkorrektur.** 600 m Fußweg und 600 m Luftlinie sind zwei
+> verschiedene Gebiete: bei Umwegfaktor 1,4 entspricht ein 600-m-Fußweg einem
+> Luftlinienkreis von rund 430 m, also gut der halben Fläche. Vergleichbar zwischen
+> Standorten wird die Sache erst über den **Erschließungsgrad** — den Anteil des
+> Luftlinienkreises, der zu Fuß tatsächlich erreichbar ist. Der trennt sauber: 51 % am
+> offenen Stadtrand, 27 % am Fluss.
+
+**Der Block lädt nicht von selbst.** Das Wegenetz ist mit 1–3 MB je Punkt die größte
+Abfrage des Werkzeugs, und Overpass ist ein Spendenprojekt. Deshalb erst auf Knopfdruck —
+dafür bleibt das Ergebnis 14 Tage im Cache (`GASTROVIEWER_TTL_GEHWEG`), und „Punkt merken"
+löst die Abfrage nie aus. Der erste Abruf dauert je nach Lage 10–70 Sekunden, jeder weitere
+4 Millisekunden.
+
+Grenzen, die auch in der Oberfläche stehen:
+
+- Gerechnet wird die **Weglänge**, nicht die Wegzeit: keine Ampeln, keine Wartezeiten,
+  keine Steigung. Treppen zählen wie ebener Weg.
+- Die Umrechnung in Minuten nutzt 80 m/min (4,8 km/h) — ein gewählter Wert, der in der
+  Oberfläche mit dabeisteht.
+- Wege mit `foot=no` oder `access=private` fallen heraus. Ein faktisch begehbarer, aber so
+  getaggter Durchgang fehlt damit.
+- Zensuszellen werden über ihren **Mittelpunkt** zugeordnet. Eine 100-m-Zelle kann teils
+  erreichbar sein; die Zuordnung ist eine Näherung.
+
 ## Bodenrichtwerte als Kartenebene
 
 Sieben Länder haben einen offenen Kartendienst, der am 01.08.2026 in allen drei Stufen
@@ -450,6 +502,7 @@ Alles über Umgebungsvariablen, alles optional:
 | `GASTROVIEWER_NOMINATIM_MIN_INTERVAL` | `1.0` — nicht ohne Grund verringern |
 | `GASTROVIEWER_OVERPASS_MIN_INTERVAL` | `1.0` |
 | `GASTROVIEWER_TTL_OSM` / `_ZENSUS` / `_NOMINATIM` | 24 h / 30 d / 30 d |
+| `GASTROVIEWER_TTL_GEHWEG` | 14 d — das Fußwegenetz ändert sich langsam |
 | `GASTROVIEWER_ZENSUS_PAGE_SIZE` / `_MAX_PAGES` | `2000` / `10` |
 | `GASTROVIEWER_GTFS_URL` | gtfs.de Komplettfeed |
 
@@ -461,6 +514,7 @@ Alles über Umgebungsvariablen, alles optional:
 |---|---|
 | `GET /api/point?lat=&lon=&r=` | alles auf einmal |
 | `GET /api/point/{adresse\|zensus\|osm\|gtfs\|radzaehlung\|verkehrsmenge\|links}` | je Quelle einzeln (nutzt die Oberfläche) |
+| `GET /api/point/gehweg?lat=&lon=&r=` | Gehstrecken statt Luftlinie — **nur auf Anforderung**, siehe eigener Abschnitt |
 | `GET /api/geocode?q=` | Adresssuche |
 | `GET /api/points` · `POST /api/points` · `DELETE /api/points/{id}` | gemerkte Punkte |
 | `GET /api/points/vergleich` | Vergleichstabelle |
@@ -531,6 +585,7 @@ gastroviewer/
     overpass.py      eine kombinierte Abfrage, Klassifikation, Spiegel-Fallback
     nominatim.py     Geocoding und Reverse-Geocoding
     gtfs.py          Import und Abfahrtszählung
+    gehweg.py        Fußwegenetz als Graph, Dijkstra, Gehstrecke je Objekt
     boris.py         Bodenrichtwert-Portale je Bundesland
     wms.py           verifizierte Landes-Kartendienste, Klickabfrage
     muenchen.py      Raddauerzählstellen der Landeshauptstadt München

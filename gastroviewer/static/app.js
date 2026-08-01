@@ -465,6 +465,7 @@ function baueGeruest() {
     block('bevoelkerung', '2 · Bevölkerung'),
     block('wohnen', '3 · Wohnen'),
     block('gastronomie', '4 · Gastronomie'),
+    block('gehweg', '4b · Erreichbarkeit zu Fuß'),
     block('umfeld', '5 · Umfeld'),
     block('verkehr', '6 · Verkehr'),
     block('gtfs', '6b · Abfahrten (GTFS)'),
@@ -477,6 +478,45 @@ function baueGeruest() {
   setStatus('grenzen', 'ok', '');
   setInhalt('grenzen', el('ul', { class: 'liste' },
     GRENZEN.map((g) => el('li', {}, el('span', { class: 'haupt' }, g)))));
+  zeigeGehwegAngebot();
+}
+
+/* Der Gehwegblock lädt nicht von selbst: das Fußwegenetz ist mit 1–3 MB je Punkt
+   die grösste Overpass-Antwort des Werkzeugs, und Overpass ist ein Spendendienst.
+   Deshalb erst auf Knopfdruck — dafür bleibt das Ergebnis 14 Tage im Cache. */
+function zeigeGehwegAngebot() {
+  setStatus('gehweg', 'ok', 'auf Anforderung');
+  setInhalt('gehweg',
+    el('p', { class: 'hinweis-klein' },
+      'Der Umkreis ist ein Kreis auf der Karte — zu Fuß ist er das nicht. '
+      + 'Flüsse, Gleise und Schnellstraßen zerschneiden ihn, und man kommt nur '
+      + 'dort hinüber, wo eine Brücke steht. Diese Auswertung rechnet die '
+      + 'tatsächliche Gehstrecke im OSM-Wegenetz.'),
+    el('p', { class: 'hinweis-klein' },
+      'Sie läuft nicht automatisch mit, weil das Wegenetz die größte Abfrage des '
+      + 'Werkzeugs ist und Overpass ein Spendenprojekt. Das Ergebnis bleibt '
+      + 'danach 14 Tage im Cache.'),
+    el('button', { id: 'btn-gehweg', onclick: ladeGehweg }, 'Gehstrecken berechnen'));
+}
+
+function ladeGehweg() {
+  const lauf = state.ladeLauf;
+  const { lat, lon, radius } = state;
+  setStatus('gehweg', 'laedt', 'lädt …');
+  setInhalt('gehweg',
+    el('div', { class: 'laden' }),
+    el('p', { class: 'hinweis-klein' },
+      'Das Wegenetz umfasst je nach Lage 1–3 MB; der erste Abruf dauert '
+      + 'typischerweise 10–70 Sekunden.'));
+  hole('/api/point/gehweg', { lat, lon, r: radius })
+    .then((d) => {
+      if (lauf !== state.ladeLauf) return;
+      state.daten.gehweg = d;
+      zeigeGehweg(d);
+      // Die Betriebsliste zeigt die Gehstrecke mit, sobald sie vorliegt.
+      if (state.daten.osm?.ok) zeigeOsm(state.daten.osm);
+    })
+    .catch((e) => { if (lauf === state.ladeLauf) zeigeBlockFehler('gehweg', e); });
 }
 
 /* Wird beim Start vom Server geholt, damit die Texte nicht doppelt gepflegt werden. */
@@ -678,8 +718,14 @@ function zeigeOsm(d) {
       el('td', { class: 'num' }, NF.format(g.ohne_kuechenangabe))));
   }
 
+  /* Ist der Gehwegblock geladen, steht neben der Luftlinie die Gehstrecke. */
+  const gehStrecken = state.daten.gehweg?.data?.gehstrecke_je_id || {};
   const gListe = liste(o.gastronomie, 12, (p) => el('li', {},
-    el('span', { class: 'dist' }, `${NF.format(p.distanz_m)} m`),
+    el('span', { class: 'dist' },
+      `${NF.format(p.distanz_m)} m`,
+      gehStrecken[String(p.id)] !== undefined
+        ? el('div', { class: 'basis' }, `${NF.format(gehStrecken[String(p.id)])} m zu Fuß`)
+        : null),
     el('span', { class: 'haupt' },
       el('div', { class: 'name' }, p.name || '(ohne Name)'),
       el('div', { class: 'meta' },
@@ -1485,6 +1531,67 @@ function zeigeRadzaehlung(d) {
 /* Verkehrsmenge (BAYSIS) — für einen Standort an einer Ausfallstraße, mit
  * Drive-through oder Parkplatz die aussagekräftigste Frequenzgröße, die es
  * amtlich gemessen und frei gibt. */
+function zeigeGehweg(d) {
+  const id = 'gehweg';
+  if (!d.ok) {
+    setStatus(id, 'fehler', 'nicht erreichbar');
+    setInhalt(id, fehlerbox(d.error), el('button', { onclick: ladeGehweg }, 'Erneut versuchen'));
+    setQuelle(id, d.provenance);
+    return;
+  }
+  const g = d.data;
+  if (!g) {
+    setStatus(id, 'ok', 'ohne Ergebnis');
+    setInhalt(id, ...warnungen(d.warnings || []),
+      el('button', { onclick: ladeGehweg }, 'Erneut versuchen'));
+    setQuelle(id, d.provenance);
+    return;
+  }
+  setStatus(id, 'ok', 'geladen');
+
+  const gas = g.gastronomie || {};
+  const zen = g.zensus || {};
+  const kz = el('div', { class: 'kennzahlen' },
+    kennzahl(`Gehzeit für ${g.radius_m} m`, g.gehzeit_minuten, 'min', 1),
+    kennzahl('Umwegfaktor (Median)', gas.umwegfaktor_median, '', 2),
+    kennzahl('Erschließungsgrad Einwohner', zen.erschliessungsgrad, '%', 1),
+    kennzahl('Erschließungsgrad Gastronomie', gas.erschliessungsgrad, '%', 1));
+
+  /* Die Gegenüberstellung ist der Kern des Blocks: links, was der Kreis
+     behauptet, rechts, was zu Fuß übrig bleibt. */
+  const tab = el('table', { class: 'daten' },
+    el('tr', {},
+      el('th', {}, ''), el('th', { class: 'num' }, `${g.radius_m} m Luftlinie`),
+      el('th', { class: 'num' }, `${g.radius_m} m Fußweg`),
+      el('th', { class: 'num' }, 'erschlossen')));
+  const zeile = (name, luft, fuss, quote) => tab.append(el('tr', {},
+    el('td', {}, name),
+    el('td', { class: 'num' }, luft === null || luft === undefined ? '—' : NF.format(luft)),
+    el('td', { class: 'num' }, fuss === null || fuss === undefined ? '—' : NF.format(fuss)),
+    el('td', { class: 'num' }, quote === null || quote === undefined ? '—' : `${NF1.format(quote)} %`)));
+  zeile('Einwohner', zen.einwohner_luftlinie, zen.einwohner_gehweg, zen.erschliessungsgrad);
+  zeile('Zensuszellen', (zen.zellen_im_gehradius || 0) + (zen.zellen_nur_luftlinie || 0),
+    zen.zellen_im_gehradius, null);
+  zeile('Gastronomie', gas.im_luftlinienkreis, gas.im_gehradius, gas.erschliessungsgrad);
+  for (const [feld, name] of [['frequenzbringer', 'Frequenzbringer'],
+    ['oepnv', 'Haltestellen'], ['leerstand', 'Leerstände']]) {
+    const x = g[feld];
+    if (x) zeile(name, x.im_luftlinienkreis, x.im_gehradius, x.erschliessungsgrad);
+  }
+
+  const netz = el('p', { class: 'hinweis-klein' },
+    `Wegenetz: ${NF.format(g.knoten)} Knoten, ${NF.format(g.kanten)} Kanten aus `
+    + `${NF.format(g.wege)} OSM-Wegen (${NF.format(g.wege_gesperrt)} als nicht begehbar `
+    + `ausgeschlossen). Kürzester Weg je Knoten in ${g.rechenzeit_ms} ms berechnet. `
+    + `Anbindung des Standorts an das Netz: ${g.anbindung_m} m.`);
+
+  setInhalt(id, kz, tab, netz,
+    ...(g.hinweise || []).map((h) => el('div', { class: 'notiz' }, h)),
+    zen.hinweis ? el('div', { class: 'notiz' }, zen.hinweis) : null,
+    ...warnungen(d.warnings || []));
+  setQuelle(id, d.provenance);
+}
+
 function zeigeVerkehrsmenge(d) {
   const id = 'verkehrsmenge';
   if (!d.ok) {

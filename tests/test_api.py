@@ -600,3 +600,43 @@ def test_verkehrsmenge_ist_teil_des_punktes_und_des_exports(client, monkeypatch)
     v = client.get("/api/points/vergleich").json()
     assert v["zeilen"][0]["dtv_kfz"] == 111624
     assert v["zeilen"][0]["dtv_sv_anteil"] == 2.9
+
+
+# ---------------------------------------------------------------- Gehstrecke
+
+
+def test_gehweg_ist_nicht_teil_des_gesamtpunkts(client):
+    """Das Fußwegenetz ist die größte Overpass-Antwort des Werkzeugs und darf
+    nicht bei jedem Kartenklick mitlaufen — Overpass ist ein Spendendienst."""
+    d = client.get("/api/point", params={"lat": LAT, "lon": LON, "r": R}).json()
+    assert "gehweg" not in d["bloecke"]
+
+
+def test_gehweg_hat_lange_haltbarkeit():
+    from gastroviewer.config import Settings
+
+    s = Settings()
+    assert s.ttl_for("gehweg") > s.ttl_for("overpass") * 7, (
+        "ein Wegenetz ändert sich in Wochen, nicht in Stunden"
+    )
+
+
+def test_merken_loest_keine_gehwegabfrage_aus(client, monkeypatch):
+    """Sonst kostet jedes „Punkt merken" mehrere Megabyte beim Spendendienst."""
+    from gastroviewer.sources import gehweg as gehweg_mod
+
+    async def darf_nicht(*a, **kw):
+        raise AssertionError("Merken darf das Wegenetz nicht laden")
+
+    monkeypatch.setattr(gehweg_mod, "load", darf_nicht)
+    r = client.post("/api/points", json={"label": "A", "lat": LAT, "lon": LON, "radius": R})
+    assert r.status_code == 200
+    zeile = client.get("/api/points/vergleich").json()["zeilen"][0]
+    assert zeile["einwohner_gehweg"] is None, "ohne Berechnung bleibt die Spalte leer"
+
+
+def test_gehwegspalten_stehen_im_vergleich(client):
+    v = client.get("/api/points/vergleich").json()
+    keys = {c["key"] for c in v["spalten"]}
+    assert {"einwohner_gehweg", "erschliessung_einwohner",
+            "gastro_gehweg", "umwegfaktor"} <= keys
