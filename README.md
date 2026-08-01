@@ -4,9 +4,10 @@ Punkt auf einer Deutschlandkarte anklicken → alle verfügbaren offenen Daten z
 Punkt sehen. Gedacht für die Standortsuche eines Fast-Food-Betriebs: wer wohnt dort, wer
 arbeitet dort, wer betreibt schon Gastronomie, wie gut ist die Anbindung.
 
-**Das Werkzeug ist ein Daten-Browser, kein Prognose-Tool.** Jede angezeigte Zahl stammt
-aus einer realen API-Antwort und trägt Quelle, Stand und Lizenz. Es gibt keine Konstante
-im Code, die wie ein Messwert aussieht, und keine Umsatzschätzung.
+**Das Werkzeug ist ein Daten-Browser, kein Prognose-Tool.** Jede angezeigte Zahl im
+Datenreiter stammt aus einer realen API-Antwort und trägt Quelle, Stand und Lizenz. Es
+gibt keine Konstante im Code, die wie ein Messwert aussieht. Die Umsatzschätzung sitzt
+bewusst in einem eigenen, getrennt gekennzeichneten Reiter — siehe unten.
 
 Grundlage: [`spec-standort-datenterminal.md`](spec-standort-datenterminal.md) ·
 Kontext: [`notizen-standort-flaeche.md`](notizen-standort-flaeche.md) ·
@@ -61,6 +62,7 @@ export GASTROVIEWER_CONTACT="deine@mailadresse.de"     # Windows: set GASTROVIEW
 | „Vergleich" | Kandidaten nebeneinander, mit CSV-Export |
 | „Neu laden" | umgeht den Cache für diesen Punkt |
 | „Export JSON/CSV" | ein Punkt mit Zeitstempel und Quellenangaben je Zeile |
+| Reiter „Umsatzschätzung" | getrennter Reiter, siehe eigener Abschnitt |
 
 ---
 
@@ -139,11 +141,61 @@ Overpass ist ein Spendenprojekt, Nominatim läuft auf Spendenhardware. Deshalb:
 
 ---
 
+## Umsatzschätzung — eigener Reiter, bewusst zurückhaltend
+
+Ein Vorgänger dieses Werkzeugs hat aus Einwohnerzahl, Wettbewerbsdichte und frei
+gewählten Distanzgewichten einen Jahresumsatz „berechnet". Die Eingangsdaten waren echt,
+die Gewichte erfunden, das Ergebnis sah präzise aus und war es nicht. Deshalb gelten hier
+fünf Regeln:
+
+1. **Eigener Reiter**, sichtbar als Schätzung markiert. Im Datenreiter taucht keine
+   geschätzte Zahl auf — das ist mit einem Test festgehalten.
+2. **Jede Annahme ist ein Eingabefeld.** Kein Faktor steckt versteckt im Code. Felder ohne
+   Datengrundlage sind farblich markiert und mit „frei gewählt" beschriftet.
+3. **Das Ergebnis ist immer eine Spanne**, nie ein Punktwert.
+4. **Daneben steht die Umrechnung in Bestellungen pro Tag und pro Öffnungsstunde.** Das ist
+   die Zahl, die ein Betreiber beurteilen kann und das Modell nicht.
+5. **Der Rechenweg steht sichtbar in der Oberfläche.** Vier Multiplikationen, sonst nichts:
+
+```
+Besuche im Einzugsgebiet je Jahr  =  Einwohner × Besuche je Einwohner und Jahr
+Marktanteil (naive Gleichverteilung)  =  1 ÷ (Wettbewerber + 1)
+Besuche des Betriebs je Jahr  =  Besuche im Einzugsgebiet × Marktanteil
+Jahresumsatz  =  Besuche des Betriebs × Durchschnittsbon
+Bestellungen je Tag  =  Besuche des Betriebs ÷ Öffnungstage
+Bestellungen je Öffnungsstunde  =  Bestellungen je Tag ÷ Öffnungsstunden
+```
+
+**Keine Distanzgewichte, keine Lagefaktoren, keine Kaufkraftindizes.** Zwei Standorte mit
+gleicher Einwohner- und Wettbewerbszahl bekommen dasselbe Ergebnis, auch wenn einer an der
+Fußgängerzone liegt und einer an der Umgehungsstraße. Genau deshalb ist das Ergebnis ein
+**Vergleichsmaß und keine Prognose**.
+
+Der Marktanteil ist die einzige Größe, für die es keine Datenquelle gibt. Er wird nicht
+geschätzt, sondern verlangt: Vorgabe ist die naive Gleichverteilung `1/(Wettbewerber+1)`,
+aufgespannt mit einem sichtbaren Unsicherheitsfaktor.
+
+### Referenzwerte, am 01.08.2026 selbst nachgeschlagen
+
+| Größe | Wert | Stand | Quelle |
+|---|---|---|---|
+| Umsatz Systemgastronomie Deutschland | 36 Mrd. € | 2025 | [BdS mit Circana, CREST-Panel](https://www.bundesverband-systemgastronomie.de/die-systemgastronomie/branchendaten.html) |
+| Durchschnittsbon Systemgastronomie | 7,15 € je Besuch | 2025 | [BdS mit Circana, CREST-Panel](https://www.bundesverband-systemgastronomie.de/die-systemgastronomie/branchendaten.html) |
+| Durchschnittsbon Außer-Haus-Markt gesamt | 10,21 € je Besuch | 2023 | [Studie für die Denkfabrik Zukunft der Gastwelt](https://brotundbackwaren.de/ausser-haus-markt-2023-weniger-besuche-hoherer-durchschnittsbon/) |
+| Bevölkerung Deutschland | 83,5 Mio. | 31.12.2025 | [Statistisches Bundesamt](https://www.destatis.de/DE/Presse/Pressemitteilungen/2026/01/PD26_032_124.html) |
+| Miete als Anteil vom Nettoumsatz | 10–14 % | Faustregel | `notizen-standort-flaeche.md` §6 |
+
+Daraus **hergeleitet** (nicht gesetzt): 36 Mrd. € ÷ 7,15 € = 5,03 Mrd. Besuche;
+÷ 83,5 Mio. Einwohner = **60,3 Besuche je Einwohner und Jahr**. Die Herleitung steht in
+der Oberfläche neben dem Feld.
+
+Die Spec nannte für 2023 einen Außer-Haus-Markt von 84,5 Mrd. € — je nach Erhebungsumfang
+finden sich dafür auch 77,1 Mrd. €. Die beiden Durchschnittsbons stammen aus verschieden
+abgegrenzten Erhebungen und lassen sich nicht ineinander umrechnen; sie dienen hier als
+untere und obere Annahme. Alle Werte sind Eingabefelder und überschreibbar.
+
 ## Was dieses Werkzeug bewusst nicht tut
 
-- **Keine Umsatzschätzung.** Ein Vorgänger hat aus Einwohnerzahl, Wettbewerbsdichte und
-  frei gewählten Distanzgewichten einen Jahresumsatz „berechnet". Die Eingangsdaten waren
-  echt, die Gewichte erfunden, das Ergebnis sah präzise aus und war es nicht.
 - **Keine Bewertung und keine Rangliste.** Die Vergleichstabelle hebt nur den jeweils
   höchsten Wert hervor, ohne ihn als „besser" zu bezeichnen.
 - **Kein Scraping** von Immobilienportalen. ImmoScout24 und Immowelt haben aktiven

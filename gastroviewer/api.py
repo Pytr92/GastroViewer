@@ -24,12 +24,31 @@ from pydantic import BaseModel, Field
 from .cache import AsyncCache
 from .config import Settings, get_settings
 from .http import Outbound
+from .schaetzung import Eingaben, rechne, vorgaben_aus_punkt
 from .service import GRENZEN, PointService
 from .sources import boris, gtfs, links
 
 STATIC_DIR = __import__("pathlib").Path(__file__).parent / "static"
 
 RADIUS_CHOICES = (300, 600, 900, 1400)
+
+
+class SchaetzEingaben(BaseModel):
+    """Alle Annahmen der Umsatzschätzung — jede einzelne kommt aus der Oberfläche.
+    Es gibt keinen Wert, den der Server hinter dem Rücken des Nutzers setzt."""
+
+    einwohner: float = Field(..., ge=0)
+    wettbewerber: int = Field(..., ge=0)
+    besuche_je_einwohner: float = Field(..., gt=0)
+    bon_min: float = Field(..., gt=0)
+    bon_max: float = Field(..., gt=0)
+    marktanteil_min_prozent: float | None = Field(None, ge=0, le=100)
+    marktanteil_max_prozent: float | None = Field(None, ge=0, le=100)
+    unsicherheitsfaktor: float = Field(2.0, ge=1)
+    oeffnungstage: int = Field(360, gt=0, le=366)
+    oeffnungsstunden: float = Field(12.0, gt=0, le=24)
+    mietanteil_min_prozent: float = Field(10.0, ge=0, le=100)
+    mietanteil_max_prozent: float = Field(14.0, ge=0, le=100)
 
 
 class SavePoint(BaseModel):
@@ -195,6 +214,25 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         refresh: bool = Query(False),
     ):
         return (await svc(request).suche(q, refresh)).to_dict()
+
+    # ------------------------------------------------ Umsatzschätzung (§9)
+
+    @app.get("/api/schaetzung/vorgaben")
+    async def schaetzung_vorgaben(
+        request: Request, lat: float, lon: float, r: int = 600
+    ):
+        """Füllt die Eingabefelder aus den Daten des Punktes vor — vorbefüllt,
+        nicht festgelegt. Jeder Wert nennt seine Herkunft."""
+        _validate(lat, lon, r)
+        punkt = await svc(request).point(lat, lon, r)
+        return vorgaben_aus_punkt(punkt)
+
+    @app.post("/api/schaetzung")
+    async def schaetzung(body: SchaetzEingaben):
+        ergebnis = rechne(Eingaben(**body.model_dump()))
+        if not ergebnis["ok"]:
+            raise HTTPException(422, "; ".join(ergebnis["fehler"]))
+        return ergebnis
 
     # ------------------------------------------------------- Vergleich
 

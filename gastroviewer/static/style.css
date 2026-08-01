@@ -106,19 +106,126 @@ main {
 #karten-spalte { position: relative; min-height: 0; }
 #karte { position: absolute; inset: 0; }
 
-#panel {
-  overflow-y: auto;
-  padding: 14px;
+#panel-spalte {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
   border-left: 1px solid var(--rand);
   background: var(--bg);
+}
+
+/* Reiter — Spec §9 verlangt einen „eigenen, klar getrennten Reiter" für die
+   Schätzung. Deshalb sitzt er sichtbar getrennt und trägt eine eigene Marke. */
+#reiter {
+  display: flex;
+  gap: 2px;
+  padding: 6px 8px 0;
+  background: var(--flaeche);
+  border-bottom: 1px solid var(--rand);
+  flex: 0 0 auto;
+}
+#reiter button {
+  border: 1px solid transparent;
+  border-bottom: none;
+  border-radius: 5px 5px 0 0;
+  background: none;
+  padding: 8px 14px;
+  font-size: 14px;
+  color: var(--text-schwach);
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+#reiter button.aktiv {
+  background: var(--bg);
+  border-color: var(--rand);
+  color: var(--text);
+  font-weight: 600;
+  margin-bottom: -1px;
+  padding-bottom: 9px;
+}
+.reiter-marke {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  padding: 1px 6px;
+  border-radius: 9px;
+  background: var(--warn-bg);
+  color: var(--warn);
+  border: 1px solid #e7d3a3;
+}
+
+#panel, #panel-schaetzung {
+  overflow-y: auto;
+  padding: 14px;
+  background: var(--bg);
   min-height: 0;
+  flex: 1 1 auto;
 }
 
 @media (max-width: 900px) {
   main { grid-template-columns: 1fr; grid-template-rows: 55vh auto; }
   #karten-spalte { min-height: 55vh; }
-  #panel { border-left: none; border-top: 1px solid var(--rand); }
+  #panel-spalte { border-left: none; border-top: 1px solid var(--rand); }
 }
+
+/* ------------------------------------------------------- Schätzungsreiter */
+
+.schaetz-banner {
+  background: var(--warn-bg);
+  border: 1px solid #e7d3a3;
+  border-left: 4px solid var(--warn);
+  border-radius: 5px;
+  padding: 10px 12px;
+  margin-bottom: 12px;
+  font-size: 13px;
+  color: var(--warn);
+  line-height: 1.5;
+}
+.schaetz-banner strong { display: block; font-size: 14px; margin-bottom: 3px; }
+
+.eingabe-gitter {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(155px, 1fr));
+  gap: 10px;
+}
+.feld label { display: block; font-size: 12px; color: var(--text-schwach); margin-bottom: 3px; }
+.feld input {
+  width: 100%;
+  padding: 6px 8px;
+  border: 1px solid var(--rand);
+  border-radius: 4px;
+  font-size: 14px;
+  font-family: inherit;
+  font-variant-numeric: tabular-nums;
+}
+.feld .herkunft { font-size: 11px; color: var(--text-schwach); margin-top: 3px; line-height: 1.35; }
+.feld.gesetzt input { border-color: var(--warn); background: #fffdf7; }
+
+.formel {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 12px;
+  line-height: 1.75;
+  background: var(--flaeche);
+  border: 1px solid var(--rand);
+  border-radius: 5px;
+  padding: 9px 11px;
+  overflow-x: auto;
+  white-space: pre;
+}
+
+.spanne {
+  background: var(--flaeche);
+  border: 1px solid var(--rand);
+  border-radius: 5px;
+  padding: 10px 12px;
+}
+.spanne .titel { font-size: 12px; color: var(--text-schwach); margin-bottom: 3px; }
+.spanne .wert { font-size: 19px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.spanne .bis { color: var(--text-schwach); font-weight: normal; margin: 0 4px; }
+.spanne .einheit { font-size: 12px; color: var(--text-schwach); margin-top: 2px; }
+.spanne.hervor { border-color: var(--akzent); background: var(--akzent-hell); }
 
 /* ------------------------------------------------------------ Bloecke */
 

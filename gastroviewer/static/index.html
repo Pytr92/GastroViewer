@@ -42,16 +42,28 @@
     <div id="legende" class="legende" hidden></div>
   </section>
 
-  <section id="panel" aria-live="polite">
-    <div id="start-hinweis" class="karte-hinweis">
-      <h2>Punkt wählen</h2>
-      <p>In die Karte klicken oder oben eine Adresse suchen. Der Marker lässt sich ziehen.</p>
-      <p class="hinweis-klein">
-        Dieses Werkzeug zeigt ausschließlich Werte, die aus einer realen API-Antwort stammen.
-        Jeder Block nennt Quelle, Stand und Lizenz. Es wird nichts geschätzt und nichts
-        hochgerechnet.
-      </p>
-    </div>
+  <section id="panel-spalte">
+    <nav id="reiter" role="tablist">
+      <button role="tab" data-reiter="daten" aria-selected="true" class="aktiv">Daten</button>
+      <button role="tab" data-reiter="schaetzung" aria-selected="false">
+        Umsatzschätzung
+        <span class="reiter-marke">Schätzung</span>
+      </button>
+    </nav>
+
+    <section id="panel" aria-live="polite" role="tabpanel">
+      <div id="start-hinweis" class="karte-hinweis">
+        <h2>Punkt wählen</h2>
+        <p>In die Karte klicken oder oben eine Adresse suchen. Der Marker lässt sich ziehen.</p>
+        <p class="hinweis-klein">
+          Dieses Werkzeug zeigt ausschließlich Werte, die aus einer realen API-Antwort stammen.
+          Jeder Block nennt Quelle, Stand und Lizenz. Es wird nichts geschätzt und nichts
+          hochgerechnet.
+        </p>
+      </div>
+    </section>
+
+    <section id="panel-schaetzung" role="tabpanel" hidden></section>
   </section>
 </main>
 

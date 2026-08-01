@@ -948,3 +948,229 @@ async function aktualisiereFuss() {
   } catch { GRENZEN = []; }
   aktualisiereFuss();
 }());
+
+/* ===================================================================
+ * Umsatzschätzung — Spec §9
+ *
+ * Eigener Reiter, klar getrennt vom Datenteil. Bindende Auflagen aus §9:
+ * alle Annahmen sind Eingabefelder, die Ausgabe ist eine Spanne, daneben steht
+ * die Umrechnung in Bestellungen pro Tag und pro Öffnungsstunde, und die Formel
+ * ist sichtbar. Beschriftung: Vergleichsmaß, keine Prognose.
+ * =================================================================== */
+
+const schaetzState = { vorgaben: null, fuerPunkt: null };
+
+const FELDER = [
+  { key: 'einwohner', label: 'Einwohner im Radius', schritt: '1', herkunft: 'einwohner_herkunft' },
+  { key: 'wettbewerber', label: 'Wettbewerber im Radius', schritt: '1', herkunft: 'wettbewerber_herkunft' },
+  { key: 'besuche_je_einwohner', label: 'Besuche je Einwohner und Jahr', schritt: '0.1' },
+  { key: 'bon_min', label: 'Durchschnittsbon, untere Annahme (€)', schritt: '0.01' },
+  { key: 'bon_max', label: 'Durchschnittsbon, obere Annahme (€)', schritt: '0.01' },
+  { key: 'unsicherheitsfaktor', label: 'Unsicherheitsfaktor Marktanteil', schritt: '0.1', gesetzt: true },
+  { key: 'marktanteil_min_prozent', label: 'Marktanteil untere Annahme (%) — leer = aus Faktor', schritt: '0.01', gesetzt: true },
+  { key: 'marktanteil_max_prozent', label: 'Marktanteil obere Annahme (%) — leer = aus Faktor', schritt: '0.01', gesetzt: true },
+  { key: 'oeffnungstage', label: 'Öffnungstage im Jahr', schritt: '1', gesetzt: true },
+  { key: 'oeffnungsstunden', label: 'Öffnungsstunden je Tag', schritt: '0.5', gesetzt: true },
+  { key: 'mietanteil_min_prozent', label: 'Miete, unterer Anteil vom Umsatz (%)', schritt: '0.5', gesetzt: true },
+  { key: 'mietanteil_max_prozent', label: 'Miete, oberer Anteil vom Umsatz (%)', schritt: '0.5', gesetzt: true },
+];
+
+function schaetzBlock(titel, ...inhalt) {
+  return el('section', { class: 'block' },
+    el('h2', {}, titel),
+    el('div', { class: 'block-inhalt' }, inhalt.filter(Boolean)));
+}
+
+function spanne(titel, werte, einheit, nk = 0, hervor = false) {
+  const f = (v) => (nk === 0 ? NF : NF1).format(v);
+  return el('div', { class: `spanne ${hervor ? 'hervor' : ''}`.trim() },
+    el('div', { class: 'titel' }, titel),
+    el('div', { class: 'wert' }, f(werte[0]), el('span', { class: 'bis' }, 'bis'), f(werte[1])),
+    el('div', { class: 'einheit' }, einheit));
+}
+
+async function zeigeSchaetzung() {
+  const ziel = document.getElementById('panel-schaetzung');
+  if (state.lat === null) {
+    ziel.replaceChildren(el('div', { class: 'karte-hinweis' },
+      el('h2', {}, 'Erst einen Punkt wählen'),
+      el('p', {}, 'Die Schätzung braucht Einwohnerzahl und Wettbewerbszahl aus dem '
+        + 'Datenreiter. Wähle links einen Punkt auf der Karte.')));
+    return;
+  }
+  const kennung = `${state.lat}|${state.lon}|${state.radius}`;
+  if (schaetzState.fuerPunkt !== kennung) {
+    ziel.replaceChildren(el('div', { class: 'block' },
+      el('div', { class: 'laden' }),
+      el('div', { class: 'block-inhalt' }, 'Vorgaben werden aus den Punktdaten geholt …')));
+    try {
+      schaetzState.vorgaben = await hole('/api/schaetzung/vorgaben',
+        { lat: state.lat, lon: state.lon, r: state.radius });
+      schaetzState.fuerPunkt = kennung;
+    } catch (e) {
+      ziel.replaceChildren(fehlerbox({ message: e.message }));
+      return;
+    }
+  }
+  baueSchaetzFormular();
+  rechneSchaetzung();
+}
+
+function baueSchaetzFormular() {
+  const v = schaetzState.vorgaben;
+  const ziel = document.getElementById('panel-schaetzung');
+
+  const banner = el('div', { class: 'schaetz-banner' },
+    el('strong', {}, 'Vergleichsmaß zwischen Standorten — keine Prognose.'),
+    'Alle Annahmen unten sind Eingabefelder und lassen sich ändern. Das Ergebnis ist '
+    + 'immer eine Spanne. Für eine belastbare Aussage taugt es nicht: die Rechnung kennt '
+    + 'weder Lage noch Passantenströme noch die Stärke der Wettbewerber. '
+    + 'Sinnvoll ist sie nur, um zwei Standorte unter denselben Annahmen nebeneinander '
+    + 'zu halten.');
+
+  const gitter = el('div', { class: 'eingabe-gitter' });
+  for (const f of FELDER) {
+    const wert = v[f.key];
+    const feld = el('div', { class: `feld ${f.gesetzt ? 'gesetzt' : ''}`.trim() },
+      el('label', { for: `sf-${f.key}` }, f.label),
+      el('input', {
+        type: 'number', id: `sf-${f.key}`, step: f.schritt,
+        value: wert === null || wert === undefined ? '' : String(wert),
+        oninput: () => rechneSchaetzung(),
+      }),
+      f.herkunft && v[f.herkunft] ? el('div', { class: 'herkunft' }, v[f.herkunft]) : null,
+      f.gesetzt ? el('div', { class: 'herkunft' }, 'frei gewählt, keine Datengrundlage') : null);
+    gitter.append(feld);
+  }
+
+  const herleitung = v.besuche_herleitung;
+  const eingaben = schaetzBlock('Annahmen', gitter,
+    el('div', { class: 'notiz' },
+      el('strong', {}, 'Besuche je Einwohner und Jahr: '), herleitung.herleitung),
+    v.wettbewerber_alternative ? el('div', { class: 'notiz' },
+      `${v.wettbewerber_alternative.hinweis} Im Umkreis liegen insgesamt `
+      + `${NF.format(v.wettbewerber_alternative.alle_gastronomie)} gastronomische Betriebe.`) : null);
+
+  const formel = schaetzBlock('Rechenweg',
+    el('div', { class: 'formel' }, v.formel.join('\n')),
+    el('div', { class: 'notiz' },
+      'Das ist der vollständige Rechenweg. Es gibt keine weiteren Faktoren — keine '
+      + 'Distanzgewichte, keine Lagefaktoren, keine Kaufkraftindizes.'));
+
+  const ergebnis = el('section', { class: 'block', id: 'schaetz-ergebnis' },
+    el('h2', {}, 'Ergebnis'), el('div', { class: 'block-inhalt' }));
+
+  const grenzen = schaetzBlock('Was diese Rechnung nicht kann',
+    el('ul', { class: 'liste' }, v.warnungen.map((w) => el('li', {},
+      el('span', { class: 'haupt' }, w)))));
+
+  const quellen = schaetzBlock('Referenzwerte',
+    el('table', { class: 'daten' },
+      el('tr', {}, el('th', {}, 'Größe'), el('th', { class: 'num' }, 'Wert'),
+        el('th', {}, 'Stand'), el('th', {}, 'Quelle')),
+      v.referenzwerte.map((r) => el('tr', {},
+        el('td', {}, r.titel),
+        el('td', { class: 'num' }, `${r.wert} ${r.einheit}`),
+        el('td', {}, r.stand),
+        el('td', {}, r.url
+          ? el('a', { href: r.url, target: '_blank', rel: 'noopener' }, r.quelle)
+          : r.quelle)))),
+    ...v.referenzwerte.filter((r) => r.hinweis).map((r) =>
+      el('div', { class: 'notiz' }, el('strong', {}, `${r.titel}: `), r.hinweis)),
+    el('div', { class: 'quelle' },
+      'Alle Referenzwerte am 01.08.2026 selbst nachgeschlagen. Sie sind Eingabewerte '
+      + 'und überschreibbar — verändert sich der Markt, gehören hier neue Zahlen hinein.'));
+
+  ziel.replaceChildren(banner, eingaben, ergebnis, formel, grenzen, quellen);
+}
+
+let schaetzTimer = null;
+function rechneSchaetzung() {
+  clearTimeout(schaetzTimer);
+  schaetzTimer = setTimeout(schaetzungAbschicken, 250);
+}
+
+async function schaetzungAbschicken() {
+  const koerper = {};
+  for (const f of FELDER) {
+    const roh = document.getElementById(`sf-${f.key}`)?.value;
+    if (roh === '' || roh === undefined) {
+      if (f.key.startsWith('marktanteil')) koerper[f.key] = null;
+      continue;
+    }
+    koerper[f.key] = Number(roh);
+  }
+  const ziel = document.querySelector('#schaetz-ergebnis .block-inhalt');
+  if (!ziel) return;
+  try {
+    const r = await fetch('/api/schaetzung', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(koerper),
+    });
+    if (!r.ok) {
+      let text = `HTTP ${r.status}`;
+      try { text = (await r.json()).detail || text; } catch { /* egal */ }
+      ziel.replaceChildren(el('div', { class: 'fehlerbox' }, text));
+      return;
+    }
+    zeigeSchaetzErgebnis(await r.json(), ziel);
+  } catch (e) {
+    ziel.replaceChildren(fehlerbox({ message: e.message }));
+  }
+}
+
+function zeigeSchaetzErgebnis(d, ziel) {
+  const e = d.ergebnis;
+  const z = d.zwischenschritte;
+
+  // §9: Die Umrechnung in Bestellungen ist Pflichtausgabe und steht deshalb
+  // vor dem Umsatz — sie ist die Zahl, die ein Betreiber beurteilen kann.
+  const kacheln = el('div', { class: 'kennzahlen' },
+    spanne('Bestellungen je Öffnungsstunde', e.bestellungen_je_oeffnungsstunde, 'Bestellungen/h', 1, true),
+    spanne('Bestellungen je Öffnungstag', e.bestellungen_je_tag, 'Bestellungen/Tag', 1, true),
+    spanne('Umsatz je Öffnungstag', e.umsatz_je_tag_eur, '€ brutto/Tag'),
+    spanne('Jahresumsatz', e.jahresumsatz_eur, '€ im Jahr'));
+
+  const kette = el('table', { class: 'daten' },
+    el('tr', {}, el('th', {}, 'Schritt'), el('th', { class: 'num' }, 'Wert')),
+    el('tr', {}, el('td', {}, 'Besuche im Einzugsgebiet je Jahr'),
+      el('td', { class: 'num' }, NF.format(z.besuche_im_einzugsgebiet_je_jahr))),
+    el('tr', {}, el('td', {}, 'Marktanteil, naive Gleichverteilung'),
+      el('td', { class: 'num' }, `${NF2.format(z.naiver_marktanteil_prozent)} %`)),
+    el('tr', {}, el('td', {}, 'Marktanteil, gerechnet'),
+      el('td', { class: 'num' },
+        `${NF2.format(d.eingaben.marktanteil_min_prozent)} – ${NF2.format(d.eingaben.marktanteil_max_prozent)} %`)),
+    el('tr', {}, el('td', {}, 'Besuche des Betriebs je Jahr'),
+      el('td', { class: 'num' },
+        `${NF.format(z.besuche_des_betriebs_je_jahr[0])} – ${NF.format(z.besuche_des_betriebs_je_jahr[1])}`)));
+
+  ziel.replaceChildren(
+    kacheln,
+    el('div', { class: 'notiz' }, el('strong', {}, 'Beschriftung: '), d.beschriftung),
+    el('h3', { class: 'hinweis-klein' }, 'Rechenkette'),
+    kette,
+    el('div', { class: 'notiz' },
+      el('strong', {}, 'Marktanteil: '), z.marktanteil_herkunft),
+    el('h3', { class: 'hinweis-klein' }, 'Gegenprobe Miete'),
+    spanne('Obergrenze Monatsmiete', e.monatsmiete_obergrenze_eur, '€ im Monat'),
+    el('div', { class: 'notiz' },
+      `Bei ${d.eingaben.mietanteil_min_prozent} bis ${d.eingaben.mietanteil_max_prozent} % `
+      + 'vom Umsatz. Faustregel aus notizen-standort-flaeche.md §6 — keine erhobene Statistik. '
+      + 'Liegt die geforderte Miete darüber, trägt der Standort sich unter diesen Annahmen nicht.'));
+}
+
+/* Reiterumschaltung */
+document.getElementById('reiter').addEventListener('click', (ev) => {
+  const knopf = ev.target.closest('button[data-reiter]');
+  if (!knopf) return;
+  const welcher = knopf.dataset.reiter;
+  for (const b of document.querySelectorAll('#reiter button')) {
+    const aktiv = b === knopf;
+    b.classList.toggle('aktiv', aktiv);
+    b.setAttribute('aria-selected', String(aktiv));
+  }
+  document.getElementById('panel').hidden = welcher !== 'daten';
+  document.getElementById('panel-schaetzung').hidden = welcher !== 'schaetzung';
+  if (welcher === 'schaetzung') zeigeSchaetzung();
+});

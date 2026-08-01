@@ -316,3 +316,47 @@ def test_outbound_log_ist_abrufbar(client):
     d = client.get("/api/outbound").json()
     # FakeOutbound umgeht das Protokoll, deshalb nur Struktur prüfen.
     assert "anzahl" in d and "eintraege" in d
+
+
+# ------------------------------------------------------- Umsatzschätzung §9
+
+
+def test_schaetzung_vorgaben_kommen_aus_den_punktdaten(client):
+    d = client.get("/api/schaetzung/vorgaben", params={"lat": LAT, "lon": LON, "r": R}).json()
+    assert d["einwohner"] == 16370.0
+    assert d["wettbewerber"] == 26
+    assert "Zensus 2022" in d["einwohner_herkunft"]
+    assert "Untergrenze" in d["wettbewerber_herkunft"]
+    assert d["referenzwerte"] and all(r["quelle"] for r in d["referenzwerte"])
+    assert len(d["formel"]) == 6
+
+
+def test_schaetzung_rechnet_und_liefert_spannen(client):
+    r = client.post("/api/schaetzung", json={
+        "einwohner": 16370, "wettbewerber": 26, "besuche_je_einwohner": 60.3,
+        "bon_min": 7.15, "bon_max": 10.21,
+    })
+    assert r.status_code == 200
+    d = r.json()
+    for feld, werte in d["ergebnis"].items():
+        assert len(werte) == 2 and werte[0] <= werte[1], feld
+    assert "Vergleichsmaß" in d["beschriftung"]
+    assert d["ergebnis"]["bestellungen_je_oeffnungsstunde"][0] > 0
+
+
+def test_schaetzung_lehnt_unsinnige_eingaben_ab(client):
+    r = client.post("/api/schaetzung", json={
+        "einwohner": 16370, "wettbewerber": 26, "besuche_je_einwohner": 60.3,
+        "bon_min": 7.15, "bon_max": 10.21, "oeffnungstage": 0,
+    })
+    assert r.status_code == 422
+
+
+def test_schaetzung_beruehrt_den_datenteil_nicht(client):
+    """Die Schätzung ist ein getrennter Reiter — sie darf nirgends in die
+    Datenblöcke einsickern (Spec §9: „eigener, klar getrennter Reiter")."""
+    d = client.get("/api/point", params={"lat": LAT, "lon": LON, "r": R}).json()
+    text = json.dumps(d, ensure_ascii=False).lower()
+    for begriff in ("schaetzung", "schätzung", "jahresumsatz", "marktanteil",
+                    "bestellungen"):
+        assert begriff not in text, f"„{begriff}\" taucht im Datenteil auf"
