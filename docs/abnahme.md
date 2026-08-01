@@ -12,14 +12,14 @@ wird das Kriterium als **nicht prüfbar** ausgewiesen und der Lauf endet mit Cod
 Weder ein falscher Alarm noch ein falscher Freispruch.
 
 ```
-Abnahmeprüfung gegen http://127.0.0.1:8018
+Abnahmeprüfung gegen http://127.0.0.1:8021
 ========================================================================
 
 Vier Lagetypen laden …
   Großstadt-Innenstadt       0.2s (aus dem Cache)
-  Großstadt-Wohnviertel      4.8s (echt abgerufen)
-  Kleinstadt                 3.6s (echt abgerufen)
-  ländlich                   3.6s (echt abgerufen)
+  Großstadt-Wohnviertel      1.0s (echt abgerufen)
+  Kleinstadt                 0.7s (echt abgerufen)
+  ländlich                   0.0s (aus dem Cache)
 [OK   ] §7.1 Jede Zahl ist auf eine reale API-Antwort zurückführbar
          Zensus direkt abgefragt: 118 Zellen, Summe Einwohner 16370
            Anwendung zeigt: 118 Zellen, 16370 Einwohner
@@ -32,14 +32,14 @@ Vier Lagetypen laden …
 [OK   ] §7.3 Attribution OSM/ODbL und Zensus-Copyright sichtbar
          in der Fußzeile von index.html: OSM/ODbL=ja, Zensus=ja
 [OK   ] §7.4 Nominatim ≤ 1 req/s gedrosselt, User-Agent gesetzt
-         3 echte Suchen nacheinander (refresh=true): 2.07s (Untergrenze 2,0s)
-           Limiter: {'min_interval_s': 1.0, 'acquisitions': 3, 'throttled': 2}
+         3 echte Suchen nacheinander (refresh=true): 2.08s (Untergrenze 2,0s)
+           Limiter: {'min_interval_s': 1.0, 'acquisitions': 4, 'throttled': 2}
            User-Agent: gastroviewer/0.1.0 (https://github.com/Pytr92/GastroViewer)
 [OK   ] §7.5 Cache greift: zweiter Aufruf ohne Outbound-Traffic
-         erzwungener Abruf: Zähler 154 → 155 (+1)
-           danach derselbe Aufruf: Zähler bleibt bei 155
-           ganzer Punkt aus dem Cache: 131 ms, outbound_requests=0
-           nachprüfbar unter http://127.0.0.1:8018/api/outbound
+         erzwungener Abruf: Zähler 172 → 173 (+1)
+           danach derselbe Aufruf: Zähler bleibt bei 173
+           ganzer Punkt aus dem Cache: 111 ms, outbound_requests=0
+           nachprüfbar unter http://127.0.0.1:8021/api/outbound
 [OK   ] §7.6 Ausfall einer Quelle bricht die Seite nicht
          Overpass auf toten Endpunkt gezwungen: osm.ok=False
            Meldung: Verbindung nicht möglich — Dienst nicht erreichbar, DNS- oder Proxy-Pr
@@ -75,10 +75,11 @@ Alle Abnahmekriterien aus §7 erfüllt.
 
 ## Browserprüfungen
 
-Fünf Playwright-Läufe gegen den laufenden Server, alle am 01.08.2026 ohne Befund:
+Sechs Playwright-Läufe gegen den laufenden Server, alle am 01.08.2026 ohne Befund:
 Datenteil und Vergleichstabelle, GTFS-Block, Umsatzschätzungsreiter,
 Bodenrichtwert-Ebene mit Klickabfrage, München-Erweiterung mit Zählstellen und
-bayerischen Kartenebenen.
+bayerischen Kartenebenen, Verkehrsmengen-Block an einem autobahnnahen Punkt und
+in der Innenstadt.
 
 ## Bodenrichtwert-Kartendienste (Phase 4)
 
