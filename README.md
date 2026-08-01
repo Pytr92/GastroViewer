@@ -303,6 +303,39 @@ Verkehr ist keine Kundschaft, und der Außengastronomie schadet er eher.
 Für die Checkliste in `notizen-standort-flaeche.md` §6 — Abluft über Dach, Hoffläche,
 Stellplatznachweis — ist das oft aussagekräftiger als jede Zahl.
 
+## Zwei Verhältniszahlen im Vergleich
+
+Die Vergleichstabelle rechnet zwei Quotienten aus Größen, die ohnehin gemessen vorliegen.
+Es kommt kein gewählter Faktor hinzu — deshalb stehen sie im Datenreiter und nicht in der
+Schätzung. Beschriftet sind sie trotzdem als **(berechnet)**, damit sie nicht wie ein
+Messwert aussehen.
+
+| Kennzahl | Rechnung | Wofür |
+|---|---|---|
+| Wettbewerber je 1.000 Einwohner | Gastronomie ÷ Einwohner × 1.000 | Sättigung |
+| Abfahrten je Einwohner | Abfahrten/Tag ÷ Einwohner | Näherung für Zulauf von außerhalb |
+
+Warum die zweite Zahl nötig ist, zeigt der Vergleich vier Münchner Lagen (Radius 600 m,
+abgerufen am 01.08.2026):
+
+| Lage | Einwohner | Gastro | Wettb./1.000 | Abfahrten | Abf./Einw. |
+|---|---|---|---|---|---|
+| Marienplatz (1a) | 10.002 | 381 | **38,1** | 5.203 | **0,52** |
+| Arnulfpark (Büro) | 15.741 | 67 | 4,3 | 4.633 | 0,29 |
+| Moosach (Stadtrand) | 13.713 | 32 | 2,3 | 3.985 | 0,29 |
+| Giesing (Wohnviertel) | 22.805 | 31 | **1,4** | 1.548 | **0,07** |
+
+Der Marienplatz hat die **wenigsten** Einwohner und die **meiste** Konkurrenz. Wer nur auf
+die Einwohnerzahl schaut, hält Giesing für die bessere Lage — die Abfahrten je Einwohner
+zeigen mit Faktor 7,4, dass am Marienplatz die Kundschaft von außerhalb kommt. Genau das
+sieht der Zensus nicht.
+
+> Beide Zahlen sind Hinweise, keine Bewertung. Eine hohe Wettbewerbsdichte kann Sättigung
+> heißen oder einen funktionierenden Gastronomiestandort — deshalb wird sie in der Tabelle
+> bewusst **nicht** als Höchstwert hervorgehoben. Und Abfahrten sind Fahrgäste, keine
+> Passanten: eine Umsteigehaltestelle unter der Erde bringt weniger Laufkundschaft als die
+> Zahl vermuten lässt.
+
 ## Bodenrichtwerte als Kartenebene
 
 Sieben Länder haben einen offenen Kartendienst, der am 01.08.2026 in allen drei Stufen

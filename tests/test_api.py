@@ -8,6 +8,7 @@ Rate-Limiter und Fehlerpfade mitgetestet werden statt umgangen zu werden.
 from __future__ import annotations
 
 import json
+from pathlib import Path
 
 import pytest
 from fastapi.testclient import TestClient
@@ -249,6 +250,68 @@ def test_punkt_merken_und_vergleichen(client):
     pid = r.json()["id"]
     assert client.delete(f"/api/points/{pid}").status_code == 200
     assert client.delete(f"/api/points/{pid}").status_code == 404
+
+
+def test_verhaeltniszahlen_stehen_im_vergleich(client):
+    """Zwei Kennzahlen, die der Zensus allein nicht hergibt: die Sättigung und
+    ein Näherungswert für Zulauf von außerhalb."""
+    client.post("/api/points", json={"label": "A", "lat": LAT, "lon": LON, "radius": R})
+    v = client.get("/api/points/vergleich").json()
+    keys = {c["key"] for c in v["spalten"]}
+    assert "wettbewerb_je_1000" in keys and "abfahrten_je_einwohner" in keys
+
+    titel = {c["key"]: c["titel"] for c in v["spalten"]}
+    for k in ("wettbewerb_je_1000", "abfahrten_je_einwohner"):
+        assert "berechnet" in titel[k], (
+            "abgeleitete Zahlen dürfen nicht wie Messwerte aussehen"
+        )
+
+    z = v["zeilen"][0]
+    assert z["wettbewerb_je_1000"] == pytest.approx(
+        z["gastro_gesamt"] / z["einwohner"] * 1000, abs=0.05
+    )
+
+
+def test_verhaeltniszahl_ohne_bezugsgroesse_ist_keine_null():
+    """Ohne Einwohnerdaten gibt es keine Dichte von 0 — es gibt gar keine."""
+    from gastroviewer.api import je_bezugsgroesse
+
+    assert je_bezugsgroesse(40, 10_000, 1000, 1) == 4.0
+    assert je_bezugsgroesse(0, 10_000, 1000, 1) == 0.0, "keine Wettbewerber ist ein Wert"
+    assert je_bezugsgroesse(40, 0, 1000, 1) is None, "Division durch null"
+    assert je_bezugsgroesse(40, None, 1000, 1) is None
+    assert je_bezugsgroesse(None, 10_000, 1000, 1) is None
+    assert je_bezugsgroesse(40, -5, 1000, 1) is None
+    assert je_bezugsgroesse(True, 10_000, 1000, 1) is None, "bool ist keine Messgröße"
+
+
+def test_verhaeltniszahlen_auch_im_csv(client):
+    client.post("/api/points", json={"label": "A", "lat": LAT, "lon": LON, "radius": R})
+    text = client.get("/api/export/vergleich.csv").text
+    assert "Wettbewerber je 1.000 Einw. (berechnet)" in text
+    assert "Abfahrten je Einwohner (berechnet)" in text
+
+
+def test_spalten_geben_ihre_nachkommastellen_vor(client):
+    """Auf eine Stelle gerundet wären 0,52 und 0,07 beide „0,5" bzw. „0,1" —
+    der Unterschied, um den es geht, verschwände in der Darstellung."""
+    v = client.get("/api/points/vergleich").json()
+    stellen = {c["key"]: c.get("stellen") for c in v["spalten"]}
+    assert stellen["abfahrten_je_einwohner"] == 2
+    assert stellen["wettbewerb_je_1000"] == 1
+    assert stellen["miete_qm"] == 2, "Cent-Unterschiede bei der Miete sind vergleichsrelevant"
+    assert stellen["leerstandsquote"] == 2
+    assert stellen["einwohner"] is None, "ganze Zahlen bekommen keine Nachkommastellen"
+
+
+def test_saettigung_wird_nicht_als_hoechstwert_hervorgehoben():
+    """Der Höchstwert bekommt in der Tabelle die Klasse „best". Bei der
+    Wettbewerbsdichte wäre das die dichteste Konkurrenz — kein Lob."""
+    js = (Path(__file__).resolve().parents[1]
+          / "gastroviewer" / "static" / "app.js").read_text(encoding="utf-8")
+    block = js.split("HOCH_IST_AUFFAELLIG = new Set([")[1].split("]);")[0]
+    assert "abfahrten_je_einwohner" in block
+    assert "wettbewerb_je_1000" not in block
 
 
 def test_gemerkter_punkt_speichert_keine_rohzellen(client):

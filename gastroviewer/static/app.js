@@ -17,6 +17,17 @@ const NF = new Intl.NumberFormat('de-DE');
 const NF1 = new Intl.NumberFormat('de-DE', { maximumFractionDigits: 1 });
 const NF2 = new Intl.NumberFormat('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
+/* Feste Nachkommastellen, wenn eine Vergleichsspalte sie vorgibt. Ohne die
+   feste Untergrenze würde 0,50 als „0,5" erscheinen und 0,07 als „0,1". */
+const NF_FEST = new Map();
+function nfFest(n) {
+  if (!NF_FEST.has(n)) {
+    NF_FEST.set(n, new Intl.NumberFormat('de-DE',
+      { minimumFractionDigits: n, maximumFractionDigits: n }));
+  }
+  return NF_FEST.get(n);
+}
+
 const state = {
   lat: null,
   lon: null,
@@ -846,9 +857,12 @@ async function merken() {
 }
 
 /* Spalten, bei denen ein hoher Wert im Vergleich hervorgehoben wird.
-   Bewusst neutral: hervorgehoben wird nur der Höchstwert, es wird nicht bewertet. */
+   Bewusst neutral: hervorgehoben wird nur der Höchstwert, es wird nicht bewertet.
+   „Wettbewerber je 1.000 Einwohner" steht absichtlich nicht hier — dort wäre der
+   Höchstwert die dichteste Konkurrenz, und die zu markieren liest sich wie ein Lob. */
 const HOCH_IST_AUFFAELLIG = new Set([
   'einwohner', 'frequenzbringer', 'haltestellen', 'linien', 'abfahrten',
+  'abfahrten_je_einwohner',
 ]);
 
 async function zeigeVergleich() {
@@ -875,7 +889,9 @@ async function zeigeVergleich() {
         tr.append(el('td', {
           class: klassen.join(' '),
           title: v === null || v === undefined ? '' : String(v),
-        }, v === null || v === undefined ? '—' : num ? NF1.format(v) : String(v)));
+        }, v === null || v === undefined ? '—'
+           : num ? (c.stellen === undefined ? NF1 : nfFest(c.stellen)).format(v)
+           : String(v)));
       }
       tr.append(el('td', {}, el('button', {
         onclick: async () => {

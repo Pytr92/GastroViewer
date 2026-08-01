@@ -390,6 +390,23 @@ def _wert(node: Any) -> Any:
     return node
 
 
+def je_bezugsgroesse(
+    zaehler: Any, nenner: Any, faktor: float = 1.0, stellen: int = 1
+) -> float | None:
+    """Verhältniszahl aus zwei gemessenen Größen.
+
+    Beide Bestandteile stammen aus echten Antworten; hier wird nur geteilt, es
+    kommt kein gewählter Faktor hinzu. Fehlt eine Seite oder ist der Nenner 0,
+    ist das Ergebnis ``None`` und nicht 0 — eine Lage ohne Einwohnerdaten hat
+    keine Wettbewerbsdichte von null, sie hat gar keine.
+    """
+    if not isinstance(zaehler, (int, float)) or not isinstance(nenner, (int, float)):
+        return None
+    if isinstance(zaehler, bool) or isinstance(nenner, bool) or nenner <= 0:
+        return None
+    return round(zaehler / nenner * faktor, stellen)
+
+
 VERGLEICH_SPALTEN = [
     {"key": "label", "titel": "Bezeichnung"},
     {"key": "adresse", "titel": "Adresse"},
@@ -399,15 +416,22 @@ VERGLEICH_SPALTEN = [
     {"key": "einwohner", "titel": "Einwohner"},
     {"key": "durchschnittsalter", "titel": "Durchschnittsalter"},
     {"key": "haushaltsgroesse", "titel": "Haushaltsgröße"},
-    {"key": "miete_qm", "titel": "Nettokaltmiete €/m²"},
-    {"key": "leerstandsquote", "titel": "Leerstandsquote %"},
+    # "stellen" legt die Nachkommastellen in Tabelle und Export fest. Ohne die
+    # Angabe rundet die Oberfläche auf eine Stelle — bei kleinen Verhältniszahlen
+    # verschwindet damit genau der Unterschied, den man vergleichen will.
+    {"key": "miete_qm", "titel": "Nettokaltmiete €/m²", "stellen": 2},
+    {"key": "leerstandsquote", "titel": "Leerstandsquote %", "stellen": 2},
     {"key": "gastro_gesamt", "titel": "Gastronomie gesamt"},
     {"key": "fast_food", "titel": "davon Schnellrestaurants"},
     {"key": "ketten", "titel": "davon Ketten"},
+    {"key": "wettbewerb_je_1000", "titel": "Wettbewerber je 1.000 Einw. (berechnet)",
+     "stellen": 1},
     {"key": "frequenzbringer", "titel": "Frequenzbringer"},
     {"key": "haltestellen", "titel": "Haltestellen"},
     {"key": "linien", "titel": "Linien (eindeutig)"},
     {"key": "abfahrten", "titel": "Abfahrten/Tag (GTFS)"},
+    {"key": "abfahrten_je_einwohner", "titel": "Abfahrten je Einwohner (berechnet)",
+     "stellen": 2},
     {"key": "dtv_kfz", "titel": "Kfz/Tag stärkste Zählstelle"},
     {"key": "dtv_sv_anteil", "titel": "Schwerverkehr %"},
     {"key": "rad_je_tag", "titel": "Radfahrende/Tag (Messung)"},
@@ -431,6 +455,8 @@ def _row_for(saved: dict[str, Any]) -> dict[str, Any]:
     woh = z.get("wohnen") or {}
     zus = o.get("zusammenfassung") or {}
     gas = zus.get("gastronomie") or {}
+    einwohner = _wert(bev.get("einwohner"))
+    abfahrten = (g or {}).get("abfahrten_gesamt")
     return {
         "id": saved.get("id"),
         "label": saved.get("label"),
@@ -438,7 +464,7 @@ def _row_for(saved: dict[str, Any]) -> dict[str, Any]:
         "gemeinde": punkt.get("gemeinde"),
         "ags": punkt.get("ags"),
         "radius": saved.get("radius"),
-        "einwohner": _wert(bev.get("einwohner")),
+        "einwohner": einwohner,
         "durchschnittsalter": _wert(bev.get("durchschnittsalter")),
         "haushaltsgroesse": _wert(bev.get("haushaltsgroesse")),
         "miete_qm": _wert(woh.get("miete_qm")),
@@ -446,10 +472,17 @@ def _row_for(saved: dict[str, Any]) -> dict[str, Any]:
         "gastro_gesamt": gas.get("gesamt"),
         "fast_food": (gas.get("nach_typ") or {}).get("Schnellrestaurant"),
         "ketten": gas.get("ketten"),
+        # Sättigung: wie viele Betriebe teilen sich die Wohnbevölkerung. Sagt
+        # nichts über Zulauf von außen — in der Innenstadt deshalb hoch, ohne
+        # dass der Standort schlecht wäre.
+        "wettbewerb_je_1000": je_bezugsgroesse(gas.get("gesamt"), einwohner, 1000, 1),
         "frequenzbringer": (zus.get("frequenzbringer") or {}).get("gesamt"),
         "haltestellen": (zus.get("oepnv") or {}).get("haltestellen"),
         "linien": (zus.get("oepnv") or {}).get("linien_eindeutig"),
-        "abfahrten": (g or {}).get("abfahrten_gesamt"),
+        "abfahrten": abfahrten,
+        # Näherung für Zulauf, den der Zensus nicht sieht: viele Abfahrten bei
+        # wenig Wohnbevölkerung heißt, die Leute kommen von woanders.
+        "abfahrten_je_einwohner": je_bezugsgroesse(abfahrten, einwohner, 1, 2),
         "dtv_kfz": vms.get("dtv_kfz"),
         "dtv_sv_anteil": vms.get("schwerverkehr_anteil"),
         "rad_je_tag": rad.get("je_tag_vorjahr"),
