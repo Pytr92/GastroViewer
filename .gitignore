@@ -6,3 +6,6 @@ __pycache__/
 *.sqlite-wal
 *.sqlite-shm
 .DS_Store
+*.egg-info/
+build/
+dist/
