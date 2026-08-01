@@ -292,6 +292,11 @@ def import_feed(
 WEEKDAYS = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"]
 WEEKDAYS_DE = ["Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag", "Samstag", "Sonntag"]
 
+# Beobachtungsfenster für das Mittagsgeschäft — eine gewählte Zeitspanne, kein
+# gemessener Wert. Sie steht als Text neben der Zahl, damit sie nachvollziehbar
+# bleibt. Gezählt werden die Abfahrten der Stunden 11, 12 und 13.
+MITTAG_VON, MITTAG_BIS = 11, 14
+
 
 def _reference_date(conn: sqlite3.Connection) -> dict[str, Any]:
     """Wählt einen konkreten Werktag im Gültigkeitszeitraum des Fahrplans.
@@ -487,6 +492,11 @@ def load(settings: Settings, lat: float, lon: float, radius: int) -> SourceResul
             "abfahrten_gesamt": total,
             "abfahrten_je_stunde": {f"{h:02d}": hours[h] for h in range(24)},
             "abfahrten_06_24": sum(hours[6:24]),
+            # Für ein Mittagsgeschäft ist nicht die Tagessumme entscheidend,
+            # sondern ob um die Mittagszeit überhaupt jemand unterwegs ist. Eine
+            # reine Pendlerhaltestelle hat ihre Spitzen um 8 und um 18 Uhr.
+            "abfahrten_mittag": sum(hours[MITTAG_VON:MITTAG_BIS]),
+            "mittagsfenster": f"{MITTAG_VON}–{MITTAG_BIS} Uhr",
             "haltestellen": haltestellen,
             "haltestellen_gesamt": len(bedient),
             "haltestellen_ohne_abfahrten": ohne,

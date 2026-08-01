@@ -228,3 +228,11 @@ def test_ausschnitte_sind_ineinander_geschachtelt():
     gross = REGIONEN["bayern"][1]
     assert gross[0] <= klein[0] and gross[1] <= klein[1]
     assert gross[2] >= klein[2] and gross[3] >= klein[3]
+
+
+def test_mittagsfenster_wird_gezaehlt():
+    """Die Stunden 11, 12 und 13 — die Beschriftung nennt das Fenster mit, weil
+    es eine gewählte Zeitspanne ist und kein gemessener Wert."""
+    from gastroviewer.sources import gtfs
+
+    assert (gtfs.MITTAG_VON, gtfs.MITTAG_BIS) == (11, 14)

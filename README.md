@@ -313,7 +313,9 @@ Messwert aussehen.
 | Kennzahl | Rechnung | Wofür |
 |---|---|---|
 | Wettbewerber je 1.000 Einwohner | Gastronomie ÷ Einwohner × 1.000 | Sättigung |
+| Schnellrestaurants je 1.000 Einwohner | Schnellrestaurants ÷ Einwohner × 1.000 | Sättigung im eigenen Segment — 30 Cafés sind für einen Imbiss kein Wettbewerb |
 | Abfahrten je Einwohner | Abfahrten/Tag ÷ Einwohner | Näherung für Zulauf von außerhalb |
+| Anteil Mittag | Abfahrten 11–14 Uhr ÷ Tagessumme × 100 | trennt die Pendlerhaltestelle von der ganztags belebten Lage |
 
 Warum die zweite Zahl nötig ist, zeigt der Vergleich vier Münchner Lagen (Radius 600 m,
 abgerufen am 01.08.2026):
@@ -330,11 +332,53 @@ die Einwohnerzahl schaut, hält Giesing für die bessere Lage — die Abfahrten 
 zeigen mit Faktor 7,4, dass am Marienplatz die Kundschaft von außerhalb kommt. Genau das
 sieht der Zensus nicht.
 
-> Beide Zahlen sind Hinweise, keine Bewertung. Eine hohe Wettbewerbsdichte kann Sättigung
+> Diese Zahlen sind Hinweise, keine Bewertung. Eine hohe Wettbewerbsdichte kann Sättigung
 > heißen oder einen funktionierenden Gastronomiestandort — deshalb wird sie in der Tabelle
 > bewusst **nicht** als Höchstwert hervorgehoben. Und Abfahrten sind Fahrgäste, keine
 > Passanten: eine Umsteigehaltestelle unter der Erde bringt weniger Laufkundschaft als die
 > Zahl vermuten lässt.
+
+Der **Anteil Mittag** war in der Erprobung die schwächste der vier Kennzahlen: alle fünf
+geprüften Münchner Lagen liegen zwischen 13,7 % und 17,4 %. Im dichten Stadtgebiet fährt
+der ÖPNV eben durchgehend. Aussagekräftig wird die Zahl erst dort, wo ein Fahrplan
+wirklich auf Berufsverkehr zugeschnitten ist — die absolute Zahl der Mittagsabfahrten
+(834 am Marienplatz gegen 270 in Giesing) unterscheidet deutlich besser.
+
+## Wettbewerbsdichte nach Entfernung
+
+Die reine Umkreiszahl verwischt, wo die Konkurrenz steht. Deshalb zählt der
+Gastronomieblock kumuliert nach Entfernungsstufen und nennt den nächsten Betrieb. Es sind
+Zählgrenzen, keine Gewichte — gewichtet wird nirgends.
+
+| Lage | bis 150 m | bis 300 m | bis 600 m | nächster Betrieb |
+|---|---|---|---|---|
+| Marienplatz | 46 | 151 | 382 | 28 m |
+| Moosach | 3 | 20 | 32 | 70 m |
+| Giesing | 4 | 10 | 31 | 38 m |
+| Arnulfpark | **0** | 3 | 67 | 267 m |
+
+Der Arnulfpark zeigt, warum die Staffelung nötig ist: 67 Betriebe im Umkreis klingen nach
+einem versorgten Viertel, aber im Umkreis von 150 m liegt **kein einziger**. Die
+Gesamtzahl allein hätte die Lage falsch dargestellt.
+
+## Neubauhinweis — und was er nicht kann
+
+Der Zensus-Stichtag ist der 15.05.2022. Das Feld „2020 und später" umfasst deshalb nur gut
+zwei Jahre; **Neubau nach dem Stichtag fehlt vollständig**. Der ausgewiesene Anteil ist
+darum kein Maß für Neubau, sondern ein Anzeiger dafür, dass am Ort zuletzt überhaupt
+gebaut wurde — und das trennt sauber (gemessen am 01.08.2026, Radius 600 m):
+
+| Lage | Gebäude | davon ab 2020 | Anteil |
+|---|---|---|---|
+| Marienplatz | 767 | 0 | 0,00 % |
+| Giesing | 1.063 | 0 | 0,00 % |
+| Arnulfpark | 715 | 3 | 0,42 % |
+| Moosach | 1.364 | 30 | 2,20 % |
+| Freiham | 1.328 | 38 | 2,90 % |
+
+Gewachsene Viertel liegen bei exakt null, wachsende darüber. Deshalb hängt der Hinweis an
+„größer null" und nicht an einer gewählten Schwelle. Er sagt: hier lag die Einwohnerzahl
+zum Stichtag vermutlich unter der heutigen.
 
 ## Bodenrichtwerte als Kartenebene
 

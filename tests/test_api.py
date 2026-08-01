@@ -292,6 +292,48 @@ def test_verhaeltniszahlen_auch_im_csv(client):
     assert "Abfahrten je Einwohner (berechnet)" in text
 
 
+def test_wettbewerb_nach_entfernung_ist_kumuliert(client):
+    """Ein Betrieb in 50 m konkurriert anders als einer am Rand des Umkreises."""
+    d = client.get("/api/point", params={"lat": LAT, "lon": LON, "r": R}).json()
+    gas = d["bloecke"]["osm"]["data"]["zusammenfassung"]["gastronomie"]
+    stufen = gas["nach_entfernung"]
+
+    assert [s["bis_m"] for s in stufen] == [150, 300, R], "auf den Radius begrenzt"
+    anzahlen = [s["anzahl"] for s in stufen]
+    assert anzahlen == sorted(anzahlen), "kumuliert, also monoton steigend"
+    assert anzahlen[-1] == gas["gesamt"], "die letzte Stufe ist der volle Umkreis"
+
+    liste = d["bloecke"]["osm"]["data"]["gastronomie"]
+    assert gas["naechster_m"] == min(x["distanz_m"] for x in liste)
+    for s, ff in zip(stufen, gas["schnellrestaurants_nach_entfernung"]):
+        assert ff["anzahl"] <= s["anzahl"], "Teilmenge aller Betriebe"
+
+
+def test_entfernungsstufen_ueberschreiten_den_radius_nicht():
+    from gastroviewer.sources.overpass import nach_entfernung
+
+    objekte = [{"distanz_m": d} for d in (40, 120, 260, 280, 590)]
+    assert nach_entfernung(objekte, 300) == [
+        {"bis_m": 150, "anzahl": 2},
+        {"bis_m": 300, "anzahl": 4},
+    ]
+    assert nach_entfernung([], 600) == [
+        {"bis_m": 150, "anzahl": 0},
+        {"bis_m": 300, "anzahl": 0},
+        {"bis_m": 600, "anzahl": 0},
+    ]
+
+
+def test_mittagsfenster_steht_im_vergleich(client):
+    """Eine Pendlerhaltestelle hat ihre Spitzen um 8 und 18 Uhr und ist mittags
+    leer — die Tagessumme allein trennt die Fälle nicht."""
+    v = client.get("/api/points/vergleich").json()
+    keys = {c["key"] for c in v["spalten"]}
+    assert {"abfahrten_mittag", "mittagsanteil"} <= keys
+    assert {"gastro_bis_150", "gastro_bis_300", "naechster_wettbewerber"} <= keys
+    assert {"fastfood_je_1000", "neubau_anteil"} <= keys
+
+
 def test_spalten_geben_ihre_nachkommastellen_vor(client):
     """Auf eine Stelle gerundet wären 0,52 und 0,07 beide „0,5" bzw. „0,1" —
     der Unterschied, um den es geht, verschwände in der Darstellung."""

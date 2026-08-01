@@ -647,6 +647,26 @@ function zeigeOsm(d) {
     typTab.append(el('tr', {}, el('td', {}, k), el('td', { class: 'num' }, NF.format(v))));
   }
 
+  /* Kumulierte Zahl je Entfernungsstufe — ein Betrieb in 50 m wiegt anders als
+     einer am Rand des Umkreises, die reine Umkreiszahl verwischt das. */
+  const stufen = g.nach_entfernung || [];
+  const ffStufen = new Map((g.schnellrestaurants_nach_entfernung || [])
+    .map((s) => [s.bis_m, s.anzahl]));
+  const entfTab = el('table', { class: 'daten' },
+    el('tr', {}, el('th', {}, 'im Umkreis von'), el('th', { class: 'num' }, 'Betriebe'),
+      el('th', { class: 'num' }, 'davon Schnellrest.')));
+  for (const s of stufen) {
+    entfTab.append(el('tr', {},
+      el('td', {}, `${NF.format(s.bis_m)} m`),
+      el('td', { class: 'num' }, NF.format(s.anzahl)),
+      el('td', { class: 'num' }, NF.format(ffStufen.get(s.bis_m) ?? 0))));
+  }
+  if (g.naechster_m !== null && g.naechster_m !== undefined) {
+    entfTab.append(el('tr', {},
+      el('td', {}, el('em', {}, 'nächster Betrieb')),
+      el('td', { class: 'num', colspan: '2' }, `${NF.format(g.naechster_m)} m`)));
+  }
+
   const kueche = Object.entries(g.nach_kueche).slice(0, 12);
   const kuecheTab = el('table', { class: 'daten' },
     el('tr', {}, el('th', {}, 'Küche (OSM-Tag)'), el('th', { class: 'num' }, 'Anzahl')));
@@ -674,6 +694,7 @@ function zeigeOsm(d) {
 
   setInhalt('gastronomie', kzg,
     el('h3', { class: 'hinweis-klein' }, 'Nach Typ'), typTab,
+    el('h3', { class: 'hinweis-klein' }, 'Wettbewerbsdichte nach Entfernung'), entfTab,
     el('h3', { class: 'hinweis-klein' }, 'Küchenverteilung'), kuecheTab,
     el('h3', { class: 'hinweis-klein' }, 'Betriebe nach Entfernung'), gListe,
     el('div', { class: 'notiz' },
@@ -765,6 +786,7 @@ function zeigeGtfs(d) {
   const kz = el('div', { class: 'kennzahlen' },
     kennzahl(`Abfahrten am ${g.referenzdatum}`, g.abfahrten_gesamt),
     kennzahl('davon 6–24 Uhr', g.abfahrten_06_24),
+    kennzahl(`davon ${g.mittagsfenster || '11–14 Uhr'}`, g.abfahrten_mittag),
     kennzahl('bediente Haltestellen', g.haltestellen_gesamt),
     kennzahl('Spitzenstunde', g.spitzenstunde ? g.spitzenstunde.abfahrten : null));
 
@@ -862,7 +884,7 @@ async function merken() {
    Höchstwert die dichteste Konkurrenz, und die zu markieren liest sich wie ein Lob. */
 const HOCH_IST_AUFFAELLIG = new Set([
   'einwohner', 'frequenzbringer', 'haltestellen', 'linien', 'abfahrten',
-  'abfahrten_je_einwohner',
+  'abfahrten_je_einwohner', 'abfahrten_mittag', 'mittagsanteil',
 ]);
 
 async function zeigeVergleich() {

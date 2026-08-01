@@ -331,7 +331,22 @@ def classify(
     }
 
 
-def summarize(cls: dict[str, Any]) -> dict[str, Any]:
+# Entfernungsstufen für die Wettbewerbsdichte. Ein Imbiss in 50 m konkurriert
+# anders als einer am Rand des Umkreises; die reine Umkreiszahl verwischt das.
+# Es sind Zählgrenzen, keine Gewichte — gewichtet wird nirgends.
+ENTFERNUNGSSTUFEN = (150, 300, 600, 900, 1400)
+
+
+def nach_entfernung(objekte: list[dict[str, Any]], radius: int) -> list[dict[str, Any]]:
+    """Kumulierte Anzahl je Entfernungsstufe, begrenzt auf den Abfrageradius."""
+    stufen = [s for s in ENTFERNUNGSSTUFEN if s < radius] + [radius]
+    return [
+        {"bis_m": s, "anzahl": sum(1 for o in objekte if o["distanz_m"] <= s)}
+        for s in stufen
+    ]
+
+
+def summarize(cls: dict[str, Any], radius: int | None = None) -> dict[str, Any]:
     gastro = cls["gastronomie"]
     nach_typ: dict[str, int] = {}
     nach_kueche: dict[str, int] = {}
@@ -370,6 +385,15 @@ def summarize(cls: dict[str, Any]) -> dict[str, Any]:
             "einzelbetriebe": len(gastro) - ketten,
             "marken": dict(sorted(marken.items(), key=lambda kv: -kv[1])),
             "ohne_kuechenangabe": sum(1 for g in gastro if not g.get("cuisine")),
+            "nach_entfernung": nach_entfernung(gastro, radius) if radius else [],
+            "naechster_m": gastro[0]["distanz_m"] if gastro else None,
+            "schnellrestaurants_nach_entfernung": (
+                nach_entfernung(
+                    [g for g in gastro if g["typ_label"] == "Schnellrestaurant"], radius
+                )
+                if radius
+                else []
+            ),
         },
         "frequenzbringer": {
             "gesamt": len(cls["frequenzbringer"]),
@@ -399,7 +423,11 @@ async def load(
 
     elements = payload.get("elements", []) if isinstance(payload, dict) else []
     cls = classify(elements, lat, lon, radius)
-    data = {**cls, "zusammenfassung": summarize(cls), "elemente_gesamt": len(elements)}
+    data = {
+        **cls,
+        "zusammenfassung": summarize(cls, radius),
+        "elemente_gesamt": len(elements),
+    }
 
     warnings = list(problems)
     flaechen = [

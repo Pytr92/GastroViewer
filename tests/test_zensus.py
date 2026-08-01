@@ -6,6 +6,8 @@ import pytest
 
 from gastroviewer.sources import zensus
 
+from conftest import load_fixture
+
 # Der Punkt, mit dem die Fixture aufgezeichnet wurde (Sendlinger Tor, München).
 LAT, LON = 48.1334, 11.5674
 
@@ -162,3 +164,37 @@ async def test_api_fehler_wird_als_solcher_gemeldet(settings):
         await zensus.fetch_cells(FakeOut(), settings, LAT, LON, 600)
     assert exc.value.kind == "api_error"
     assert "400" in exc.value.message
+
+
+# --------------------------------------------------------------- Neubau
+
+def _freiham():
+    """Echte Antwort aus Freiham, Münchens größtem Neubaugebiet, vom 01.08.2026.
+    Das Phase-0-Fixture wurde mit einer kürzeren Feldliste aufgezeichnet und
+    enthält die Gebäudefelder nicht."""
+    roh = load_fixture("raw_zensus_neubau_freiham.json")
+    return zensus.summarize(zensus.build_cells(roh["features"]), 48.1450, 11.4200)
+
+
+def test_neubauanteil_wird_aus_gezaehlten_gebaeuden_abgeleitet():
+    w = _freiham()["wohnen"]
+    assert w["gebaeude"]["wert"] == 1328
+    assert w["baualter"]["2020 und später"]["wert"] == 38
+    assert w["neubau_anteil"] == pytest.approx(38 / 1328 * 100, abs=0.05)
+
+
+def test_neubauhinweis_nennt_die_wahre_grenze_des_feldes():
+    """Das Feld endet am Stichtag — der Hinweis darf nicht suggerieren, es
+    bilde aktuellen Neubau ab."""
+    text = " ".join(_freiham()["hinweise"])
+    assert "15.05.2022" in text
+    assert "fehlt im Zensus vollständig" in text
+
+
+def test_ohne_gebaeudedaten_kein_neubauwert_und_kein_hinweis():
+    """Das Phase-0-Fixture hat keine Gebäudefelder — dann gibt es keinen Anteil
+    von 0, sondern gar keinen."""
+    roh = load_fixture("raw_zensus_600.json")
+    s = zensus.summarize(zensus.build_cells(roh["features"]), 48.1334, 11.5674)
+    assert s["wohnen"]["neubau_anteil"] is None
+    assert not any("15.05.2022" in h for h in s["hinweise"])

@@ -424,18 +424,26 @@ VERGLEICH_SPALTEN = [
     {"key": "gastro_gesamt", "titel": "Gastronomie gesamt"},
     {"key": "fast_food", "titel": "davon Schnellrestaurants"},
     {"key": "ketten", "titel": "davon Ketten"},
+    {"key": "gastro_bis_150", "titel": "Gastronomie bis 150 m"},
+    {"key": "gastro_bis_300", "titel": "Gastronomie bis 300 m"},
+    {"key": "naechster_wettbewerber", "titel": "Nächster Betrieb (m)"},
     {"key": "wettbewerb_je_1000", "titel": "Wettbewerber je 1.000 Einw. (berechnet)",
      "stellen": 1},
+    {"key": "fastfood_je_1000", "titel": "Schnellrestaurants je 1.000 Einw. (berechnet)",
+     "stellen": 2},
     {"key": "frequenzbringer", "titel": "Frequenzbringer"},
     {"key": "haltestellen", "titel": "Haltestellen"},
     {"key": "linien", "titel": "Linien (eindeutig)"},
     {"key": "abfahrten", "titel": "Abfahrten/Tag (GTFS)"},
+    {"key": "abfahrten_mittag", "titel": "Abfahrten 11–14 Uhr"},
+    {"key": "mittagsanteil", "titel": "Anteil Mittag % (berechnet)", "stellen": 1},
     {"key": "abfahrten_je_einwohner", "titel": "Abfahrten je Einwohner (berechnet)",
      "stellen": 2},
     {"key": "dtv_kfz", "titel": "Kfz/Tag stärkste Zählstelle"},
     {"key": "dtv_sv_anteil", "titel": "Schwerverkehr %"},
     {"key": "rad_je_tag", "titel": "Radfahrende/Tag (Messung)"},
     {"key": "rad_entfernung", "titel": "Entfernung Zählstelle (m)"},
+    {"key": "neubau_anteil", "titel": "Gebäude ab 2020 %", "stellen": 1},
     {"key": "leerstand_osm", "titel": "Leerstände (OSM)"},
     {"key": "erzeugt", "titel": "Abgerufen am"},
 ]
@@ -457,6 +465,9 @@ def _row_for(saved: dict[str, Any]) -> dict[str, Any]:
     gas = zus.get("gastronomie") or {}
     einwohner = _wert(bev.get("einwohner"))
     abfahrten = (g or {}).get("abfahrten_gesamt")
+    mittag = (g or {}).get("abfahrten_mittag")
+    fastfood = (gas.get("nach_typ") or {}).get("Schnellrestaurant")
+    stufen = {s["bis_m"]: s["anzahl"] for s in (gas.get("nach_entfernung") or [])}
     return {
         "id": saved.get("id"),
         "label": saved.get("label"),
@@ -470,16 +481,26 @@ def _row_for(saved: dict[str, Any]) -> dict[str, Any]:
         "miete_qm": _wert(woh.get("miete_qm")),
         "leerstandsquote": _wert(woh.get("leerstandsquote")),
         "gastro_gesamt": gas.get("gesamt"),
-        "fast_food": (gas.get("nach_typ") or {}).get("Schnellrestaurant"),
+        "fast_food": fastfood,
         "ketten": gas.get("ketten"),
+        # Ein Betrieb in 50 m konkurriert anders als einer am Rand des Umkreises.
+        "gastro_bis_150": stufen.get(150),
+        "gastro_bis_300": stufen.get(300),
+        "naechster_wettbewerber": gas.get("naechster_m"),
         # Sättigung: wie viele Betriebe teilen sich die Wohnbevölkerung. Sagt
         # nichts über Zulauf von außen — in der Innenstadt deshalb hoch, ohne
         # dass der Standort schlecht wäre.
         "wettbewerb_je_1000": je_bezugsgroesse(gas.get("gesamt"), einwohner, 1000, 1),
+        # Für einen Imbiss sind 30 Cafés kein Wettbewerb — die engere Zahl.
+        "fastfood_je_1000": je_bezugsgroesse(fastfood, einwohner, 1000, 2),
         "frequenzbringer": (zus.get("frequenzbringer") or {}).get("gesamt"),
         "haltestellen": (zus.get("oepnv") or {}).get("haltestellen"),
         "linien": (zus.get("oepnv") or {}).get("linien_eindeutig"),
         "abfahrten": abfahrten,
+        # Eine Pendlerhaltestelle hat ihre Spitzen um 8 und um 18 Uhr und ist
+        # mittags leer — das trennt die beiden Fälle.
+        "abfahrten_mittag": mittag,
+        "mittagsanteil": je_bezugsgroesse(mittag, abfahrten, 100, 1),
         # Näherung für Zulauf, den der Zensus nicht sieht: viele Abfahrten bei
         # wenig Wohnbevölkerung heißt, die Leute kommen von woanders.
         "abfahrten_je_einwohner": je_bezugsgroesse(abfahrten, einwohner, 1, 2),
@@ -487,6 +508,7 @@ def _row_for(saved: dict[str, Any]) -> dict[str, Any]:
         "dtv_sv_anteil": vms.get("schwerverkehr_anteil"),
         "rad_je_tag": rad.get("je_tag_vorjahr"),
         "rad_entfernung": rad.get("distanz_m"),
+        "neubau_anteil": woh.get("neubau_anteil"),
         "leerstand_osm": (zus.get("leerstand") or {}).get("gesamt"),
         "erzeugt": (p.get("meta") or {}).get("erzeugt"),
         "lat": saved.get("lat"),

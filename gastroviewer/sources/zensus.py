@@ -303,6 +303,30 @@ def summarize(cells: list[dict[str, Any]], lat: float, lon: float) -> dict[str, 
     gebaeude = agg.sum("Insgesamt_Gebaeude")
     baualter = {label: agg.sum(field) for field, label in BUILDING_AGE}
 
+    # "2020 und später" endet am Stichtag 15.05.2022 und umfasst damit nur gut
+    # zwei Jahre. Der Anteil ist deshalb kein Maß für Neubau, sondern ein
+    # Anzeiger dafür, dass am Ort zuletzt überhaupt gebaut wurde. Nachgemessen
+    # am 01.08.2026: gewachsene Viertel liegen bei exakt 0,00 % (Marienplatz,
+    # Giesing), wachsende bei 2,2 % (Moosach) bis 2,9 % (Freiham). Der Hinweis
+    # braucht deshalb keine gewählte Schwelle — er hängt an "größer null".
+    # agg.sum() liefert {"wert": …, "zellen": …}, nicht die nackte Zahl.
+    neubau_wert = (baualter.get("2020 und später") or {}).get("wert")
+    gebaeude_wert = (gebaeude or {}).get("wert")
+    neubau_anteil = (
+        round(neubau_wert / gebaeude_wert * 100, 1)
+        if isinstance(neubau_wert, (int, float))
+        and isinstance(gebaeude_wert, (int, float))
+        and gebaeude_wert > 0
+        else None
+    )
+    if neubau_anteil:
+        hinweise.append(
+            f"{neubau_anteil:.1f} % der Gebäude im Umkreis wurden zwischen 2020 und dem "
+            "Stichtag 15.05.2022 errichtet — hier wurde zuletzt gebaut. Was nach dem "
+            "Stichtag entstanden ist, fehlt im Zensus vollständig; die heutige "
+            "Einwohnerzahl liegt an solchen Orten über der ausgewiesenen."
+        )
+
     ags_counts: dict[str, int] = {}
     for c in cells:
         a = c.get("ags")
@@ -341,6 +365,7 @@ def summarize(cells: list[dict[str, Any]], lat: float, lon: float) -> dict[str, 
             "flaeche_je_bewohner": agg.mean_weighted("durchschnFlaechejeBew"),
             "gebaeude": gebaeude,
             "baualter": baualter,
+            "neubau_anteil": neubau_anteil,
         },
         "hinweise": hinweise,
     }
