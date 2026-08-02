@@ -802,3 +802,92 @@ def test_alle_python_dateien_lassen_sich_uebersetzen():
         except SyntaxError as e:
             kaputt.append(f"{f.relative_to(wurzel)}:{e.lineno} {e.msg}")
     assert not kaputt, "nicht übersetzbar: " + " · ".join(kaputt)
+
+
+# ------------------------------------------------------- Übersichtsgitter
+
+
+def test_gitter_liefert_zellen_fuer_den_ausschnitt(client):
+    """Die Frage „WO ist es interessant?" braucht die Fläche, nicht den Kreis."""
+    r = client.get("/api/gitter", params={
+        "ebene": "1km", "west": 11.36, "sued": 48.06, "ost": 11.72, "nord": 48.25})
+    assert r.status_code == 200
+    d = r.json()
+    assert d["ok"] is True
+    assert d["data"]["ebene"] == "1km"
+    assert len(d["data"]["zellen"]) > 50
+    z = d["data"]["zellen"][0]
+    assert "einwohner" in z and "miete_qm" in z and z["ring"], (
+        "jede Zelle braucht Werte und Geometrie"
+    )
+    assert d["provenance"]["license"], "auch die Übersicht trägt die Lizenz"
+
+
+def test_gitter_kachelt_den_cache(client):
+    """Leichtes Schwenken darf den Dienst nicht erneut fragen."""
+    p1 = {"ebene": "1km", "west": 11.41, "sued": 48.09, "ost": 11.57, "nord": 48.19}
+    client.get("/api/gitter", params=p1)
+    vorher = client.fake.calls.count("zensus")
+    # minimal verschoben, aber innerhalb derselben 0,2°-Kachel — erst das
+    # Überschreiten einer Kachelgrenze darf einen neuen Abruf auslösen
+    p2 = {"ebene": "1km", "west": 11.42, "sued": 48.10, "ost": 11.58, "nord": 48.18}
+    d = client.get("/api/gitter", params=p2).json()
+    assert client.fake.calls.count("zensus") == vorher, "Kachel-Cache griff nicht"
+    assert d["provenance"]["cached"] is True
+
+
+def test_gitter_weist_unsinn_ab(client):
+    fehler = [
+        {"ebene": "5km", "west": 11.4, "sued": 48.1, "ost": 11.6, "nord": 48.2},
+        {"ebene": "1km", "west": 11.6, "sued": 48.1, "ost": 11.4, "nord": 48.2},
+        {"ebene": "1km", "west": 2.0, "sued": 48.1, "ost": 2.4, "nord": 48.2},
+        # zu groß für 1 km — die Oberfläche wechselt dann aufs 10-km-Gitter
+        {"ebene": "1km", "west": 9.0, "sued": 47.5, "ost": 13.5, "nord": 50.0},
+    ]
+    for p in fehler:
+        assert client.get("/api/gitter", params=p).status_code == 422, p
+
+
+def test_gitter_kachel_rundet_nach_aussen():
+    from gastroviewer.sources.zensus import gitter_kachel
+
+    w, s, o, n = gitter_kachel("1km", 11.41, 48.09, 11.59, 48.21)
+    assert w <= 11.41 and s <= 48.09 and o >= 11.59 and n >= 48.21
+    assert abs(w / 0.2 - round(w / 0.2)) < 1e-6, "Westrand nicht auf dem Raster"
+    assert abs(o / 0.2 - round(o / 0.2)) < 1e-6, "Ostrand nicht auf dem Raster"
+    # Die Gleitkomma-Falle konkret: 11,4 liegt exakt auf dem Raster und darf
+    # nicht um eine ganze Kachel nach außen fallen.
+    w2, _, o2, _ = gitter_kachel("1km", 11.40, 48.0, 11.60, 48.2)
+    assert w2 == pytest.approx(11.4) and o2 == pytest.approx(11.6)
+
+
+def test_radien_enthalten_die_grossen_stufen(client):
+    d = client.get("/api/health").json()
+    assert d["radien"] == [300, 600, 900, 1400, 2000, 3000]
+
+
+async def test_gehweg_verweigert_uebergrosse_radien(settings):
+    """Zu Fuß ist ein 3-km-Umkreis kein Einzugsgebiet, und das Wegenetz dafür
+    wäre eine unverhältnismäßige Last für den Spendendienst."""
+    from gastroviewer.sources import gehweg
+
+    from gastroviewer.sources.base import SourceError
+
+    class FakeOut:
+        def __init__(self):
+            self.versucht = 0
+
+        async def post_json(self, *a, **kw):
+            self.versucht += 1
+            raise SourceError("connect", "vom Test unterbunden")
+
+    out = FakeOut()
+    res = await gehweg.load(out, settings, 48.1372, 11.5755, 3000)
+    assert res.ok is True and res.data is None
+    assert "2000 m begrenzt" in res.warnings[0]
+    assert out.versucht == 0, "oberhalb der Grenze darf kein Abruf hinausgehen"
+    # An der Grenze selbst wird noch gerechnet — der (unterbundene) Abruf
+    # beweist, dass er versucht wurde.
+    res2 = await gehweg.load(out, settings, 48.1372, 11.5755, 2000)
+    assert out.versucht > 0 and res2.ok is False
+    assert res2.error["kind"] == "connect"

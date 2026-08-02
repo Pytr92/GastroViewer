@@ -185,6 +185,19 @@ def t_links():
     assert not kaputte, f"unsichere Links: {kaputte}"
     return f"{len(gruppen)} Linkgruppen, alle URLs https"
 
+def t_gitter():
+    d, dauer, _ = hole("/api/gitter", {"ebene": "1km", "west": 11.36, "sued": 48.06,
+                                       "ost": 11.72, "nord": 48.25})
+    z = d["data"]["zellen"]
+    assert len(z) > 500, f"nur {len(z)} Zellen über München"
+    top = max((x for x in z if x["einwohner"]), key=lambda x: x["einwohner"])
+    assert top["einwohner"] > 15000, "die dichteste Münchner 1-km-Zelle fehlt"
+    d2, _, _ = hole("/api/gitter", {"ebene": "10km", "west": 8.95, "sued": 47.25,
+                                    "ost": 13.85, "nord": 50.55})
+    assert len(d2["data"]["zellen"]) > 1000, "ganz Bayern in 10 km unvollständig"
+    return (f"München {len(z)} Zellen (1 km, dichteste {top['einwohner']} Einw.), "
+            f"Bayern {len(d2['data']['zellen'])} Zellen (10 km) · {dauer:.1f} s")
+
 # --------------------------------------------------------------- Suche
 
 def t_geocode():
@@ -312,6 +325,7 @@ ALLE = [
     ("GET /api/point/gehweg", t_gehweg),
     ("GET /api/point/planung", t_planung),
     ("GET /api/point/links", t_links),
+    ("GET /api/gitter — Übersicht München + Bayern", t_gitter),
     ("GET /api/geocode", t_geocode),
     ("GET /api/wms (Register)", t_wms_register),
     ("GET /api/wms?bundesland_code=05", t_wms_nrw),

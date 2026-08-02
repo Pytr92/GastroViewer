@@ -184,6 +184,38 @@ class PointService:
             result.provenance.cached = True
         return result
 
+    async def gitter(self, ebene: str, west: float, sued: float, ost: float, nord: float):
+        """Übersichtsgitter für den Kartenausschnitt, mit Kachel-Cache.
+
+        Die Box wird auf ein Raster nach außen gerundet — leichtes Schwenken
+        trifft so denselben Cache-Eintrag, statt den Dienst erneut zu fragen.
+        """
+        w, s, o, n = zensus.gitter_kachel(ebene, west, sued, ost, nord)
+        key = f"zensus_gitter|{ebene}|{w:.2f}|{s:.2f}|{o:.2f}|{n:.2f}"
+
+        async def laden() -> SourceResult:
+            started = time.perf_counter()
+            try:
+                zellen, warnungen = await zensus.fetch_gitter(
+                    self.outbound, self.settings, ebene, w, s, o, n
+                )
+            except SourceError as err:
+                return SourceResult.failed("zensus_gitter", err)
+            return SourceResult(
+                name="zensus_gitter",
+                ok=True,
+                data={"ebene": ebene, "kachel": [w, s, o, n], "zellen": zellen},
+                duration_ms=int((time.perf_counter() - started) * 1000),
+                warnings=warnungen,
+                provenance=Provenance(
+                    source=f"Zensus 2022, {ebene}-Gitter (Statistische Ämter des Bundes und der Länder)",
+                    license=zensus.LICENSE,
+                    stand=f"Stichtag {zensus.STICHTAG}",
+                ),
+            )
+
+        return await self._cached("zensus_gitter", key, laden)
+
     async def planung(self, lat: float, lon: float, radius: int, refresh: bool = False):
         """Planungsrecht und Hochwasserrisiko. Beides aendert sich in Jahren,
         nicht in Stunden — deshalb dieselbe lange Haltbarkeit wie das Wegenetz."""

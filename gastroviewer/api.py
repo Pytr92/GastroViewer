@@ -30,7 +30,9 @@ from .sources import boris, gtfs, links, muenchen, wms
 
 STATIC_DIR = __import__("pathlib").Path(__file__).parent / "static"
 
-RADIUS_CHOICES = (300, 600, 900, 1400)
+# 2000/3000 sind bewusst dabei, aber teuer: r=3000 am dichtesten Punkt
+# Münchens sind ~9.750 OSM-Elemente und 4,5 MB (gemessen 01.08.2026).
+RADIUS_CHOICES = (300, 600, 900, 1400, 2000, 3000)
 
 
 class SchaetzEingaben(BaseModel):
@@ -255,6 +257,37 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             ),
             "grenzen": GRENZEN,
         }
+
+    @app.get("/api/gitter")
+    async def gitter(
+        request: Request,
+        ebene: str = Query(..., description="1km oder 10km"),
+        west: float = Query(...),
+        sued: float = Query(...),
+        ost: float = Query(...),
+        nord: float = Query(...),
+    ):
+        """Übersichtsgitter für die Erkundung: WO ist es interessant?
+
+        Der Umkreis beantwortet die Frage nur für einen Punkt; diese Ebene
+        zeigt Einwohnerdichte flächig — 1 km für eine Stadt, 10 km für ein
+        Land. Ganz München sind 613 Zellen, ganz Bayern 1.083 (gemessen)."""
+        from .sources.zensus import GITTER_EBENEN
+
+        if ebene not in GITTER_EBENEN:
+            raise HTTPException(422, "ebene muss 1km oder 10km sein.")
+        if not (west < ost and sued < nord):
+            raise HTTPException(422, "Box muss west<ost und sued<nord erfüllen.")
+        if not (5.0 <= west and ost <= 16.0 and 46.5 <= sued and nord <= 56.0):
+            raise HTTPException(422, "Box liegt außerhalb Deutschlands.")
+        max_lon, max_lat = GITTER_EBENEN[ebene]["max_spanne"]
+        if (ost - west) > max_lon or (nord - sued) > max_lat:
+            raise HTTPException(
+                422,
+                f"Ausschnitt zu groß für die {ebene}-Ebene — weiter herauszoomen "
+                "wechselt auf das gröbere Gitter.",
+            )
+        return (await svc(request).gitter(ebene, west, sued, ost, nord)).to_dict()
 
     @app.get("/api/geocode")
     async def geocode(

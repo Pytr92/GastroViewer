@@ -185,6 +185,10 @@ for (const name of ['zensus', 'gastronomie', 'frequenzbringer', 'oepnv', 'leerst
    tausend Punkte sind und SVG dabei spürbar träge wird. */
 state.gehwegRenderer = L.canvas({ padding: 0.3 });
 state.ebenen.gehflaeche = L.layerGroup();
+/* Übersichtsgitter 1 km/10 km — beantwortet „WO ist es interessant?", bevor
+   man klickt. Canvas, weil es bis zu ~1.500 Zellen sind. */
+state.uebersichtRenderer = L.canvas({ padding: 0.3 });
+state.ebenen.uebersicht = L.layerGroup();
 state.ebenen.zensus.addTo(karte);
 state.ebenen.gastronomie.addTo(karte);
 
@@ -193,6 +197,7 @@ const ebenenSchalter = L.control.layers({
   'basemap.de (amtlich)': basemapFarbe,
   'basemap.de grau': basemapGrau,
 }, {
+  'Übersicht Einwohner (1/10 km)': state.ebenen.uebersicht,
   'Zu Fuß erreichbar': state.ebenen.gehflaeche,
   'Zensus-Gitter': state.ebenen.zensus,
   'Gastronomie': state.ebenen.gastronomie,
@@ -221,7 +226,8 @@ state.rasterEbenen = new Set();
 
 function wendeDeckkraftAn() {
   const f = state.deckkraft;
-  for (const name of ['zensus', 'gastronomie', 'frequenzbringer', 'oepnv', 'leerstand']) {
+  for (const name of ['zensus', 'gastronomie', 'frequenzbringer', 'oepnv', 'leerstand',
+    'uebersicht', 'gehflaeche']) {
     state.ebenen[name]?.eachLayer((l) => {
       const basis = l.options?._basisDeckkraft;
       if (basis === undefined || !l.setStyle) return;
@@ -259,6 +265,153 @@ deckkraftRegler.onAdd = () => {
   return c;
 };
 deckkraftRegler.addTo(karte);
+
+/* ---------------------------------------- Übersichtsgitter (Erkundung) */
+
+/* Feste Klassengrenzen statt Quantile: beim Schwenken über München oder Bayern
+   müssen die Farben vergleichbar bleiben. Gewählte Grenzen, keine Messwerte —
+   die Legende sagt das. */
+const UEBERSICHT_KLASSEN = {
+  '1km': { titel: 'Einwohner je 1-km-Zelle', grenzen: [50, 250, 1000, 3000, 8000] },
+  '10km': { titel: 'Einwohner je 10-km-Zelle', grenzen: [1000, 5000, 20000, 75000, 200000] },
+};
+
+const uebersichtState = { schluessel: null, laedt: false };
+
+function uebersichtEbene() {
+  return karte.getZoom() >= 12 ? '1km' : '10km';
+}
+
+function uebersichtFarbe(ew, grenzen) {
+  let i = 0;
+  while (i < grenzen.length && ew > grenzen[i]) i += 1;
+  return FARBEN[i];
+}
+
+const uebersichtLegende = L.control({ position: 'bottomright' });
+uebersichtLegende.onAdd = () => {
+  const c = L.DomUtil.create('div', 'leaflet-control uebersicht-legende');
+  c.id = 'uebersicht-legende';
+  return c;
+};
+
+function zeigeUebersichtLegende(ebene, anzahl, hinweis) {
+  const c = document.getElementById('uebersicht-legende');
+  if (!c) return;
+  if (hinweis) {
+    c.replaceChildren(el('div', { class: 'hinweis-klein' }, hinweis));
+    return;
+  }
+  const k = UEBERSICHT_KLASSEN[ebene];
+  const zeilen = [el('strong', {}, k.titel)];
+  let von = 0;
+  for (let i = 0; i <= k.grenzen.length; i += 1) {
+    const bis = k.grenzen[i];
+    zeilen.push(el('div', { class: 'legende-zeile' },
+      el('i', { style: `background:${FARBEN[i]}` }),
+      bis === undefined ? `über ${NF.format(von)}` : `${NF.format(von)} – ${NF.format(bis)}`));
+    von = bis;
+  }
+  zeilen.push(el('div', { class: 'hinweis-klein' },
+    `${NF.format(anzahl)} Zellen · feste, gewählte Klassen · Zensus 2022 · `
+    + 'Klick auf eine Zelle: Werte und „Hier analysieren"'));
+  c.replaceChildren(...zeilen);
+}
+
+function uebersichtPopup(z, ebene, mitte) {
+  const wert = (v, einheit = '', nk = 0) => (v === null || v === undefined
+    ? 'keine Angabe' : `${zahl(v, nk)}${einheit}`);
+  const inhalt = el('div', {},
+    el('h4', {}, `Zensuszelle ${z.id || ''} (${ebene})`),
+    el('table', {},
+      el('tr', {}, el('td', {}, 'Einwohner'), el('td', {}, el('b', {}, wert(z.einwohner)))),
+      el('tr', {}, el('td', {}, 'Durchschnittsalter'), el('td', {}, el('b', {}, wert(z.alter, ' J.', 1)))),
+      el('tr', {}, el('td', {}, 'Nettokaltmiete'), el('td', {}, el('b', {}, wert(z.miete_qm, ' €/m²', 2)))),
+      el('tr', {}, el('td', {}, 'Leerstandsquote'), el('td', {}, el('b', {}, wert(z.leerstand, ' %', 1))))),
+    el('button', {
+      style: 'margin-top:7px',
+      onclick: () => { karte.closePopup(); setzePunkt(mitte[0], mitte[1], true); },
+    }, 'Hier analysieren'),
+    el('p', { class: 'hinweis-klein' },
+      'Setzt den Punkt in die Zellmitte und lädt alle Blöcke.'));
+  return inhalt;
+}
+
+async function ladeUebersicht() {
+  if (!karte.hasLayer(state.ebenen.uebersicht)) return;
+  const ebene = uebersichtEbene();
+  const b = karte.getBounds();
+  const west = Math.max(5.0, b.getWest());
+  const ost = Math.min(16.0, b.getEast());
+  const sued = Math.max(46.5, b.getSouth());
+  const nord = Math.min(56.0, b.getNorth());
+  const k = UEBERSICHT_KLASSEN[ebene];
+
+  if (west >= ost || sued >= nord) {
+    state.ebenen.uebersicht.clearLayers();
+    zeigeUebersichtLegende(ebene, 0, 'Der Ausschnitt liegt außerhalb Deutschlands.');
+    return;
+  }
+  const spanne = ebene === '1km' ? [1.6, 1.0] : [7.5, 5.0];
+  if ((ost - west) > spanne[0] || (nord - sued) > spanne[1]) {
+    state.ebenen.uebersicht.clearLayers();
+    zeigeUebersichtLegende(ebene, 0,
+      'Für die Übersicht weiter hineinzoomen — dieser Ausschnitt ist zu groß.');
+    return;
+  }
+
+  const schluessel = `${ebene}|${west.toFixed(2)}|${sued.toFixed(2)}|${ost.toFixed(2)}|${nord.toFixed(2)}`;
+  if (schluessel === uebersichtState.schluessel || uebersichtState.laedt) return;
+  uebersichtState.laedt = true;
+  try {
+    const d = await hole('/api/gitter', { ebene, west, sued, ost, nord });
+    if (!d.ok) {
+      zeigeUebersichtLegende(ebene, 0, `Übersicht nicht ladbar: ${d.error?.message || '?'}`);
+      return;
+    }
+    uebersichtState.schluessel = schluessel;
+    const gruppe = state.ebenen.uebersicht;
+    gruppe.clearLayers();
+    for (const z of d.data.zellen) {
+      const latlngs = z.ring.map((pt) => [pt[1], pt[0]]);
+      const mitte = [
+        latlngs.reduce((s, x) => s + x[0], 0) / latlngs.length,
+        latlngs.reduce((s, x) => s + x[1], 0) / latlngs.length,
+      ];
+      const ew = z.einwohner ?? 0;
+      const poly = L.polygon(latlngs, {
+        renderer: state.uebersichtRenderer,
+        color: '#ffffff', weight: 0.5,
+        fillColor: uebersichtFarbe(ew, k.grenzen),
+        fillOpacity: 0.55 * state.deckkraft, opacity: 0.6 * state.deckkraft,
+        _basisDeckkraft: 0.55, _basisRand: 0.6,
+      });
+      poly.bindPopup(() => uebersichtPopup(z, ebene, mitte), { maxWidth: 300 });
+      gruppe.addLayer(poly);
+    }
+    zeigeUebersichtLegende(ebene, d.data.zellen.length, null);
+  } catch (e) {
+    zeigeUebersichtLegende(ebene, 0, `Übersicht nicht ladbar: ${e.message}`);
+  } finally {
+    uebersichtState.laedt = false;
+  }
+}
+
+karte.on('moveend', () => ladeUebersicht());
+karte.on('overlayadd', (ev) => {
+  if (ev.layer === state.ebenen.uebersicht) {
+    uebersichtLegende.addTo(karte);
+    uebersichtState.schluessel = null;
+    ladeUebersicht();
+  }
+});
+karte.on('overlayremove', (ev) => {
+  if (ev.layer === state.ebenen.uebersicht) {
+    state.ebenen.uebersicht.clearLayers();
+    uebersichtState.schluessel = null;
+    uebersichtLegende.remove();
+  }
+});
 
 karte.on('click', (e) => setzePunkt(e.latlng.lat, e.latlng.lng));
 

@@ -372,6 +372,42 @@ def pruefe_eigene_notiz(page) -> str:
     return "Note und Notiz vorhanden, Notiz übersteht das Neuöffnen"
 
 
+def pruefe_uebersichtsgitter(page) -> str:
+    """Die Erkundungsebene: ganz Bayern in 10-km-, eine Stadt in 1-km-Zellen."""
+    page.evaluate("() => { karte.setView([48.95, 11.4], 8); }")
+    page.evaluate("() => { state.ebenen.uebersicht.addTo(karte); }")
+    page.evaluate("() => { karte.fire('overlayadd', { layer: state.ebenen.uebersicht }); }")
+    for _ in range(120):
+        if page.evaluate("() => state.ebenen.uebersicht.getLayers().length") > 0:
+            break
+        page.wait_for_timeout(500)
+    page.wait_for_timeout(1500)
+    n10 = page.evaluate("() => state.ebenen.uebersicht.getLayers().length")
+    fordere(n10 > 800, f"zu wenige 10-km-Zellen über Bayern: {n10}")
+    leg = text(page, "#uebersicht-legende")
+    fordere("10-km-Zelle" in leg, f"Legende falsch: {leg[:50]}")
+    fordere("feste, gewählte Klassen" in leg,
+            "die Legende muss sagen, dass die Klassen gewählt sind")
+
+    page.evaluate("() => { karte.setView([48.145, 11.55], 12); }")
+    for _ in range(120):
+        if "1-km-Zelle" in text(page, "#uebersicht-legende"):
+            break
+        page.wait_for_timeout(500)
+    page.wait_for_timeout(1500)
+    n1 = page.evaluate("() => state.ebenen.uebersicht.getLayers().length")
+    fordere(n1 > 300, f"zu wenige 1-km-Zellen über München: {n1}")
+
+    page.evaluate("""() => {
+        karte.removeLayer(state.ebenen.uebersicht);
+        karte.fire('overlayremove', { layer: state.ebenen.uebersicht });
+    }""")
+    page.wait_for_timeout(600)
+    fordere(page.evaluate("() => state.ebenen.uebersicht.getLayers().length") == 0,
+            "Abschalten leert die Ebene nicht")
+    return f"Bayern {n10} Zellen (10 km), München {n1} Zellen (1 km)"
+
+
 def pruefe_bodenrichtwert_ebene(page) -> str:
     """In Nordrhein-Westfalen gibt es einen abfragbaren Landesdienst."""
     setze_punkt(page, *KOELN)
@@ -396,6 +432,7 @@ PRUEFUNGEN = [
     ("Verkehrszähler in der Fußzeile", pruefe_verkehrszaehler),
     ("Erreichbarkeit zu Fuß", pruefe_gehweg),
     ("Gehwegzahl in der Schätzung", pruefe_gehwegangebot_in_der_schaetzung),
+    ("Übersichtsgitter (Erkundung)", pruefe_uebersichtsgitter),
     ("Planung und Hochwasser", pruefe_planung_und_hochwasser),
     ("Eigene Notiz und Note", pruefe_eigene_notiz),
     ("Bodenrichtwert-Ebene (NRW)", pruefe_bodenrichtwert_ebene),

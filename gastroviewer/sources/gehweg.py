@@ -371,6 +371,12 @@ HINWEISE = [
 ]
 
 
+# Oberhalb dieses Radius wird nicht gerechnet: zu Fuß ist ein 3-km-Umkreis
+# kein Einzugsgebiet mehr, und das Wegenetz dafür (Puffer 1,8×) wäre ein
+# Download von weit über 10 MB beim Spendendienst.
+MAX_RADIUS_M = 2000
+
+
 async def load(
     out: Outbound,
     settings: Settings,
@@ -382,6 +388,21 @@ async def load(
     zellen: list[dict[str, Any]] | None = None,
 ) -> SourceResult:
     started = time.perf_counter()
+    if radius > MAX_RADIUS_M:
+        return SourceResult(
+            name="gehweg",
+            ok=True,
+            data=None,
+            warnings=[
+                f"Die Gehstreckenberechnung ist auf {MAX_RADIUS_M} m begrenzt. "
+                "Zu Fuß ist ein größerer Umkreis kein Einzugsgebiet, und das "
+                "Wegenetz dafür wäre eine unverhältnismäßig große Abfrage beim "
+                "Spendendienst. Radius verkleinern, dann rechnet der Block."
+            ],
+            provenance=Provenance(
+                source="OpenStreetMap Fußwegenetz über Overpass", license=LICENSE
+            ),
+        )
     query = build_query(lat, lon, radius, timeout=int(settings.overpass_timeout))
     try:
         payload, endpoint, problems = await run_query(out, settings, query)

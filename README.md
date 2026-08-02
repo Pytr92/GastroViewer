@@ -59,8 +59,8 @@ export GASTROVIEWER_CONTACT="deine@mailadresse.de"     # Windows: set GASTROVIEW
 | Klick in die Karte | setzt den Punkt und lädt alle Blöcke |
 | Marker ziehen | verschiebt den Punkt |
 | Adresssuche | Nominatim, mit 1,1 s Verzögerung wegen des Limits von 1 Anfrage/s |
-| Radius 300/600/900/1400 m | begrenzt alle Abfragen |
-| Ebenen links oben | Kartengrundlage (OSM, basemap.de farbig/grau, Luftbild Bayern) sowie Zensus-Gitter, Gastronomie, Frequenzbringer, ÖPNV, Leerstände, Verkehrsmengen, Lärm, ALKIS |
+| Radius 300–3000 m | begrenzt alle Abfragen; 2000/3000 sind große Abfragen für Umlandgemeinden |
+| Ebenen links oben | Kartengrundlage (OSM, basemap.de farbig/grau, Luftbild Bayern) sowie Übersicht Einwohner (1/10 km), Zensus-Gitter, Gastronomie, Frequenzbringer, ÖPNV, Leerstände, Verkehrsmengen, Lärm, ALKIS |
 | Regler „Deckkraft der Ebenen" | blendet Gitter, Marker und Rasterebenen gemeinsam zurück, damit Straßen und Gebäude der Grundkarte durchscheinen. Die Grundkarte selbst bleibt voll; die Einstellung wird gemerkt |
 | Auswahl in der Legende | Zensus-Ebene: Einwohner, Anteil 18–49, Miete, Leerstand |
 | Klick auf Zelle oder POI | zeigt die Rohwerte, wie sie vom Dienst kamen |
@@ -413,6 +413,36 @@ Gewachsene Viertel liegen bei exakt null, wachsende darüber. Deshalb hängt der
 „größer null" und nicht an einer gewählten Schwelle. Er sagt: hier lag die Einwohnerzahl
 zum Stichtag vermutlich unter der heutigen.
 
+## Erkundung: WO ist es interessant? Ganz München, ganz Bayern
+
+Der Umkreis beantwortet die Frage „wie ist es *hier*?" — für die Frage „*wo* soll ich
+überhaupt hinsehen?" gibt es die Ebene **„Übersicht Einwohner (1/10 km)"** im
+Ebenenschalter. Sie legt das Zensus-Gitter flächig über die Karte, aus derselben
+verifizierten Quelle wie der 100-m-Block:
+
+- **herangezoomt (ab Zoom 12):** 1-km-Zellen — ganz München sind 613 Zellen. Die dichteste
+  Münchner Zelle hat 22.773 Einwohner bei 15,68 €/m² Miete.
+- **herausgezoomt:** 10-km-Zellen — ganz Bayern sind 1.083 Zellen. Die dichteste ist mit
+  659.675 Einwohnern der Münchner Kern, gefolgt von Nürnberg (458.590).
+
+Die Farbklassen sind **fest und gewählt** (die Legende sagt das) — beim Schwenken über die
+Stadt bleiben die Farben dadurch vergleichbar, anders als bei Quantilen, die sich jedem
+Ausschnitt anpassen würden. Klick auf eine Zelle zeigt die Rohwerte und bietet **„Hier
+analysieren"** an: das setzt den Punkt in die Zellmitte und lädt alle Blöcke. Der
+Arbeitsfluss ist also: Übersicht an → interessante Gegend erkennen → hineinzoomen →
+analysieren. Geladen wird je Kartenausschnitt, mit Kachel-Cache (leichtes Schwenken fragt
+den Dienst nicht erneut).
+
+### Größere Radien — möglich, aber mit Ansage
+
+Der Analyse-Radius geht jetzt bis **2000 und 3000 m**. Das ist für Umlandgemeinden gedacht,
+wo das Gemeindegebiet das Einzugsgebiet ist — nicht für die Innenstadt: am dichtesten Punkt
+Münchens sind 3000 m rund **9.750 OSM-Elemente, 4,5 MB und ~2 Minuten** (gemessen am
+01.08.2026), und ein Einwohner-Mittel über einen 3-km-Kreis verwischt genau die
+Unterschiede, die man sucht. Die Auswahl sagt das dazu. Die Gehstreckenberechnung bleibt
+bei **2000 m** gedeckelt — zu Fuß ist ein größerer Umkreis kein Einzugsgebiet, und das
+Wegenetz dafür wäre eine unverhältnismäßige Last für den Spendendienst.
+
 ## Planungsrecht und Hochwasser (Bayern, Bebauungspläne München)
 
 Zwei Fragen, die eine Standortentscheidung kippen können und die keine der übrigen Quellen
@@ -576,6 +606,7 @@ Alles über Umgebungsvariablen, alles optional:
 | `GET /api/point?lat=&lon=&r=` | alles auf einmal |
 | `GET /api/point/{adresse\|zensus\|osm\|gtfs\|radzaehlung\|verkehrsmenge\|links}` | je Quelle einzeln (nutzt die Oberfläche) |
 | `GET /api/point/gehweg?lat=&lon=&r=` | Gehstrecken statt Luftlinie — **nur auf Anforderung**, siehe eigener Abschnitt |
+| `GET /api/gitter?ebene=&west=&sued=&ost=&nord=` | Übersichtsgitter 1 km/10 km je Kartenausschnitt |
 | `GET /api/geocode?q=` | Adresssuche |
 | `GET /api/points` · `POST /api/points` · `DELETE /api/points/{id}` | gemerkte Punkte |
 | `GET /api/points/vergleich` | Vergleichstabelle |

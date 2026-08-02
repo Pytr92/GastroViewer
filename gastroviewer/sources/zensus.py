@@ -199,6 +199,119 @@ class Aggregate:
         }
 
 
+# ------------------------------------------------- Übersichtsgitter (1/10 km)
+#
+# Der Umkreis beantwortet „wie ist es HIER?" — die Frage „WO ist es überhaupt
+# interessant?" braucht die Fläche. Derselbe verifizierte Dienst führt das
+# Gitter auch in 1 km (Layer 1) und 10 km (Layer 2); am 01.08.2026 gemessen:
+# ganz München in 1 km sind 613 Zellen, ganz Bayern in 10 km sind 1.083 —
+# jeweils eine einzige Antwortseite.
+GITTER_EBENEN = {
+    "1km": {"layer": 1, "id_feld": "GITTER_ID_1km",
+            # Spannweite der Abfragebox in Grad (Länge, Breite). Rund 110×90 km
+            # — mehr 1-km-Zellen wären weder ladbar noch lesbar.
+            "max_spanne": (1.6, 1.0)},
+    "10km": {"layer": 2, "id_feld": "GITTER_ID_10km",
+             # reicht für ganz Bayern in einem Ausschnitt
+             "max_spanne": (7.5, 5.0)},
+}
+GITTER_FELDER = ["Einwohner", "Durchschnittsalter", "DurchschnHHGroesse",
+                 "durchschnMieteQM", "Leerstandsquote"]
+# Die Abfragebox wird auf dieses Raster nach außen gerundet, damit leichtes
+# Schwenken denselben Cache-Eintrag trifft statt jedes Mal neu zu laden.
+GITTER_RASTER = {"1km": 0.2, "10km": 1.0}
+
+
+def gitter_kachel(ebene: str, west: float, sued: float, ost: float, nord: float):
+    """Rundet die Box nach außen auf das Cache-Raster.
+
+    Das Zwischenergebnis wird auf 6 Stellen gerundet, bevor floor/ceil greifen:
+    11,4 / 0,2 ist in Gleitkommadarstellung 56,999…, und ohne Rundung fiele der
+    Westrand um eine ganze Kachel zu weit hinaus.
+    """
+    import math
+
+    r = GITTER_RASTER[ebene]
+    return (
+        round(math.floor(round(west / r, 6)) * r, 6),
+        round(math.floor(round(sued / r, 6)) * r, 6),
+        round(math.ceil(round(ost / r, 6)) * r, 6),
+        round(math.ceil(round(nord / r, 6)) * r, 6),
+    )
+
+
+async def fetch_gitter(
+    out: Outbound,
+    settings: Settings,
+    ebene: str,
+    west: float,
+    sued: float,
+    ost: float,
+    nord: float,
+) -> tuple[list[dict[str, Any]], list[str]]:
+    """Gitterzellen einer Übersichtsebene im Kartenausschnitt."""
+    cfg = GITTER_EBENEN[ebene]
+    url = f"{settings.zensus_base}/{cfg['layer']}/query"
+    felder = [cfg["id_feld"], *GITTER_FELDER]
+    features: list[dict[str, Any]] = []
+    warnings: list[str] = []
+    offset = 0
+    for _page in range(3):
+        form = {
+            "f": "json",
+            "where": "1=1",
+            "geometry": (
+                f'{{"xmin":{west},"ymin":{sued},"xmax":{ost},"ymax":{nord},'
+                f'"spatialReference":{{"wkid":4326}}}}'
+            ),
+            "geometryType": "esriGeometryEnvelope",
+            "inSR": "4326",
+            "outSR": "4326",
+            "spatialRel": "esriSpatialRelIntersects",
+            "outFields": ",".join(felder),
+            "returnGeometry": "true",
+            "resultRecordCount": str(settings.zensus_page_size),
+        }
+        if offset:
+            form["resultOffset"] = str(offset)
+        payload = await out.post_json(
+            "zensus", url, data=form, timeout=settings.zensus_timeout
+        )
+        if isinstance(payload, dict) and "error" in payload:
+            err = payload["error"]
+            raise SourceError(
+                "api_error",
+                f"Zensus-Dienst meldet Fehler {err.get('code')}: {err.get('message')}",
+            )
+        batch = payload.get("features", []) if isinstance(payload, dict) else []
+        features.extend(batch)
+        if payload.get("exceededTransferLimit") is not True:
+            break
+        offset += len(batch) or settings.zensus_page_size
+    else:
+        warnings.append(
+            "Der Ausschnitt enthält mehr Zellen, als in drei Seiten passen — "
+            "Anzeige unvollständig. Ein kleinerer Ausschnitt behebt das."
+        )
+
+    zellen = []
+    for f in features:
+        attrs = dict(f.get("attributes") or {})
+        rings = (f.get("geometry") or {}).get("rings") or []
+        if not rings:
+            continue
+        zellen.append({
+            "id": attrs.get(cfg["id_feld"]),
+            "einwohner": attrs.get("Einwohner"),
+            "alter": attrs.get("Durchschnittsalter"),
+            "haushalt": attrs.get("DurchschnHHGroesse"),
+            "miete_qm": attrs.get("durchschnMieteQM"),
+            "leerstand": attrs.get("Leerstandsquote"),
+            "ring": rings[0],
+        })
+    return zellen, warnings
+
+
 async def fetch_cells(
     out: Outbound, settings: Settings, lat: float, lon: float, radius: int
 ) -> tuple[list[dict[str, Any]], list[str]]:
