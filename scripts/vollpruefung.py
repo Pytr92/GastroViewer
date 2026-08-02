@@ -169,6 +169,18 @@ def t_gehweg():
     return (f"{x['knoten']} Knoten, Erschließung {x['zensus']['erschliessungsgrad']} %, "
             f"{len(x['flaeche'])} Kartenpunkte")
 
+def t_marke():
+    d, dauer, _ = hole("/api/point/marke", {
+        "lat": M[0], "lon": M[1], "marke": "McDonald's", "r": 10000})
+    assert d["ok"], d.get("error")
+    assert d["data"]["anzahl"] > 0, "kein McDonald's in 10 km um den Marienplatz — unplausibel"
+    assert d["data"]["naechster_m"] < 3000, "in der Innenstadt liegt einer näher"
+    assert any("Vertrag" in h for h in d["data"]["hinweise"])
+    hole("/api/point/marke", {"lat": M[0], "lon": M[1], "marke": "Subway", "r": 100},
+         erwartet=422)
+    return (f"{d['data']['anzahl']} Treffer, nächster {d['data']['naechster_m']} m · "
+            f"{dauer:.1f} s · Mini-Radius → 422")
+
 def t_planung():
     d, _, _ = hole("/api/point/planung",
                    {"lat": ISARAUEN[0], "lon": ISARAUEN[1], "r": 600})
@@ -267,6 +279,18 @@ def t_schaetzung_rechnen():
     assert "keine Prognose" in d["beschriftung"]
     return f"Spanne {lo}–{hi} €, Prüfstein Faktor {d['kalibrierung']['faktor']}"
 
+def t_schaetzung_franchise():
+    d, _, _ = hole("/api/schaetzung", methode="POST", body={
+        "einwohner": 10000, "wettbewerber": 4, "besuche_je_einwohner": 60,
+        "bon_min": 7, "bon_max": 10, "franchisegebuehr_prozent": 5,
+        "werbeabgabe_prozent": 3, "wareneinsatz_prozent": 30,
+        "personalkosten_prozent": 30})
+    fr = d["franchise"]
+    assert fr["summe_prozent"] == 68 and fr["verbleib_prozent"] == 32
+    assert fr["verbleib_monat_eur"][0] > 0
+    return (f"Verbleib {fr['verbleib_prozent']} % = "
+            f"{fr['verbleib_monat_eur'][0]}–{fr['verbleib_monat_eur'][1]} €/Monat vor Miete")
+
 def t_schaetzung_lehnt_unsinn_ab():
     hole("/api/schaetzung", methode="POST",
          body={"einwohner": -5, "wettbewerber": 0, "besuche_je_einwohner": 60,
@@ -361,6 +385,7 @@ ALLE = [
     ("GET /api/point/radzaehlung — Aktualität", t_radzaehlung),
     ("GET /api/point/verkehrsmenge", t_verkehrsmenge),
     ("GET /api/point/gehweg", t_gehweg),
+    ("GET /api/point/marke — Gebietsschutz live", t_marke),
     ("GET /api/point/planung", t_planung),
     ("GET /api/point/links", t_links),
     ("GET /api/gitter — Übersicht München + Bayern", t_gitter),
@@ -372,6 +397,7 @@ ALLE = [
     ("GET /api/wms/bodenrichtwert — live NRW", t_brw_live),
     ("GET /api/schaetzung/vorgaben", t_schaetzung_vorgaben),
     ("POST /api/schaetzung", t_schaetzung_rechnen),
+    ("POST /api/schaetzung (Franchise-Kostenprobe)", t_schaetzung_franchise),
     ("POST /api/schaetzung (Abweisung)", t_schaetzung_lehnt_unsinn_ab),
     ("POST /api/points", t_punkt_merken),
     ("PATCH /api/points/{id}", t_punkt_notiz),

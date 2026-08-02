@@ -502,6 +502,43 @@ festen Spaltengruppe, geht in keine Rechnung ein und landet im CSV-Export.
 Eine Datenbank aus einer früheren Fassung wird beim Start um die beiden Spalten ergänzt,
 statt den Nutzer seine gemerkten Punkte zu kosten.
 
+## Franchise: Systemgastronomie, Gebietsschutz, Kostenprobe
+
+Drei Ergänzungen aus der Sicht eines Franchisenehmers:
+
+**Block 4c · Systemgastronomie & Marken.** Welche Systeme sitzen schon im Umkreis — je
+Marke mit Anzahl und nächster Entfernung, dazu der Kettenanteil an der Gastronomie (auch
+als berechnete Spalte im Vergleich). Der Hinweis dazu ist bewusst zweischneidig:
+Systemgastronomie prüft Standorte professionell, ihre Präsenz ist ein Indiz für tragfähige
+Frequenz — und zugleich direkte Konkurrenz. Ihr Fehlen kann eine Lücke sein oder ein
+Warnsignal; die Zahl entscheidet das nicht. Alles aus den bereits geladenen OSM-Daten,
+keine zusätzliche Abfrage.
+
+**Gebietsschutz-Check (`/api/point/marke`).** Wo ist der nächste Betrieb der *eigenen*
+Marke? Gebietsschutz und Kannibalisierung werden in Kilometern gedacht, nicht in
+Gehminuten — deshalb sucht der Check in einem eigenen Radius (5/10/20 km, auf Knopfdruck)
+per brand- **und** Namenssuche unter gastronomisch getaggten Objekten. Treffer erscheinen
+als violette Marker auf der Karte; Treffer ohne brand-Tag sind als „nur namensgleich"
+markiert (vermutlich Einzelbetriebe). Drei Ehrlichkeiten stehen in der Antwort: null
+Treffer sind eine Aussage über OSM, **kein Beleg für ein freies Gebiet**; die Namenssuche
+kann Gleichnamige erwischen; und was der Gebietsschutz umfasst, steht im Franchisevertrag
+— das hier ist die Karte, nicht der Vertrag.
+
+Technische Ehrlichkeit dazu: der erste Entwurf filterte per regulärem Ausdruck auf dem
+Overpass-Server und lief bei 10 km reproduzierbar in den Timeout (Regex ohne
+Groß-/Kleinschreibung kann Overpass nicht indizieren). Deshalb lädt die erste Suche je
+Punkt die **markenunabhängige Basis** — alle Gastronomie im Radius, gemessen für 10 km
+Innenstadt: 4.631 Betriebe, 2,6 MB, ~30 s — und jede weitere Markensuche am selben Punkt
+ist reine lokale Rechnung aus dem Cache.
+
+**Franchise-Kostenprobe in der Schätzung.** Vier neue Eingabefelder — Franchisegebühr,
+Werbeabgabe, Wareneinsatz, Personalkosten, jeweils in % vom Umsatz. Es gibt **bewusst
+keine Vorgabewerte**: die Sätze stehen im Franchisevertrag und in der eigenen Kalkulation,
+und jeder hier erfundene „typische" Satz würde als Branchenwert gelesen. Sind Sätze
+eingetragen, zeigt das Ergebnis, was von der Umsatzspanne übrig bleibt — je Monat, vor
+Miete, Abschreibung, Zinsen, Steuern und Unternehmerlohn. Summieren sich die Sätze über
+100 %, sagt die Probe klar: unter diesen Annahmen trägt sich kein Standort.
+
 ## Standortbericht zum Drucken
 
 Sobald es ernst wird — Vermieter, Bank, Partner —, braucht man das Ergebnis außerhalb des

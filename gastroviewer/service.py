@@ -18,8 +18,8 @@ from typing import Any, Awaitable, Callable
 from .cache import AsyncCache, cache_key
 from .config import Settings
 from .http import Outbound
-from .sources import (bayern, boris, gehweg, links, muenchen, nominatim, overpass,
-                      planung, scan as scan_mod, zensus)
+from .sources import (bayern, boris, gehweg, links, marke as marke_mod, muenchen,
+                      nominatim, overpass, planung, scan as scan_mod, zensus)
 from .sources.base import Provenance, SourceError, SourceResult
 
 Loader = Callable[[], Awaitable[SourceResult]]
@@ -215,6 +215,23 @@ class PointService:
             )
 
         return await self._cached("zensus_gitter", key, laden)
+
+    async def marke(self, lat: float, lon: float, radius: int, marke: str):
+        """Gebietsschutz-Check: Betriebe der eigenen Marke im großen Umkreis.
+
+        Gecacht wird die **markenunabhängige** Basis (alle Gastronomie im
+        Radius) — eine Regex-Suche auf dem Server lief in den Timeout, und so
+        bedient ein Abruf jede weitere Markensuche am selben Punkt. Der
+        Markenfilter selbst ist reine Python-Rechnung.
+        """
+        basis = await self._cached(
+            "marke_basis",
+            cache_key("marke_basis", lat, lon, radius),
+            lambda: marke_mod.load_basis(self.outbound, self.settings, lat, lon, radius),
+        )
+        if not basis.ok:
+            return basis
+        return marke_mod.suche(basis, marke, lat, lon, radius)
 
     async def scan(self, west: float, sued: float, ost: float, nord: float):
         """Flächen-Scan: Einwohner je Gastronomiebetrieb im 300-m-Umfeld,

@@ -647,3 +647,16 @@ details.ranking > summary {
 .ranking-gewichte .ranking-wert { font-weight: 600; }
 .ranking-gewichte input[type="range"] { width: 100%; }
 .ranking-tabelle th { font-size: 11.5px; }
+
+/* Gebietsschutz-Formular im Franchise-Block */
+.marke-form { display: flex; gap: 6px; flex-wrap: wrap; margin: 6px 0 8px; }
+.marke-form input[type="text"] {
+  flex: 1;
+  min-width: 180px;
+  font-family: inherit;
+  font-size: 13px;
+  padding: 5px 8px;
+  border: 1px solid var(--rand);
+  border-radius: 4px;
+}
+.marke-form select { font-family: inherit; font-size: 13px; }

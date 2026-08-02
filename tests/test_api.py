@@ -1020,3 +1020,82 @@ def test_loeschen_raeumt_den_verlauf_mit_auf(client):
     assert c.list_verlauf(pid), "die Prüfung muss einen Verlaufseintrag anlegen"
     client.delete(f"/api/points/{pid}")
     assert c.list_verlauf(pid) == [], "gelöschter Punkt darf keine Verlaufsleichen lassen"
+
+# ------------------------------------------------------- Franchise-Funktionen
+
+
+def test_marke_endpunkt_liefert_treffer_und_cached(client):
+    from gastroviewer.sources.overpass import GASTRO_AMENITIES
+
+    fixture = client.fake.overpass
+    gesucht = next(
+        (e["tags"]["brand"] for e in fixture["elements"]
+         if (e.get("tags") or {}).get("amenity") in GASTRO_AMENITIES
+         and (e.get("tags") or {}).get("brand")),
+        None)
+    assert gesucht, "Fixture ohne Kettenbetrieb"
+
+    r = client.get("/api/point/marke", params={
+        "lat": LAT, "lon": LON, "marke": gesucht, "r": 10000})
+    assert r.status_code == 200
+    d = r.json()
+    assert d["ok"] and d["data"]["anzahl"] > 0
+    assert d["data"]["naechster_m"] is not None
+
+    vorher = len(client.fake.calls)
+    client.get("/api/point/marke", params={
+        "lat": LAT, "lon": LON, "marke": gesucht, "r": 10000})
+    assert len(client.fake.calls) == vorher, "Markensuche muss den Cache treffen"
+
+
+def test_marke_weist_unsinn_ab(client):
+    fehler = [
+        {"lat": LAT, "lon": LON, "marke": "X", "r": 10000},        # zu kurz
+        {"lat": LAT, "lon": LON, "marke": 'A"B', "r": 10000},      # Anführungszeichen
+        {"lat": LAT, "lon": LON, "marke": "Subway", "r": 500},     # Radius zu klein
+        {"lat": LAT, "lon": LON, "marke": "Subway", "r": 50000},   # Radius zu groß
+    ]
+    for p in fehler:
+        assert client.get("/api/point/marke", params=p).status_code == 422, p
+
+
+def test_kettenanteil_in_der_vergleichstabelle(client):
+    client.post("/api/points", json={
+        "label": "Kettentest", "lat": LAT, "lon": LON, "radius": R})
+    d = client.get("/api/points/vergleich").json()
+    z = next(x for x in d["zeilen"] if x["label"] == "Kettentest")
+    assert isinstance(z["ketten_anteil"], float) and 0 < z["ketten_anteil"] < 100
+    titel = {c["key"]: c["titel"] for c in d["spalten"]}
+    assert "berechnet" in titel["ketten_anteil"], (
+        "abgeleitete Werte müssen als berechnet beschriftet sein"
+    )
+
+
+def test_schaetzung_franchise_kostenprobe(client):
+    basis = {"einwohner": 10000, "wettbewerber": 4, "besuche_je_einwohner": 60,
+             "bon_min": 7, "bon_max": 10}
+
+    # Ohne Sätze findet die Probe nicht statt.
+    d = client.post("/api/schaetzung", json=basis).json()
+    assert d["franchise"] is None
+
+    # Mit Sätzen: reine Prozentrechnung, nachvollziehbar.
+    d = client.post("/api/schaetzung", json={
+        **basis, "franchisegebuehr_prozent": 5, "werbeabgabe_prozent": 3,
+        "wareneinsatz_prozent": 30, "personalkosten_prozent": 30}).json()
+    fr = d["franchise"]
+    assert fr["summe_prozent"] == 68 and fr["verbleib_prozent"] == 32
+    u_min, u_max = d["ergebnis"]["jahresumsatz_eur"]
+    assert fr["verbleib_jahr_eur"] == [round(u_min * 0.32), round(u_max * 0.32)]
+    assert fr["verbleib_monat_eur"][0] == round(u_min * 0.32 / 12)
+    assert "Unternehmerlohn" in fr["hinweis"]
+
+    # Sätze über 100 %: klare Ansage statt stiller Minuszahl.
+    d = client.post("/api/schaetzung", json={
+        **basis, "wareneinsatz_prozent": 60, "personalkosten_prozent": 45}).json()
+    assert d["franchise"]["verbleib_prozent"] < 0
+    assert any("trägt sich kein Standort" in w for w in d["franchise"]["warnungen"])
+
+    # Negative Sätze weist die API ab.
+    r = client.post("/api/schaetzung", json={**basis, "franchisegebuehr_prozent": -1})
+    assert r.status_code == 422

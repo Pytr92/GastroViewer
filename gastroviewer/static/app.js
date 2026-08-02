@@ -193,6 +193,10 @@ state.ebenen.uebersicht = L.layerGroup();
    100-m-Zelle. Die feine Stufe zwischen Übersichtsebene und Umkreis. */
 state.scanRenderer = L.canvas({ padding: 0.3 });
 state.ebenen.scan = L.layerGroup();
+/* Treffer der Markensuche (Gebietsschutz-Check). Bewusst nicht im
+   Ebenenschalter: die Ebene entsteht durch die Suche und verschwindet mit dem
+   Punktwechsel. */
+state.ebenen.marke = L.layerGroup();
 state.ebenen.zensus.addTo(karte);
 state.ebenen.gastronomie.addTo(karte);
 
@@ -232,7 +236,7 @@ state.rasterEbenen = new Set();
 function wendeDeckkraftAn() {
   const f = state.deckkraft;
   for (const name of ['zensus', 'gastronomie', 'frequenzbringer', 'oepnv', 'leerstand',
-    'uebersicht', 'scan', 'gehflaeche']) {
+    'uebersicht', 'scan', 'marke', 'gehflaeche']) {
     state.ebenen[name]?.eachLayer((l) => {
       const basis = l.options?._basisDeckkraft;
       if (basis === undefined || !l.setStyle) return;
@@ -817,6 +821,8 @@ function lade(refresh = false) {
   document.getElementById('start-hinweis')?.remove();
   baueGeruest();
   state.daten = {};
+  // Markensuche gehört zum vorigen Punkt — beim Wechsel weg damit.
+  state.ebenen.marke?.clearLayers();
   // Der Schätzungsreiter hängt an den Punktdaten. Ist er gerade offen, muss er
   // mitwandern statt die Werte des vorigen Punktes stehen zu lassen.
   if (!document.getElementById('panel-schaetzung').hidden) {
@@ -853,7 +859,9 @@ function lade(refresh = false) {
     .then((d) => { if (aktuell()) { state.daten.osm = d; zeigeOsm(d); } })
     .catch((e) => {
       if (!aktuell()) return;
-      for (const id of ['gastronomie', 'umfeld', 'verkehr', 'leerstand']) zeigeBlockFehler(id, e);
+      for (const id of ['gastronomie', 'franchise', 'umfeld', 'verkehr', 'leerstand']) {
+        zeigeBlockFehler(id, e);
+      }
     });
 
   hole('/api/point/gtfs', p)
@@ -904,6 +912,7 @@ function baueGeruest() {
     block('wohnen', '3 · Wohnen'),
     block('gastronomie', '4 · Gastronomie'),
     block('gehweg', '4b · Erreichbarkeit zu Fuß'),
+    block('franchise', '4c · Systemgastronomie & Marken'),
     block('umfeld', '5 · Umfeld'),
     block('verkehr', '6 · Verkehr'),
     block('gtfs', '6b · Abfahrten (GTFS)'),
@@ -1102,7 +1111,7 @@ function liste(eintraege, zeigeAnfangs = 12, zeichner) {
 }
 
 function zeigeOsm(d) {
-  const ids = ['gastronomie', 'umfeld', 'verkehr', 'leerstand'];
+  const ids = ['gastronomie', 'franchise', 'umfeld', 'verkehr', 'leerstand'];
   for (const id of ids) setStatus(id, d.ok ? 'ok' : 'fehler', d.ok ? 'geladen' : 'nicht erreichbar');
   if (!d.ok) {
     for (const id of ids) { setInhalt(id, fehlerbox(d.error)); setQuelle(id, d.provenance); }
@@ -1114,6 +1123,7 @@ function zeigeOsm(d) {
   zeichnePois('frequenzbringer', o.frequenzbringer);
   zeichnePois('oepnv', o.oepnv);
   zeichnePois('leerstand', o.leerstand);
+  zeigeFranchise(o, d);
 
   /* --- 4 Gastronomie --- */
   const g = z.gastronomie;
@@ -1260,6 +1270,142 @@ function zeigeOsm(d) {
         'OSM-Leerstand ist lückenhaft gepflegt. Die Zahl ist eine Untergrenze.'));
   }
   setQuelle('leerstand', d.provenance);
+}
+
+/* ------------------------------------ Franchise: Systemgastronomie & Marke */
+
+/* Für einen Franchisenehmer zählen zwei Fragen, die der Gastronomieblock nur
+   nebenbei beantwortet: Welche Systeme sitzen schon hier (deren Präsenz ist
+   professionell geprüfte Frequenz — und direkte Konkurrenz), und wo ist der
+   nächste Betrieb der EIGENEN Marke (Gebietsschutz, Kannibalisierung)?
+   Alles aus den bereits geladenen OSM-Daten; nur die Markensuche fragt auf
+   Knopfdruck einen größeren Umkreis ab. */
+
+function zeigeFranchise(o, d) {
+  const id = 'franchise';
+  const g = (o.zusammenfassung || {}).gastronomie || {};
+  const gesamt = g.gesamt || 0;
+
+  /* Marken aus der Betriebsliste: je Marke Anzahl und nächste Entfernung. */
+  const marken = new Map();
+  for (const p of o.gastronomie || []) {
+    if (!p.marke) continue;
+    const e = marken.get(p.marke) || { anzahl: 0, naechster: Infinity, typ: p.typ_label };
+    e.anzahl += 1;
+    if (p.distanz_m < e.naechster) { e.naechster = p.distanz_m; e.typ = p.typ_label; }
+    marken.set(p.marke, e);
+  }
+
+  const kz = el('div', { class: 'kennzahlen' },
+    kennzahl('Kettenbetriebe im Umkreis', g.ketten),
+    kennzahl('Einzelbetriebe', g.einzelbetriebe),
+    kennzahl('Marken (eindeutig)', marken.size),
+    kennzahl('Kettenanteil', gesamt ? (g.ketten / gesamt) * 100 : null, '%', 1));
+
+  const markenTab = el('table', { class: 'daten' },
+    el('tr', {}, el('th', {}, 'Marke'), el('th', {}, 'Typ'),
+      el('th', { class: 'num' }, 'Betriebe'), el('th', { class: 'num' }, 'nächster (m)')));
+  for (const [name, e] of [...marken.entries()].sort((a, b) => b[1].anzahl - a[1].anzahl)) {
+    markenTab.append(el('tr', {},
+      el('td', {}, name), el('td', {}, e.typ || '—'),
+      el('td', { class: 'num' }, NF.format(e.anzahl)),
+      el('td', { class: 'num' }, NF.format(e.naechster))));
+  }
+
+  /* Gebietsschutz: eigene Marke im großen Umkreis suchen — auf Knopfdruck,
+     weil es eine eigene Overpass-Abfrage ist. */
+  const ergebnis = el('div', { id: 'marke-ergebnis' });
+  const form = el('div', { class: 'marke-form' },
+    el('input', {
+      type: 'text', id: 'marke-name', maxlength: '60',
+      placeholder: 'deine Marke, z. B. BURGER KING',
+      'aria-label': 'Eigene Marke',
+      onkeydown: (ev) => { if (ev.key === 'Enter') ladeMarke(); },
+    }),
+    el('select', { id: 'marke-radius', 'aria-label': 'Suchradius' },
+      el('option', { value: '5000' }, '5 km'),
+      el('option', { value: '10000', selected: true }, '10 km'),
+      el('option', { value: '20000' }, '20 km')),
+    el('button', { id: 'btn-marke', onclick: ladeMarke }, 'Eigene Marke suchen'));
+
+  setStatus(id, gesamt ? 'ok' : 'leer', gesamt ? 'geladen' : 'keine Betriebe');
+  setInhalt(id, kz,
+    marken.size
+      ? el('h3', { class: 'hinweis-klein' }, 'Systeme im Umkreis')
+      : el('div', { class: 'notiz' },
+        'Keine Kettenbetriebe (brand-Tag) im Umkreis. Entweder ist die Lage für '
+        + 'Systemgastronomie unerschlossen — oder OSM kennt die Marken hier nicht.'),
+    marken.size ? markenTab : null,
+    el('div', { class: 'notiz' },
+      'Systemgastronomie prüft Standorte professionell: ihre Präsenz ist ein '
+      + 'Indiz für tragfähige Frequenz — und zugleich direkte Konkurrenz. Ihr '
+      + 'Fehlen kann eine Lücke sein oder ein Warnsignal; diese Zahl entscheidet '
+      + 'das nicht.'),
+    el('h3', { class: 'hinweis-klein' }, 'Gebietsschutz: eigene Marke im Umkreis'),
+    el('p', { class: 'hinweis-klein' },
+      'Sucht Betriebe deiner Marke (brand- und Namenssuche) in einem größeren '
+      + 'Umkreis — Gebietsschutz wird in Kilometern gedacht, nicht in Gehminuten. '
+      + 'Die erste Suche je Punkt lädt alle Betriebe im Umkreis (gemessen für '
+      + '10 km Innenstadt: 4.631 Betriebe, 2,6 MB, ~30 s); jede weitere Marke am '
+      + 'selben Punkt kommt dann aus dem Cache.'),
+    form, ergebnis);
+  setQuelle(id, d.provenance);
+}
+
+async function ladeMarke() {
+  const name = document.getElementById('marke-name')?.value?.trim();
+  const radius = Number(document.getElementById('marke-radius')?.value || 10000);
+  const ziel = document.getElementById('marke-ergebnis');
+  if (!ziel) return;
+  if (!name || name.length < 2) {
+    ziel.replaceChildren(el('div', { class: 'warnung' }, 'Erst einen Markennamen eingeben.'));
+    return;
+  }
+  ziel.replaceChildren(el('div', { class: 'laden' }));
+  state.ebenen.marke.clearLayers();
+  try {
+    const d = await hole('/api/point/marke',
+      { lat: state.lat, lon: state.lon, marke: name, r: radius });
+    if (!d.ok) { ziel.replaceChildren(fehlerbox(d.error)); return; }
+    const m = d.data;
+
+    for (const t of m.treffer) {
+      const kreis = L.circleMarker([t.lat, t.lon], {
+        radius: 7, color: '#4b2a7b', weight: 2, fillColor: '#8257c4',
+        fillOpacity: 0.9 * state.deckkraft, opacity: state.deckkraft,
+        _basisDeckkraft: 0.9, _basisRand: 1,
+      });
+      kreis.bindPopup(`<h4>${esc(t.name || '(ohne Name)')}</h4>
+        <p>${esc(t.typ || '')} · ${NF.format(t.distanz_m)} m ${esc(t.richtung || '')}
+        ${t.nur_namensgleich ? '<br><em>nur namensgleich — kein brand-Tag</em>' : ''}</p>
+        <p class="hinweis-klein"><a href="${esc(t.osm_url)}" target="_blank" rel="noopener">In OpenStreetMap ansehen</a></p>`);
+      state.ebenen.marke.addLayer(kreis);
+    }
+    if (m.treffer.length && !karte.hasLayer(state.ebenen.marke)) {
+      state.ebenen.marke.addTo(karte);
+    }
+
+    const teile = [el('div', { class: 'kennzahlen' },
+      kennzahl(`Betriebe „${m.marke}“ in ${NF.format(m.radius_m / 1000)} km`, m.anzahl),
+      kennzahl('Nächster eigener Betrieb', m.naechster_m, 'm'),
+      kennzahl('durchsuchte Betriebe', m.basis_betriebe))];
+    if (m.treffer.length) {
+      teile.push(liste(m.treffer, 8, (t) => el('li', {},
+        el('span', { class: 'dist' }, `${NF.format(t.distanz_m)} m`),
+        el('span', { class: 'haupt' },
+          el('div', { class: 'name' }, t.name || '(ohne Name)'),
+          el('div', { class: 'meta' },
+            [t.typ, t.richtung, t.nur_namensgleich ? 'nur namensgleich' : null]
+              .filter(Boolean).join(' · '))))));
+      teile.push(el('div', { class: 'notiz' },
+        'Die violetten Marker auf der Karte zeigen die Treffer.'));
+    }
+    for (const h of m.hinweise || []) teile.push(el('div', { class: 'hinweis-klein' }, h));
+    teile.push(...warnungen(d.warnings || []));
+    ziel.replaceChildren(...teile);
+  } catch (e) {
+    ziel.replaceChildren(fehlerbox({ message: e.message }));
+  }
 }
 
 function zeigeGtfs(d) {
@@ -1889,6 +2035,17 @@ const FELDER = [
   { key: 'oeffnungsstunden', label: 'Öffnungsstunden je Tag', schritt: '0.5', gesetzt: true },
   { key: 'mietanteil_min_prozent', label: 'Miete, unterer Anteil vom Umsatz (%)', schritt: '0.5', gesetzt: true },
   { key: 'mietanteil_max_prozent', label: 'Miete, oberer Anteil vom Umsatz (%)', schritt: '0.5', gesetzt: true },
+  /* Franchise-Kostenprobe. Bewusst ohne Vorgabewerte: die Sätze stehen im
+     Franchisevertrag und in der eigenen Kalkulation — jeder hier erfundene
+     „typische" Satz würde als Branchenwert gelesen. Leer = Probe entfällt. */
+  { key: 'franchisegebuehr_prozent', label: 'Franchisegebühr (% vom Umsatz)', schritt: '0.1',
+    hinweis: 'aus deinem Franchisevertrag — leer lassen, wenn ohne' },
+  { key: 'werbeabgabe_prozent', label: 'Werbeabgabe (% vom Umsatz)', schritt: '0.1',
+    hinweis: 'aus deinem Franchisevertrag — leer lassen, wenn ohne' },
+  { key: 'wareneinsatz_prozent', label: 'Wareneinsatz (% vom Umsatz)', schritt: '0.5',
+    hinweis: 'aus deiner Kalkulation — leer lassen, wenn unbekannt' },
+  { key: 'personalkosten_prozent', label: 'Personalkosten (% vom Umsatz)', schritt: '0.5',
+    hinweis: 'aus deiner Kalkulation — leer lassen, wenn unbekannt' },
 ];
 
 /* Der Umkreis ist ein Luftlinienkreis; zu Fuß ist er kleiner und an Flüssen
@@ -1988,7 +2145,8 @@ function baueSchaetzFormular() {
         oninput: () => rechneSchaetzung(),
       }),
       f.herkunft && v[f.herkunft] ? el('div', { class: 'herkunft' }, v[f.herkunft]) : null,
-      f.gesetzt ? el('div', { class: 'herkunft' }, 'frei gewählt, keine Datengrundlage') : null);
+      f.gesetzt ? el('div', { class: 'herkunft' }, 'frei gewählt, keine Datengrundlage') : null,
+      f.hinweis ? el('div', { class: 'herkunft' }, f.hinweis) : null);
     gitter.append(feld);
   }
 
@@ -2158,6 +2316,27 @@ function zeigeSchaetzErgebnis(d, ziel) {
       el('td', { class: 'num' },
         `${NF.format(z.besuche_des_betriebs_je_jahr[0])} – ${NF.format(z.besuche_des_betriebs_je_jahr[1])}`)));
 
+  /* Franchise-Kostenprobe — nur, wenn der Nutzer Sätze eingegeben hat. */
+  const fr = d.franchise;
+  const franchiseTeile = [];
+  if (fr) {
+    const satzTab = el('table', { class: 'daten' },
+      el('tr', {}, el('th', {}, 'Satz'), el('th', { class: 'num' }, '% vom Umsatz')));
+    for (const s of fr.saetze) {
+      satzTab.append(el('tr', {}, el('td', {}, s.titel),
+        el('td', { class: 'num' }, NF1.format(s.prozent))));
+    }
+    satzTab.append(el('tr', {}, el('th', {}, 'Summe'),
+      el('th', { class: 'num' }, `${NF1.format(fr.summe_prozent)}`)));
+    franchiseTeile.push(
+      el('h3', { class: 'hinweis-klein' }, 'Franchise-Kostenprobe'),
+      satzTab,
+      spanne(`Verbleib (${NF1.format(fr.verbleib_prozent)} % vom Umsatz) je Monat`,
+        fr.verbleib_monat_eur, '€ im Monat — vor Miete, AfA, Zinsen, Unternehmerlohn'),
+      ...(fr.warnungen || []).map((w) => el('div', { class: 'warnung' }, w)),
+      el('div', { class: 'notiz' }, fr.hinweis));
+  }
+
   ziel.replaceChildren(
     kacheln,
     el('div', { class: 'notiz' }, el('strong', {}, 'Beschriftung: '), d.beschriftung),
@@ -2170,7 +2349,8 @@ function zeigeSchaetzErgebnis(d, ziel) {
     el('div', { class: 'notiz' },
       `Bei ${d.eingaben.mietanteil_min_prozent} bis ${d.eingaben.mietanteil_max_prozent} % `
       + 'vom Umsatz. Faustregel aus notizen-standort-flaeche.md §6 — keine erhobene Statistik. '
-      + 'Liegt die geforderte Miete darüber, trägt der Standort sich unter diesen Annahmen nicht.'));
+      + 'Liegt die geforderte Miete darüber, trägt der Standort sich unter diesen Annahmen nicht.'),
+    ...franchiseTeile);
 }
 
 /* Reiterumschaltung */

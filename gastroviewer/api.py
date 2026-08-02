@@ -57,6 +57,13 @@ class SchaetzEingaben(BaseModel):
     # nicht gespeichert — er wird nur gegenübergestellt.
     kalibrierung_umsatz_eur: float | None = Field(None, ge=0)
     kalibrierung_bezeichnung: str | None = Field(None, max_length=120)
+    # Franchise-Kostenprobe: Sätze aus dem Franchisevertrag bzw. der eigenen
+    # Kalkulation. Ohne Eingabe findet die Probe nicht statt — es gibt bewusst
+    # keine "typischen" Vorgabesätze.
+    franchisegebuehr_prozent: float | None = Field(None, ge=0, le=100)
+    werbeabgabe_prozent: float | None = Field(None, ge=0, le=100)
+    wareneinsatz_prozent: float | None = Field(None, ge=0, le=100)
+    personalkosten_prozent: float | None = Field(None, ge=0, le=100)
 
 
 class PunktNotiz(BaseModel):
@@ -231,6 +238,32 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         """
         _validate(lat, lon, r)
         return (await svc(request).gehweg(lat, lon, r, refresh)).to_dict()
+
+    @app.get("/api/point/marke")
+    async def point_marke(
+        request: Request,
+        lat: float,
+        lon: float,
+        marke: str = Query(..., min_length=2, max_length=60),
+        r: int = Query(10000),
+    ):
+        """Gebietsschutz-Check: Betriebe der eigenen Marke im großen Umkreis.
+
+        Für Franchisenehmer eine Vertragsfrage — Kannibalisierung und
+        Gebietsschutz hängen an der Entfernung zum nächsten eigenen Betrieb.
+        Deshalb ein eigener, größerer Radius als bei der Punktanalyse."""
+        from .sources.marke import MAX_RADIUS_M, MIN_RADIUS_M
+
+        _validate(lat, lon, 600)
+        if not (MIN_RADIUS_M <= r <= MAX_RADIUS_M):
+            raise HTTPException(
+                422, f"Radius muss zwischen {MIN_RADIUS_M} und {MAX_RADIUS_M} m liegen."
+            )
+        if '"' in marke or "\\" in marke:
+            raise HTTPException(
+                422, "Anführungszeichen und Backslash sind im Markennamen nicht erlaubt."
+            )
+        return (await svc(request).marke(lat, lon, r, marke)).to_dict()
 
     @app.get("/api/point/planung")
     async def point_planung(request: Request, lat: float, lon: float, r: int = 600):
@@ -703,6 +736,11 @@ VERGLEICH_SPALTEN = [
     {"key": "gastro_bis_300", "titel": "Gastronomie bis 300 m", "gruppe": "wettbewerb"},
     {"key": "naechster_wettbewerber", "titel": "Nächster Betrieb (m)",
      "gruppe": "wettbewerb"},
+    # Für Franchisenehmer: ein hoher Kettenanteil heißt, andere Systeme haben
+    # diese Lage bereits professionell geprüft — und besetzen sie. In der
+    # Detailgruppe, damit die Vorgabeansicht schmal bleibt.
+    {"key": "ketten_anteil", "titel": "Kettenanteil % (berechnet)", "stellen": 1,
+     "gruppe": "detail"},
     {"key": "wettbewerb_je_1000", "titel": "Wettbewerber je 1.000 Einw. (berechnet)",
      "stellen": 1, "gruppe": "wettbewerb"},
     {"key": "fastfood_je_1000", "titel": "Schnellrestaurants je 1.000 Einw. (berechnet)",
@@ -793,6 +831,9 @@ def _row_for(saved: dict[str, Any]) -> dict[str, Any]:
         "wettbewerb_je_1000": je_bezugsgroesse(gas.get("gesamt"), einwohner, 1000, 1),
         # Für einen Imbiss sind 30 Cafés kein Wettbewerb — die engere Zahl.
         "fastfood_je_1000": je_bezugsgroesse(fastfood, einwohner, 1000, 2),
+        # Systemgastronomie prüft Standorte professionell: ein hoher Anteil
+        # heißt, die Lage ist geprüft — und besetzt.
+        "ketten_anteil": je_bezugsgroesse(gas.get("ketten"), gas.get("gesamt"), 100, 1),
         "frequenzbringer": (zus.get("frequenzbringer") or {}).get("gesamt"),
         "haltestellen": (zus.get("oepnv") or {}).get("haltestellen"),
         "linien": (zus.get("oepnv") or {}).get("linien_eindeutig"),

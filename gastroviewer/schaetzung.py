@@ -182,6 +182,14 @@ class Eingaben:
     # Er geht in **keine** Rechnung ein, sondern wird nur gegenübergestellt.
     kalibrierung_umsatz_eur: float | None = None
     kalibrierung_bezeichnung: str | None = None
+    # Franchise-Kostenprobe. Es gibt bewusst KEINE Vorgabewerte: die Sätze
+    # stehen im Franchisevertrag bzw. in der eigenen Kalkulation, und jeder
+    # hier erfundene "typische" Satz würde als Branchenwert gelesen. Leer
+    # gelassen findet die Probe nicht statt.
+    franchisegebuehr_prozent: float | None = None
+    werbeabgabe_prozent: float | None = None
+    wareneinsatz_prozent: float | None = None
+    personalkosten_prozent: float | None = None
 
     def naiver_marktanteil_prozent(self) -> float:
         return 100.0 / (max(0, int(self.wettbewerber)) + 1)
@@ -246,6 +254,65 @@ def kalibrierung(
     }
 
 
+def franchise_kostenprobe(
+    e: Eingaben, umsatz_min: float, umsatz_max: float
+) -> dict[str, Any] | None:
+    """Was vom Umsatz nach den Franchise-Sätzen übrig bleibt — vor Miete.
+
+    Reine Prozentrechnung auf den Eingaben des Nutzers. Die Sätze kommen aus
+    dem Franchisevertrag und der eigenen Kalkulation; das Werkzeug gibt keine
+    vor und bewertet sie nicht. Das Ergebnis ist das Budget für alles, was
+    danach kommt: Miete, Abschreibung, Zinsen, Steuern, Unternehmerlohn.
+    """
+    saetze = [
+        ("franchisegebuehr", "Franchisegebühr", e.franchisegebuehr_prozent),
+        ("werbeabgabe", "Werbeabgabe", e.werbeabgabe_prozent),
+        ("wareneinsatz", "Wareneinsatz", e.wareneinsatz_prozent),
+        ("personalkosten", "Personalkosten", e.personalkosten_prozent),
+    ]
+    gesetzt = [(k, titel, float(v)) for k, titel, v in saetze if v is not None]
+    if not gesetzt:
+        return None
+
+    summe = sum(v for _, _, v in gesetzt)
+    verbleib_prozent = 100.0 - summe
+    warnungen = []
+    if summe >= 100:
+        warnungen.append(
+            f"Die eingegebenen Sätze summieren sich auf {summe:g} % — es bliebe "
+            "nichts (oder weniger als nichts) für Miete, Abschreibung, Zinsen "
+            "und Unternehmerlohn. Unter diesen Annahmen trägt sich kein Standort."
+        )
+    elif verbleib_prozent < 15:
+        warnungen.append(
+            f"Nach den eingegebenen Sätzen verbleiben {verbleib_prozent:g} % — "
+            "davon müssen noch Miete (Faustregel 10–14 %), Abschreibung, Zinsen "
+            "und Unternehmerlohn bezahlt werden. Das wird an jedem Standort eng."
+        )
+    return {
+        "saetze": [
+            {"key": k, "titel": titel, "prozent": v} for k, titel, v in gesetzt
+        ],
+        "summe_prozent": round(summe, 2),
+        "verbleib_prozent": round(verbleib_prozent, 2),
+        "verbleib_jahr_eur": [
+            round(umsatz_min * verbleib_prozent / 100),
+            round(umsatz_max * verbleib_prozent / 100),
+        ],
+        "verbleib_monat_eur": [
+            round(umsatz_min * verbleib_prozent / 100 / 12),
+            round(umsatz_max * verbleib_prozent / 100 / 12),
+        ],
+        "hinweis": (
+            "Verbleib vor Miete, Abschreibung, Zinsen, Steuern und "
+            "Unternehmerlohn. Alle Sätze stammen aus deinen Eingaben "
+            "(Franchisevertrag, eigene Kalkulation) — das Werkzeug gibt keine "
+            "vor. Brutto/Netto so behandeln wie beim Bon."
+        ),
+        "warnungen": warnungen,
+    }
+
+
 def rechne(e: Eingaben) -> dict[str, Any]:
     """Reine Funktion. Gleiche Eingaben, gleiches Ergebnis, nichts Verstecktes."""
     fehler = []
@@ -295,6 +362,7 @@ def rechne(e: Eingaben) -> dict[str, Any]:
         "kalibrierung": kalibrierung(
             e.kalibrierung_umsatz_eur, umsatz_min, umsatz_max, e.kalibrierung_bezeichnung
         ),
+        "franchise": franchise_kostenprobe(e, umsatz_min, umsatz_max),
         "ok": True,
         "eingaben": {
             "einwohner": e.einwohner,

@@ -128,6 +128,35 @@ def pruefe_wettbewerb_nach_entfernung(page) -> str:
     return "Entfernungsstaffelung vorhanden"
 
 
+def pruefe_franchise(page) -> str:
+    """Systemgastronomie-Block und Gebietsschutz-Suche (Franchise-Sicht)."""
+    t = text(page, "#inhalt-franchise")
+    fordere("Kettenanteil" in t, "Kettenanteil fehlt im Franchiseblock")
+    fordere("Gebietsschutz" in t, "der Gebietsschutz-Abschnitt fehlt")
+    fordere("Konkurrenz" in t, "der Doppelcharakter (Frequenzindiz UND Konkurrenz) fehlt")
+    zeilen = page.eval_on_selector_all("#inhalt-franchise table tr", "e=>e.length")
+    fordere(zeilen > 3, f"Markentabelle am Marienplatz zu klein: {zeilen} Zeilen")
+
+    page.evaluate("""() => {
+        document.getElementById('marke-name').value = "McDonald's";
+        document.getElementById('marke-radius').value = '5000';
+    }""")
+    page.click("#btn-marke")
+    for _ in range(120):
+        e = text(page, "#marke-ergebnis")
+        if "Nächster" in e or "Nicht erreichbar" in e or "gefunden" in e:
+            break
+        page.wait_for_timeout(500)
+    e = text(page, "#marke-ergebnis")
+    if "Nicht erreichbar" in e:
+        return "übersprungen — Overpass für die Markensuche nicht erreichbar"
+    fordere("Nächster eigener Betrieb" in e, f"Markensuche ohne Ergebnis: {e[:80]}")
+    fordere("Vertrag" in e, "der Hinweis „Karte, nicht Vertrag“ fehlt")
+    n = page.evaluate("() => state.ebenen.marke.getLayers().length")
+    fordere(n > 0, "die Treffer fehlen als Marker auf der Karte")
+    return f"Markentabelle mit {zeilen} Zeilen, Markensuche {n} Treffer auf der Karte"
+
+
 def pruefe_gtfs_mittagsfenster(page) -> str:
     t = text(page, "#inhalt-gtfs")
     if "Kein GTFS-Fahrplan importiert" in t:
@@ -567,6 +596,7 @@ PRUEFUNGEN = [
     ("Grundgerüst und Blöcke", pruefe_grundgeruest),
     ("Quelle, Stand, Lizenz je Block", pruefe_quellenangaben),
     ("Wettbewerb nach Entfernung", pruefe_wettbewerb_nach_entfernung),
+    ("Systemgastronomie & Gebietsschutz", pruefe_franchise),
     ("ÖPNV-Mittagsfenster", pruefe_gtfs_mittagsfenster),
     ("Schätzung im eigenen Reiter", pruefe_schaetzung_getrennt),
     ("Deckkraftregler", pruefe_deckkraftregler),
