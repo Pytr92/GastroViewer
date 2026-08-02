@@ -318,6 +318,7 @@ def pruefe_verkehrszaehler(page) -> str:
         "#fuss-stats span", "e=>e.map(x=>x.title).filter(Boolean)")
     fordere(any("Letzte 24 h" in x for x in titel),
             "keine Aufschlüsselung je Dienst im Tooltip")
+    fordere("null" not in t, f"ein null-Argument wurde als Text gerendert: {t[-40:]}")
     return t.replace("\n", " ")[:90]
 
 

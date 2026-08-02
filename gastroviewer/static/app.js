@@ -1252,7 +1252,9 @@ async function aktualisiereFuss() {
       .sort((a, b) => b[1] - a[1])
       .map(([q, n]) => `${q} ${NF.format(n)}`);
     const ziel = document.getElementById('fuss-stats');
-    ziel.replaceChildren(
+    // .filter(Boolean): replaceChildren macht aus einem null-Argument das
+    // sichtbare Wort "null" — im Screenshot-Abgleich aufgefallen.
+    ziel.replaceChildren(...[
       el('span', {}, `Cache: ${NF.format(s.total)} Einträge`),
       el('span', {}, ` · echte Abrufe seit Start: ${NF.format(s.outbound_requests_total)}`),
       el('span', {
@@ -1266,7 +1268,7 @@ async function aktualisiereFuss() {
           ` · ${NF.format(s.overpass_24h)} Overpass-Abrufe in 24 h — bitte den `
           + 'Spendendienst schonen, gemerkte Punkte kommen aus dem Cache')
         : null,
-    );
+    ].filter(Boolean));
   } catch { /* Fußzeile ist nicht kritisch */ }
 }
 
