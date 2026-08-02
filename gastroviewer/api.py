@@ -289,6 +289,33 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             )
         return (await svc(request).gitter(ebene, west, sued, ost, nord)).to_dict()
 
+    @app.get("/api/scan")
+    async def scan(
+        request: Request,
+        west: float = Query(...),
+        sued: float = Query(...),
+        ost: float = Query(...),
+        nord: float = Query(...),
+    ):
+        """Flächen-Scan: Einwohner je Gastronomiebetrieb im 300-m-Umfeld,
+        je 100-m-Zelle. Beantwortet „WO im Viertel ist das Verhältnis aus
+        Nachfrage und Angebot am günstigsten?" — der Umkreis beantwortet das
+        nur für einen Punkt, die Erkundungsebene nur grob."""
+        from .sources.scan import MAX_SPANNE
+
+        if not (west < ost and sued < nord):
+            raise HTTPException(422, "Box muss west<ost und sued<nord erfüllen.")
+        if not (5.0 <= west and ost <= 16.0 and 46.5 <= sued and nord <= 56.0):
+            raise HTTPException(422, "Box liegt außerhalb Deutschlands.")
+        if (ost - west) > MAX_SPANNE[0] or (nord - sued) > MAX_SPANNE[1]:
+            raise HTTPException(
+                422,
+                "Ausschnitt zu groß für den Flächen-Scan — er arbeitet auf dem "
+                "100-m-Gitter und ist auf rund 4×5 km begrenzt. Für die große "
+                "Fläche ist die Übersichtsebene (1/10 km) da.",
+            )
+        return (await svc(request).scan(west, sued, ost, nord)).to_dict()
+
     @app.get("/api/geocode")
     async def geocode(
         request: Request,
@@ -405,6 +432,112 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             "zeilen": [_row_for(r) for r in rows],
         }
 
+    # Muss NACH /api/points/vergleich registriert sein — sonst finge der
+    # Pfadparameter das Wort „vergleich" ab und antwortete mit 422.
+    @app.get("/api/points/{point_id}")
+    async def get_point(request: Request, point_id: int):
+        """Ein gemerkter Punkt mit vollem Datenstand — Grundlage des Berichts."""
+        cache: AsyncCache = request.app.state.cache
+        row = await asyncio.to_thread(cache.sync.get_point, point_id)
+        if row is None:
+            raise HTTPException(404, "Punkt nicht gefunden.")
+        return {**row, "zeile": _row_for(row)}
+
+    @app.post("/api/points/{point_id}/pruefung")
+    async def punkt_pruefung(request: Request, point_id: int):
+        """„Neu prüfen": dieselben Quellen erneut abfragen — am Cache vorbei —
+        und die Unterschiede zum gespeicherten Stand ausweisen.
+
+        Standortsuche dauert Monate. Ein neuer Wettbewerber oder ein
+        verschwundener Betrieb (freies Ladenlokal UND ein Konkurrent weniger)
+        ist genau die Veränderung, die man sonst erst vor Ort bemerkt.
+        """
+        cache: AsyncCache = request.app.state.cache
+        row = await asyncio.to_thread(cache.sync.get_point, point_id)
+        if row is None:
+            raise HTTPException(404, "Punkt nicht gefunden.")
+
+        service = svc(request)
+        neu = await service.point(row["lat"], row["lon"], row["radius"], refresh=True)
+        # Gehstrecken werden bewusst NICHT neu geladen (1–3 MB je Punkt) —
+        # liegt ein frischer Stand im Cache, wird er übernommen.
+        gw = await service.gehweg_aus_cache(row["lat"], row["lon"], row["radius"])
+        if gw is not None:
+            neu["bloecke"]["gehweg"] = gw.to_dict()
+
+        alt_zeile = _row_for(row)
+        neu_kompakt = _compact(neu)
+        neu_zeile = _row_for({**row, "payload": neu_kompakt})
+
+        veraendert = []
+        for key, titel in VERLAUF_KENNZAHLEN:
+            a, n = alt_zeile.get(key), neu_zeile.get(key)
+            if a != n:
+                veraendert.append({"key": key, "titel": titel, "alt": a, "neu": n})
+
+        def _gastro(payload: dict[str, Any]) -> dict[Any, dict[str, Any]]:
+            liste = (((payload.get("bloecke") or {}).get("osm") or {})
+                     .get("data") or {}).get("gastronomie") or []
+            return {g.get("id"): g for g in liste if g.get("id") is not None}
+
+        alt_g = _gastro(row.get("payload") or {})
+        neu_g = _gastro(neu_kompakt)
+
+        def _kurz(g: dict[str, Any]) -> dict[str, Any]:
+            return {"name": g.get("name"), "typ": g.get("typ_label"),
+                    "distanz_m": g.get("distanz_m")}
+
+        neue = [_kurz(g) for gid, g in neu_g.items() if gid not in alt_g]
+        weg = [_kurz(g) for gid, g in alt_g.items() if gid not in neu_g]
+        neue.sort(key=lambda g: g.get("distanz_m") or 0)
+        weg.sort(key=lambda g: g.get("distanz_m") or 0)
+
+        ok = await asyncio.to_thread(
+            cache.sync.replace_point_payload, point_id, neu_kompakt
+        )
+        if not ok:
+            raise HTTPException(404, "Punkt nicht gefunden.")
+
+        return {
+            "id": point_id,
+            "label": row.get("label"),
+            "geprueft_am": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+            "veraendert": veraendert,
+            "neue_betriebe": neue,
+            "verschwundene_betriebe": weg,
+            "hinweise": [
+                "Ein verschwundener Betrieb ist zunächst eine OSM-Änderung — "
+                "erst die Begehung macht daraus ein freies Ladenlokal.",
+                "Zensuswerte ändern sich nicht: der Stichtag bleibt der "
+                "15.05.2022. Beweglich sind OSM, GTFS und die Zählstellen.",
+            ],
+        }
+
+    @app.get("/api/points/{point_id}/verlauf")
+    async def punkt_verlauf(request: Request, point_id: int):
+        """Alle abgelegten Stände eines Punktes, ältester zuerst, der aktuelle
+        Stand als letzter Eintrag."""
+        cache: AsyncCache = request.app.state.cache
+        row = await asyncio.to_thread(cache.sync.get_point, point_id)
+        if row is None:
+            raise HTTPException(404, "Punkt nicht gefunden.")
+        alt = await asyncio.to_thread(cache.sync.list_verlauf, point_id)
+
+        def _stand(ts: float | None, payload: dict[str, Any], aktuell: bool):
+            return {
+                "ts": time.strftime("%Y-%m-%d %H:%M", time.gmtime(ts)) if ts else None,
+                "aktuell": aktuell,
+                "zeile": _row_for({**row, "payload": payload}),
+            }
+
+        staende = [_stand(v.get("ts"), v.get("payload") or {}, False) for v in alt]
+        staende.append(_stand(
+            row.get("geprueft_am") or row.get("created_at"),
+            row.get("payload") or {}, True,
+        ))
+        return {"id": point_id, "label": row.get("label"),
+                "anzahl": len(staende), "staende": staende}
+
     # ---------------------------------------------------------- Export
 
     @app.get("/api/export/point.json")
@@ -463,6 +596,13 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         async def index():
             return FileResponse(STATIC_DIR / "index.html")
 
+        @app.get("/bericht")
+        async def bericht():
+            """Druckbarer Standortbericht zu einem gemerkten Punkt
+            (?punkt=ID). PDF entsteht über die Druckfunktion des Browsers —
+            ohne zusätzliche Abhängigkeit."""
+            return FileResponse(STATIC_DIR / "bericht.html")
+
     @app.exception_handler(500)
     async def on_error(request: Request, exc: Exception):
         return JSONResponse(
@@ -498,6 +638,25 @@ def je_bezugsgroesse(
     if isinstance(zaehler, bool) or isinstance(nenner, bool) or nenner <= 0:
         return None
     return round(zaehler / nenner * faktor, stellen)
+
+
+# Kennzahlen, die „Neu prüfen" zwischen altem und neuem Stand vergleicht.
+# Bewusst nur die beweglichen Größen — Zensuswerte haben einen festen Stichtag
+# und würden hier nur Rauschen aus der stochastischen Überlagerung melden.
+VERLAUF_KENNZAHLEN = [
+    ("gastro_gesamt", "Gastronomie gesamt"),
+    ("fast_food", "davon Schnellrestaurants"),
+    ("gastro_bis_300", "Gastronomie bis 300 m"),
+    ("naechster_wettbewerber", "Nächster Betrieb (m)"),
+    ("ketten", "davon Ketten"),
+    ("leerstand_osm", "Leerstände (OSM)"),
+    ("frequenzbringer", "Frequenzbringer"),
+    ("haltestellen", "Haltestellen"),
+    ("abfahrten", "Abfahrten/Tag (GTFS)"),
+    ("abfahrten_mittag", "Abfahrten 11–14 Uhr"),
+    ("dtv_kfz", "Kfz/Tag stärkste Zählstelle"),
+    ("rad_je_tag", "Radfahrende/Tag (Messung)"),
+]
 
 
 # Spaltengruppen. Die Tabelle ist über die Ausbaustufen auf 37 Spalten
@@ -581,6 +740,7 @@ VERGLEICH_SPALTEN = [
      "gruppe": "detail"},
     {"key": "leerstand_osm", "titel": "Leerstände (OSM)", "gruppe": "detail"},
     {"key": "erzeugt", "titel": "Abgerufen am", "gruppe": "detail"},
+    {"key": "geprueft", "titel": "Zuletzt geprüft", "gruppe": "detail"},
 ]
 
 
@@ -655,6 +815,10 @@ def _row_for(saved: dict[str, Any]) -> dict[str, Any]:
         "umwegfaktor": gw_gas.get("umwegfaktor_median"),
         "leerstand_osm": (zus.get("leerstand") or {}).get("gesamt"),
         "erzeugt": (p.get("meta") or {}).get("erzeugt"),
+        "geprueft": (
+            time.strftime("%Y-%m-%d", time.gmtime(saved["geprueft_am"]))
+            if saved.get("geprueft_am") else None
+        ),
         "lat": saved.get("lat"),
         "lon": saved.get("lon"),
     }

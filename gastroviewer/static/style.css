@@ -597,3 +597,53 @@ dialog::backdrop { background: rgba(0,0,0,.35); }
   width: 13px; height: 13px; display: inline-block; border-radius: 2px; opacity: .8;
 }
 .uebersicht-legende .hinweis-klein { margin-top: 5px; line-height: 1.35; }
+
+/* Knopf in der Scan-Legende („Diesen Ausschnitt scannen") */
+.uebersicht-legende .scan-knopf {
+  margin-top: 7px;
+  width: 100%;
+  padding: 5px 8px;
+  font-size: 12px;
+  cursor: pointer;
+  border: 1px solid var(--rand);
+  border-radius: 4px;
+  background: #eef5ec;
+}
+.uebersicht-legende .scan-knopf:hover { background: #dfeddb; }
+
+/* Aktionen je Zeile der Vergleichstabelle */
+.vergleich-tabelle td.aktionen { white-space: nowrap; }
+.vergleich-tabelle td.aktionen a,
+.vergleich-tabelle td.aktionen button { margin-right: 4px; }
+
+/* Ergebnis von „Neu prüfen" — steht über der Vergleichstabelle */
+.verlauf-ergebnis {
+  background: #f4f7fa;
+  border: 1px solid var(--rand);
+  border-left: 3px solid #1f5f8b;
+  border-radius: 5px;
+  padding: 10px 12px;
+  margin-bottom: 10px;
+  font-size: 13px;
+}
+.verlauf-ergebnis table { margin-top: 6px; }
+.verlauf-ergebnis button { margin-top: 6px; }
+
+/* Gewichtetes Ranking im Vergleichsdialog */
+details.ranking { margin-top: 12px; }
+details.ranking > summary {
+  cursor: pointer;
+  font-weight: 600;
+  padding: 6px 0;
+}
+.ranking-gewichte {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  gap: 8px 16px;
+  margin: 8px 0 10px;
+}
+.ranking-gewichte label { display: block; font-size: 12.5px; }
+.ranking-gewichte .ranking-titel em { color: var(--gedeckt, #5b6570); font-style: normal; }
+.ranking-gewichte .ranking-wert { font-weight: 600; }
+.ranking-gewichte input[type="range"] { width: 100%; }
+.ranking-tabelle th { font-size: 11.5px; }

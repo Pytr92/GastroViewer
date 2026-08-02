@@ -1,7 +1,7 @@
 """Vollprüfung: jeder API-Endpunkt einmal live, mit inhaltlicher Bewertung.
 
 Die dritte Prüfebene neben ``pytest`` (Rechenwege, ohne Netz) und
-``scripts/uitest.py`` (Oberfläche im Browser): alle 29 Routen der API werden
+``scripts/uitest.py`` (Oberfläche im Browser): alle Routen der API werden
 gegen einen laufenden Server aufgerufen — mit echten Abrufen bei den
 Fachdiensten, zwei davon per ``refresh=true`` erzwungen, damit „live" belegt
 ist und nicht nur der Cache antwortet.
@@ -200,6 +200,23 @@ def t_gitter():
 
 # --------------------------------------------------------------- Suche
 
+def t_scan():
+    d, dauer, groesse = hole("/api/scan", {
+        "west": M[1] - 0.012, "sued": M[0] - 0.008,
+        "ost": M[1] + 0.012, "nord": M[0] + 0.008})
+    assert d["ok"], d.get("error")
+    zellen = d["data"]["zellen"]
+    assert len(zellen) > 100, f"nur {len(zellen)} Zellen um den Marienplatz"
+    assert d["data"]["betriebe_gesamt"] > 100, "die Innenstadt hat >100 Betriebe"
+    assert d["data"]["umfeld_m"] == 300
+    mit_wert = [z for z in zellen if z["je_betrieb"] is not None]
+    assert mit_wert, "keine Zelle mit Einwohner-je-Betrieb-Wert"
+    assert "ODbL" in d["provenance"]["license"]
+    hole("/api/scan", {"west": 11.0, "sued": 48.0, "ost": 11.5, "nord": 48.05},
+         erwartet=422)
+    return (f"{len(zellen)} Zellen, {d['data']['betriebe_gesamt']} Betriebe · "
+            f"{dauer:.1f} s · {groesse/1024:.0f} kB · Übergröße → 422")
+
 def t_geocode():
     d, _, _ = hole("/api/geocode", {"q": "Sendlinger Tor München"})
     t = d["data"][0]
@@ -274,6 +291,27 @@ def t_punkt_notiz():
     assert z["notiz"] == "Prüflauf" and z["bewertung"] == 2
     return "Notiz und Note gespeichert und im Vergleich sichtbar"
 
+def t_punkt_einzeln():
+    d, _, _ = hole(f"/api/points/{MERK_ID['id']}")
+    assert d["label"] == "Vollprüfung" and d["zeile"]["gastro_gesamt"] > 50
+    assert d["payload"]["bloecke"]["zensus"]["provenance"]["license"]
+    hole("/api/points/99999", erwartet=404)
+    return f"Punkt #{MERK_ID['id']} mit Zeile und Payload, Unbekanntes → 404"
+
+def t_pruefung():
+    d, dauer, _ = hole(f"/api/points/{MERK_ID['id']}/pruefung", methode="POST")
+    assert d["geprueft_am"] and isinstance(d["veraendert"], list)
+    assert any("Begehung" in h for h in d["hinweise"])
+    v, _, _ = hole(f"/api/points/{MERK_ID['id']}/verlauf")
+    assert v["anzahl"] >= 2 and v["staende"][-1]["aktuell"] is True
+    return (f"neu geprüft in {dauer:.1f} s, {len(d['veraendert'])} Veränderung(en), "
+            f"{v['anzahl']} Stände im Verlauf")
+
+def t_bericht():
+    d, _, _ = hole("/bericht", {"punkt": MERK_ID["id"]})
+    assert "Standortbericht" in d and "bericht.js" in d
+    return "Berichtsseite wird ausgeliefert"
+
 def t_vergleich():
     d, _, _ = hole("/api/points/vergleich")
     assert d["gruppen"] and d["spalten"][0]["key"] == "label"
@@ -292,7 +330,7 @@ def t_export_csv():
 def t_export_vergleich():
     d, _, _ = hole("/api/export/vergleich.csv")
     assert "Eigene Notiz" in d.splitlines()[0] and "Prüflauf" in d
-    return "alle 38 Spalten samt eigener Notiz"
+    return "alle Spalten samt eigener Notiz"
 
 def t_punkt_loeschen():
     hole(f"/api/points/{MERK_ID['id']}", methode="DELETE")
@@ -326,6 +364,7 @@ ALLE = [
     ("GET /api/point/planung", t_planung),
     ("GET /api/point/links", t_links),
     ("GET /api/gitter — Übersicht München + Bayern", t_gitter),
+    ("GET /api/scan — Flächen-Scan Innenstadt, live", t_scan),
     ("GET /api/geocode", t_geocode),
     ("GET /api/wms (Register)", t_wms_register),
     ("GET /api/wms?bundesland_code=05", t_wms_nrw),
@@ -336,6 +375,9 @@ ALLE = [
     ("POST /api/schaetzung (Abweisung)", t_schaetzung_lehnt_unsinn_ab),
     ("POST /api/points", t_punkt_merken),
     ("PATCH /api/points/{id}", t_punkt_notiz),
+    ("GET /api/points/{id}", t_punkt_einzeln),
+    ("POST /api/points/{id}/pruefung — Live-Abruf erzwungen", t_pruefung),
+    ("GET /bericht", t_bericht),
     ("GET /api/points/vergleich", t_vergleich),
     ("GET /api/export/point.json", t_export_json),
     ("GET /api/export/point.csv", t_export_csv),

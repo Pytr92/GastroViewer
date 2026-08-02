@@ -891,3 +891,132 @@ async def test_gehweg_verweigert_uebergrosse_radien(settings):
     res2 = await gehweg.load(out, settings, 48.1372, 11.5755, 2000)
     assert out.versucht > 0 and res2.ok is False
     assert res2.error["kind"] == "connect"
+
+# ---------------------------------------------------------- Flächen-Scan
+
+
+def test_scan_liefert_zellen_und_betriebe(client):
+    """Einwohner je Betrieb im 300-m-Umfeld, je 100-m-Zelle."""
+    r = client.get("/api/scan", params={
+        "west": 11.56, "sued": 48.13, "ost": 11.58, "nord": 48.145})
+    assert r.status_code == 200
+    d = r.json()
+    assert d["ok"] is True
+    assert d["data"]["zellen"], "keine Zellen aus dem Fixture"
+    assert d["data"]["betriebe_gesamt"] > 50
+    assert d["data"]["umfeld_m"] == 300
+    assert d["data"]["hinweise"], "die Grenzen der Kennzahl gehören in die Antwort"
+    assert "ODbL" in d["provenance"]["license"]
+    assert "Statistische Ämter" in d["provenance"]["license"]
+
+
+def test_scan_kachelt_den_cache(client):
+    """Leichtes Schwenken innerhalb derselben 0,01°-Kachel darf weder Zensus
+    noch Overpass erneut fragen."""
+    p1 = {"west": 11.561, "sued": 48.121, "ost": 11.579, "nord": 48.139}
+    client.get("/api/scan", params=p1)
+    vorher = len(client.fake.calls)
+    p2 = {"west": 11.562, "sued": 48.122, "ost": 11.578, "nord": 48.138}
+    d = client.get("/api/scan", params=p2).json()
+    assert len(client.fake.calls) == vorher, "Kachel-Cache griff nicht"
+    assert d["provenance"]["cached"] is True
+
+
+def test_scan_weist_unsinn_ab(client):
+    fehler = [
+        {"west": 11.6, "sued": 48.1, "ost": 11.4, "nord": 48.2},   # west>ost
+        {"west": 2.0, "sued": 48.1, "ost": 2.05, "nord": 48.14},   # außerhalb
+        {"west": 11.0, "sued": 48.0, "ost": 11.5, "nord": 48.05},  # zu breit
+        {"west": 11.0, "sued": 48.0, "ost": 11.05, "nord": 48.5},  # zu hoch
+    ]
+    for p in fehler:
+        r = client.get("/api/scan", params=p)
+        assert r.status_code == 422, p
+    zu_gross = client.get("/api/scan", params=fehler[2])
+    assert "Übersichtsebene" in zu_gross.json()["detail"], (
+        "die Abweisung muss auf das passende Werkzeug verweisen"
+    )
+
+
+# --------------------------------------------- Bericht, Verlauf, Neu prüfen
+
+
+def test_bericht_seite_wird_ausgeliefert(client):
+    r = client.get("/bericht", params={"punkt": 1})
+    assert r.status_code == 200
+    assert "Standortbericht" in r.text
+
+
+def test_einzelner_punkt_liefert_zeile_und_payload(client):
+    assert client.get("/api/points/9999").status_code == 404
+    client.post("/api/points", json={
+        "label": "Berichtstest", "lat": LAT, "lon": LON, "radius": R})
+    pid = client.get("/api/points").json()["punkte"][0]["id"]
+    d = client.get(f"/api/points/{pid}").json()
+    assert d["label"] == "Berichtstest"
+    assert d["zeile"]["gastro_gesamt"] > 100
+    assert d["payload"]["bloecke"]["zensus"]["provenance"]["license"]
+    # /api/points/vergleich darf nicht vom Pfadparameter abgefangen werden.
+    assert client.get("/api/points/vergleich").status_code == 200
+
+
+def test_pruefung_erkennt_neue_und_verschwundene_betriebe(client):
+    """„Neu prüfen" muss die konkrete Veränderung benennen, nicht nur eine Zahl."""
+    import copy
+
+    from gastroviewer.sources.overpass import GASTRO_AMENITIES
+
+    client.post("/api/points", json={
+        "label": "Verlaufstest", "lat": LAT, "lon": LON, "radius": R})
+    pid = client.get("/api/points").json()["punkte"][0]["id"]
+    alt_gesamt = client.get(f"/api/points/{pid}").json()["zeile"]["gastro_gesamt"]
+
+    kopie = copy.deepcopy(client.fake.overpass)
+    opfer = next(
+        e for e in kopie["elements"]
+        if (e.get("tags") or {}).get("amenity") in GASTRO_AMENITIES
+        and (e.get("tags") or {}).get("name")
+    )
+    kopie["elements"].remove(opfer)
+    client.fake.overpass = kopie
+
+    d = client.post(f"/api/points/{pid}/pruefung").json()
+    namen = [g["name"] for g in d["verschwundene_betriebe"]]
+    assert opfer["tags"]["name"] in namen
+    assert d["neue_betriebe"] == []
+    gesamt = next(v for v in d["veraendert"] if v["key"] == "gastro_gesamt")
+    assert gesamt["alt"] == alt_gesamt and gesamt["neu"] == alt_gesamt - 1
+    assert any("Begehung" in h for h in d["hinweise"]), (
+        "ein verschwundener Betrieb ist zunächst nur eine OSM-Änderung"
+    )
+
+    # Der gespeicherte Punkt trägt jetzt den neuen Stand …
+    zeile = client.get(f"/api/points/{pid}").json()["zeile"]
+    assert zeile["gastro_gesamt"] == alt_gesamt - 1
+    assert zeile["geprueft"], "das Prüfdatum gehört in die Vergleichstabelle"
+
+    # … und der alte Stand liegt im Verlauf.
+    v = client.get(f"/api/points/{pid}/verlauf").json()
+    assert v["anzahl"] == 2
+    assert v["staende"][0]["aktuell"] is False
+    assert v["staende"][0]["zeile"]["gastro_gesamt"] == alt_gesamt
+    assert v["staende"][-1]["aktuell"] is True
+    assert v["staende"][-1]["zeile"]["gastro_gesamt"] == alt_gesamt - 1
+
+
+def test_pruefung_fuer_unbekannten_punkt_meldet_404(client):
+    assert client.post("/api/points/9999/pruefung").status_code == 404
+    assert client.get("/api/points/9999/verlauf").status_code == 404
+
+
+def test_loeschen_raeumt_den_verlauf_mit_auf(client):
+    from gastroviewer.cache import Cache
+
+    client.post("/api/points", json={
+        "label": "Wegwerftest", "lat": LAT, "lon": LON, "radius": R})
+    pid = client.get("/api/points").json()["punkte"][-1]["id"]
+    client.post(f"/api/points/{pid}/pruefung")
+    c = Cache(client.settings.db_path)
+    assert c.list_verlauf(pid), "die Prüfung muss einen Verlaufseintrag anlegen"
+    client.delete(f"/api/points/{pid}")
+    assert c.list_verlauf(pid) == [], "gelöschter Punkt darf keine Verlaufsleichen lassen"

@@ -443,6 +443,35 @@ Unterschiede, die man sucht. Die Auswahl sagt das dazu. Die Gehstreckenberechnun
 bei **2000 m** gedeckelt — zu Fuß ist ein größerer Umkreis kein Einzugsgebiet, und das
 Wegenetz dafür wäre eine unverhältnismäßige Last für den Spendendienst.
 
+## Flächen-Scan: WO im Viertel teilen sich viele Anwohner wenige Betriebe?
+
+Die Erkundungsebene zeigt, wo Menschen wohnen; der Umkreis zeigt, wie es an einem Punkt
+ist. Die Ebene **„Flächen-Scan (Einwohner je Betrieb)"** beantwortet die Frage dazwischen:
+*wo im Viertel* ist das Verhältnis aus Nachfrage und Angebot am günstigsten? Sie legt das
+100-m-Zensusgitter über den Ausschnitt und stellt jeder Zelle die Gastronomie aus OSM
+gegenüber — als **Einwohner je Gastronomiebetrieb im 300-m-Umfeld** der Zellmitte. Dunkle
+Zellen heißen: viele Anwohner teilen sich wenige Betriebe. Zellen ganz ohne Betrieb im
+Umfeld bekommen bewusst keinen Zahlenwert (nicht „unendlich"), sondern eine eigene Klasse.
+
+So funktioniert er, und das kostet er:
+
+- **Eine** Zensus- und **eine** Overpass-Abfrage für den ganzen Ausschnitt statt dutzender
+  Umkreisabfragen. Gemessen am 02.08.2026 rund um den Marienplatz (~1,8 × 1,8 km):
+  541 Zellen, 1.079 Betriebe, 162 kB.
+- Nach dem Schwenken wird **nicht** automatisch neu gescannt — jeder Scan ist eine echte
+  Overpass-Abfrage. Die Legende bietet stattdessen „Diesen Ausschnitt scannen" an.
+  Gleiche Kachelrundung wie beim Übersichtsgitter: leichtes Schwenken trifft den Cache.
+- Begrenzt auf rund **4 × 5 km** (ab Zoomstufe 13); für die große Fläche ist die
+  Übersichtsebene da. Ist der Kartenausschnitt größer, wird das Scanfenster um die
+  Kartenmitte gelegt — der gestrichelte Rahmen zeigt, was gescannt ist.
+- Klick auf eine Zelle zeigt die Rohwerte und bietet **„Hier analysieren"** an.
+
+Was die Kennzahl **nicht** kann, steht in Legende und Antwort: OSM zählt Betriebe
+unvollständig, die Werte sind deshalb Obergrenzen. Und sie sieht nur die Wohnbevölkerung —
+Zulauf von Büros, Passanten und Touristen fehlt. Eine dunkle Wohnlage ist ein Suchhinweis,
+keine Standortentscheidung; die Innenstadt ist hier hell *und* trotzdem voller
+funktionierender Betriebe.
+
 ## Planungsrecht und Hochwasser (Bayern, Bebauungspläne München)
 
 Zwei Fragen, die eine Standortentscheidung kippen können und die keine der übrigen Quellen
@@ -472,6 +501,53 @@ festen Spaltengruppe, geht in keine Rechnung ein und landet im CSV-Export.
 
 Eine Datenbank aus einer früheren Fassung wird beim Start um die beiden Spalten ergänzt,
 statt den Nutzer seine gemerkten Punkte zu kosten.
+
+## Standortbericht zum Drucken
+
+Sobald es ernst wird — Vermieter, Bank, Partner —, braucht man das Ergebnis außerhalb des
+Werkzeugs. Jeder gemerkte Punkt hat in der Vergleichstabelle den Link **„Bericht"**: eine
+druckfreundliche Seite mit allen Kennzahlgruppen, der eigenen Note und Notiz (als solche
+gekennzeichnet), dem Verlauf, jeder Quelle mit Stand und Lizenz und den bekannten Grenzen
+der Daten. Ein PDF entsteht über die **Druckfunktion des Browsers** — bewusst ohne
+zusätzliche Bibliothek. Der Bericht zeigt den gespeicherten Datenstand des Punktes und
+löst selbst keinen Abruf bei einem externen Dienst aus.
+
+## Verlauf: „Neu prüfen" je gemerktem Punkt
+
+Standortsuche dauert Monate, und gemerkte Punkte waren bisher Momentaufnahmen. Der Knopf
+**„neu prüfen"** in der Vergleichstabelle fragt dieselben Quellen erneut ab (ausdrücklich
+am Cache vorbei, nach einer Rückfrage — es ist eine echte Overpass-Abfrage) und benennt
+die konkrete Veränderung:
+
+- **eröffnete und verschwundene Betriebe** mit Name, Typ und Entfernung — ein
+  verschwundener Betrieb ist ein doppeltes Signal: mögliches freies Ladenlokal *und* ein
+  Wettbewerber weniger. Der Hinweis dazu sagt ehrlich: es ist zunächst eine OSM-Änderung,
+  erst die Begehung macht daraus ein freies Ladenlokal.
+- **geänderte bewegliche Kennzahlen** (OSM, GTFS, Zählstellen) als vorher/jetzt-Tabelle.
+  Zensuswerte werden bewusst nicht verglichen — ihr Stichtag bleibt der 15.05.2022, und
+  Unterschiede wären nur Rauschen der stochastischen Überlagerung.
+
+Der bisherige Stand wandert dabei in den **Verlauf** des Punktes (eigene Tabelle in der
+Datenbank, wird beim Löschen des Punktes mit aufgeräumt). Der Standortbericht zeigt den
+Verlauf als Zeitreihe; die Gehstrecken werden beim Prüfen nicht neu geladen — sie sind die
+größte Abfrage des Werkzeugs und altern in Wochen, nicht in Tagen.
+
+## Gewichtetes Ranking — eigene Gewichte, offene Rechnung
+
+Das Werkzeug bewertet weiterhin nicht. Aber ab zwei gemerkten Punkten bietet der
+Vergleichsdialog ein **gewichtetes Ranking** an, dessen Punktzahl allein aus den Gewichten
+des Nutzers folgt: je Kennzahl ein Regler (0 bis ×3), jede Kennzahl wird über die
+gemerkten Punkte auf 0–100 skaliert (bester Wert 100, schlechtester 0) und nach Gewicht
+gemittelt. Die Tabelle zeigt **jeden Beitrag offen** — ohne diese Offenheit wäre es eine
+Scheinnote. Drei ehrliche Eigenschaften:
+
+- Kennzahlen, die fehlen oder bei allen Punkten gleich sind, gehen nicht ein und stehen
+  als „—" da. Eine Skala aus einem einzigen Wert wäre erfunden.
+- Gewicht 0 nimmt die Kennzahl sichtbar aus der Rechnung.
+- Ob „weniger Wettbewerb" wirklich besser ist, entscheidet die Kennzahl nicht —
+  Innenstadtlagen haben hohe Dichte *und* hohen Zulauf. Der Hinweis steht direkt dabei.
+
+Die Gewichte bleiben lokal gespeichert (localStorage), wie die Spaltengruppenwahl.
 
 ## Erreichbarkeit zu Fuß — der Umkreis ist kein Kreis
 
@@ -607,8 +683,12 @@ Alles über Umgebungsvariablen, alles optional:
 | `GET /api/point/{adresse\|zensus\|osm\|gtfs\|radzaehlung\|verkehrsmenge\|links}` | je Quelle einzeln (nutzt die Oberfläche) |
 | `GET /api/point/gehweg?lat=&lon=&r=` | Gehstrecken statt Luftlinie — **nur auf Anforderung**, siehe eigener Abschnitt |
 | `GET /api/gitter?ebene=&west=&sued=&ost=&nord=` | Übersichtsgitter 1 km/10 km je Kartenausschnitt |
+| `GET /api/scan?west=&sued=&ost=&nord=` | Flächen-Scan: Einwohner je Betrieb im 300-m-Umfeld, je 100-m-Zelle |
 | `GET /api/geocode?q=` | Adresssuche |
 | `GET /api/points` · `POST /api/points` · `DELETE /api/points/{id}` | gemerkte Punkte |
+| `GET /api/points/{id}` · `GET /api/points/{id}/verlauf` | ein Punkt mit vollem Datenstand bzw. seine abgelegten Stände |
+| `POST /api/points/{id}/pruefung` | „Neu prüfen": Quellen erneut abfragen, Unterschiede ausweisen |
+| `GET /bericht?punkt={id}` | druckbarer Standortbericht (PDF über den Browserdruck) |
 | `GET /api/points/vergleich` | Vergleichstabelle |
 | `GET /api/export/point.json` · `point.csv` · `vergleich.csv` | Export |
 | `GET /api/stats` · `GET /api/outbound` | Cache-Zustand, Protokoll der echten Abrufe |
@@ -661,9 +741,10 @@ Das letzte Protokoll steht in [`docs/abnahme.md`](docs/abnahme.md).
 
 ### Vollprüfung aller Endpunkte
 
-Die dritte Ebene: alle 29 API-Routen live gegen einen laufenden Server, mit erzwungenen
-Frischabrufen bei Zensus und Overpass und unabhängigen Erwartungswerten (A9: 111.624
-Kfz/Tag; Isarauen: HQ 100; Köln: Bodenrichtwert). Braucht Netz und einen GTFS-Import.
+Die dritte Ebene: alle 35 API-Routen live gegen einen laufenden Server, mit erzwungenen
+Frischabrufen bei Zensus, Overpass und „Neu prüfen" und unabhängigen Erwartungswerten
+(A9: 111.624 Kfz/Tag; Isarauen: HQ 100; Köln: Bodenrichtwert; Innenstadt-Scan: über
+100 Betriebe). Braucht Netz und einen GTFS-Import.
 
 ```bash
 python scripts/vollpruefung.py http://127.0.0.1:8011
@@ -679,9 +760,13 @@ pip install playwright && playwright install chromium
 python scripts/uitest.py http://127.0.0.1:8011
 ```
 
-Elf Prüfungen, darunter: jeder Block nennt Quelle und Lizenz, im Datenreiter steht keine
-geschätzte Zahl, der Deckkraftregler wirkt auf die Ebenen und **nicht** auf die Grundkarte,
-der Gehwegblock lädt nur auf Anforderung und räumt seine Kartenebene beim Punktwechsel auf.
+Achtzehn Prüfungen (dazu die Prüfung auf JavaScript-Fehler), darunter: jeder Block nennt
+Quelle und Lizenz, im Datenreiter steht keine geschätzte Zahl, der Deckkraftregler wirkt
+auf die Ebenen und **nicht** auf die Grundkarte, der Gehwegblock lädt nur auf Anforderung
+und räumt seine Kartenebene beim Punktwechsel auf, der Flächen-Scan scannt nach dem
+Schwenken erst auf Knopfdruck, der Bericht trägt Warnhinweis und Quellen, und im Ranking
+nimmt Gewicht 0 die Kennzahl sichtbar heraus. Die Berichts- und Rankingprüfung legt sich
+ihre Testpunkte selbst an und löscht sie wieder.
 
 Fehlt Playwright oder Chromium, endet das Skript mit **Exitcode 3** und der Meldung
 „Oberfläche NICHT geprüft" — ein übersprungener Test darf nicht wie ein bestandener

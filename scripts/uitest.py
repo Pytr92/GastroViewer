@@ -408,6 +408,149 @@ def pruefe_uebersichtsgitter(page) -> str:
     return f"Bayern {n10} Zellen (10 km), München {n1} Zellen (1 km)"
 
 
+def pruefe_flaechenscan(page) -> str:
+    """Die feine Erkundungsstufe: Einwohner je Betrieb im 300-m-Umfeld."""
+    page.evaluate("() => { karte.setView([48.137, 11.575], 14); }")
+    page.wait_for_timeout(400)
+    page.evaluate("""() => {
+        state.ebenen.scan.addTo(karte);
+        karte.fire('overlayadd', { layer: state.ebenen.scan });
+    }""")
+    for _ in range(180):
+        if page.evaluate("() => state.ebenen.scan.getLayers().length") > 1:
+            break
+        page.wait_for_timeout(500)
+    n = page.evaluate("() => state.ebenen.scan.getLayers().length")
+    leg = text(page, "#scan-legende") if page.query_selector("#scan-legende") else ""
+    if n <= 1:
+        page.evaluate("""() => {
+            karte.removeLayer(state.ebenen.scan);
+            karte.fire('overlayremove', { layer: state.ebenen.scan });
+        }""")
+        if "nicht möglich" in leg:
+            return f"übersprungen — {leg.splitlines()[-1][:70]}"
+        raise Befund(f"keine Scanzellen gezeichnet: {leg[:90]}")
+
+    fordere("Einwohner je Gastronomiebetrieb" in leg, "Scanlegende fehlt")
+    fordere("Obergrenzen" in leg,
+            "die Legende muss benennen, dass OSM eine Untergrenze zählt")
+    fordere("kein Betrieb im Umfeld" in leg,
+            "die Sonderklasse „kein Betrieb im Umfeld“ fehlt in der Legende")
+
+    # Schwenken darf NICHT ungefragt neu scannen (jeder Scan ist eine echte
+    # Overpass-Abfrage) — stattdessen bietet die Legende den Knopf an.
+    page.evaluate("() => { karte.panBy([1200, 0], { animate: false }); }")
+    page.wait_for_timeout(1500)
+    fordere(page.query_selector("#scan-legende .scan-knopf") is not None,
+            "nach dem Schwenken fehlt der Knopf „Diesen Ausschnitt scannen“")
+    danach = page.evaluate("() => state.ebenen.scan.getLayers().length")
+    fordere(danach == n, f"Schwenken hat ungefragt neu gescannt: {n} -> {danach}")
+
+    page.evaluate("""() => {
+        karte.removeLayer(state.ebenen.scan);
+        karte.fire('overlayremove', { layer: state.ebenen.scan });
+    }""")
+    page.wait_for_timeout(600)
+    fordere(page.evaluate("() => state.ebenen.scan.getLayers().length") == 0,
+            "Abschalten leert die Scanebene nicht")
+    fordere(page.query_selector("#scan-legende") is None,
+            "die Scanlegende bleibt nach dem Abschalten stehen")
+    return f"{n - 1} Zellen plus Scanrahmen, Schwenken fragt statt zu laden"
+
+
+# Punkte, die die Berichts- und Rankingprüfung selbst anlegen — sie werden am
+# Ende wieder gelöscht, damit die Prüfung keine Daten hinterlässt.
+TESTPUNKTE: list[int] = []
+
+
+def pruefe_bericht(page) -> str:
+    """Der druckbare Standortbericht zu einem gemerkten Punkt."""
+    for label, (lat, lon) in (("UI-Testpunkt Marienplatz", MARIENPLATZ),
+                              ("UI-Testpunkt Giesing", GIESING)):
+        pid = page.evaluate("""async ([label, lat, lon]) => {
+            const r = await fetch('/api/points', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ label, lat, lon, radius: 600 }),
+            });
+            return (await r.json()).id;
+        }""", [label, lat, lon])
+        fordere(isinstance(pid, int), f"Punkt {label} ließ sich nicht merken: {pid}")
+        TESTPUNKTE.append(pid)
+
+    basis = page.evaluate("() => location.origin")
+    # Nicht page.context.new_page(): den von new_page() implizit angelegten
+    # Kontext lässt Playwright keine zweite Seite öffnen.
+    bericht = page.context.browser.new_page()
+    try:
+        bericht.goto(f"{basis}/bericht?punkt={TESTPUNKTE[0]}",
+                     wait_until="domcontentloaded")
+        bericht.wait_for_timeout(2500)
+        t = bericht.eval_on_selector("#bericht", "e=>e.innerText")
+        fordere("UI-Testpunkt Marienplatz" in t, "der Bericht nennt den Punkt nicht")
+        fordere("keine Prognose" in t, "der Warnhinweis fehlt im Bericht")
+        fordere("Quellen, Stände, Lizenzen" in t, "die Quellentabelle fehlt")
+        fordere("Bekannte Grenzen" in t, "die Grenzen der Daten fehlen im Bericht")
+        fordere("ODbL" in t, "die OSM-Lizenz fehlt im Bericht")
+        fordere(bericht.query_selector("#bericht button") is not None,
+                "der Druckknopf fehlt")
+    finally:
+        bericht.close()
+
+    # Der Weg dorthin: die Vergleichstabelle verlinkt je Zeile den Bericht.
+    page.click("#btn-vergleich")
+    page.wait_for_timeout(1500)
+    links = page.eval_on_selector_all(
+        "#vergleich-inhalt td.aktionen a", "e=>e.map(x=>x.getAttribute('href'))")
+    fordere(any(h and h.startswith("/bericht?punkt=") for h in links),
+            f"kein Berichtslink in der Vergleichstabelle: {links}")
+    page.eval_on_selector("#vergleich-zu", "e=>e.click()")
+    return "Bericht mit Punkt, Warnhinweis, Quellen und Grenzen; Link in der Tabelle"
+
+
+def pruefe_ranking(page) -> str:
+    """Gewichtetes Ranking: Punktzahl nur aus Nutzergewichten, offen ausgewiesen."""
+    page.click("#btn-vergleich")
+    page.wait_for_timeout(1500)
+    try:
+        fordere(page.query_selector("details.ranking") is not None,
+                "der Rankingbereich fehlt im Vergleichsdialog")
+        page.eval_on_selector("details.ranking", "e => { e.open = true; }")
+        page.wait_for_timeout(400)
+        t = text(page, "details.ranking")
+        fordere("keine Empfehlung" in t,
+                "das Ranking muss sagen, dass die Punktzahl keine Empfehlung ist")
+        zeilen = page.eval_on_selector_all(
+            "#ranking-ausgabe table tr", "e=>e.length")
+        fordere(zeilen >= 3, f"Rankingtabelle zu klein: {zeilen} Zeilen")
+
+        spalten_vorher = page.eval_on_selector_all(
+            "#ranking-ausgabe table tr:first-child th", "e=>e.length")
+        # Gewicht der ersten Kennzahl auf 0 — ihre Spalte muss verschwinden.
+        page.eval_on_selector(".ranking-gewichte input", """e => {
+            e.value = 0; e.dispatchEvent(new Event('input', { bubbles: true }));
+        }""")
+        page.wait_for_timeout(500)
+        spalten_nachher = page.eval_on_selector_all(
+            "#ranking-ausgabe table tr:first-child th", "e=>e.length")
+        fordere(spalten_nachher == spalten_vorher - 1,
+                f"Gewicht 0 nimmt die Kennzahl nicht heraus: "
+                f"{spalten_vorher} -> {spalten_nachher}")
+        page.eval_on_selector(".ranking-gewichte input", """e => {
+            e.value = 1; e.dispatchEvent(new Event('input', { bubbles: true }));
+        }""")
+        page.wait_for_timeout(300)
+    finally:
+        page.eval_on_selector("#vergleich-zu", "e=>e.click()")
+        # Aufräumen: die von der Prüfung angelegten Punkte wieder löschen.
+        for pid in TESTPUNKTE:
+            page.evaluate(
+                "async (pid) => { await fetch(`/api/points/${pid}`,"
+                " { method: 'DELETE' }); }", pid)
+        TESTPUNKTE.clear()
+    return "Punktzahl offen hergeleitet, Gewicht 0 blendet die Kennzahl aus"
+
+
 def pruefe_bodenrichtwert_ebene(page) -> str:
     """In Nordrhein-Westfalen gibt es einen abfragbaren Landesdienst."""
     setze_punkt(page, *KOELN)
@@ -433,8 +576,11 @@ PRUEFUNGEN = [
     ("Erreichbarkeit zu Fuß", pruefe_gehweg),
     ("Gehwegzahl in der Schätzung", pruefe_gehwegangebot_in_der_schaetzung),
     ("Übersichtsgitter (Erkundung)", pruefe_uebersichtsgitter),
+    ("Flächen-Scan (Einwohner je Betrieb)", pruefe_flaechenscan),
     ("Planung und Hochwasser", pruefe_planung_und_hochwasser),
+    ("Standortbericht", pruefe_bericht),
     ("Eigene Notiz und Note", pruefe_eigene_notiz),
+    ("Gewichtetes Ranking", pruefe_ranking),
     ("Bodenrichtwert-Ebene (NRW)", pruefe_bodenrichtwert_ebene),
 ]
 

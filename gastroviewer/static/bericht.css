@@ -1,0 +1,112 @@
+/* Standortbericht — eigenes, druckfreundliches Stylesheet.
+ * Bewusst nicht style.css: die App ist ein zweispaltiges Vollbild-Layout,
+ * der Bericht eine Seite Papier. */
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  font: 14px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif;
+  color: #1c232b;
+  background: #eef1f4;
+}
+
+main {
+  max-width: 860px;
+  margin: 0 auto;
+  padding: 28px 34px 60px;
+  background: #ffffff;
+  min-height: 100vh;
+}
+
+h1 { font-size: 24px; margin: 0 0 2px; }
+h2 {
+  font-size: 15px;
+  margin: 26px 0 8px;
+  padding-bottom: 4px;
+  border-bottom: 2px solid #1f5f8b;
+}
+h3 { font-size: 13px; margin: 14px 0 6px; color: #3d4854; }
+
+.untertitel { color: #5b6570; margin: 0 0 4px; }
+.meta { font-size: 12px; color: #5b6570; }
+.hinweis { color: #5b6570; }
+
+table {
+  border-collapse: collapse;
+  width: 100%;
+  font-size: 13px;
+  margin: 6px 0 10px;
+}
+th, td {
+  text-align: left;
+  padding: 4px 10px 4px 0;
+  border-bottom: 1px solid #e3e8ed;
+  vertical-align: top;
+}
+th { color: #3d4854; font-weight: 600; }
+td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+td.fehlt { color: #98a2ad; }
+
+.notiz {
+  background: #f4f7fa;
+  border-left: 3px solid #9dc3dd;
+  padding: 7px 10px;
+  margin: 8px 0;
+  font-size: 12.5px;
+}
+.warnung {
+  background: #fdf6e9;
+  border-left: 3px solid #d9a441;
+  padding: 7px 10px;
+  margin: 8px 0;
+  font-size: 12.5px;
+}
+.eigene {
+  background: #f2f7f2;
+  border-left: 3px solid #4f9c68;
+  padding: 8px 10px;
+  margin: 8px 0;
+}
+.eigene .kennung { font-size: 11px; color: #3d4854; text-transform: uppercase; letter-spacing: 0.04em; }
+
+.quelle { font-size: 11.5px; color: #5b6570; }
+
+ul { margin: 6px 0; padding-left: 20px; }
+li { margin: 3px 0; }
+
+.kopfzeile {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+}
+
+button, .knopf-link {
+  font: inherit;
+  padding: 6px 12px;
+  border: 1px solid #b9c3cd;
+  border-radius: 5px;
+  background: #f4f7fa;
+  cursor: pointer;
+  text-decoration: none;
+  color: inherit;
+  white-space: nowrap;
+}
+button:hover { background: #e8eef3; }
+
+.fusszeile {
+  margin-top: 34px;
+  padding-top: 10px;
+  border-top: 1px solid #e3e8ed;
+  font-size: 11.5px;
+  color: #5b6570;
+}
+
+@media print {
+  body { background: #ffffff; }
+  main { max-width: none; padding: 0; min-height: 0; }
+  .kein-druck { display: none !important; }
+  h2 { break-after: avoid; }
+  table, .notiz, .warnung, .eigene { break-inside: avoid; }
+}

@@ -189,6 +189,10 @@ state.ebenen.gehflaeche = L.layerGroup();
    man klickt. Canvas, weil es bis zu ~1.500 Zellen sind. */
 state.uebersichtRenderer = L.canvas({ padding: 0.3 });
 state.ebenen.uebersicht = L.layerGroup();
+/* Flächen-Scan: Einwohner je Gastronomiebetrieb im 300-m-Umfeld, je
+   100-m-Zelle. Die feine Stufe zwischen Übersichtsebene und Umkreis. */
+state.scanRenderer = L.canvas({ padding: 0.3 });
+state.ebenen.scan = L.layerGroup();
 state.ebenen.zensus.addTo(karte);
 state.ebenen.gastronomie.addTo(karte);
 
@@ -198,6 +202,7 @@ const ebenenSchalter = L.control.layers({
   'basemap.de grau': basemapGrau,
 }, {
   'Übersicht Einwohner (1/10 km)': state.ebenen.uebersicht,
+  'Flächen-Scan (Einwohner je Betrieb)': state.ebenen.scan,
   'Zu Fuß erreichbar': state.ebenen.gehflaeche,
   'Zensus-Gitter': state.ebenen.zensus,
   'Gastronomie': state.ebenen.gastronomie,
@@ -227,7 +232,7 @@ state.rasterEbenen = new Set();
 function wendeDeckkraftAn() {
   const f = state.deckkraft;
   for (const name of ['zensus', 'gastronomie', 'frequenzbringer', 'oepnv', 'leerstand',
-    'uebersicht', 'gehflaeche']) {
+    'uebersicht', 'scan', 'gehflaeche']) {
     state.ebenen[name]?.eachLayer((l) => {
       const basis = l.options?._basisDeckkraft;
       if (basis === undefined || !l.setStyle) return;
@@ -410,6 +415,207 @@ karte.on('overlayremove', (ev) => {
     state.ebenen.uebersicht.clearLayers();
     uebersichtState.schluessel = null;
     uebersichtLegende.remove();
+  }
+});
+
+/* ------------------------------------------------------- Flächen-Scan */
+
+/* Die feine Stufe zwischen Übersichtsebene (WO wohnen Menschen?) und Umkreis
+   (WIE ist es hier?): WO im Viertel teilen sich viele Anwohner wenige
+   Betriebe? Backend: eine Zensus- und EINE Overpass-Abfrage für den ganzen
+   Ausschnitt — deshalb lädt der Scan beim Einschalten und danach nur auf
+   Knopfdruck, nicht bei jedem Schwenken. */
+
+/* Feste, gewählte Klassen wie bei der Übersicht — beim Schwenken müssen die
+   Farben vergleichbar bleiben. Grüne Skala, damit sie sich vom blauen
+   Zensusgitter unterscheidet. Dunkel = viele Anwohner je Betrieb. */
+const SCAN_GRENZEN = [100, 300, 700, 1500, 3000];
+const SCAN_FARBEN = ['#f4f9f0', '#d9ecc6', '#b4d893', '#86bc62', '#569940', '#2f712c'];
+const SCAN_OHNE_BETRIEB = '#1c4f22';
+/* Etwas unter dem Server-Limit, damit die Kachelrundung des Backends die
+   Box nicht über die Abweisungsgrenze hinausschiebt. */
+const SCAN_SPANNE = [0.055, 0.04];
+
+const scanState = { schluessel: null, laedt: false, status: null };
+
+const scanLegende = L.control({ position: 'bottomright' });
+scanLegende.onAdd = () => {
+  const c = L.DomUtil.create('div', 'leaflet-control uebersicht-legende');
+  c.id = 'scan-legende';
+  L.DomEvent.disableClickPropagation(c);
+  return c;
+};
+
+function scanFarbe(z) {
+  if (z.je_betrieb === null || z.je_betrieb === undefined) return SCAN_OHNE_BETRIEB;
+  let i = 0;
+  while (i < SCAN_GRENZEN.length && z.je_betrieb > SCAN_GRENZEN[i]) i += 1;
+  return SCAN_FARBEN[i];
+}
+
+function scanBox() {
+  /* Ist der Kartenausschnitt größer als das Scanfenster, wird das Fenster um
+     die Kartenmitte gelegt — der gestrichelte Rahmen zeigt, was gescannt ist. */
+  const b = karte.getBounds();
+  const c = karte.getCenter();
+  const west = Math.max(5.0, b.getWest(), c.lng - SCAN_SPANNE[0] / 2);
+  const ost = Math.min(16.0, b.getEast(), c.lng + SCAN_SPANNE[0] / 2);
+  const sued = Math.max(46.5, b.getSouth(), c.lat - SCAN_SPANNE[1] / 2);
+  const nord = Math.min(56.0, b.getNorth(), c.lat + SCAN_SPANNE[1] / 2);
+  if (west >= ost || sued >= nord) return null;
+  return { west, sued, ost, nord };
+}
+
+function zeigeScanLegende(status) {
+  const c = document.getElementById('scan-legende');
+  if (!c) return;
+  const zeilen = [el('strong', {}, 'Einwohner je Gastronomiebetrieb')];
+  if (status.hinweis) {
+    c.replaceChildren(zeilen[0], el('div', { class: 'hinweis-klein' }, status.hinweis));
+    return;
+  }
+  let von = 0;
+  for (let i = 0; i <= SCAN_GRENZEN.length; i += 1) {
+    const bis = SCAN_GRENZEN[i];
+    zeilen.push(el('div', { class: 'legende-zeile' },
+      el('i', { style: `background:${SCAN_FARBEN[i]}` }),
+      bis === undefined ? `über ${NF.format(von)}` : `${NF.format(von)} – ${NF.format(bis)}`));
+    von = bis;
+  }
+  zeilen.push(el('div', { class: 'legende-zeile' },
+    el('i', { style: `background:${SCAN_OHNE_BETRIEB}` }), 'kein Betrieb im Umfeld'));
+  zeilen.push(el('div', { class: 'hinweis-klein' },
+    `${NF.format(status.zellen)} Zellen · ${NF.format(status.betriebe)} Betriebe · `
+    + '300-m-Umfeld je 100-m-Zelle · feste, gewählte Klassen'));
+  zeilen.push(el('div', { class: 'hinweis-klein' },
+    'Dunkel = viele Anwohner je Betrieb — ein Suchhinweis, keine Entscheidung. '
+    + 'OSM zählt Betriebe unvollständig; die Werte sind Obergrenzen.'));
+  if (status.veraltet) {
+    zeilen.push(el('button', { class: 'scan-knopf', onclick: () => ladeScan() },
+      'Diesen Ausschnitt scannen'));
+  }
+  c.replaceChildren(...zeilen);
+}
+
+function scanPopup(z, mitte) {
+  return el('div', {},
+    el('h4', {}, `Zensuszelle ${z.id || ''}`),
+    el('table', {},
+      el('tr', {}, el('td', {}, 'Einwohner (Zelle)'), el('td', {}, el('b', {}, NF.format(z.einwohner)))),
+      el('tr', {}, el('td', {}, 'Einwohner im 300-m-Umfeld'), el('td', {}, el('b', {}, NF.format(z.einwohner_umfeld)))),
+      el('tr', {}, el('td', {}, 'Betriebe im 300-m-Umfeld'), el('td', {}, el('b', {}, NF.format(z.betriebe_umfeld)))),
+      el('tr', {}, el('td', {}, 'Einwohner je Betrieb'),
+        el('td', {}, el('b', {}, z.je_betrieb === null ? 'kein Betrieb im Umfeld' : NF.format(z.je_betrieb))))),
+    el('button', {
+      style: 'margin-top:7px',
+      onclick: () => { karte.closePopup(); setzePunkt(mitte[0], mitte[1], true); },
+    }, 'Hier analysieren'),
+    el('p', { class: 'hinweis-klein' },
+      'Betriebszahl aus OSM (Untergrenze). Zulauf von Büros, Passanten und '
+      + 'Touristen sieht die Kennzahl nicht.'));
+}
+
+async function ladeScan() {
+  if (!karte.hasLayer(state.ebenen.scan)) return;
+  if (karte.getZoom() < 13) {
+    state.ebenen.scan.clearLayers();
+    scanState.schluessel = null;
+    scanState.status = null;
+    zeigeScanLegende({
+      hinweis: 'Zum Scannen bis mindestens Zoomstufe 13 hineinzoomen — der '
+        + 'Scan arbeitet auf dem 100-m-Gitter. Für die große Fläche ist die '
+        + 'Übersichtsebene (1/10 km) da.',
+    });
+    return;
+  }
+  const box = scanBox();
+  if (!box) {
+    zeigeScanLegende({ hinweis: 'Der Ausschnitt liegt außerhalb Deutschlands.' });
+    return;
+  }
+  const schluessel = `${box.west.toFixed(3)}|${box.sued.toFixed(3)}|${box.ost.toFixed(3)}|${box.nord.toFixed(3)}`;
+  if (scanState.laedt) return;
+  if (schluessel === scanState.schluessel && scanState.status) {
+    zeigeScanLegende(scanState.status);
+    return;
+  }
+  scanState.laedt = true;
+  zeigeScanLegende({
+    hinweis: 'scannt — eine Zensus- und eine Overpass-Abfrage für den ganzen Ausschnitt …',
+  });
+  try {
+    const d = await hole('/api/scan', box);
+    if (!d.ok) {
+      zeigeScanLegende({ hinweis: `Scan nicht möglich: ${d.error?.message || '?'}` });
+      return;
+    }
+    scanState.schluessel = schluessel;
+    const gruppe = state.ebenen.scan;
+    gruppe.clearLayers();
+    let gezeichnet = 0;
+    for (const z of d.data.zellen) {
+      /* Niemand wohnt im Umfeld — dann trifft die Kennzahl keine Aussage. */
+      if (!z.einwohner_umfeld) continue;
+      const latlngs = z.ring.map((pt) => [pt[1], pt[0]]);
+      const mitte = [
+        latlngs.reduce((s, x) => s + x[0], 0) / latlngs.length,
+        latlngs.reduce((s, x) => s + x[1], 0) / latlngs.length,
+      ];
+      const poly = L.polygon(latlngs, {
+        renderer: state.scanRenderer,
+        color: '#ffffff', weight: 0.4,
+        fillColor: scanFarbe(z),
+        fillOpacity: 0.55 * state.deckkraft, opacity: 0.5 * state.deckkraft,
+        _basisDeckkraft: 0.55, _basisRand: 0.5,
+      });
+      poly.bindPopup(() => scanPopup(z, mitte), { maxWidth: 300 });
+      gruppe.addLayer(poly);
+      gezeichnet += 1;
+    }
+    /* Gestrichelter Rahmen: das ist die gescannte Fläche — wichtig, wenn der
+       Kartenausschnitt größer ist als das Scanfenster. */
+    const [w, s, o, n] = d.data.kachel;
+    gruppe.addLayer(L.rectangle([[s, w], [n, o]], {
+      color: '#2f712c', weight: 1.2, dashArray: '5 5', fill: false, opacity: 0.8,
+    }));
+    scanState.status = { zellen: gezeichnet, betriebe: d.data.betriebe_gesamt };
+    zeigeScanLegende(scanState.status);
+  } catch (e) {
+    zeigeScanLegende({ hinweis: `Scan nicht möglich: ${e.message}` });
+  } finally {
+    scanState.laedt = false;
+  }
+}
+
+/* Nach dem Schwenken wird NICHT automatisch neu gescannt — jeder Scan ist
+   eine echte Overpass-Abfrage. Stattdessen bietet die Legende den Knopf an. */
+function scanNachBewegung() {
+  if (!karte.hasLayer(state.ebenen.scan) || scanState.laedt) return;
+  if (karte.getZoom() < 13) { ladeScan(); return; }
+  if (!scanState.status) { ladeScan(); return; }
+  const box = scanBox();
+  if (!box) return;
+  const schluessel = `${box.west.toFixed(3)}|${box.sued.toFixed(3)}|${box.ost.toFixed(3)}|${box.nord.toFixed(3)}`;
+  if (schluessel !== scanState.schluessel) {
+    zeigeScanLegende({ ...scanState.status, veraltet: true });
+  }
+}
+
+karte.on('moveend', () => scanNachBewegung());
+karte.on('overlayadd', (ev) => {
+  if (ev.layer === state.ebenen.scan) {
+    scanLegende.addTo(karte);
+    scanState.schluessel = null;
+    scanState.status = null;
+    ladeScan();
+  }
+});
+karte.on('overlayremove', (ev) => {
+  if (ev.layer === state.ebenen.scan) {
+    state.ebenen.scan.clearLayers();
+    scanState.schluessel = null;
+    scanState.status = null;
+    scanLegende.remove();
   }
 });
 
@@ -1317,17 +1523,236 @@ async function zeigeVergleich() {
          : num ? (c.stellen === undefined ? NF1 : nfFest(c.stellen)).format(v)
          : String(v)));
     }
-    tr.append(el('td', {}, el('button', {
-      onclick: async () => {
-        await fetch(`/api/points/${z.id}`, { method: 'DELETE' });
-        zeigeVergleich();
-      },
-    }, 'löschen')));
+    tr.append(el('td', { class: 'aktionen' },
+      el('a', {
+        class: 'knopf-link', href: `/bericht?punkt=${z.id}`,
+        target: '_blank', rel: 'noopener',
+        title: 'Druckbarer Bericht zu diesem Punkt — PDF über die Druckfunktion des Browsers',
+      }, 'Bericht'),
+      el('button', {
+        title: 'Alle Quellen erneut abfragen (am Cache vorbei) und Veränderungen zeigen',
+        onclick: () => neuPruefen(z),
+      }, 'neu prüfen'),
+      el('button', {
+        onclick: async () => {
+          await fetch(`/api/points/${z.id}`, { method: 'DELETE' });
+          zeigeVergleich();
+        },
+      }, 'löschen')));
     tab.append(tr);
   }
 
-  ziel.replaceChildren(schalter, el('div', { class: 'tabelle-rahmen' }, tab));
+  // .filter(Boolean): rankingBereich() liefert unter zwei Punkten null, und
+  // replaceChildren würde daraus das sichtbare Wort „null" machen.
+  ziel.replaceChildren(...[
+    schalter,
+    el('div', { class: 'tabelle-rahmen' }, tab),
+    rankingBereich(d),
+  ].filter(Boolean));
   document.getElementById('vergleich-dialog').showModal();
+}
+
+/* --------------------------------------------- Neu prüfen (Verlauf) */
+
+/* Standortsuche dauert Monate. „Neu prüfen" fragt dieselben Quellen erneut ab
+   (am Cache vorbei), legt den bisherigen Stand in den Verlauf und benennt die
+   konkrete Veränderung: eröffnete Betriebe, verschwundene Betriebe, geänderte
+   Kennzahlen. Ein verschwundener Betrieb ist ein doppeltes Signal — mögliches
+   freies Ladenlokal UND ein Wettbewerber weniger. */
+async function neuPruefen(z) {
+  const sicher = confirm(
+    `„${z.label}" jetzt neu prüfen?\n\n`
+    + 'Das fragt alle Quellen erneut ab (am Cache vorbei), darunter eine '
+    + 'Overpass-Abfrage. Der bisherige Stand wandert in den Verlauf des Punktes.');
+  if (!sicher) return;
+  const inhalt = document.getElementById('vergleich-inhalt');
+  const wartebox = el('div', { class: 'verlauf-ergebnis' },
+    el('div', { class: 'laden' }),
+    `„${z.label}" wird neu geprüft — alle Quellen werden erneut abgefragt …`);
+  inhalt.prepend(wartebox);
+  let d;
+  try {
+    const r = await fetch(`/api/points/${z.id}/pruefung`, { method: 'POST' });
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    d = await r.json();
+  } catch (e) {
+    wartebox.replaceChildren(el('div', { class: 'fehlerbox' },
+      `Neu prüfen fehlgeschlagen: ${e.message}`));
+    return;
+  }
+  await zeigeVergleich();
+
+  const teile = [el('strong', {}, `Neu geprüft: ${d.label}`)];
+  const nichts = !d.veraendert.length && !d.neue_betriebe.length
+    && !d.verschwundene_betriebe.length;
+  if (nichts) {
+    teile.push(el('div', {},
+      'Keine Veränderung bei den beweglichen Kennzahlen (OSM, GTFS, Zählstellen).'));
+  }
+  if (d.veraendert.length) {
+    const tab = el('table', { class: 'daten' },
+      el('tr', {}, el('th', {}, 'Kennzahl'), el('th', { class: 'num' }, 'vorher'),
+        el('th', { class: 'num' }, 'jetzt')));
+    for (const v of d.veraendert) {
+      tab.append(el('tr', {},
+        el('td', {}, v.titel),
+        el('td', { class: 'num' }, v.alt === null || v.alt === undefined ? '—' : NF1.format(v.alt)),
+        el('td', { class: 'num' }, v.neu === null || v.neu === undefined ? '—' : NF1.format(v.neu))));
+    }
+    teile.push(tab);
+  }
+  const betriebsliste = (titel, liste) => {
+    if (!liste.length) return null;
+    return el('div', {},
+      el('h3', { class: 'hinweis-klein' }, titel),
+      el('ul', { class: 'liste' }, liste.map((g) => el('li', {},
+        el('span', { class: 'dist' },
+          g.distanz_m === null || g.distanz_m === undefined ? '' : `${NF.format(g.distanz_m)} m`),
+        el('span', { class: 'haupt' },
+          el('div', { class: 'name' }, g.name || '(ohne Name)'),
+          g.typ ? el('div', { class: 'meta' }, g.typ) : null)))));
+  };
+  teile.push(betriebsliste(`Neue Betriebe (${d.neue_betriebe.length})`, d.neue_betriebe));
+  teile.push(betriebsliste(
+    `Verschwundene Betriebe (${d.verschwundene_betriebe.length})`, d.verschwundene_betriebe));
+  for (const h of d.hinweise || []) teile.push(el('div', { class: 'hinweis-klein' }, h));
+  teile.push(el('button', { class: 'kein-druck', onclick: (ev) => ev.target.closest('.verlauf-ergebnis').remove() },
+    'ausblenden'));
+
+  document.getElementById('vergleich-inhalt')
+    .prepend(el('div', { class: 'verlauf-ergebnis' }, teile.filter(Boolean)));
+}
+
+/* ------------------------------- Gewichtetes Ranking (eigene Gewichte) */
+
+/* Das Werkzeug bewertet weiterhin nicht — die Punktzahl folgt allein aus den
+   Gewichten des Nutzers, und jeder Beitrag steht offen in der Tabelle. Ohne
+   diese Offenheit wäre es eine Scheinnote. */
+const GEWICHTE_SPEICHER = 'gastroviewer.gewichte';
+const RANKING_METRIKEN = [
+  { key: 'einwohner', titel: 'Einwohner im Umkreis', richtung: 1 },
+  { key: 'wettbewerb_je_1000', titel: 'Wettbewerber je 1.000 Einw.', richtung: -1 },
+  { key: 'frequenzbringer', titel: 'Frequenzbringer', richtung: 1 },
+  { key: 'abfahrten', titel: 'ÖPNV-Abfahrten je Tag', richtung: 1 },
+  { key: 'miete_qm', titel: 'Nettokaltmiete €/m²', richtung: -1 },
+  { key: 'erschliessung_einwohner', titel: 'Erschließungsgrad zu Fuß', richtung: 1 },
+];
+let rankingOffen = false;
+
+function ladeGewichte() {
+  let gemerkt = null;
+  try {
+    gemerkt = JSON.parse(localStorage.getItem(GEWICHTE_SPEICHER) || 'null');
+  } catch { gemerkt = null; }
+  const gewichte = {};
+  for (const m of RANKING_METRIKEN) {
+    const v = gemerkt && typeof gemerkt[m.key] === 'number' ? gemerkt[m.key] : 1;
+    gewichte[m.key] = Math.min(3, Math.max(0, v));
+  }
+  return gewichte;
+}
+
+function rechneRanking(zeilen, gewichte) {
+  /* Min-Max-Skalierung je Kennzahl über die gemerkten Punkte. Kennzahlen, die
+     weniger als zweimal vorliegen oder überall gleich sind, tragen nichts bei
+     — eine Skala aus einem einzigen Wert wäre erfunden. */
+  const spannen = {};
+  for (const m of RANKING_METRIKEN) {
+    const werte = zeilen.map((z) => z[m.key]).filter((v) => typeof v === 'number');
+    if (werte.length >= 2) {
+      const min = Math.min(...werte);
+      const max = Math.max(...werte);
+      if (max > min) spannen[m.key] = { min, max };
+    }
+  }
+  const ergebnisse = zeilen.map((z) => {
+    const beitraege = [];
+    let summe = 0;
+    let gewichtsumme = 0;
+    for (const m of RANKING_METRIKEN) {
+      const sp = spannen[m.key];
+      const g = gewichte[m.key];
+      if (!sp || !g || typeof z[m.key] !== 'number') continue;
+      let norm = ((z[m.key] - sp.min) / (sp.max - sp.min)) * 100;
+      if (m.richtung < 0) norm = 100 - norm;
+      beitraege.push({ metrik: m, norm });
+      summe += norm * g;
+      gewichtsumme += g;
+    }
+    return { zeile: z, punkte: gewichtsumme ? summe / gewichtsumme : null, beitraege };
+  });
+  ergebnisse.sort((a, b) => (b.punkte ?? -1) - (a.punkte ?? -1));
+  return { ergebnisse, spannen };
+}
+
+function gewichtText(g) {
+  return `×${String(g).replace('.', ',')}`;
+}
+
+function zeichneRanking(zeilen, gewichte, ziel) {
+  const { ergebnisse } = rechneRanking(zeilen, gewichte);
+  const aktive = RANKING_METRIKEN.filter((m) => gewichte[m.key] > 0);
+  const tab = el('table', { class: 'vergleich-tabelle ranking-tabelle' },
+    el('tr', {},
+      el('th', {}, 'Rang'), el('th', {}, 'Bezeichnung'), el('th', {}, 'Punktzahl'),
+      aktive.map((m) => el('th', {}, `${m.titel} (${gewichtText(gewichte[m.key])})`))));
+  ergebnisse.forEach((e, i) => {
+    const je = new Map(e.beitraege.map((b) => [b.metrik.key, b.norm]));
+    tab.append(el('tr', {},
+      el('td', {}, e.punkte === null ? '—' : String(i + 1)),
+      el('td', { class: 'text' }, e.zeile.label),
+      el('td', { class: 'num' },
+        e.punkte === null ? '—' : NF1.format(e.punkte)),
+      aktive.map((m) => el('td', { class: 'num' },
+        je.has(m.key) ? NF.format(Math.round(je.get(m.key))) : '—'))));
+  });
+  ziel.replaceChildren(
+    el('div', { class: 'tabelle-rahmen' }, tab),
+    el('div', { class: 'hinweis-klein' },
+      'Zellwerte: die auf 0–100 skalierte Kennzahl vor der Gewichtung. „—" heißt: '
+      + 'liegt nicht vor oder ist bei allen Punkten gleich — geht nicht in die '
+      + 'Punktzahl ein.'));
+}
+
+function rankingBereich(d) {
+  if (!d.zeilen || d.zeilen.length < 2) return null;
+  const gewichte = ladeGewichte();
+  const ausgabe = el('div', { id: 'ranking-ausgabe' });
+
+  const regler = el('div', { class: 'ranking-gewichte' });
+  for (const m of RANKING_METRIKEN) {
+    const anzeige = el('span', { class: 'ranking-wert' }, gewichtText(gewichte[m.key]));
+    regler.append(el('label', {},
+      el('span', { class: 'ranking-titel' }, m.titel, ' ',
+        el('em', {}, m.richtung > 0 ? '(mehr = besser)' : '(weniger = besser)'), ' ', anzeige),
+      el('input', {
+        type: 'range', min: '0', max: '3', step: '0.5',
+        value: String(gewichte[m.key]),
+        'aria-label': `Gewicht für ${m.titel}`,
+        oninput: (ev) => {
+          gewichte[m.key] = Number(ev.target.value);
+          anzeige.textContent = gewichtText(gewichte[m.key]);
+          localStorage.setItem(GEWICHTE_SPEICHER, JSON.stringify(gewichte));
+          zeichneRanking(d.zeilen, gewichte, ausgabe);
+        },
+      })));
+  }
+
+  const bereich = el('details', {
+    class: 'ranking',
+    ontoggle: (ev) => { rankingOffen = ev.target.open; },
+  },
+  el('summary', {}, 'Gewichtetes Ranking (eigene Gewichte)'),
+  el('div', { class: 'notiz' },
+    'Die Punktzahl folgt allein aus deinen Gewichten — sie ist keine Empfehlung '
+    + 'des Werkzeugs. Jede Kennzahl wird über die gemerkten Punkte auf 0–100 '
+    + 'skaliert (bester Wert 100, schlechtester 0) und nach Gewicht gemittelt. '
+    + 'Ob „weniger Wettbewerb" für dich besser ist, entscheidet die Kennzahl '
+    + 'nicht: Innenstadtlagen haben hohe Dichte UND hohen Zulauf.'),
+  regler, ausgabe);
+  if (rankingOffen) bereich.open = true;
+  zeichneRanking(d.zeilen, gewichte, ausgabe);
+  return bereich;
 }
 
 /* ------------------------------------------------------------- Suche */

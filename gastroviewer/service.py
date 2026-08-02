@@ -19,7 +19,7 @@ from .cache import AsyncCache, cache_key
 from .config import Settings
 from .http import Outbound
 from .sources import (bayern, boris, gehweg, links, muenchen, nominatim, overpass,
-                      planung, zensus)
+                      planung, scan as scan_mod, zensus)
 from .sources.base import Provenance, SourceError, SourceResult
 
 Loader = Callable[[], Awaitable[SourceResult]]
@@ -215,6 +215,19 @@ class PointService:
             )
 
         return await self._cached("zensus_gitter", key, laden)
+
+    async def scan(self, west: float, sued: float, ost: float, nord: float):
+        """Flächen-Scan: Einwohner je Gastronomiebetrieb im 300-m-Umfeld,
+        je 100-m-Zelle. Die Box wird wie beim Übersichtsgitter auf ein Raster
+        nach außen gerundet, damit leichtes Schwenken den Cache trifft statt
+        Zensus und Overpass erneut zu fragen."""
+        w, s, o, n = scan_mod.scan_kachel(west, sued, ost, nord)
+        key = f"scan|{w:.2f}|{s:.2f}|{o:.2f}|{n:.2f}"
+        return await self._cached(
+            "scan",
+            key,
+            lambda: scan_mod.load(self.outbound, self.settings, w, s, o, n),
+        )
 
     async def planung(self, lat: float, lon: float, radius: int, refresh: bool = False):
         """Planungsrecht und Hochwasserrisiko. Beides aendert sich in Jahren,

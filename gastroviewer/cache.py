@@ -59,8 +59,21 @@ CREATE TABLE IF NOT EXISTS saved_points (
     -- Sie sind ausdrücklich als eigene Einschätzung gekennzeichnet und werden
     -- nirgends in eine Rechnung übernommen.
     notiz       TEXT,
-    bewertung   INTEGER
+    bewertung   INTEGER,
+    -- Wann „Neu prüfen" den Datenstand zuletzt erneuert hat.
+    geprueft_am REAL
 );
+
+-- Verlauf gemerkter Punkte: „Neu prüfen" legt den bisherigen Stand hier ab,
+-- bevor es ihn ersetzt. So wird aus der Momentaufnahme eine Zeitreihe —
+-- eröffnete und verschwundene Betriebe sind über Monate nachvollziehbar.
+CREATE TABLE IF NOT EXISTS point_verlauf (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    point_id    INTEGER NOT NULL,
+    ts          REAL NOT NULL,
+    payload     TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_verlauf_point ON point_verlauf(point_id);
 """
 
 # Bestehende Datenbanken haben die beiden Spalten noch nicht. SQLite kennt kein
@@ -68,6 +81,7 @@ CREATE TABLE IF NOT EXISTS saved_points (
 NACHRUESTUNG = [
     ("saved_points", "notiz", "TEXT"),
     ("saved_points", "bewertung", "INTEGER"),
+    ("saved_points", "geprueft_am", "REAL"),
 ]
 
 
@@ -238,8 +252,57 @@ class Cache:
             out.append(d)
         return out
 
+    def get_point(self, point_id: int) -> dict[str, Any] | None:
+        with self._connect() as conn:
+            row = conn.execute(
+                "SELECT * FROM saved_points WHERE id = ?", (point_id,)
+            ).fetchone()
+        if row is None:
+            return None
+        d = dict(row)
+        d["payload"] = json.loads(d["payload"])
+        return d
+
+    def replace_point_payload(self, point_id: int, payload: Any) -> bool:
+        """„Neu prüfen": bisherigen Stand in den Verlauf legen, neuen einsetzen.
+
+        Der Zeitstempel des Verlaufseintrags ist der Zeitpunkt, zu dem der alte
+        Stand erhoben wurde — nicht der Zeitpunkt des Ersetzens.
+        """
+        with self._connect() as conn:
+            row = conn.execute(
+                "SELECT payload, created_at, geprueft_am FROM saved_points WHERE id = ?",
+                (point_id,),
+            ).fetchone()
+            if row is None:
+                return False
+            conn.execute(
+                "INSERT INTO point_verlauf(point_id, ts, payload) VALUES (?,?,?)",
+                (point_id, row["geprueft_am"] or row["created_at"], row["payload"]),
+            )
+            conn.execute(
+                "UPDATE saved_points SET payload = ?, geprueft_am = ? WHERE id = ?",
+                (json.dumps(payload, ensure_ascii=False), time.time(), point_id),
+            )
+            return True
+
+    def list_verlauf(self, point_id: int) -> list[dict[str, Any]]:
+        with self._connect() as conn:
+            rows = conn.execute(
+                "SELECT * FROM point_verlauf WHERE point_id = ? ORDER BY ts",
+                (point_id,),
+            ).fetchall()
+        out = []
+        for r in rows:
+            d = dict(r)
+            d["payload"] = json.loads(d["payload"])
+            out.append(d)
+        return out
+
     def delete_point(self, point_id: int) -> bool:
         with self._connect() as conn:
+            # Der Verlauf gehört zum Punkt; ohne ihn wären es verwaiste Zeilen.
+            conn.execute("DELETE FROM point_verlauf WHERE point_id = ?", (point_id,))
             cur = conn.execute("DELETE FROM saved_points WHERE id = ?", (point_id,))
             return cur.rowcount > 0
 
