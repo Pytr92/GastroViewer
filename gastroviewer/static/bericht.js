@@ -128,9 +128,12 @@ async function start() {
       + 'Stand. Karte © OpenStreetMap-Mitwirkende (ODbL).'));
     // Nach dem Einhängen ins DOM initialisieren — Leaflet braucht Maße.
     setTimeout(() => {
+      // setView VOR den Layern: ohne Ausgangszustand wirft Leaflet beim
+      // ersten Tooltip („layerPointToLatLng of undefined") und die
+      // Markerschleife bricht ab — im Browser-Check aufgefallen.
       const karte = L.map('bericht-karte', {
         zoomControl: true, attributionControl: true, scrollWheelZoom: false,
-      });
+      }).setView([p.lat, p.lon], 15);
       L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
         maxZoom: 19,
         attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap-Mitwirkende</a>',
