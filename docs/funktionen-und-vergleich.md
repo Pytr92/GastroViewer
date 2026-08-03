@@ -19,18 +19,23 @@ hinter Login bzw. Lizenz.
 | Grundkarten: OpenStreetMap, amtliche basemap.de (farbig/grau), in Bayern Luftbild und Flurstücke (ALKIS) | BKG, LDBV |
 | Deckkraftregler für alle aufgesetzten Ebenen | — |
 
-### Punktanalyse — WIE ist es hier? (ein Klick, 12 Blöcke)
+### Punktanalyse — WIE ist es hier? (ein Klick, 16 Blöcke)
 
 | Block | Inhalt |
 |---|---|
 | Standort | Adresse, Gemeinde, AGS, Bundesland |
 | Bevölkerung | Einwohner, Altersgruppen, Haushaltsgröße, Ausländeranteil — 100-m-genau |
 | Wohnen | Nettokaltmiete, Leerstandsquote, Eigentümerquote, Baualter, Neubauhinweis |
-| Gastronomie | Betriebe nach Typ, Küche, Kette/Einzelbetrieb, Wettbewerbsdichte nach Entfernung (150/300/600/900 m), nächster Betrieb |
+| Verfügbares Einkommen (3b) | VGRdL-Kreiswert mit Land/Bund und Verlauf — die ehrliche Kaufkraft-Näherung |
+| Kreisprofil (3c) | Übernachtungen je EW, **Erwerbstätige am Arbeitsort je 1.000 EW** (Tagesbevölkerung), Beschäftigten-/Arbeitslosenquote, Bevölkerungsbewegung — Regionalatlas, je eigenes Datenjahr |
+| Pendler (3d) | Ein-/Auspendler, Saldo, Quoten, Binnenpendler der Gemeinde + Top-Herkünfte/-Ziele mit km (Pendlerrechnung der Länder) |
+| Gastronomie | Betriebe nach Typ, Küche, Kette/Einzelbetrieb, Wettbewerbsdichte nach Entfernung (150/300/600/900 m), nächster Betrieb, **Branchenprofil** (was zählt als direkter Wettbewerb) |
 | Erreichbarkeit zu Fuß | echtes Wegenetz statt Luftlinie: erreichbare Fläche, Erschließungsgrad, Umwegfaktor, Gehstrecke je Betrieb |
+| Rad-Liefergebiet (4d) | erreichbare Einwohner in 5–15 min Radstrecke (Radprofil, 15 km/h als benannter gewählter Wert) |
 | Systemgastronomie & Marken | Ketten je Marke mit Anzahl und Entfernung, Kettenanteil, **Gebietsschutz-Check für die eigene Marke (5/10/20 km)** |
 | Umfeld | Frequenzbringer in 9 Kategorien (Einkauf, Bildung, Gesundheit, Büro, …) |
-| Verkehr/ÖPNV | Haltestellen, Linien, GTFS-Abfahrten je Stunde eines konkreten Tages, Mittagsfenster 11–14 Uhr |
+| Klima (5b) | DWD-Normalwerte 1991–2020 der nächsten Station: Sommertage (mit Monatsbalken), Heiße Tage, Sonne, Niederschlag, Temperatur — für Außengastronomie |
+| Verkehr/ÖPNV | Haltestellen, Linien, GTFS-Abfahrten je Stunde eines konkreten Tages, Mittagsfenster 11–14, Abendfenster 17–22, Nachtfenster 22–1 Uhr |
 | Gemessene Frequenz | Radzählstellen München (Tageswerte), Kfz-Verkehrsstärke DTV (BAYSIS, ganz Bayern) |
 | Planungsrecht | Hochwassergefahrenflächen HQhäufig/HQ100/HQextrem (Bayern), Bebauungsplan-Umgriffe (München) |
 | Bodenrichtwerte | Kartenebene + Klickabfrage in 7 Bundesländern, Portallinks für alle |
@@ -40,19 +45,22 @@ hinter Login bzw. Lizenz.
 
 | Funktion | Besonderheit |
 |---|---|
-| Vergleichstabelle: 40 Kennzahlen in 6 schaltbaren Gruppen | jede berechnete Spalte ist als „berechnet" beschriftet |
+| Vergleichstabelle: 51 Kennzahlen in 6 schaltbaren Gruppen | jede berechnete Spalte ist als „berechnet" beschriftet |
 | Gewichtetes Ranking | Punktzahl allein aus eigenen Gewichten, jeder Beitrag offen |
 | Eigene Note (1–5) und Notiz je Punkt | einzige Wertung im Werkzeug — und sie kommt vom Nutzer |
-| Verlauf & „Neu prüfen" | Quellen erneut abfragen; eröffnete/verschwundene Betriebe namentlich |
-| Standortbericht | druckbare Seite je Punkt, PDF über Browserdruck |
-| Umsatzschätzung | Spanne, offene Formel, Prüfstein gegen echten Umsatz, **Franchise-Kostenprobe** (Gebühr, Werbeabgabe, Wareneinsatz, Personal → Verbleib vor Miete) |
-| Export | JSON und CSV je Punkt, CSV des Vergleichs |
+| Verlauf & „Neu prüfen" | Quellen erneut abfragen; eröffnete/verschwundene Betriebe namentlich; ab drei Ständen Verlaufslinien im Bericht |
+| Pflegelauf | „alle N neu prüfen" mit Kostenansage, Zusammenfassung je Punkt |
+| Standortbericht | druckbare Seite je Punkt mit Lagekarte, PDF über Browserdruck |
+| **Duell-Bericht A gegen B** | zwei Kandidaten Spalte an Spalte, beide Lagekarten, Differenzspalte als Fakt statt Wertung |
+| Adressliste | bis 25 Makler-Adressen auf einmal geocodieren und als Punkte merken (Nominatim-Limit gewahrt) |
+| Umsatzschätzung | Spanne, offene Formel, Prüfstein gegen echten Umsatz, **Franchise-Kostenprobe** (Gebühr, Werbeabgabe, Wareneinsatz, Personal → Verbleib vor Miete), **Mietprobe** gegen das konkrete Exposé |
+| Export & Datensicherung | JSON und CSV je Punkt, CSV des Vergleichs; alle Punkte samt Verlauf als Sicherungsdatei mit Wiedereinspielen |
 
 ### Betrieb
 
 Läuft komplett lokal (localhost, SQLite), kein Konto, keine Cloud. Cache mit
 Kachel-Logik schont die freien Dienste; jeder echte Abruf steht im Protokoll.
-Geprüft durch 288 automatische Tests, 37 Live-Routenprüfungen, 20 Browser-Checks
+Geprüft durch 326 automatische Tests, 45 Live-Routenprüfungen, 27 Browser-Checks
 und 9 Abnahmekriterien.
 
 ---
@@ -67,7 +75,9 @@ Standortsuche in Deutschland typischerweise eingekauft werden.
 | **Kosten** | 0 € (offene Daten, lokal) | Portalzugang teils frei, **gewerbliche Nutzung nur mit kommerzieller Lizenz** (Preis auf Anfrage) | Kauf-/Jahreslizenzen im Tausender-Bereich (Listenpreise im GfK-Webshop; Zusatzdaten z. B. Länderkarten ab 5.000 €) | Projekt-/Abopreise auf Anfrage, typisch vier- bis fünfstellig pro Jahr |
 | **Betrieb / Datenhoheit** | lokal auf dem eigenen Rechner, keine Cloud, kein Konto | Cloud-Portal | Desktop-Software mit Datenpaketen | Cloud/WebGIS |
 | **Einwohner kleinräumig** | ✅ amtlicher Zensus 2022 im 100-m-Gitter (Stichtag 15.05.2022, ausgewiesen) | — | ✅ eigene Mikrodaten, jährlich fortgeschrieben | ✅ eigene Mikrodaten (z. T. 100-m-Raster) |
-| **Kaufkraft** | ❌ bewusst nicht — es gibt keine seriöse freie Quelle; Ersatz: Nettokaltmiete als Wohlstandsindikator | — | ✅ Kernprodukt (NIQ-Kaufkraft) | ✅ enthalten |
+| **Kaufkraft** | ❌ kleinräumig bewusst nicht — es gibt keine seriöse freie Quelle; Ersatz: Nettokaltmiete (100 m) + verfügbares Einkommen (VGRdL, Kreis) | — | ✅ Kernprodukt (NIQ-Kaufkraft) | ✅ enthalten |
+| **Tagesbevölkerung / Pendler** | ✅ amtlich: Pendlerrechnung je Gemeinde (Ein-/Auspendler, Saldo, Top-Verflechtungen) + Erwerbstätige am Arbeitsort je Kreis | — | teils (Zusatzdaten) | ✅ meist modelliert |
+| **Klima (Außengastronomie)** | ✅ DWD-Normalwerte 1991–2020 der nächsten Station, mit Stationsangabe | — | — | teils |
 | **Passantenfrequenz** | ❌ nicht flächig; Ersatz: GTFS-Abfahrten je Stunde, Radzählstellen, Kfz-DTV — alles gemessen; hystreet wird verlinkt, nicht abgegriffen | ✅ **gemessen** (300+ Laserscanner, 24/7) — aber nur an ausgerüsteten Einkaufsstraßen | teils als Zusatzdaten | teils, meist modelliert (Mobilfunk-/Mobilitätsdaten) |
 | **Wettbewerb / POI** | ✅ OpenStreetMap **live** (tagesaktuell, als Untergrenze ausgewiesen), nach Typ/Küche/Kette | — | POI-Pakete zukaufbar | ✅ POI-Datenbanken enthalten |
 | **Gehzeit statt Luftlinie** | ✅ eigenes Fußwegenetz, Erschließungsgrad, Umwegfaktor | — | eingeschränkt | ✅ Fahr-/Gehzeitzonen |

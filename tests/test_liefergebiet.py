@@ -32,8 +32,10 @@ def test_radprofil_schliesst_das_richtige_aus():
     assert _befahrbar({"access": "private", "bicycle": "yes"}) is True
     # Treppen fehlen schon im Wegefilter der Abfrage, nicht erst hier.
     assert "steps" not in RADWEGE
-    assert "footway" not in RADWEGE
     assert "cycleway" in RADWEGE
+    # Fußwege sind bewusst drin: ohne sie zerfiel das Netz am Marienplatz
+    # in Inseln (Live-Test 03.08.2026: 21.214 Knoten, 2 erreichbar).
+    assert "footway" in RADWEGE
 
 
 def test_abfrage_rechnet_reichweite_aus_der_fahrzeit():

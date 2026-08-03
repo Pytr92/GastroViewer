@@ -524,6 +524,104 @@ gewesen — die Prüfung ergab: zum **31.12.2025 eingestellt**, keine Datendatei
 21 Städte mit je einer Zählstelle. Gemessene Passantenfrequenz bleibt damit die eine
 Datenklasse, die es frei nicht gibt.
 
+## Kreisprofil (Block 3c) — vier weitere amtliche Blicke auf den Kreis
+
+Auf demselben verifizierten Regionalatlas-Dienst liest Block **3c** vier weitere
+Indikatortabellen, jede mit Kreis, Land und Bund nebeneinander und mit ihrem eigenen
+Datenjahr (die Jahre unterscheiden sich je Tabelle und werden nicht vermischt):
+
+- **Gästeübernachtungen je Einwohner** und durchschnittliche Aufenthaltsdauer
+  (Beherbergungsstatistik) — Touristen sind Zulauf, den der Zensus nicht sieht.
+- **Erwerbstätige am Arbeitsort je 1.000 Einwohner (15–64)** — die ehrliche
+  Tagesbevölkerungs-Näherung. Ein Wert über 1.000 heißt: mehr Arbeitsplätze als
+  Erwerbsfähige, also Einpendler. Dazu der Anteil Handel/Verkehr/Gastgewerbe.
+- **Beschäftigten- und Arbeitslosenquote** — für Gastronomie doppelt lesbar, als
+  Kaufkraft-Umfeld und als Personalverfügbarkeit.
+- **Bevölkerungsbewegung**: Entwicklung im Jahr und Wanderungssaldo je 10.000
+  Einwohner, Bevölkerungsdichte — wächst die Region, in die ein langer Mietvertrag fällt?
+
+Live-Gegenprobe am 03.08.2026 (München/Bayern/Bund): Übernachtungen 13,2/7,8/5,9 je EW
+(2024) · Erwerbstätige 1.159/924/869 je 1.000 (2024) · Arbeitslosenquote 5,4/4,0/6,3 %
+(2025) · Bevölkerungsentwicklung +108,8/+54,9/+14,5 je 10.000 EW (2024). Platzhalter-
+Sperrwerte des Dienstes (2222222…) werden zu „liegt nicht vor", nie zu einer Zahl.
+
+## Pendler (Block 3d) — wer ist tagsüber wirklich da?
+
+Phase-0-Fund: der **Pendleratlas der Statistischen Ämter**
+(`pendleratlas.statistikportal.de`) lädt seine Werte als offene CSV-Dateien
+(Datenlizenz Deutschland 2.0) — Einpendler, Auspendler, Saldo, Quoten und Binnenpendler
+je Gemeinde (12-stelliger Regionalschlüssel), dazu je Land eine Verflechtungsdatei mit
+den wichtigsten Herkunfts- und Zielgemeinden **samt Entfernung**. Quelle ist die
+Pendlerrechnung des Bundes und der Länder (Erwerbstätigen-Konzept, nicht nur
+sozialversicherungspflichtig Beschäftigte). Live-Gegenprobe München 2024: 529.834
+Einpendler, 248.679 Auspendler, Saldo +281.155, Einpendlerquote 45,3 %.
+
+Der Block deutet den Saldo ehrlich („gewinnt tagsüber per Saldo X Menschen dazu") und
+lässt Eigenheiten sichtbar: Berlin taucht als München-„Herkunft" auf — mit 501 km in der
+km-Spalte, denn die Pendlerrechnung arbeitet mit gemeldeten Orten (Homeoffice,
+Zweitwohnung). Der AGS aus dem Zensus wird über die Gemeindeliste des Atlas auf den ARS
+abgebildet (Stellen 1–5 + 10–12). Grenze wie immer benannt: **Gemeindewert**, für München
+die ganze Stadt.
+
+## Klima für Außengastronomie (Block 5b, DWD)
+
+Für Biergarten, Terrasse und Eisdiele: **Klimanormalwerte 1991–2020** der jeweils
+nächsten DWD-Station vom Open-Data-Server (`opendata.dwd.de`, offene Textdateien) —
+Sommertage, Heiße Tage, Sonnenscheindauer, Niederschlag, Jahresmitteltemperatur, dazu die
+Monatsverteilung der Sommertage als Balken (wie lang ist die Draußen-Saison?). Jede
+Kennzahl nennt **ihre** Station samt Entfernung und Stationshöhe — jeder Parameter hat
+ein eigenes Stationsnetz (Sonnenschein wird an weit weniger Stationen gemessen als
+Niederschlag), am Marienplatz stammen die Werte z. B. von München-Stadt,
+München-Bogenhausen und St. Bonifaz. Ab 30 km Entfernung warnt der Block. Gecacht werden
+die zehn Deutschland-weiten Dateien, nicht der Punkt — der zweite Punkt irgendwo in
+Deutschland kostet keinen Abruf mehr.
+
+## Rad-Liefergebiet (Block 4d) — erreichbare Einwohner in Lieferzeit
+
+Für Lieferkonzepte zählt nicht der Umkreis, sondern: wie viele Menschen erreicht ein
+Lieferrad in 5–15 Minuten? Dasselbe Rechenwerk wie die Erreichbarkeit zu Fuß (OSM-Netz,
+Dijkstra, Zensuszellen), aber mit **Radprofil** und pauschal 15 km/h — ein gewählter
+Wert, der in der Ausgabe steht. Nur auf Knopfdruck (großes Wegenetz, Overpass ist ein
+Spendendienst), Ergebnis 14 Tage im Cache, eigene Kartenebene mit Streckenstufen.
+
+Lehrstück aus dem ersten Live-Test: ohne Fußwege zerfiel das Radnetz am Marienplatz in
+Inseln (21.214 Knoten, 2 erreichbar) — Fußwege sind in Altstädten die Verbindungsstücke.
+Sie sind deshalb im Profil (Lieferräder dürfen meist schieben), und der Hinweis nennt die
+Fehlerrichtung: eher zu groß gerechnet. Gegenprobe danach: 9.350 Einwohner in 5 Minuten
+ab Marienplatz.
+
+## Werkzeuge: Datensicherung, Pflegelauf, Adressliste, Duell-Bericht
+
+- **Datensicherung**: „Sichern (Datei)" im Standortvergleich lädt alle gemerkten Punkte
+  samt Verlauf, Notizen und Bewertungen als eine JSON-Datei; „Sicherung einspielen" liest
+  sie wieder ein — exakte Dubletten werden erkannt und übersprungen.
+- **Pflegelauf**: „alle N neu prüfen" fragt jeden gemerkten Punkt nacheinander neu ab
+  (mit Kostenansage — je Punkt eine Overpass-Abfrage) und fasst die Veränderungen
+  zusammen.
+- **Adressliste**: mehrere Adressen aus Makler-Exposés auf einmal — eine je Zeile,
+  höchstens 25, nacheinander über Nominatim (1 Anfrage/s bleibt gewahrt) gesucht und als
+  Punkte gemerkt; Zeilen ohne Treffer bleiben als Fehlerliste stehen.
+- **Duell-Bericht** (`/duell?a=…&b=…`): die Endauswahl ist fast immer ein Zweikampf —
+  eine Druckseite, beide Kandidaten Spalte an Spalte mit beiden Lagekarten und einer
+  Differenzspalte. Bewusst ohne „Gewinner"-Markierung: die Differenz ist ein Fakt, keine
+  Wertung; bei ungleichen Radien warnt die Seite.
+- **Branchenprofil** im Gastronomieblock: wählbar, welche OSM-Typen als direkter
+  Wettbewerb zählen (Imbiss, Restaurant, Café, Bar, Eisdiele) — reine Filterung
+  vorhandener Daten; die Schätzung bietet die Profilzahl sichtbar zur Übernahme an.
+- **Scan-Metriken**: der Flächen-Scan kann neben „Einwohner je Betrieb" auch
+  Betriebsdichte und Einwohnerdichte einfärben — der Wechsel zeichnet nur um, ohne neue
+  Abfrage.
+- **Mietprobe** in der Schätzung: Fläche × geforderte Kaltmiete aus dem Exposé gegen die
+  Miet-Obergrenze der Rechnung — eine Gegenprobe, kein Rechenfaktor.
+
+**Geprüfte Irrwege dieser Runde, dokumentiert statt gebaut:** die
+BBSR-Bevölkerungsprognose 2045 gibt es nur im Tableau-Dashboard ohne stabile offene
+Datei-Endpunkte (und inkar.de liefert eine unvollständige TLS-Zertifikatskette); München
+bietet keine offene Passantenzählung, Bonns „tagesaktuelle" Ressource verweist nur auf
+hystreet.com und die statischen Jahresdateien (2018) tragen keine Lizenz; die
+PKS-Kreistabellen des BKA gibt es nur als XLSX und laut BKA-Interpretationshilfe nur
+eingeschränkt vergleichbar. Alle drei stehen als Links mit Begründung im Quellenblock.
+
 ## Franchise: Systemgastronomie, Gebietsschutz, Kostenprobe
 
 Drei Ergänzungen aus der Sicht eines Franchisenehmers:
@@ -751,12 +849,18 @@ Alles über Umgebungsvariablen, alles optional:
 | `GET /api/gitter?ebene=&west=&sued=&ost=&nord=` | Übersichtsgitter 1 km/10 km je Kartenausschnitt |
 | `GET /api/scan?west=&sued=&ost=&nord=` | Flächen-Scan: Einwohner je Betrieb im 300-m-Umfeld, je 100-m-Zelle |
 | `GET /api/einkommen?ags=` | verfügbares Einkommen je Einwohner (VGRdL, Kreisebene) mit Land- und Bundesvergleich |
+| `GET /api/kreisprofil?ags=` | Kreisprofil: Übernachtungen, Erwerbstätige am Arbeitsort, Arbeitsmarkt, Bevölkerung |
+| `GET /api/pendler?ags=` | Pendlerrechnung der Gemeinde: Ein-/Auspendler, Saldo, Top-Verflechtungen |
+| `GET /api/point/klima?lat=&lon=` | DWD-Klimanormalwerte 1991–2020 der nächsten Station |
+| `GET /api/point/liefergebiet?lat=&lon=&minuten=` | Rad-Liefergebiet: erreichbare Einwohner in 5–15 min — **nur auf Anforderung** |
 | `GET /api/point/marke?lat=&lon=&marke=&r=` | Gebietsschutz-Check: Betriebe der eigenen Marke bis 20 km |
 | `GET /api/geocode?q=` | Adresssuche |
 | `GET /api/points` · `POST /api/points` · `DELETE /api/points/{id}` | gemerkte Punkte |
 | `GET /api/points/{id}` · `GET /api/points/{id}/verlauf` | ein Punkt mit vollem Datenstand bzw. seine abgelegten Stände |
 | `POST /api/points/{id}/pruefung` | „Neu prüfen": Quellen erneut abfragen, Unterschiede ausweisen |
 | `GET /bericht?punkt={id}` | druckbarer Standortbericht (PDF über den Browserdruck) |
+| `GET /duell?a={id}&b={id}` | Duell-Bericht: zwei Punkte Spalte an Spalte, beide Lagekarten |
+| `GET /api/points/export` · `POST /api/points/import` | Datensicherung aller Punkte samt Verlauf als eine Datei |
 | `GET /api/points/vergleich` | Vergleichstabelle |
 | `GET /api/export/point.json` · `point.csv` · `vergleich.csv` | Export |
 | `GET /api/stats` · `GET /api/outbound` | Cache-Zustand, Protokoll der echten Abrufe |
@@ -809,7 +913,7 @@ Das letzte Protokoll steht in [`docs/abnahme.md`](docs/abnahme.md).
 
 ### Vollprüfung aller Endpunkte
 
-Die dritte Ebene: alle 35 API-Routen live gegen einen laufenden Server, mit erzwungenen
+Die dritte Ebene: alle API-Routen (45 Prüfungen) live gegen einen laufenden Server, mit erzwungenen
 Frischabrufen bei Zensus, Overpass und „Neu prüfen" und unabhängigen Erwartungswerten
 (A9: 111.624 Kfz/Tag; Isarauen: HQ 100; Köln: Bodenrichtwert; Innenstadt-Scan: über
 100 Betriebe). Braucht Netz und einen GTFS-Import.

@@ -381,6 +381,92 @@ def t_validierung():
     hole("/api/point", {**P, "r": 20}, erwartet=422)
     return "außerhalb Deutschlands und Mini-Radius → 422"
 
+def t_kreisprofil():
+    d, dauer, _ = hole("/api/kreisprofil", {"ags": "09162000"})
+    assert d["ok"], d.get("error")
+    werte = {i["schluessel"]: i for i in d["data"]["indikatoren"]}
+    et = werte["et_je_1000_ew"]
+    # München ist Einpendler-Magnet: mehr Erwerbstätige am Arbeitsort als
+    # Erwerbsfähige — der Wert muss über 1.000 liegen, der Bundeswert darunter.
+    assert et["kreis"] > 1000 > et["bund"], (et["kreis"], et["bund"])
+    ue = werte["uebernachtungen_je_ew"]
+    assert ue["kreis"] > ue["bund"], "München hat mehr Übernachtungen je EW als der Bund"
+    assert werte["arbeitslosenquote"]["kreis"] > 0
+    return (f"ET {et['kreis']}/1000 ({et['jahr']}), Übern. {ue['kreis']}/EW, "
+            f"ALQ {werte['arbeitslosenquote']['kreis']} % — {dauer:.1f} s")
+
+
+def t_pendler():
+    d, dauer, _ = hole("/api/pendler", {"ags": "09162000"})
+    assert d["ok"], d.get("error")
+    p = d["data"]
+    assert p["einpendler"] > 300_000, p["einpendler"]
+    assert p["saldo"] > 0, "München muss Einpendlerüberschuss haben"
+    assert p["einpendler"] - p["auspendler"] == p["saldo"]
+    herkunft = (p.get("verflechtung") or {}).get("herkunft") or []
+    assert len(herkunft) == 5 and all(h.get("km") is not None for h in herkunft)
+    return (f"Jahr {p['jahr']}: {p['einpendler']:,} ein, {p['auspendler']:,} aus, "
+            f"Saldo +{p['saldo']:,} — {dauer:.1f} s").replace(",", ".")
+
+
+def t_klima():
+    d, dauer, _ = hole("/api/point/klima", {"lat": M[0], "lon": M[1]})
+    assert d["ok"], d.get("error")
+    werte = {k["schluessel"]: k for k in d["data"]["kennzahlen"]}
+    assert set(werte) == {"sommertage", "heisse_tage", "sonnenschein",
+                          "niederschlag", "temperatur"}
+    # Plausibilität statt Fixwert: die nächste Station kann sich ändern.
+    assert 30 < werte["sommertage"]["wert"] < 90
+    assert 1500 < werte["sonnenschein"]["wert"] < 2200
+    assert all((k["station"] or {}).get("distanz_m", 1e9) < 30_000
+               for k in werte.values()), "alle Stationen müssen nah sein"
+    assert "1991–2020" in d["provenance"]["stand"]
+    return (f"{werte['sommertage']['wert']} Sommertage "
+            f"({werte['sommertage']['station']['name']}) — {dauer:.1f} s")
+
+
+def t_liefergebiet():
+    d, dauer, _ = hole("/api/point/liefergebiet",
+                       {"lat": M[0], "lon": M[1], "minuten": 5})
+    assert d["ok"], d.get("error")
+    g = d["data"]
+    assert g["einwohner_liefergebiet"] and g["einwohner_liefergebiet"] > 1000, (
+        "im 5-Minuten-Radgebiet um den Marienplatz wohnen Menschen"
+    )
+    assert g["erreichbare_knoten"] > 1000, (
+        "das Netz darf nicht in Inseln zerfallen (Fußwege gehören ins Radprofil)"
+    )
+    assert g["radius_m"] == 1250
+    return (f"{g['einwohner_liefergebiet']:,} Einwohner, "
+            f"{g['erreichbare_knoten']:,} Knoten — {dauer:.1f} s").replace(",", ".")
+
+
+def t_sicherung():
+    d, _, _ = hole("/api/points/export")
+    assert d["format"] == "gastroviewer-punkte"
+    ergebnis, _, _ = hole("/api/points/import", methode="POST", body=d)
+    assert ergebnis["neu"] == 0, "Wieder-Einspielen derselben Sicherung darf nichts doppeln"
+    return f"{len(d['punkte'])} Punkt(e) gesichert, Dublettenschutz greift"
+
+
+def t_schaetzung_mietprobe():
+    body = {"einwohner": 16370, "wettbewerber": 26, "besuche_je_einwohner": 60.3,
+            "bon_min": 7.15, "bon_max": 10.21,
+            "flaeche_qm": 120, "angebotsmiete_qm": 45}
+    d, _, _ = hole("/api/schaetzung", methode="POST", body=body)
+    mp = d["mietprobe"]
+    assert mp["monatsmiete_eur"] == 5400
+    assert mp["lage"] in {"unter", "innerhalb", "ueber"}
+    assert mp["obergrenze_eur"] == d["ergebnis"]["monatsmiete_obergrenze_eur"]
+    return f"5.400 € gegen Obergrenze {mp['obergrenze_eur']} — Lage: {mp['lage']}"
+
+
+def t_duell_seite():
+    d, _, _ = hole("/duell")
+    assert "duell.js" in d and "Duell-Bericht" in d
+    return "Seite wird ausgeliefert"
+
+
 def t_cache_wirkt():
     d1, _, _ = hole("/api/point", P)
     d2, _, _ = hole("/api/point", P)
@@ -405,6 +491,10 @@ ALLE = [
     ("GET /api/point/links", t_links),
     ("GET /api/gitter — Übersicht München + Bayern", t_gitter),
     ("GET /api/einkommen — Regionalatlas live", t_einkommen),
+    ("GET /api/kreisprofil — Regionalatlas live", t_kreisprofil),
+    ("GET /api/pendler — Pendleratlas live", t_pendler),
+    ("GET /api/point/klima — DWD live", t_klima),
+    ("GET /api/point/liefergebiet — Radnetz live", t_liefergebiet),
     ("GET /api/scan — Flächen-Scan Innenstadt, live", t_scan),
     ("GET /api/geocode", t_geocode),
     ("GET /api/wms (Register)", t_wms_register),
@@ -414,12 +504,15 @@ ALLE = [
     ("GET /api/schaetzung/vorgaben", t_schaetzung_vorgaben),
     ("POST /api/schaetzung", t_schaetzung_rechnen),
     ("POST /api/schaetzung (Franchise-Kostenprobe)", t_schaetzung_franchise),
+    ("POST /api/schaetzung (Mietprobe)", t_schaetzung_mietprobe),
     ("POST /api/schaetzung (Abweisung)", t_schaetzung_lehnt_unsinn_ab),
     ("POST /api/points", t_punkt_merken),
     ("PATCH /api/points/{id}", t_punkt_notiz),
     ("GET /api/points/{id}", t_punkt_einzeln),
     ("POST /api/points/{id}/pruefung — Live-Abruf erzwungen", t_pruefung),
     ("GET /bericht", t_bericht),
+    ("GET /duell", t_duell_seite),
+    ("Datensicherung: Export + Dublettenschutz", t_sicherung),
     ("GET /api/points/vergleich", t_vergleich),
     ("GET /api/export/point.json", t_export_json),
     ("GET /api/export/point.csv", t_export_csv),

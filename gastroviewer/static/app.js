@@ -537,8 +537,8 @@ function zeigeScanLegende(status) {
     + '300-m-Umfeld je 100-m-Zelle · feste, gewählte Klassen · Wechsel der '
     + 'Kennzahl zeichnet nur um, ohne neue Abfrage'));
   zeilen.push(el('div', { class: 'hinweis-klein' },
-    `${metrik.deutung} OSM zählt Betriebe unvollständig; Betriebszahlen sind `
-    + 'Untergrenzen.'));
+    `${metrik.deutung} OSM zählt Betriebe unvollständig: Betriebszahlen sind `
+    + 'Untergrenzen, „je Betrieb“-Werte damit Obergrenzen.'));
   if (status.veraltet) {
     zeilen.push(el('button', { class: 'scan-knopf', onclick: () => ladeScan() },
       'Diesen Ausschnitt scannen'));

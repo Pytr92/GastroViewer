@@ -110,7 +110,7 @@ def pruefe_quellenangaben(page) -> str:
         ".block",
         """e => e.filter(b => {
             const id = b.id.replace('block-', '');
-            if (['grenzen', 'gehweg', 'bodenrichtwert'].includes(id)) return false;
+            if (['grenzen', 'gehweg', 'liefergebiet', 'bodenrichtwert'].includes(id)) return false;
             return !b.querySelector('.quelle');
         }).map(b => b.id)""")
     fordere(not ohne, f"Blöcke ohne Quellenangabe: {ohne}")
@@ -178,6 +178,118 @@ def pruefe_einkommen(page) -> str:
     q = text(page, "#block-einkommen .quelle")
     fordere("VGRdL" in q or "Gesamtrechnungen" in q, "Quellenangabe fehlt")
     return "Kreis-, Landes- und Bundeswert mit Kreisebenen-Hinweis"
+
+
+def pruefe_kreisprofil(page) -> str:
+    """Block 3c: vier Themen aus dem Regionalatlas, Kreis/Land/Bund je Zeile,
+    und der Einpendler-Deutungssatz für München (ET > 1.000 je 1.000)."""
+    fordere(status(page, "kreisprofil") == "geladen",
+            f"Kreisprofil-Status: {status(page, 'kreisprofil')!r}")
+    # innerText liefert die GERENDERTE Schrift — die Themenzeilen sind per
+    # CSS in Großbuchstaben gesetzt, deshalb wird kleingeschrieben verglichen.
+    inhalt = text(page, "#inhalt-kreisprofil")
+    klein = inhalt.lower()
+    for begriff in ("tourismus", "erwerbstätige am arbeitsort", "arbeitsmarkt",
+                    "bevölkerung", "arbeitslosenquote"):
+        fordere(begriff in klein, f"Kreisprofil ohne {begriff!r}")
+    fordere("Einpendler" in inhalt,
+            "Für München muss der Einpendler-Deutungssatz erscheinen")
+    fordere("eigenes Datenjahr" in inhalt, "Datenjahr-Warnung fehlt")
+    zeilen = page.eval_on_selector_all(
+        "#inhalt-kreisprofil table.daten tr", "e=>e.length")
+    fordere(zeilen >= 9, f"nur {zeilen} Tabellenzeilen im Kreisprofil")
+    return f"{zeilen} Zeilen, Deutungssatz und Datenjahr-Hinweis vorhanden"
+
+
+def pruefe_pendler(page) -> str:
+    """Block 3d: Gemeinde-Pendlerzahlen samt Top-Verflechtungen mit km."""
+    fordere(status(page, "pendler") == "geladen",
+            f"Pendler-Status: {status(page, 'pendler')!r}")
+    inhalt = text(page, "#inhalt-pendler")
+    for begriff in ("Einpendler", "Auspendler", "Pendlersaldo",
+                    "Wichtigste Herkünfte", "Wichtigste Ziele", "km"):
+        fordere(begriff in inhalt, f"Pendlerblock ohne {begriff!r}")
+    fordere("gewinnt tagsüber" in inhalt,
+            "München hat Einpendlerüberschuss — der Deutungssatz muss das sagen")
+    fordere("Gemeindewert" in inhalt, "Gemeindewert-Warnung fehlt")
+    return "Kennzahlen, Verflechtungen und Deutungssatz vorhanden"
+
+
+def pruefe_klima(page) -> str:
+    """Block 5b: fünf DWD-Kennzahlen, jede mit Station und Entfernung,
+    dazu die Monatsbalken der Sommertage."""
+    fordere(status(page, "klima") == "geladen",
+            f"Klima-Status: {status(page, 'klima')!r}")
+    inhalt = text(page, "#inhalt-klima")
+    for begriff in ("Sommertage", "Sonnenscheindauer", "Niederschlag",
+                    "1991–2020", "km"):
+        fordere(begriff in inhalt, f"Klimablock ohne {begriff!r}")
+    fordere("München" in inhalt, "Stationsname fehlt")
+    balken = page.eval_on_selector_all(
+        "#inhalt-klima div[title*='Tage']", "e=>e.length")
+    fordere(balken == 12, f"{balken} statt 12 Monatsbalken")
+    return "5 Kennzahlen mit Station, 12 Monatsbalken"
+
+
+def pruefe_branchenprofil(page) -> str:
+    """Das Profil filtert die vorhandenen OSM-Daten um — ohne neue Abfrage."""
+    alle = page.evaluate("""() => {
+        const s = document.querySelector('#inhalt-gastronomie .branche select');
+        s.value = 'alle'; s.dispatchEvent(new Event('change'));
+        return document.querySelector('#inhalt-gastronomie .branche .kennzahlen')
+            .innerText;
+    }""")
+    bar = page.evaluate("""() => {
+        const s = document.querySelector('#inhalt-gastronomie .branche select');
+        s.value = 'bar'; s.dispatchEvent(new Event('change'));
+        return document.querySelector('#inhalt-gastronomie .branche .kennzahlen')
+            .innerText;
+    }""")
+    fordere("Direkter Wettbewerb" in bar, "Profil-Kennzahlen fehlen")
+    fordere(alle != bar, "Profilwechsel muss die Zählung ändern")
+    hinweis = text(page, "#inhalt-gastronomie .branche")
+    fordere("cuisine" in hinweis, "Der Freitext-Hinweis zu cuisine muss stehen")
+    page.evaluate("""() => {
+        const s = document.querySelector('#inhalt-gastronomie .branche select');
+        s.value = 'alle'; s.dispatchEvent(new Event('change'));
+    }""")
+    return "Profilwechsel ändert die Zählung, cuisine-Hinweis steht"
+
+
+def pruefe_duell(page) -> str:
+    """Duell-Bericht: zwei Punkte Spalte an Spalte, beide Lagekarten."""
+    ids = []
+    for label, (lat, lon) in (("TESTPUNKT Duell A", MARIENPLATZ),
+                              ("TESTPUNKT Duell B", GIESING)):
+        pid = page.evaluate("""async ([label, lat, lon]) => {
+            const r = await fetch('/api/points', {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ label, lat, lon, radius: 600 }) });
+            return (await r.json()).id;
+        }""", [label, lat, lon])
+        ids.append(pid)
+    seite = page.context.browser.new_page(viewport={"width": 1200, "height": 1400})
+    fehler: list[str] = []
+    seite.on("pageerror", lambda e: fehler.append(str(e)))
+    try:
+        seite.goto(f"{page.url.split('/#')[0].rstrip('/')}/duell?a={ids[0]}&b={ids[1]}",
+                   wait_until="domcontentloaded")
+        seite.wait_for_timeout(4000)
+        inhalt = seite.eval_on_selector("#duell", "e=>e.innerText")
+        fordere("Duell" in inhalt and "Differenz" in inhalt,
+                "Duell-Kopf oder Differenzspalte fehlt")
+        karten = seite.eval_on_selector_all(
+            ".duell-karte.leaflet-container", "e=>e.length")
+        fordere(karten == 2, f"{karten} statt 2 Lagekarten")
+        fordere("keine Wertung" in inhalt, "Der Fakt-nicht-Wertung-Hinweis fehlt")
+        fordere(not fehler, f"JS-Fehler auf der Duellseite: {fehler}")
+    finally:
+        seite.close()
+        for pid in ids:
+            page.evaluate(
+                "async (pid) => { await fetch(`/api/points/${pid}`, { method: 'DELETE' }); }",
+                pid)
+    return "2 Lagekarten, Differenzspalte, Hinweis — ohne JS-Fehler"
 
 
 def pruefe_punkte_ebene(page) -> str:
@@ -655,6 +767,10 @@ PRUEFUNGEN = [
     ("Quelle, Stand, Lizenz je Block", pruefe_quellenangaben),
     ("Wettbewerb nach Entfernung", pruefe_wettbewerb_nach_entfernung),
     ("Verfügbares Einkommen (Kreis)", pruefe_einkommen),
+    ("Kreisprofil (Regionalatlas)", pruefe_kreisprofil),
+    ("Pendler (Gemeinde)", pruefe_pendler),
+    ("Klima für Außengastronomie (DWD)", pruefe_klima),
+    ("Branchenprofil im Gastronomieblock", pruefe_branchenprofil),
     ("Systemgastronomie & Gebietsschutz", pruefe_franchise),
     ("ÖPNV-Mittags- und Abendfenster", pruefe_gtfs_mittagsfenster),
     ("Schätzung im eigenen Reiter", pruefe_schaetzung_getrennt),
@@ -668,6 +784,7 @@ PRUEFUNGEN = [
     ("Flächen-Scan (Einwohner je Betrieb)", pruefe_flaechenscan),
     ("Planung und Hochwasser", pruefe_planung_und_hochwasser),
     ("Standortbericht", pruefe_bericht),
+    ("Duell-Bericht A gegen B", pruefe_duell),
     ("Gemerkte Punkte auf der Karte", pruefe_punkte_ebene),
     ("Eigene Notiz und Note", pruefe_eigene_notiz),
     ("Gewichtetes Ranking", pruefe_ranking),

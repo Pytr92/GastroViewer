@@ -9,9 +9,11 @@ Abhängigkeit.
 
 Was anders ist als zu Fuß:
 
-* **Radprofil** statt Fußprofil: Treppen, reine Fußwege und Korridore
-  fehlen; ``bicycle=no`` schließt aus. Fußgängerzonen bleiben drin, denn
-  Lieferräder dürfen dort meist schieben — das steht als Hinweis dabei.
+* **Radprofil** statt Fußprofil: Treppen und Korridore fehlen;
+  ``bicycle=no`` schließt aus. Fußgängerzonen und Fußwege bleiben drin —
+  Lieferräder dürfen dort meist schieben, und der erste Live-Test am
+  Marienplatz hat gezeigt, dass das Netz ohne die Fußwege in Inseln
+  zerfällt (21.214 Knoten, 2 erreichbar). Das steht als Hinweis dabei.
 * **Tempo**: gerechnet mit 15 km/h (250 m/min) — ein gewählter Wert für
   ein beladenes Lieferrad im Stadtverkehr, kein Messwert, und so steht er
   auch in der Ausgabe. Ampeln und Wartezeiten kennt die Rechnung nicht;
@@ -36,14 +38,18 @@ from .gehweg import (MAX_ANBINDUNG_M, NETZ_PUFFER, Wegenetz, baue_netz,
                      erreichbare_flaeche, gehstrecken)
 from .overpass import LICENSE, run_query
 
-# Wege, auf denen ein Lieferrad fahren kann. Gegenüber dem Fußprofil fehlen
-# Treppen (steps), Korridore und Bahnsteige; reine Fußwege (footway) fehlen
-# ebenfalls — wo sie die einzige Verbindung sind, erscheint das Gebiet
-# entsprechend kleiner, und das ist die ehrlichere Richtung des Fehlers.
+# Wege, auf denen ein Lieferrad fahren (oder schieben) kann. Gegenüber dem
+# Fußprofil fehlen Treppen (steps), Korridore und Bahnsteige. Fußwege
+# (footway) sind bewusst DRIN: der erste Live-Test am Marienplatz hat
+# gezeigt, dass das Straßennetz ohne sie in Inseln zerfällt — Fußwege sind
+# in Altstädten die Verbindungsstücke zwischen den befahrbaren Straßen, und
+# ein Netz aus Inseln rechnet gar nichts statt etwas Vorsichtiges. Die
+# Fehlerrichtung steht dafür im Hinweis: mit Fußwegen ist das Gebiet eher
+# zu groß.
 RADWEGE = (
     "cycleway|residential|living_street|service|unclassified|tertiary|"
     "tertiary_link|secondary|secondary_link|primary|primary_link|track|"
-    "road|path|pedestrian"
+    "road|path|pedestrian|footway"
 )
 
 # Gewählte Werte, keine Messwerte — sie stehen in der Ausgabe mit dabei.
@@ -91,9 +97,10 @@ HINWEISE = [
     "Gerechnet wird die kürzeste Strecke im OSM-Netz mit pauschal 15 km/h — "
     "ohne Ampeln, Einbahnregelungen für Räder, Steigung und Wartezeiten. "
     "Real ist das Gebiet eher kleiner.",
-    "Fußgängerzonen zählen mit (Lieferräder dürfen dort meist schieben oder "
-    "zu Randzeiten fahren) — reine Fußwege und Treppen nicht. Wo ein Fußweg "
-    "die einzige Verbindung ist, erscheint das Gebiet zu klein.",
+    "Fußgängerzonen und Fußwege zählen mit (Lieferräder dürfen dort meist "
+    "schieben oder zu Randzeiten fahren) — Treppen nicht. Ohne die Fußwege "
+    "zerfällt das Netz in Altstädten in Inseln; mit ihnen ist das Gebiet "
+    "eher zu groß gerechnet.",
     "Die Einwohner sind Wohnbevölkerung (Zensus 2022, Stichtag 15.05.2022), "
     "angesetzt am Mittelpunkt der 100-m-Zelle — eine Näherung.",
     "Die Rückfahrt und die Zeit in der Küche gehören zur Lieferzeit dazu — "
