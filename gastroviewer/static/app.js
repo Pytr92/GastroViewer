@@ -185,6 +185,8 @@ for (const name of ['zensus', 'gastronomie', 'frequenzbringer', 'oepnv', 'leerst
    tausend Punkte sind und SVG dabei spürbar träge wird. */
 state.gehwegRenderer = L.canvas({ padding: 0.3 });
 state.ebenen.gehflaeche = L.layerGroup();
+/* Rad-Liefergebiet (4d): dasselbe Prinzip, größeres Gebiet, Radprofil. */
+state.ebenen.liefergebiet = L.layerGroup();
 /* Übersichtsgitter 1 km/10 km — beantwortet „WO ist es interessant?", bevor
    man klickt. Canvas, weil es bis zu ~1.500 Zellen sind. */
 state.uebersichtRenderer = L.canvas({ padding: 0.3 });
@@ -213,6 +215,7 @@ const ebenenSchalter = L.control.layers({
   'Flächen-Scan (Einwohner je Betrieb)': state.ebenen.scan,
   'Gemerkte Punkte': state.ebenen.punkte,
   'Zu Fuß erreichbar': state.ebenen.gehflaeche,
+  'Rad-Liefergebiet': state.ebenen.liefergebiet,
   'Zensus-Gitter': state.ebenen.zensus,
   'Gastronomie': state.ebenen.gastronomie,
   'Frequenzbringer': state.ebenen.frequenzbringer,
@@ -241,7 +244,7 @@ state.rasterEbenen = new Set();
 function wendeDeckkraftAn() {
   const f = state.deckkraft;
   for (const name of ['zensus', 'gastronomie', 'frequenzbringer', 'oepnv', 'leerstand',
-    'uebersicht', 'scan', 'marke', 'gehflaeche']) {
+    'uebersicht', 'scan', 'marke', 'gehflaeche', 'liefergebiet']) {
     state.ebenen[name]?.eachLayer((l) => {
       const basis = l.options?._basisDeckkraft;
       if (basis === undefined || !l.setStyle) return;
@@ -1043,6 +1046,7 @@ function baueGeruest() {
     block('pendler', '3d · Pendler (Gemeinde)'),
     block('gastronomie', '4 · Gastronomie'),
     block('gehweg', '4b · Erreichbarkeit zu Fuß'),
+    block('liefergebiet', '4d · Rad-Liefergebiet'),
     block('franchise', '4c · Systemgastronomie & Marken'),
     block('umfeld', '5 · Umfeld'),
     block('klima', '5b · Klima für Außengastronomie (DWD)'),
@@ -1059,6 +1063,7 @@ function baueGeruest() {
   setInhalt('grenzen', el('ul', { class: 'liste' },
     GRENZEN.map((g) => el('li', {}, el('span', { class: 'haupt' }, g)))));
   zeigeGehwegAngebot();
+  zeigeLieferAngebot();
 }
 
 /* Der Gehwegblock lädt nicht von selbst: das Fußwegenetz ist mit 1–3 MB je Punkt
@@ -1080,6 +1085,117 @@ function zeigeGehwegAngebot() {
       + 'Werkzeugs ist und Overpass ein Spendenprojekt. Das Ergebnis bleibt '
       + 'danach 14 Tage im Cache.'),
     el('button', { id: 'btn-gehweg', onclick: ladeGehweg }, 'Gehstrecken berechnen'));
+}
+
+/* --- 4d Rad-Liefergebiet: wie 4b nur auf Anforderung — das Radnetz für
+   10 Minuten Fahrstrecke ist eine noch größere Overpass-Abfrage. */
+function zeigeLieferAngebot() {
+  state.ebenen.liefergebiet?.clearLayers();
+  setStatus('liefergebiet', 'ok', 'auf Anforderung');
+  const minuten = el('select', { id: 'liefer-minuten' },
+    [5, 8, 10, 12, 15].map((m) => {
+      const o = el('option', { value: String(m) }, `${m} Minuten`);
+      if (m === 10) o.selected = true;
+      return o;
+    }));
+  setInhalt('liefergebiet',
+    el('p', { class: 'hinweis-klein' },
+      'Für Lieferkonzepte ist nicht der Umkreis die Kernzahl, sondern: wie '
+      + 'viele Menschen erreicht ein Lieferrad in der Lieferzeit? Gerechnet '
+      + 'wird die kürzeste Strecke im OSM-Netz mit Radprofil und pauschal '
+      + '15 km/h — ein gewählter Wert, kein gemessener.'),
+    el('p', { class: 'hinweis-klein' },
+      'Läuft nur auf Knopfdruck: das Wegenetz für 10 Minuten Rad ist eine '
+      + 'große Overpass-Abfrage. Das Ergebnis bleibt 14 Tage im Cache.'),
+    el('div', { class: 'pflegeleiste' },
+      el('label', { for: 'liefer-minuten' }, 'Fahrzeit'),
+      minuten,
+      el('button', { id: 'btn-liefergebiet', onclick: ladeLiefergebiet },
+        'Liefergebiet berechnen')));
+}
+
+function ladeLiefergebiet() {
+  const lauf = state.ladeLauf;
+  const { lat, lon } = state;
+  const minuten = Number(document.getElementById('liefer-minuten')?.value || 10);
+  setStatus('liefergebiet', 'laedt', 'lädt …');
+  setInhalt('liefergebiet',
+    el('div', { class: 'laden' }),
+    el('p', { class: 'hinweis-klein' },
+      'Wegenetz und Zensuszellen für das Liefergebiet werden geladen — der '
+      + 'erste Abruf kann ein bis zwei Minuten dauern.'));
+  hole('/api/point/liefergebiet', { lat, lon, minuten })
+    .then((d) => {
+      if (lauf !== state.ladeLauf) return;
+      state.daten.liefergebiet = d;
+      zeigeLiefergebiet(d);
+    })
+    .catch((e) => { if (lauf === state.ladeLauf) zeigeBlockFehler('liefergebiet', e); });
+}
+
+function zeigeLiefergebiet(d) {
+  const id = 'liefergebiet';
+  if (!d.ok) {
+    setStatus(id, 'fehler', 'nicht erreichbar');
+    setInhalt(id, fehlerbox(d.error),
+      el('button', { onclick: zeigeLieferAngebot }, 'Erneut versuchen'));
+    setQuelle(id, d.provenance);
+    return;
+  }
+  const g = d.data;
+  if (!g) {
+    setStatus(id, 'ok', 'ohne Ergebnis');
+    setInhalt(id, ...warnungen(d.warnings || []),
+      el('button', { onclick: zeigeLieferAngebot }, 'Erneut versuchen'));
+    setQuelle(id, d.provenance);
+    return;
+  }
+  setStatus(id, 'ok', 'geladen');
+  zeichneLieferflaeche(g);
+
+  const kz = el('div', { class: 'kennzahlen' },
+    kennzahl(`Einwohner in ${g.minuten} min Radstrecke`, g.einwohner_liefergebiet),
+    kennzahl('Fahrstrecke', g.radius_m, 'm'),
+    kennzahl('Tempo (gewählt)', g.tempo_kmh, 'km/h', 1),
+    kennzahl('Zensuszellen im Gebiet', g.zellen_im_liefergebiet));
+
+  const netz = el('p', { class: 'hinweis-klein' },
+    `Wegenetz: ${NF.format(g.knoten)} Knoten `
+    + `(${NF.format(g.wege_gesperrt)} Wege als nicht befahrbar ausgeschlossen), `
+    + `kürzeste Strecke je Knoten in ${g.rechenzeit_ms} ms berechnet. `
+    + `Anbindung des Standorts: ${g.anbindung_m} m.`);
+
+  setInhalt(id, kz, netz,
+    el('button', { onclick: zeigeLieferAngebot }, 'andere Fahrzeit wählen'),
+    ...(g.hinweise || []).map((h) => el('div', { class: 'notiz' }, h)),
+    ...warnungen(d.warnings || []));
+  setQuelle(id, d.provenance);
+}
+
+function zeichneLieferflaeche(g) {
+  const gruppe = state.ebenen.liefergebiet;
+  gruppe.clearLayers();
+  const punkte = g?.flaeche || [];
+  if (!punkte.length) return;
+  const radius = g.radius_m || 1;
+  for (const [lat, lon, meter] of punkte) {
+    const anteil = meter / radius;
+    const stufe = GEH_STUFEN.find((s) => anteil <= s.bis) || GEH_STUFEN[GEH_STUFEN.length - 1];
+    const m = L.circleMarker([lat, lon], {
+      renderer: state.gehwegRenderer,
+      radius: 3,
+      stroke: false,
+      fillColor: stufe.farbe,
+      fillOpacity: 0.45 * state.deckkraft,
+      _basisDeckkraft: 0.45,
+      _basisRand: 0,
+    });
+    m.bindPopup(() => `<h4>Mit dem Rad erreichbar</h4>
+      <p>${NF.format(meter)} m Fahrstrecke
+      (${NF1.format(meter / g.tempo_m_pro_min)} min bei ${g.tempo_kmh} km/h)</p>`);
+    gruppe.addLayer(m);
+  }
+  if (!karte.hasLayer(gruppe)) gruppe.addTo(karte);
 }
 
 function ladeGehweg() {

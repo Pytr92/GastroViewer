@@ -331,6 +331,29 @@ class PointService:
 
         return await self._cached("pendler", f"pendler|{a}", laden)
 
+    async def liefergebiet(self, lat: float, lon: float, minuten: int) -> SourceResult:
+        """Rad-Liefergebiet — wie der Gehweg-Block nur auf Anforderung, denn
+        das Wegenetz für 10 Minuten Rad ist eine große Overpass-Abfrage.
+        Die Zensuszellen für das größere Gebiet laufen über den normalen
+        Zensus-Cache."""
+        from .sources import liefergebiet as liefer_mod
+
+        minuten = max(liefer_mod.MIN_MINUTEN,
+                      min(liefer_mod.MAX_MINUTEN, int(minuten)))
+        key = cache_key("liefergebiet", lat, lon, minuten)
+
+        async def laden() -> SourceResult:
+            radius = int(minuten * liefer_mod.RADTEMPO_M_PRO_MIN)
+            zellen = None
+            zensus_res = await self.zensus(lat, lon, radius)
+            if zensus_res.ok and zensus_res.data:
+                zellen = zensus_res.data.get("zellen")
+            return await liefer_mod.load(
+                self.outbound, self.settings, lat, lon, minuten, zellen
+            )
+
+        return await self._cached("liefergebiet", key, laden)
+
     async def klima(self, lat: float, lon: float) -> SourceResult:
         """Klimanormalwerte der nächsten DWD-Station.
 

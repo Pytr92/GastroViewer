@@ -282,6 +282,17 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         _validate(lat, lon, 600)
         return (await svc(request).klima(lat, lon)).to_dict()
 
+    @app.get("/api/point/liefergebiet")
+    async def point_liefergebiet(
+        request: Request, lat: float, lon: float,
+        minuten: int = Query(10, ge=5, le=15),
+    ):
+        """Rad-Liefergebiet: erreichbare Einwohner in X Minuten Fahrstrecke
+        (Radprofil, pauschal 15 km/h). Wie der Gehweg-Block nur auf
+        Anforderung — das Wegenetz ist eine große Overpass-Abfrage."""
+        _validate(lat, lon, 600)
+        return (await svc(request).liefergebiet(lat, lon, minuten)).to_dict()
+
     @app.get("/api/point/links")
     async def point_links(
         request: Request,
