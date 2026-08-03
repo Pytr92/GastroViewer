@@ -85,11 +85,38 @@ def build(
             "titel": "INKAR (BBSR)",
             "url": "https://www.inkar.de/",
             "beschreibung": "Indikatoren für Raumbeobachtung, Kreis- und Gemeindeebene.",
+            "warnung": (
+                "Geprüft 08/2026: Der Server liefert eine unvollständige "
+                "TLS-Zertifikatskette — je nach Browser/Werkzeug schlägt der "
+                "Abruf fehl. Deshalb kein Datenblock, nur dieser Link."
+            ),
+        },
+        {
+            "titel": "BBSR-Bevölkerungsprognose 2045 (Dashboard)",
+            "url": "https://www.bbsr.bund.de/BBSR/DE/daten-karten/"
+                   "raumentwicklung/2025/rop2045-bevoelkerung.html",
+            "beschreibung": (
+                "Der Blick nach vorn je Kreis — Raumordnungsprognose 2045. "
+                "Geprüft 08/2026: Zahlen nur im interaktiven Dashboard, keine "
+                "stabilen offenen Datei-Endpunkte; deshalb Link statt Block."
+            ),
         },
         {
             "titel": "Regionalstatistik der Statistischen Ämter",
             "url": "https://www.regionalstatistik.de/genesis/online",
             "beschreibung": "Amtliche Tabellen bis Gemeindeebene.",
+        },
+        {
+            "titel": "Polizeiliche Kriminalstatistik — Kreistabellen (BKA)",
+            "url": "https://www.bka.de/DE/AktuelleInformationen/"
+                   "StatistikenLagebilder/PolizeilicheKriminalstatistik/"
+                   "PKS2024/PKSTabellen/KreisFalltabellen/kreisfalltabellen.html",
+            "beschreibung": (
+                "Für Nachtgastronomie relevant. Geprüft 08/2026: nur als "
+                "XLSX, kein CSV — und die Häufigkeitszahlen je Kreis sind "
+                "laut BKA-Interpretationshilfe nur eingeschränkt vergleichbar "
+                "(Anzeigeverhalten, Tatortprinzip). Deshalb Link statt Block."
+            ),
         },
     ]
     if ags:
@@ -130,7 +157,11 @@ def build(
                 "url": _dd(f"Open Data {ort} Passantenfrequenz hystreet"),
                 "beschreibung": (
                     "Einzelne Städte spiegeln ihre hystreet-Daten kostenfrei im eigenen "
-                    "Open-Data-Portal (z. B. Bonn, Münster, Rendsburg). Erst dort suchen."
+                    "Open-Data-Portal (z. B. Bonn, Münster, Rendsburg). Erst dort suchen. "
+                    "Geprüft 08/2026: München bietet keine offene Passantenzählung; "
+                    "Bonns „tagesaktuelle“ Ressource verweist nur auf hystreet.com, "
+                    "die statischen Bonner Jahresdateien stammen von 2018 und tragen "
+                    "keine ausgewiesene Lizenz — deshalb hier kein Datenblock."
                 ),
             }
         )
