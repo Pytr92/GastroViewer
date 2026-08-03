@@ -303,6 +303,17 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             raise HTTPException(422, "Der Gemeindeschlüssel besteht aus Ziffern.")
         return (await svc(request).einkommen(ags)).to_dict()
 
+    @app.get("/api/kreisprofil")
+    async def kreisprofil(
+        request: Request,
+        ags: str = Query(..., min_length=5, max_length=8),
+    ):
+        """Kreisprofil aus dem Regionalatlas: Übernachtungen, Erwerbstätige
+        am Arbeitsort, Arbeitsmarkt, Bevölkerungsbewegung — Kreiswerte."""
+        if not ags.isdigit():
+            raise HTTPException(422, "Der Gemeindeschlüssel besteht aus Ziffern.")
+        return (await svc(request).kreisprofil(ags)).to_dict()
+
     @app.get("/api/gitter")
     async def gitter(
         request: Request,
@@ -780,6 +791,8 @@ VERGLEICH_SPALTEN = [
     {"key": "abfahrten_mittag", "titel": "Abfahrten 11–14 Uhr", "gruppe": "verkehr"},
     # Für Abendkonzepte (Bar, Abendlokal) das relevantere Fenster.
     {"key": "abfahrten_abend", "titel": "Abfahrten 17–22 Uhr", "gruppe": "detail"},
+    # Für Nachtkonzepte (Bar, Club): kommt das Publikum nach Mitternacht weg?
+    {"key": "abfahrten_nacht", "titel": "Abfahrten 22–1 Uhr", "gruppe": "detail"},
     {"key": "mittagsanteil", "titel": "Anteil Mittag % (berechnet)", "stellen": 1,
      "gruppe": "detail"},
     {"key": "abfahrten_je_einwohner", "titel": "Abfahrten je Einwohner (berechnet)",
@@ -797,6 +810,18 @@ VERGLEICH_SPALTEN = [
     {"key": "leerstand_osm", "titel": "Leerstände (OSM)", "gruppe": "detail"},
     {"key": "erzeugt", "titel": "Abgerufen am", "gruppe": "detail"},
     {"key": "geprueft", "titel": "Zuletzt geprüft", "gruppe": "detail"},
+
+    # --- Kreisprofil (Regionalatlas) — Kreiswerte, deshalb Detailgruppe:
+    # innerhalb einer Stadt unterscheiden sie keine Viertel, zwischen zwei
+    # Kandidaten in verschiedenen Kreisen sind sie genau der Unterschied.
+    {"key": "uebernachtungen_je_ew", "titel": "Übernachtungen je Einw. (Kreis)",
+     "stellen": 1, "gruppe": "detail"},
+    {"key": "et_je_1000_ew", "titel": "Erwerbstätige am Arbeitsort je 1.000 EW (Kreis)",
+     "gruppe": "detail"},
+    {"key": "arbeitslosenquote", "titel": "Arbeitslosenquote % (Kreis)",
+     "stellen": 1, "gruppe": "detail"},
+    {"key": "bev_entwicklung", "titel": "Bevölkerungsentw. je 10.000 EW (Kreis)",
+     "stellen": 1, "gruppe": "detail"},
 ]
 
 
@@ -809,6 +834,11 @@ def _row_for(saved: dict[str, Any]) -> dict[str, Any]:
     g = (bl.get("gtfs") or {}).get("data") or {}
     rad = ((bl.get("radzaehlung") or {}).get("data") or {}).get("naechste") or {}
     eink = ((bl.get("einkommen") or {}).get("data") or {}) or {}
+    kp = {
+        i.get("schluessel"): i.get("kreis")
+        for i in (((bl.get("kreisprofil") or {}).get("data") or {})
+                  .get("indikatoren") or [])
+    }
     gw = ((bl.get("gehweg") or {}).get("data") or {}) or {}
     gw_gas = gw.get("gastronomie") or {}
     gw_zen = gw.get("zensus") or {}
@@ -837,6 +867,10 @@ def _row_for(saved: dict[str, Any]) -> dict[str, Any]:
         "haushaltsgroesse": _wert(bev.get("haushaltsgroesse")),
         "miete_qm": _wert(woh.get("miete_qm")),
         "einkommen_kreis": (eink.get("kreis") or {}).get("wert_eur"),
+        "uebernachtungen_je_ew": kp.get("uebernachtungen_je_ew"),
+        "et_je_1000_ew": kp.get("et_je_1000_ew"),
+        "arbeitslosenquote": kp.get("arbeitslosenquote"),
+        "bev_entwicklung": kp.get("bev_entwicklung"),
         "leerstandsquote": _wert(woh.get("leerstandsquote")),
         "gastro_gesamt": gas.get("gesamt"),
         "fast_food": fastfood,
@@ -862,6 +896,7 @@ def _row_for(saved: dict[str, Any]) -> dict[str, Any]:
         # mittags leer — das trennt die beiden Fälle.
         "abfahrten_mittag": mittag,
         "abfahrten_abend": (g or {}).get("abfahrten_abend"),
+        "abfahrten_nacht": (g or {}).get("abfahrten_nacht"),
         "mittagsanteil": je_bezugsgroesse(mittag, abfahrten, 100, 1),
         # Näherung für Zulauf, den der Zensus nicht sieht: viele Abfahrten bei
         # wenig Wohnbevölkerung heißt, die Leute kommen von woanders.

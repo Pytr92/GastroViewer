@@ -300,6 +300,12 @@ MITTAG_VON, MITTAG_BIS = 11, 14
 # die Stunden 17 bis 21. Eine Pendlerhaltestelle ist um 18 Uhr noch voll und
 # um 21 Uhr leer — erst das Fenster über mehrere Stunden trennt die Fälle.
 ABEND_VON, ABEND_BIS = 17, 22
+# Und für Bar/Club die Frage „fährt danach noch etwas?": die Stunden 22, 23
+# und 0. GTFS zählt Fahrten nach Mitternacht als 24:xx/25:xx zum selben
+# Betriebstag; beim Einsortieren (Stunde modulo 24) landen sie in Stunde 0
+# bzw. 1 — die Stunde 0 enthält also beides, frühe 00:xx-Fahrten und
+# 24:xx-Nachtfahrten desselben Fahrplantags.
+NACHT_STUNDEN = (22, 23, 0)
 
 
 def _reference_date(conn: sqlite3.Connection) -> dict[str, Any]:
@@ -504,6 +510,9 @@ def load(settings: Settings, lat: float, lon: float, radius: int) -> SourceResul
             # Für Abendkonzepte das relevantere Fenster.
             "abfahrten_abend": sum(hours[ABEND_VON:ABEND_BIS]),
             "abendfenster": f"{ABEND_VON}–{ABEND_BIS} Uhr",
+            # Für Nachtkonzepte: kommt das Publikum nach Mitternacht noch weg?
+            "abfahrten_nacht": sum(hours[h] for h in NACHT_STUNDEN),
+            "nachtfenster": "22–1 Uhr",
             "haltestellen": haltestellen,
             "haltestellen_gesamt": len(bedient),
             "haltestellen_ohne_abfahrten": ohne,

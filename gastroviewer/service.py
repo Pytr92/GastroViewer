@@ -18,9 +18,10 @@ from typing import Any, Awaitable, Callable
 from .cache import AsyncCache, cache_key
 from .config import Settings
 from .http import Outbound
-from .sources import (bayern, boris, einkommen as einkommen_mod, gehweg, links,
-                      marke as marke_mod, muenchen, nominatim, overpass, planung,
-                      scan as scan_mod, zensus)
+from .sources import (bayern, boris, einkommen as einkommen_mod, gehweg,
+                      kreisprofil as kreisprofil_mod, links, marke as marke_mod,
+                      muenchen, nominatim, overpass, planung, scan as scan_mod,
+                      zensus)
 from .sources.base import Provenance, SourceError, SourceResult
 
 Loader = Callable[[], Awaitable[SourceResult]]
@@ -227,6 +228,16 @@ class PointService:
             lambda: einkommen_mod.load(self.outbound, self.settings, ags),
         )
 
+    async def kreisprofil(self, ags: str):
+        """Kreisprofil (Tourismus, Arbeitsort, Arbeitsmarkt, Bevölkerung) —
+        wie das Einkommen je Kreis gecacht, gleicher Dienst, gleiche TTL."""
+        kreis = einkommen_mod.kreis_aus_ags(ags) or "unbekannt"
+        return await self._cached(
+            "kreisprofil",
+            f"kreisprofil|{kreis}",
+            lambda: kreisprofil_mod.load(self.outbound, self.settings, ags),
+        )
+
     async def marke(self, lat: float, lon: float, radius: int, marke: str):
         """Gebietsschutz-Check: Betriebe der eigenen Marke im großen Umkreis.
 
@@ -309,20 +320,26 @@ class PointService:
         zensus_data = blocks["zensus"].get("data") or {}
         ags = zensus_data.get("ags")
 
-        # Verfügbares Einkommen braucht den Gemeindeschlüssel aus dem Zensus —
-        # deshalb nach dem Sammeln, nicht parallel dazu. Je Kreis gecacht.
+        # Einkommen und Kreisprofil brauchen den Gemeindeschlüssel aus dem
+        # Zensus — deshalb nach dem Sammeln, nicht parallel dazu. Je Kreis
+        # gecacht; untereinander laufen die beiden wieder parallel.
         if ags:
-            try:
-                blocks["einkommen"] = (await self.einkommen(ags)).to_dict()
-            except Exception as exc:  # noqa: BLE001
-                blocks["einkommen"] = SourceResult.failed(
-                    "einkommen", SourceError("unknown", f"{type(exc).__name__}: {exc}")
-                ).to_dict()
+            kreis_results = await asyncio.gather(
+                self.einkommen(ags), self.kreisprofil(ags), return_exceptions=True
+            )
+            for name, res in zip(("einkommen", "kreisprofil"), kreis_results):
+                if isinstance(res, BaseException):
+                    blocks[name] = SourceResult.failed(
+                        name, SourceError("unknown", f"{type(res).__name__}: {res}")
+                    ).to_dict()
+                else:
+                    blocks[name] = res.to_dict()
         else:
-            blocks["einkommen"] = SourceResult(
-                name="einkommen", ok=True, data=None,
-                warnings=["Ohne Gemeindeschlüssel lässt sich kein Kreiswert zuordnen."],
-            ).to_dict()
+            for name in ("einkommen", "kreisprofil"):
+                blocks[name] = SourceResult(
+                    name=name, ok=True, data=None,
+                    warnings=["Ohne Gemeindeschlüssel lässt sich kein Kreiswert zuordnen."],
+                ).to_dict()
         bl_code = zensus_data.get("bundesland_code")
         gemeinde = adresse.get("gemeinde")
         plz = adresse.get("plz")

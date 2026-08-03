@@ -166,8 +166,13 @@ class Settings:
             return self.ttl_nominatim
         if source.startswith("zensus"):
             return self.ttl_zensus
-        # VGRdL-Kreiswerte ändern sich einmal im Jahr.
-        if source.startswith("einkommen"):
+        # Regionalatlas-Kreiswerte (Einkommen, Kreisprofil) ändern sich
+        # einmal im Jahr.
+        if source.startswith("einkommen") or source.startswith("kreisprofil"):
+            return self.ttl_zensus
+        # DWD-Klimanormalwerte 1991–2020 sind bis zur nächsten Normalperiode
+        # fest — längste TTL im Werkzeug.
+        if source.startswith("klima"):
             return self.ttl_zensus
         return self.ttl_osm
 

@@ -244,3 +244,12 @@ def test_abendfenster_wird_gezaehlt():
     from gastroviewer.sources import gtfs
 
     assert (gtfs.ABEND_VON, gtfs.ABEND_BIS) == (17, 22)
+
+
+def test_nachtfenster_wird_gezaehlt():
+    """Die Stunden 22, 23 und 0 — für Bar/Club die Frage, ob das Publikum
+    nach Mitternacht noch wegkommt. Stunde 0 enthält frühe 00:xx-Fahrten und
+    GTFS-Nachtfahrten (24:xx), die beim Einsortieren modulo 24 dort landen."""
+    from gastroviewer.sources import gtfs
+
+    assert gtfs.NACHT_STUNDEN == (22, 23, 0)

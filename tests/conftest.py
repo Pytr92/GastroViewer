@@ -65,6 +65,11 @@ def einkommen_muenchen():
 
 
 @pytest.fixture()
+def kreisprofil_muenchen():
+    return load_fixture("raw_kreisprofil_muenchen.json")
+
+
+@pytest.fixture()
 def settings(tmp_path):
     from gastroviewer.config import Settings
 

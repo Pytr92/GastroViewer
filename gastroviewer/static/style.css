@@ -303,6 +303,11 @@ table.daten th, table.daten td { text-align: left; padding: 5px 6px; border-bott
 table.daten th { color: var(--text-schwach); font-weight: 600; }
 table.daten td.num, table.daten th.num { text-align: right; font-variant-numeric: tabular-nums; }
 table.daten tr:last-child td { border-bottom: none; }
+/* Themenzeile im Kreisprofil: trennt Tourismus / Arbeit / Bevölkerung. */
+table.daten tr.gruppe th {
+  padding-top: 10px; font-size: 12px; text-transform: uppercase;
+  letter-spacing: 0.03em; color: var(--text-schwach);
+}
 
 .liste { list-style: none; margin: 0; padding: 0; font-size: 13px; }
 .liste li {

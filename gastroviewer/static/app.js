@@ -916,6 +916,7 @@ function lade(refresh = false) {
       if (aktuell()) {
         state.daten.zensus = d; zeigeZensus(d); zeigeKopf(); ladeLinks();
         ladeEinkommen(d.data?.ags, lauf);
+        ladeKreisprofil(d.data?.ags, lauf);
       }
     })
     .catch((e) => {
@@ -986,6 +987,7 @@ function baueGeruest() {
     block('bevoelkerung', '2 · Bevölkerung'),
     block('wohnen', '3 · Wohnen'),
     block('einkommen', '3b · Verfügbares Einkommen (Kreis)'),
+    block('kreisprofil', '3c · Kreisprofil (Tourismus, Arbeit, Bevölkerung)'),
     block('gastronomie', '4 · Gastronomie'),
     block('gehweg', '4b · Erreichbarkeit zu Fuß'),
     block('franchise', '4c · Systemgastronomie & Marken'),
@@ -1549,6 +1551,94 @@ function zeigeEinkommen(d) {
   setQuelle(id, d.provenance);
 }
 
+/* Block 3c — Kreisprofil aus dem Regionalatlas: Tourismus, Erwerbstätige am
+   Arbeitsort (Tagesbevölkerungs-Näherung), Arbeitsmarkt, Bevölkerungsbewegung.
+   Kreiswerte mit je eigenem Datenjahr; Land und Bund als Maßstab daneben. */
+async function ladeKreisprofil(ags, lauf) {
+  if (!ags) {
+    setStatus('kreisprofil', 'leer', 'kein Gemeindeschlüssel');
+    setInhalt('kreisprofil', el('div', { class: 'notiz' },
+      'Ohne Gemeindeschlüssel (aus dem Zensusblock) lässt sich kein Kreiswert '
+      + 'zuordnen.'));
+    return;
+  }
+  try {
+    const d = await hole('/api/kreisprofil', { ags });
+    if (lauf !== state.ladeLauf) return;
+    state.daten.kreisprofil = d;
+    zeigeKreisprofil(d);
+  } catch (e) {
+    if (lauf === state.ladeLauf) zeigeBlockFehler('kreisprofil', e);
+  }
+}
+
+function zeigeKreisprofil(d) {
+  const id = 'kreisprofil';
+  if (!d.ok) {
+    setStatus(id, 'fehler', 'nicht erreichbar');
+    setInhalt(id, fehlerbox(d.error));
+    setQuelle(id, d.provenance);
+    return;
+  }
+  const k = d.data;
+  if (!k || !(k.indikatoren || []).length) {
+    setStatus(id, 'leer', 'kein Wert');
+    setInhalt(id, ...warnungen(d.warnings || []));
+    setQuelle(id, d.provenance);
+    return;
+  }
+  setStatus(id, 'ok', 'geladen');
+
+  const fmt = (v, stellen) => (v === null || v === undefined
+    ? '—' : nfFest(stellen ?? 1).format(v));
+  const gb = k.gebiete || {};
+  const tab = el('table', { class: 'daten' },
+    el('tr', {},
+      el('th', {}, 'Kennzahl'),
+      el('th', { class: 'num' }, gb.kreis?.name || 'Kreis'),
+      el('th', { class: 'num' }, gb.land?.name || 'Land'),
+      el('th', { class: 'num' }, gb.bund?.name || 'Deutschland'),
+      el('th', { class: 'num' }, 'Jahr')));
+  let letztesThema = null;
+  for (const i of k.indikatoren) {
+    if (i.thema !== letztesThema) {
+      letztesThema = i.thema;
+      tab.append(el('tr', { class: 'gruppe' },
+        el('th', { colspan: 5 }, i.thema)));
+    }
+    const einheit = i.einheit ? ` ${i.einheit}` : '';
+    tab.append(el('tr', {},
+      el('td', {}, i.titel),
+      el('td', { class: 'num' }, fmt(i.kreis, i.stellen) + einheit),
+      el('td', { class: 'num' }, fmt(i.land, i.stellen) + einheit),
+      el('td', { class: 'num' }, fmt(i.bund, i.stellen) + einheit),
+      el('td', { class: 'num' }, i.jahr)));
+  }
+
+  // Die eine Zahl, die den Charakter des Kreises am schnellsten erklärt:
+  // über 1.000 Erwerbstätige je 1.000 Erwerbsfähige = Einpendler-Magnet.
+  const et = k.indikatoren.find((i) => i.schluessel === 'et_je_1000_ew');
+  const deutung = [];
+  if (et && et.kreis !== null && et.kreis !== undefined) {
+    deutung.push(el('div', { class: 'notiz' },
+      et.kreis > 1000
+        ? `Im Kreis kommen ${NF.format(Math.round(et.kreis))} Erwerbstätige am `
+          + 'Arbeitsort auf 1.000 Erwerbsfähige — mehr Arbeitsplätze als '
+          + 'Erwerbsfähige, also Einpendler: tagsüber ist hier mehr Publikum, '
+          + 'als der Zensus (Wohnbevölkerung) zeigt.'
+        : `Im Kreis kommen ${NF.format(Math.round(et.kreis))} Erwerbstätige am `
+          + 'Arbeitsort auf 1.000 Erwerbsfähige — ein Teil der Wohnbevölkerung '
+          + 'arbeitet also außerhalb und fehlt tagsüber als Publikum.'));
+  }
+
+  setInhalt(id, tab, ...deutung,
+    el('div', { class: 'warnung' },
+      'Kreiswerte — innerhalb einer Großstadt unterscheiden sie keine Viertel. '
+      + 'Jede Kennzahl trägt ihr eigenes Datenjahr (rechte Spalte).'),
+    ...warnungen(d.warnings || []));
+  setQuelle(id, d.provenance);
+}
+
 function zeigeGtfs(d) {
   const g = d.data;
   if (!g) {
@@ -1563,6 +1653,7 @@ function zeigeGtfs(d) {
     kennzahl('davon 6–24 Uhr', g.abfahrten_06_24),
     kennzahl(`davon ${g.mittagsfenster || '11–14 Uhr'}`, g.abfahrten_mittag),
     kennzahl(`davon ${g.abendfenster || '17–22 Uhr'}`, g.abfahrten_abend),
+    kennzahl(`davon ${g.nachtfenster || '22–1 Uhr'}`, g.abfahrten_nacht),
     kennzahl('bediente Haltestellen', g.haltestellen_gesamt),
     kennzahl('Spitzenstunde', g.spitzenstunde ? g.spitzenstunde.abfahrten : null));
 

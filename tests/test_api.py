@@ -23,18 +23,29 @@ class FakeOutbound:
     """Ersetzt nur die Netz-Ebene und zählt die Aufrufe."""
 
     def __init__(self, zensus, overpass, nominatim, einkommen=None,
-                 fehler: set[str] | None = None):
+                 kreisprofil=None, fehler: set[str] | None = None):
         self.zensus = zensus
         self.overpass = overpass
         self.nominatim = nominatim
         self.einkommen = einkommen or {"features": []}
+        # Fixture je Tabelle — Einkommen und Kreisprofil teilen sich Endpunkt
+        # und URL, unterscheiden sich nur im layer-Parameter.
+        self.kreisprofil = kreisprofil or {}
         self.fehler = fehler or set()
         self.calls: list[str] = []
 
-    def _dispatch(self, url: str):
+    def _dispatch(self, url: str, kw=None):
         # Vor "arcgis" prüfen: auch der Regionalatlas läuft auf einem
         # ArcGIS-Server und würde sonst die Zensus-Fixture bekommen.
         if "regionalatlas" in url:
+            layer = ((kw or {}).get("data") or {}).get("layer", "")
+            tabelle = next((t for t in self.kreisprofil if t in layer), None)
+            if tabelle:
+                self.calls.append("kreisprofil")
+                if "kreisprofil" in self.fehler:
+                    raise SourceError("timeout",
+                                      "Zeitüberschreitung — Dienst antwortet nicht.")
+                return self.kreisprofil[tabelle]
             self.calls.append("einkommen")
             if "einkommen" in self.fehler:
                 raise SourceError("timeout", "Zeitüberschreitung — Dienst antwortet nicht.")
@@ -63,10 +74,10 @@ class FakeOutbound:
         pass
 
     async def get_json(self, source, url, **kw):
-        return self._dispatch(url)
+        return self._dispatch(url, kw)
 
     async def post_json(self, source, url, **kw):
-        return self._dispatch(url)
+        return self._dispatch(url, kw)
 
     class _Lim:
         @staticmethod
@@ -78,7 +89,7 @@ class FakeOutbound:
 
 @pytest.fixture()
 def client(tmp_path, monkeypatch, zensus_600, overpass_combined, nominatim_reverse,
-           einkommen_muenchen):
+           einkommen_muenchen, kreisprofil_muenchen):
     from gastroviewer.config import Settings
 
     settings = Settings()
@@ -86,7 +97,7 @@ def client(tmp_path, monkeypatch, zensus_600, overpass_combined, nominatim_rever
     settings.overpass_endpoints = ("https://overpass-api.de/api/interpreter",)
 
     fake = FakeOutbound(zensus_600, overpass_combined, nominatim_reverse,
-                        einkommen_muenchen)
+                        einkommen_muenchen, kreisprofil_muenchen)
     app = create_app(settings)
 
     original_lifespan_state = {}
@@ -140,8 +151,9 @@ def test_zweiter_aufruf_erzeugt_keinen_outbound_traffic(client):
     """Abnahmekriterium §7."""
     client.get("/api/point", params={"lat": LAT, "lon": LON, "r": R})
     vorher = len(client.fake.calls)
-    # Nominatim, Zensus, Overpass — und der Regionalatlas fürs Einkommen.
-    assert vorher == 4
+    # Nominatim, Zensus, Overpass — und der Regionalatlas fürs Einkommen (1)
+    # und Kreisprofil (5 Tabellen).
+    assert vorher == 9
 
     d = client.get("/api/point", params={"lat": LAT, "lon": LON, "r": R}).json()
     assert len(client.fake.calls) == vorher, "Cache hat nicht gegriffen"
@@ -1141,3 +1153,40 @@ def test_einkommen_endpunkt_und_kreiscache(client):
     assert client.fake.calls.count("einkommen") == vorher, "Kreis-Cache griff nicht"
     assert client.get("/api/einkommen", params={"ags": "9x"}).status_code == 422
     assert client.get("/api/einkommen", params={"ags": "abcde"}).status_code == 422
+
+
+# ------------------------------------------------ Kreisprofil
+
+
+def test_kreisprofil_block_im_punkt_und_vergleich(client):
+    d = client.get("/api/point", params={"lat": LAT, "lon": LON, "r": R}).json()
+    k = d["bloecke"]["kreisprofil"]
+    assert k["ok"], k.get("error")
+    werte = {i["schluessel"]: i for i in k["data"]["indikatoren"]}
+    assert werte["uebernachtungen_je_ew"]["kreis"] == 13.2
+    assert werte["et_je_1000_ew"]["kreis"] == 1159.1
+    assert werte["arbeitslosenquote"]["kreis"] == 5.4
+    assert werte["bev_entwicklung"]["kreis"] == 108.8
+    assert k["data"]["gebiete"]["kreis"]["ags"] == "09162"
+    assert "Kreiswerte" in k["provenance"]["note"]
+
+    client.post("/api/points", json={
+        "label": "Kreisprofiltest", "lat": LAT, "lon": LON, "radius": R})
+    v = client.get("/api/points/vergleich").json()
+    z = next(x for x in v["zeilen"] if x["label"] == "Kreisprofiltest")
+    assert z["uebernachtungen_je_ew"] == 13.2
+    assert z["et_je_1000_ew"] == 1159.1
+    assert z["arbeitslosenquote"] == 5.4
+    assert z["bev_entwicklung"] == 108.8
+
+
+def test_kreisprofil_endpunkt_und_kreiscache(client):
+    r = client.get("/api/kreisprofil", params={"ags": "09162000"})
+    assert r.status_code == 200
+    themen = {i["thema"] for i in r.json()["data"]["indikatoren"]}
+    assert {"Tourismus (Beherbergung)", "Erwerbstätige am Arbeitsort",
+            "Arbeitsmarkt", "Bevölkerung"} <= themen
+    vorher = client.fake.calls.count("kreisprofil")
+    client.get("/api/kreisprofil", params={"ags": "09162001"})
+    assert client.fake.calls.count("kreisprofil") == vorher, "Kreis-Cache griff nicht"
+    assert client.get("/api/kreisprofil", params={"ags": "9x"}).status_code == 422
