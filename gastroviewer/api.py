@@ -714,6 +714,13 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             ohne zusätzliche Abhängigkeit."""
             return FileResponse(STATIC_DIR / "bericht.html")
 
+        @app.get("/duell")
+        async def duell():
+            """Duell-Bericht „A gegen B" (?a=ID&b=ID): zwei gemerkte Punkte
+            Spalte an Spalte, mit beiden Lagekarten — die Endauswahl ist fast
+            immer ein Zweikampf."""
+            return FileResponse(STATIC_DIR / "duell.html")
+
     @app.exception_handler(500)
     async def on_error(request: Request, exc: Exception):
         return JSONResponse(

@@ -1,0 +1,21 @@
+/* Duell-Bericht: zwei Kandidaten Spalte an Spalte. Baut auf bericht.css auf. */
+
+.duell-karten {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin: 14px 0 4px;
+}
+.duell-karte {
+  height: 320px; border: 1px solid #e3e8ed; border-radius: 4px;
+}
+.duell-karten .kennung { font-size: 12px; color: #5b6570; margin: 4px 0; }
+
+/* Bewusst keine „besser"-Markierung: ob mehr Wettbewerb gut oder schlecht
+   ist, hängt vom Konzept ab. Die Differenzspalte ist ein Fakt, keine Wertung. */
+td.duell-diff { color: #5b6570; }
+
+@media print {
+  .duell-karten { break-inside: avoid; }
+  .duell-karte { height: 280px; }
+}
+@media (max-width: 700px) {
+  .duell-karten { grid-template-columns: 1fr; }
+}

@@ -451,6 +451,11 @@ dialog {
   width: 100%;
 }
 dialog::backdrop { background: rgba(0,0,0,.35); }
+#adressliste-dialog { max-width: min(640px, 94vw); }
+#adressliste-text {
+  width: 100%; box-sizing: border-box; font: inherit; font-size: 13px;
+  border: 1px solid var(--rand); border-radius: 4px; padding: 8px;
+}
 .dialog-kopf { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-bottom: 10px; }
 .dialog-kopf h2 { margin: 0; font-size: 17px; }
 .tabelle-rahmen { overflow-x: auto; }

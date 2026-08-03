@@ -2155,7 +2155,33 @@ function pflegeleiste(zeilen) {
     zeilen.length > 1 ? el('button', {
       title: 'Alle gemerkten Punkte nacheinander neu prüfen (je Punkt u. a. eine Overpass-Abfrage)',
       onclick: () => alleNeuPruefen(zeilen),
-    }, `alle ${zeilen.length} neu prüfen`) : null);
+    }, `alle ${zeilen.length} neu prüfen`) : null,
+    ...duellWahl(zeilen));
+}
+
+/* Duell-Bericht: die Endauswahl ist fast immer ein Zweikampf. Zwei Punkte
+   wählen, eine Druckseite Spalte an Spalte mit beiden Lagekarten. */
+function duellWahl(zeilen) {
+  if (zeilen.length < 2) return [];
+  const wahl = (id, vorgabe) => el('select', { id },
+    zeilen.map((z, i) => {
+      const o = el('option', { value: String(z.id) }, z.label);
+      if (i === vorgabe) o.selected = true;
+      return o;
+    }));
+  const a = wahl('duell-a', 0);
+  const b = wahl('duell-b', 1);
+  return [
+    el('span', { class: 'gruppenwahl-titel', style: 'margin-left:12px' }, 'Duell:'),
+    a, el('span', {}, 'gegen'), b,
+    el('button', {
+      title: 'Druckseite: beide Kandidaten Spalte an Spalte, mit beiden Lagekarten',
+      onclick: () => {
+        if (a.value === b.value) { alert('Zwei verschiedene Punkte wählen.'); return; }
+        window.open(`/duell?a=${a.value}&b=${b.value}`, '_blank', 'noopener');
+      },
+    }, 'Duell-Bericht'),
+  ];
 }
 
 async function alleNeuPruefen(zeilen) {
@@ -2396,6 +2422,86 @@ function rankingBereich(d) {
   if (rankingOffen) bereich.open = true;
   zeichneRanking(d.zeilen, gewichte, ausgabe);
   return bereich;
+}
+
+/* ------------------------------------------------ Adressliste-Import */
+
+/* Aus einem Exposé-Stapel in Minuten eine Vergleichstabelle: eine Adresse je
+   Zeile, jede wird über Nominatim gesucht (der Server hält die 1-Anfrage/s-
+   Regel ein; die Schleife läuft deshalb bewusst nacheinander) und beim ersten
+   Treffer als Punkt gemerkt — mit vollem Datenabruf wie bei „Punkt merken". */
+const ADRESSLISTE_MAX = 25;
+
+document.getElementById('btn-adressliste').addEventListener('click',
+  () => document.getElementById('adressliste-dialog').showModal());
+document.getElementById('adressliste-zu').addEventListener('click',
+  () => document.getElementById('adressliste-dialog').close());
+document.getElementById('adressliste-start').addEventListener('click',
+  adresslisteVerarbeiten);
+
+async function adresslisteVerarbeiten() {
+  const feld = document.getElementById('adressliste-text');
+  const ziel = document.getElementById('adressliste-ergebnis');
+  const radius = Number(document.getElementById('adressliste-radius').value);
+  const zeilen = feld.value.split('\n').map((z) => z.trim()).filter(Boolean);
+  if (!zeilen.length) {
+    ziel.replaceChildren(el('div', { class: 'warnung' }, 'Keine Adresse eingegeben.'));
+    return;
+  }
+  if (zeilen.length > ADRESSLISTE_MAX) {
+    ziel.replaceChildren(el('div', { class: 'warnung' },
+      `Höchstens ${ADRESSLISTE_MAX} Adressen auf einmal — es sind ${zeilen.length}. `
+      + 'Das begrenzt die Last auf Nominatim und Overpass.'));
+    return;
+  }
+  const knopf = document.getElementById('adressliste-start');
+  knopf.disabled = true;
+  const befunde = [];
+  const fehler = [];
+  for (let i = 0; i < zeilen.length; i += 1) {
+    const adresse = zeilen[i];
+    ziel.replaceChildren(el('div', { class: 'verlauf-ergebnis' },
+      el('div', { class: 'laden' }),
+      `${i + 1} von ${zeilen.length}: „${adresse}" — suchen, dann Datenabruf …`));
+    try {
+      const d = await hole('/api/geocode', { q: adresse });
+      const treffer = (d.data || [])[0];
+      if (!treffer) {
+        fehler.push(`${adresse}: kein Treffer bei Nominatim`);
+        continue;
+      }
+      const r = await fetch('/api/points', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          label: adresse.slice(0, 80), lat: treffer.lat, lon: treffer.lon, radius,
+        }),
+      });
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      befunde.push(`${adresse} → ${treffer.display_name.split(',').slice(0, 3).join(',')}`);
+    } catch (e) {
+      fehler.push(`${adresse}: ${e.message}`);
+    }
+  }
+  knopf.disabled = false;
+  ziel.replaceChildren(
+    el('div', { class: 'notiz' },
+      el('strong', {}, `${befunde.length} von ${zeilen.length} Adressen gemerkt.`),
+      befunde.length ? el('ul', { class: 'liste' },
+        befunde.map((b) => el('li', {}, el('span', { class: 'haupt' }, b)))) : null),
+    fehler.length ? el('div', { class: 'warnung' },
+      el('strong', {}, 'Ohne Treffer oder fehlgeschlagen:'),
+      el('ul', { class: 'liste' },
+        fehler.map((f) => el('li', {}, el('span', { class: 'haupt' }, f)))),
+      el('div', { class: 'hinweis-klein' },
+        'Nominatim findet Adressen am besten als „Straße Hausnummer, Ort". '
+        + 'Zeile anpassen und nur die fehlgeschlagenen erneut einfügen.')) : null,
+    el('button', {
+      onclick: () => {
+        document.getElementById('adressliste-dialog').close();
+        zeigeVergleich();
+      },
+    }, 'zum Standortvergleich'));
+  ladePunkteEbene();
 }
 
 /* ------------------------------------------------------------- Suche */

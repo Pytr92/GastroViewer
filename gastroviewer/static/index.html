@@ -31,6 +31,8 @@
       <option value="3000" title="Sehr große Abfrage — am dichtesten Punkt Münchens 4,5 MB und ~2 Minuten, belastet Overpass">3000 m (sehr groß)</option>
     </select>
     <button id="btn-merken" type="button" title="Punkt in die Vergleichstabelle legen">Punkt merken</button>
+    <button id="btn-adressliste" type="button"
+            title="Mehrere Adressen (z. B. aus Makler-Exposés) auf einmal suchen und als Punkte merken">Adressliste</button>
     <button id="btn-vergleich" type="button">Vergleich</button>
     <button id="btn-neu" type="button" title="Cache für diesen Punkt umgehen">Neu laden</button>
   </div>
@@ -77,6 +79,32 @@
   <span>·</span>
   <span id="fuss-stats"></span>
 </footer>
+
+<dialog id="adressliste-dialog">
+  <div class="dialog-kopf">
+    <h2>Adressliste als Punkte merken</h2>
+    <button id="adressliste-zu" type="button">Schließen</button>
+  </div>
+  <p class="hinweis-klein">
+    Eine Adresse je Zeile (z. B. aus Makler-Exposés), höchstens 25 auf einmal.
+    Jede Zeile wird über Nominatim gesucht (höchstens 1 Anfrage je Sekunde —
+    das dauert entsprechend) und beim ersten Treffer mit dem gewählten Radius
+    als Punkt gemerkt. Zeilen ohne Treffer bleiben als Fehlerliste stehen.
+  </p>
+  <textarea id="adressliste-text" rows="8" spellcheck="false"
+            placeholder="Leopoldstraße 1, München&#10;Tal 12, München&#10;…"></textarea>
+  <div class="pflegeleiste">
+    <label for="adressliste-radius">Radius</label>
+    <select id="adressliste-radius">
+      <option value="300">300 m</option>
+      <option value="600" selected>600 m</option>
+      <option value="900">900 m</option>
+      <option value="1400">1400 m</option>
+    </select>
+    <button id="adressliste-start" type="button">Suchen und merken</button>
+  </div>
+  <div id="adressliste-ergebnis"></div>
+</dialog>
 
 <dialog id="vergleich-dialog">
   <div class="dialog-kopf">
