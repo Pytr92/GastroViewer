@@ -917,6 +917,7 @@ function lade(refresh = false) {
         state.daten.zensus = d; zeigeZensus(d); zeigeKopf(); ladeLinks();
         ladeEinkommen(d.data?.ags, lauf);
         ladeKreisprofil(d.data?.ags, lauf);
+        ladePendler(d.data?.ags, lauf);
       }
     })
     .catch((e) => {
@@ -992,6 +993,7 @@ function baueGeruest() {
     block('wohnen', '3 · Wohnen'),
     block('einkommen', '3b · Verfügbares Einkommen (Kreis)'),
     block('kreisprofil', '3c · Kreisprofil (Tourismus, Arbeit, Bevölkerung)'),
+    block('pendler', '3d · Pendler (Gemeinde)'),
     block('gastronomie', '4 · Gastronomie'),
     block('gehweg', '4b · Erreichbarkeit zu Fuß'),
     block('franchise', '4c · Systemgastronomie & Marken'),
@@ -1552,6 +1554,96 @@ function zeigeEinkommen(d) {
       'Kreiswert — innerhalb einer Großstadt unterscheidet er keine Viertel. '
       + 'Kleinräumige Anzeiger sind Nettokaltmiete und Eigentümerquote aus dem '
       + 'Zensusblock. Und verfügbares Einkommen ist kein Kaufkraftindex.'),
+    ...warnungen(d.warnings || []));
+  setQuelle(id, d.provenance);
+}
+
+/* Block 3d — Pendlerverflechtungen der Gemeinde (Pendlerrechnung der
+   Länder). Die Tagesbevölkerungs-Frage: Wer ist tagsüber wirklich da?
+   Braucht wie 3b/3c den Gemeindeschlüssel aus dem Zensusblock. */
+async function ladePendler(ags, lauf) {
+  if (!ags || String(ags).length < 8) {
+    setStatus('pendler', 'leer', 'kein Gemeindeschlüssel');
+    setInhalt('pendler', el('div', { class: 'notiz' },
+      'Ohne 8-stelligen Gemeindeschlüssel (aus dem Zensusblock) lässt sich '
+      + 'keine Gemeinde zuordnen.'));
+    return;
+  }
+  try {
+    const d = await hole('/api/pendler', { ags });
+    if (lauf !== state.ladeLauf) return;
+    state.daten.pendler = d;
+    zeigePendler(d);
+  } catch (e) {
+    if (lauf === state.ladeLauf) zeigeBlockFehler('pendler', e);
+  }
+}
+
+function zeigePendler(d) {
+  const id = 'pendler';
+  if (!d.ok) {
+    setStatus(id, 'fehler', 'nicht erreichbar');
+    setInhalt(id, fehlerbox(d.error));
+    setQuelle(id, d.provenance);
+    return;
+  }
+  const p = d.data;
+  if (!p) {
+    setStatus(id, 'leer', 'kein Wert');
+    setInhalt(id, ...warnungen(d.warnings || []));
+    setQuelle(id, d.provenance);
+    return;
+  }
+  setStatus(id, 'ok', 'geladen');
+
+  const kz = el('div', { class: 'kennzahlen' },
+    kennzahl('Einpendler', p.einpendler),
+    kennzahl('Auspendler', p.auspendler),
+    kennzahl('Pendlersaldo', p.saldo),
+    kennzahl('Einpendlerquote', p.einpendler_quote, '%'),
+    kennzahl('Auspendlerquote', p.auspendler_quote, '%'),
+    kennzahl('Binnenpendler (wohnen + arbeiten hier)', p.binnenpendler));
+
+  const deutung = [];
+  if (p.saldo !== null && p.saldo !== undefined) {
+    deutung.push(el('div', { class: 'notiz' },
+      p.saldo > 0
+        ? `${p.gemeinde?.name || 'Die Gemeinde'} gewinnt tagsüber per Saldo `
+          + `${NF.format(p.saldo)} Menschen dazu — Publikum, das der Zensus `
+          + '(Wohnbevölkerung) nicht zeigt. Gut für Mittagsgeschäft.'
+        : `${p.gemeinde?.name || 'Die Gemeinde'} verliert tagsüber per Saldo `
+          + `${NF.format(-p.saldo)} Menschen an andere Arbeitsorte — mittags `
+          + 'ist hier weniger Publikum, als die Einwohnerzahl vermuten lässt.'));
+  }
+
+  const verflTabellen = [];
+  const verfl = p.verflechtung || {};
+  const vTab = (titel, liste, spalte) => {
+    if (!liste || !liste.length) return null;
+    const tab = el('table', { class: 'daten' },
+      el('tr', {}, el('th', {}, titel), el('th', { class: 'num' }, spalte),
+        el('th', { class: 'num' }, 'Entfernung')));
+    for (const z of liste) {
+      tab.append(el('tr', {},
+        el('td', {}, z.name),
+        el('td', { class: 'num' }, NF.format(z.anzahl)),
+        el('td', { class: 'num' },
+          z.km === null || z.km === undefined ? '—' : `${NF1.format(z.km)} km`)));
+    }
+    return tab;
+  };
+  const herkunft = vTab('Wichtigste Herkünfte der Einpendler', verfl.herkunft,
+    'Einpendler');
+  const ziele = vTab('Wichtigste Ziele der Auspendler', verfl.ziele, 'Auspendler');
+  if (herkunft) verflTabellen.push(herkunft);
+  if (ziele) verflTabellen.push(ziele);
+
+  setInhalt(id, kz, ...deutung, ...verflTabellen,
+    el('div', { class: 'warnung' },
+      `Gemeindewert (Berichtsjahr ${p.jahr}) — für eine Großstadt die ganze `
+      + 'Stadt, kein Viertel. Erwerbstätigen-Konzept nach gemeldeten Orten; '
+      + 'Homeoffice- und Zweitwohnungs-Konstellationen tauchen deshalb mit '
+      + 'großen Entfernungen auf — die km-Spalte macht sie erkennbar.'),
     ...warnungen(d.warnings || []));
   setQuelle(id, d.provenance);
 }

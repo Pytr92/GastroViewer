@@ -23,7 +23,8 @@ class FakeOutbound:
     """Ersetzt nur die Netz-Ebene und zählt die Aufrufe."""
 
     def __init__(self, zensus, overpass, nominatim, einkommen=None,
-                 kreisprofil=None, dwd=None, fehler: set[str] | None = None):
+                 kreisprofil=None, dwd=None, pendler=None,
+                 fehler: set[str] | None = None):
         self.zensus = zensus
         self.overpass = overpass
         self.nominatim = nominatim
@@ -33,6 +34,8 @@ class FakeOutbound:
         self.kreisprofil = kreisprofil or {}
         # DWD-Textdateien, Schlüssel = Dateiname.
         self.dwd = dwd or {}
+        # Pendleratlas: {"dateien": {Dateiname: CSV-Text}, "gemeinden": {...}}.
+        self.pendler = pendler or {"dateien": {}, "gemeinden": {"features": []}}
         self.fehler = fehler or set()
         self.calls: list[str] = []
 
@@ -67,6 +70,12 @@ class FakeOutbound:
             if "nominatim" in self.fehler:
                 raise SourceError("http_status", "HTTP 403 — Zugriff abgelehnt.")
             return self.nominatim
+        if "pendleratlas" in url:
+            self.calls.append("pendler")
+            name = url.rsplit("/", 1)[-1]
+            if name.startswith("gemeinden_2024"):
+                return self.pendler["gemeinden"]
+            raise SourceError("http_status", f"HTTP 404 — {name} fehlt.")
         raise AssertionError(f"unerwartete URL: {url}")
 
     async def start(self):
@@ -91,6 +100,16 @@ class FakeOutbound:
             if name not in self.dwd:
                 raise SourceError("http_status", f"HTTP 404 — {name} fehlt.")
             return self.dwd[name]
+        if "pendleratlas" in url:
+            self.calls.append("pendler")
+            if "pendler" in self.fehler:
+                raise SourceError("timeout",
+                                  "Zeitüberschreitung — Dienst antwortet nicht.")
+            name = url.rsplit("/", 1)[-1]
+            if name not in self.pendler["dateien"]:
+                # Jahres-Sondierung: nicht vorhandene Jahrgänge sind ein 404.
+                raise SourceError("http_status", f"HTTP 404 — {name} fehlt.")
+            return self.pendler["dateien"][name]
         raise AssertionError(f"unerwartete Text-URL: {url}")
 
     class _Lim:
@@ -103,7 +122,7 @@ class FakeOutbound:
 
 @pytest.fixture()
 def client(tmp_path, monkeypatch, zensus_600, overpass_combined, nominatim_reverse,
-           einkommen_muenchen, kreisprofil_muenchen, dwd_klima):
+           einkommen_muenchen, kreisprofil_muenchen, dwd_klima, pendler_muenchen):
     from gastroviewer.config import Settings
 
     settings = Settings()
@@ -111,7 +130,8 @@ def client(tmp_path, monkeypatch, zensus_600, overpass_combined, nominatim_rever
     settings.overpass_endpoints = ("https://overpass-api.de/api/interpreter",)
 
     fake = FakeOutbound(zensus_600, overpass_combined, nominatim_reverse,
-                        einkommen_muenchen, kreisprofil_muenchen, dwd_klima)
+                        einkommen_muenchen, kreisprofil_muenchen, dwd_klima,
+                        pendler_muenchen)
     app = create_app(settings)
 
     original_lifespan_state = {}
@@ -166,8 +186,10 @@ def test_zweiter_aufruf_erzeugt_keinen_outbound_traffic(client):
     client.get("/api/point", params={"lat": LAT, "lon": LON, "r": R})
     vorher = len(client.fake.calls)
     # Nominatim, Zensus, Overpass — der Regionalatlas fürs Einkommen (1) und
-    # Kreisprofil (5 Tabellen) — und der DWD (5 Parameter x 2 Dateien).
-    assert vorher == 19
+    # Kreisprofil (5 Tabellen) — der DWD (5 Parameter x 2 Dateien) — und der
+    # Pendleratlas (2 Jahres-Sondierungen mit 404, 6 Karten, Gemeindeliste,
+    # Verflechtungen).
+    assert vorher == 29
 
     d = client.get("/api/point", params={"lat": LAT, "lon": LON, "r": R}).json()
     assert len(client.fake.calls) == vorher, "Cache hat nicht gegriffen"
@@ -1220,6 +1242,35 @@ def test_klima_dateien_cache_ist_landesweit(client):
     assert vorher == 10  # 5 Parameter x (Werte + Stationsliste)
     client.get("/api/point/klima", params={"lat": 50.94, "lon": 6.96})
     assert client.fake.calls.count("dwd") == vorher, "Dateien-Cache griff nicht"
+
+
+def test_pendler_block_im_punkt_und_vergleich(client):
+    d = client.get("/api/point", params={"lat": LAT, "lon": LON, "r": R}).json()
+    p = d["bloecke"]["pendler"]
+    assert p["ok"], p.get("error")
+    assert p["data"]["jahr"] == 2024
+    assert p["data"]["einpendler"] == 529834
+    assert p["data"]["saldo"] == 281155
+    assert p["data"]["gemeinde"]["name"] == "München"
+    assert len(p["data"]["verflechtung"]["herkunft"]) == 5
+    assert "Gemeindewert" in p["provenance"]["note"]
+
+    client.post("/api/points", json={
+        "label": "Pendlertest", "lat": LAT, "lon": LON, "radius": R})
+    v = client.get("/api/points/vergleich").json()
+    z = next(x for x in v["zeilen"] if x["label"] == "Pendlertest")
+    assert z["pendler_saldo"] == 281155
+    assert z["einpendler_quote"] == 45.3
+
+
+def test_pendler_endpunkt_und_gemeindecache(client):
+    r = client.get("/api/pendler", params={"ags": "09162000"})
+    assert r.status_code == 200
+    assert r.json()["data"]["auspendler"] == 248679
+    vorher = client.fake.calls.count("pendler")
+    client.get("/api/pendler", params={"ags": "09162000"})
+    assert client.fake.calls.count("pendler") == vorher, "Gemeinde-Cache griff nicht"
+    assert client.get("/api/pendler", params={"ags": "0916"}).status_code == 422
 
 
 def test_kreisprofil_endpunkt_und_kreiscache(client):

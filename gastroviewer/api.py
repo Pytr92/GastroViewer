@@ -321,6 +321,17 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             raise HTTPException(422, "Der Gemeindeschlüssel besteht aus Ziffern.")
         return (await svc(request).kreisprofil(ags)).to_dict()
 
+    @app.get("/api/pendler")
+    async def pendler(
+        request: Request,
+        ags: str = Query(..., min_length=8, max_length=8),
+    ):
+        """Pendlerverflechtungen der Gemeinde (Pendlerrechnung der Länder):
+        Ein-/Auspendler, Saldo, Quoten, wichtigste Herkünfte und Ziele."""
+        if not ags.isdigit():
+            raise HTTPException(422, "Der Gemeindeschlüssel besteht aus Ziffern.")
+        return (await svc(request).pendler(ags)).to_dict()
+
     @app.get("/api/gitter")
     async def gitter(
         request: Request,
@@ -835,6 +846,12 @@ VERGLEICH_SPALTEN = [
      "stellen": 1, "gruppe": "detail"},
     {"key": "sonnenschein", "titel": "Sonnenstunden/Jahr (DWD-Station)",
      "gruppe": "detail"},
+
+    # --- Pendler (Gemeindewert) — Tagesbevölkerung: positiver Saldo heißt,
+    # tagsüber sind mehr Menschen da, als hier wohnen.
+    {"key": "pendler_saldo", "titel": "Pendlersaldo (Gemeinde)", "gruppe": "detail"},
+    {"key": "einpendler_quote", "titel": "Einpendlerquote % (Gemeinde)",
+     "stellen": 1, "gruppe": "detail"},
 ]
 
 
@@ -857,6 +874,7 @@ def _row_for(saved: dict[str, Any]) -> dict[str, Any]:
         for k in (((bl.get("klima") or {}).get("data") or {})
                   .get("kennzahlen") or [])
     }
+    pen = ((bl.get("pendler") or {}).get("data") or {}) or {}
     gw = ((bl.get("gehweg") or {}).get("data") or {}) or {}
     gw_gas = gw.get("gastronomie") or {}
     gw_zen = gw.get("zensus") or {}
@@ -891,6 +909,8 @@ def _row_for(saved: dict[str, Any]) -> dict[str, Any]:
         "bev_entwicklung": kp.get("bev_entwicklung"),
         "sommertage": kl.get("sommertage"),
         "sonnenschein": kl.get("sonnenschein"),
+        "pendler_saldo": pen.get("saldo"),
+        "einpendler_quote": pen.get("einpendler_quote"),
         "leerstandsquote": _wert(woh.get("leerstandsquote")),
         "gastro_gesamt": gas.get("gesamt"),
         "fast_food": fastfood,

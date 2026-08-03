@@ -185,6 +185,9 @@ class Settings:
         # fest — längste TTL im Werkzeug.
         if source.startswith("klima"):
             return self.ttl_zensus
+        # Pendlerrechnung: ein Berichtsjahr, einmal jährlich fortgeschrieben.
+        if source.startswith("pendler"):
+            return self.ttl_zensus
         return self.ttl_osm
 
     def ensure_dirs(self) -> None:

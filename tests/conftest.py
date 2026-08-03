@@ -75,6 +75,11 @@ def dwd_klima():
 
 
 @pytest.fixture()
+def pendler_muenchen():
+    return load_fixture("raw_pendler_muenchen.json")
+
+
+@pytest.fixture()
 def settings(tmp_path):
     from gastroviewer.config import Settings
 

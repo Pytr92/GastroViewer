@@ -20,8 +20,8 @@ from .config import Settings
 from .http import Outbound
 from .sources import (bayern, boris, einkommen as einkommen_mod, gehweg,
                       klima as klima_mod, kreisprofil as kreisprofil_mod, links,
-                      marke as marke_mod, muenchen, nominatim, overpass, planung,
-                      scan as scan_mod, zensus)
+                      marke as marke_mod, muenchen, nominatim, overpass,
+                      pendler as pendler_mod, planung, scan as scan_mod, zensus)
 from .sources.base import Provenance, SourceError, SourceResult
 
 Loader = Callable[[], Awaitable[SourceResult]]
@@ -238,6 +238,99 @@ class PointService:
             lambda: kreisprofil_mod.load(self.outbound, self.settings, ags),
         )
 
+    async def pendler(self, ags: str) -> SourceResult:
+        """Pendlerverflechtungen der Gemeinde (Pendleratlas).
+
+        Die CSV-Dateien sind Deutschland- bzw. Land-weit und werden je Datei
+        gecacht; das fertige Gemeindeergebnis zusätzlich je AGS. Das
+        Berichtsjahr wird absteigend gesucht — der Atlas führt keinen
+        „latest"-Zeiger, ein 404 heißt schlicht: Jahrgang (noch) nicht da."""
+        a = "".join(c for c in str(ags) if c.isdigit())[:8]
+        if len(a) < 8:
+            return SourceResult(
+                name="pendler", ok=True, data=None,
+                warnings=["Ohne Gemeindeschlüssel lässt sich keine Gemeinde zuordnen."],
+            )
+
+        async def laden() -> SourceResult:
+            started = time.perf_counter()
+            warnungen: list[str] = []
+
+            async def datei(key: str, url: str, als_json: bool) -> Any:
+                cache_id = f"pendler_datei|{key}"
+
+                async def holen() -> SourceResult:
+                    if als_json:
+                        data = await self.outbound.get_json(
+                            "pendler", url, timeout=self.settings.zensus_timeout
+                        )
+                    else:
+                        data = await self.outbound.get_text(
+                            "pendler", url, timeout=self.settings.zensus_timeout
+                        )
+                    return SourceResult(name="pendler", ok=True, data=data)
+
+                res = await self._cached("pendler", cache_id, holen)
+                if not res.ok:
+                    raise SourceError(
+                        (res.error or {}).get("kind", "unknown"),
+                        (res.error or {}).get("message", "unbekannter Fehler"),
+                    )
+                return res.data
+
+            # Berichtsjahr absteigend suchen (der Atlas begann mit 2021).
+            jahr = None
+            heute = time.gmtime().tm_year
+            letzte: SourceError | None = None
+            for kandidat in range(heute, 2020, -1):
+                try:
+                    await datei(
+                        f"{kandidat}|EIP_Karte",
+                        pendler_mod.datei_urls(kandidat, a[:2])["EIP_Karte"],
+                        als_json=False,
+                    )
+                    jahr = kandidat
+                    break
+                except SourceError as err:
+                    letzte = err
+                    continue
+            if jahr is None:
+                return SourceResult.failed(
+                    "pendler",
+                    letzte or SourceError("api_error",
+                                          "Kein Berichtsjahr im Pendleratlas erreichbar."),
+                    int((time.perf_counter() - started) * 1000),
+                )
+
+            urls = pendler_mod.datei_urls(jahr, a[:2])
+            karten_texte: dict[str, str] = {}
+            for datei_name, _, _ in pendler_mod.KARTEN:
+                try:
+                    karten_texte[datei_name] = await datei(
+                        f"{jahr}|{datei_name}", urls[datei_name], als_json=False
+                    )
+                except SourceError as err:
+                    warnungen.append(f"{datei_name}: {err.message}")
+            try:
+                gemeinden = (await datei(
+                    f"{jahr}|gemeinden", urls["gemeinden"], als_json=True
+                )).get("features") or []
+            except SourceError as err:
+                return SourceResult.failed(
+                    "pendler", err, int((time.perf_counter() - started) * 1000)
+                )
+            verfl = None
+            try:
+                verfl = await datei(f"{jahr}|Verfl_L{a[:2]}", urls["Verfl"],
+                                    als_json=False)
+            except SourceError as err:
+                warnungen.append(f"Verflechtungen: {err.message}")
+
+            data = pendler_mod.auswerten(a, jahr, gemeinden, karten_texte, verfl)
+            return pendler_mod.ergebnis(data, started, warnungen, jahr)
+
+        return await self._cached("pendler", f"pendler|{a}", laden)
+
     async def klima(self, lat: float, lon: float) -> SourceResult:
         """Klimanormalwerte der nächsten DWD-Station.
 
@@ -361,9 +454,11 @@ class PointService:
         # gecacht; untereinander laufen die beiden wieder parallel.
         if ags:
             kreis_results = await asyncio.gather(
-                self.einkommen(ags), self.kreisprofil(ags), return_exceptions=True
+                self.einkommen(ags), self.kreisprofil(ags), self.pendler(ags),
+                return_exceptions=True,
             )
-            for name, res in zip(("einkommen", "kreisprofil"), kreis_results):
+            for name, res in zip(("einkommen", "kreisprofil", "pendler"),
+                                 kreis_results):
                 if isinstance(res, BaseException):
                     blocks[name] = SourceResult.failed(
                         name, SourceError("unknown", f"{type(res).__name__}: {res}")
@@ -371,7 +466,7 @@ class PointService:
                 else:
                     blocks[name] = res.to_dict()
         else:
-            for name in ("einkommen", "kreisprofil"):
+            for name in ("einkommen", "kreisprofil", "pendler"):
                 blocks[name] = SourceResult(
                     name=name, ok=True, data=None,
                     warnings=["Ohne Gemeindeschlüssel lässt sich kein Kreiswert zuordnen."],
