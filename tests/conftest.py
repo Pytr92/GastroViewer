@@ -70,6 +70,11 @@ def kreisprofil_muenchen():
 
 
 @pytest.fixture()
+def dwd_klima():
+    return load_fixture("raw_dwd_klima.json")
+
+
+@pytest.fixture()
 def settings(tmp_path):
     from gastroviewer.config import Settings
 

@@ -138,6 +138,17 @@ class Settings:
         )
     )
 
+    # --- DWD Open Data (Klimanormalwerte 1991–2020) ---
+    # Offene Textdateien, am 03.08.2026 verifiziert (Werte + Stationsliste
+    # je Parameter, Latin-1, Semikolon-getrennt).
+    dwd_base: str = field(
+        default_factory=lambda: _env(
+            "GASTROVIEWER_DWD_BASE",
+            "https://opendata.dwd.de/climate_environment/CDC"
+            "/observations_germany/climate/multi_annual/mean_91-20",
+        )
+    )
+
     # --- GTFS (Phase 3) ---
     gtfs_url: str = field(
         default_factory=lambda: _env(

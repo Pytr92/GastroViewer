@@ -19,9 +19,9 @@ from .cache import AsyncCache, cache_key
 from .config import Settings
 from .http import Outbound
 from .sources import (bayern, boris, einkommen as einkommen_mod, gehweg,
-                      kreisprofil as kreisprofil_mod, links, marke as marke_mod,
-                      muenchen, nominatim, overpass, planung, scan as scan_mod,
-                      zensus)
+                      klima as klima_mod, kreisprofil as kreisprofil_mod, links,
+                      marke as marke_mod, muenchen, nominatim, overpass, planung,
+                      scan as scan_mod, zensus)
 from .sources.base import Provenance, SourceError, SourceResult
 
 Loader = Callable[[], Awaitable[SourceResult]]
@@ -238,6 +238,41 @@ class PointService:
             lambda: kreisprofil_mod.load(self.outbound, self.settings, ags),
         )
 
+    async def klima(self, lat: float, lon: float) -> SourceResult:
+        """Klimanormalwerte der nächsten DWD-Station.
+
+        Gecacht werden die **Deutschland-weiten Dateien je Parameter** —
+        nicht der Punkt: dieselben zehn Dateien beantworten jede Anfrage im
+        ganzen Land, und die Normalperiode 1991–2020 ändert sich nicht.
+        Die Stationswahl je Punkt ist danach reine lokale Rechnung."""
+        started = time.perf_counter()
+
+        async def datei(eintrag: dict) -> SourceResult:
+            key = f"klima_datei|{eintrag['datei']}"
+
+            async def laden() -> SourceResult:
+                data = await klima_mod.lade_parameter(
+                    self.outbound, self.settings, eintrag
+                )
+                return SourceResult(name="klima", ok=True, data=data)
+
+            return await self._cached("klima", key, laden)
+
+        results = await asyncio.gather(
+            *(datei(e) for e in klima_mod.PARAMETER), return_exceptions=True
+        )
+        dateien: dict[str, Any] = {}
+        warnungen: list[str] = []
+        for eintrag, res in zip(klima_mod.PARAMETER, results):
+            if isinstance(res, BaseException):
+                warnungen.append(f"{eintrag['titel']}: {res}")
+            elif res.ok and res.data:
+                dateien[eintrag["schluessel"]] = res.data
+            else:
+                grund = (res.error or {}).get("message", "unbekannter Fehler")
+                warnungen.append(f"{eintrag['titel']}: {grund}")
+        return klima_mod.ergebnis(lat, lon, dateien, started, warnungen)
+
     async def marke(self, lat: float, lon: float, radius: int, marke: str):
         """Gebietsschutz-Check: Betriebe der eigenen Marke im großen Umkreis.
 
@@ -303,10 +338,11 @@ class PointService:
             self.radzaehlung(lat, lon, radius, refresh),
             self.verkehrsmenge(lat, lon, radius, refresh),
             self.planung(lat, lon, radius, refresh),
+            self.klima(lat, lon),
             return_exceptions=True,
         )
         names = ["adresse", "zensus", "osm", "gtfs", "radzaehlung", "verkehrsmenge",
-                 "planung"]
+                 "planung", "klima"]
         blocks: dict[str, Any] = {}
         for name, res in zip(names, results):
             if isinstance(res, BaseException):

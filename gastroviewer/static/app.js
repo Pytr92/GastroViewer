@@ -956,6 +956,10 @@ function lade(refresh = false) {
     .then((d) => { if (aktuell()) { state.daten.planung = d; zeigePlanung(d); } })
     .catch((e) => aktuell() && zeigeBlockFehler('planung', e));
 
+  hole('/api/point/klima', { lat, lon })
+    .then((d) => { if (aktuell()) { state.daten.klima = d; zeigeKlima(d); } })
+    .catch((e) => aktuell() && zeigeBlockFehler('klima', e));
+
   aktualisiereFuss();
 }
 
@@ -992,6 +996,7 @@ function baueGeruest() {
     block('gehweg', '4b · Erreichbarkeit zu Fuß'),
     block('franchise', '4c · Systemgastronomie & Marken'),
     block('umfeld', '5 · Umfeld'),
+    block('klima', '5b · Klima für Außengastronomie (DWD)'),
     block('verkehr', '6 · Verkehr'),
     block('gtfs', '6b · Abfahrten (GTFS)'),
     block('radzaehlung', '6c · Gemessene Radverkehrsfrequenz'),
@@ -1547,6 +1552,71 @@ function zeigeEinkommen(d) {
       'Kreiswert — innerhalb einer Großstadt unterscheidet er keine Viertel. '
       + 'Kleinräumige Anzeiger sind Nettokaltmiete und Eigentümerquote aus dem '
       + 'Zensusblock. Und verfügbares Einkommen ist kein Kaufkraftindex.'),
+    ...warnungen(d.warnings || []));
+  setQuelle(id, d.provenance);
+}
+
+/* Block 5b — Klimanormalwerte 1991–2020 der jeweils nächsten DWD-Station.
+   Für Biergarten/Terrasse/Eisdiele: Sommertage, Sonne, Niederschlag. Jede
+   Kennzahl nennt ihre Station samt Entfernung — jeder Parameter hat sein
+   eigenes Stationsnetz, die Stationen können sich also unterscheiden. */
+function zeigeKlima(d) {
+  const id = 'klima';
+  if (!d.ok) {
+    setStatus(id, 'fehler', 'nicht erreichbar');
+    setInhalt(id, fehlerbox(d.error));
+    setQuelle(id, d.provenance);
+    return;
+  }
+  const k = d.data;
+  if (!k || !(k.kennzahlen || []).length) {
+    setStatus(id, 'leer', 'kein Wert');
+    setInhalt(id, ...warnungen(d.warnings || []));
+    setQuelle(id, d.provenance);
+    return;
+  }
+  setStatus(id, 'ok', 'geladen');
+
+  const tab = el('table', { class: 'daten' },
+    el('tr', {},
+      el('th', {}, 'Kennzahl'),
+      el('th', { class: 'num' }, 'Wert (Normalperiode 1991–2020)'),
+      el('th', {}, 'Station')));
+  for (const z of k.kennzahlen) {
+    const st = z.station || {};
+    tab.append(el('tr', {},
+      el('td', {}, z.titel),
+      el('td', { class: 'num' },
+        `${nfFest(z.stellen ?? 1).format(z.wert)} ${z.einheit}`),
+      el('td', {},
+        `${st.name || '—'} (${NF.format(Math.round((st.distanz_m || 0) / 100) / 10)} km`
+        + (st.hoehe_m !== null && st.hoehe_m !== undefined
+          ? `, ${NF.format(Math.round(st.hoehe_m))} m ü. NN)` : ')'))));
+  }
+
+  // Saisonverlauf der Sommertage: die Monatswerte zeigen, wie lang die
+  // Draußen-Saison wirklich ist — Jahreszahl allein verdeckt das.
+  const so = k.kennzahlen.find((z) => z.schluessel === 'sommertage');
+  let saison = null;
+  if (so && Array.isArray(so.monate) && so.monate.some((m) => m)) {
+    const max = Math.max(1, ...so.monate.map((m) => m || 0));
+    saison = el('div', {},
+      el('h3', { class: 'hinweis-klein' },
+        `Sommertage je Monat (Station ${so.station?.name || ''})`),
+      el('div', { style: 'display:flex;align-items:flex-end;gap:2px;height:60px;margin:6px 0 2px;' },
+        so.monate.map((m, i) => el('div', {
+          title: `${['Jan', 'Feb', 'Mär', 'Apr', 'Mai', 'Jun', 'Jul', 'Aug', 'Sep', 'Okt', 'Nov', 'Dez'][i]} — ${NF1.format(m || 0)} Tage`,
+          style: `flex:1;background:#c98f2c;border-radius:2px 2px 0 0;height:${Math.max(2, ((m || 0) / max) * 100)}%;`,
+        }))),
+      el('div', { style: 'display:flex;justify-content:space-between;font-size:11px;color:#5b6570;' },
+        el('span', {}, 'Jan'), el('span', {}, 'Jun'), el('span', {}, 'Dez')));
+  }
+
+  setInhalt(id, tab, saison,
+    el('div', { class: 'warnung' },
+      'Stationswerte der Normalperiode 1991–2020 — kein aktuelles Jahr, keine '
+      + 'Prognose, und der Wert der Station, nicht des Punktes. Am Alpenrand '
+      + 'kann die Stationshöhe den Unterschied machen.'),
     ...warnungen(d.warnings || []));
   setQuelle(id, d.provenance);
 }

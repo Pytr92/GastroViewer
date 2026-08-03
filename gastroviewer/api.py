@@ -271,6 +271,13 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         _validate(lat, lon, r)
         return (await svc(request).planung(lat, lon, r)).to_dict()
 
+    @app.get("/api/point/klima")
+    async def point_klima(request: Request, lat: float, lon: float):
+        """Klimanormalwerte 1991–2020 der jeweils nächsten DWD-Station —
+        für Außengastronomie (Sommertage, Sonne, Niederschlag)."""
+        _validate(lat, lon, 600)
+        return (await svc(request).klima(lat, lon)).to_dict()
+
     @app.get("/api/point/links")
     async def point_links(
         request: Request,
@@ -822,6 +829,12 @@ VERGLEICH_SPALTEN = [
      "stellen": 1, "gruppe": "detail"},
     {"key": "bev_entwicklung", "titel": "Bevölkerungsentw. je 10.000 EW (Kreis)",
      "stellen": 1, "gruppe": "detail"},
+
+    # --- Klima (DWD, nächste Station) — für Außengastronomie-Konzepte.
+    {"key": "sommertage", "titel": "Sommertage/Jahr (DWD-Station)",
+     "stellen": 1, "gruppe": "detail"},
+    {"key": "sonnenschein", "titel": "Sonnenstunden/Jahr (DWD-Station)",
+     "gruppe": "detail"},
 ]
 
 
@@ -838,6 +851,11 @@ def _row_for(saved: dict[str, Any]) -> dict[str, Any]:
         i.get("schluessel"): i.get("kreis")
         for i in (((bl.get("kreisprofil") or {}).get("data") or {})
                   .get("indikatoren") or [])
+    }
+    kl = {
+        k.get("schluessel"): k.get("wert")
+        for k in (((bl.get("klima") or {}).get("data") or {})
+                  .get("kennzahlen") or [])
     }
     gw = ((bl.get("gehweg") or {}).get("data") or {}) or {}
     gw_gas = gw.get("gastronomie") or {}
@@ -871,6 +889,8 @@ def _row_for(saved: dict[str, Any]) -> dict[str, Any]:
         "et_je_1000_ew": kp.get("et_je_1000_ew"),
         "arbeitslosenquote": kp.get("arbeitslosenquote"),
         "bev_entwicklung": kp.get("bev_entwicklung"),
+        "sommertage": kl.get("sommertage"),
+        "sonnenschein": kl.get("sonnenschein"),
         "leerstandsquote": _wert(woh.get("leerstandsquote")),
         "gastro_gesamt": gas.get("gesamt"),
         "fast_food": fastfood,

@@ -23,7 +23,7 @@ class FakeOutbound:
     """Ersetzt nur die Netz-Ebene und zählt die Aufrufe."""
 
     def __init__(self, zensus, overpass, nominatim, einkommen=None,
-                 kreisprofil=None, fehler: set[str] | None = None):
+                 kreisprofil=None, dwd=None, fehler: set[str] | None = None):
         self.zensus = zensus
         self.overpass = overpass
         self.nominatim = nominatim
@@ -31,6 +31,8 @@ class FakeOutbound:
         # Fixture je Tabelle — Einkommen und Kreisprofil teilen sich Endpunkt
         # und URL, unterscheiden sich nur im layer-Parameter.
         self.kreisprofil = kreisprofil or {}
+        # DWD-Textdateien, Schlüssel = Dateiname.
+        self.dwd = dwd or {}
         self.fehler = fehler or set()
         self.calls: list[str] = []
 
@@ -79,6 +81,18 @@ class FakeOutbound:
     async def post_json(self, source, url, **kw):
         return self._dispatch(url, kw)
 
+    async def get_text(self, source, url, **kw):
+        if "dwd" in url:
+            self.calls.append("dwd")
+            if "dwd" in self.fehler:
+                raise SourceError("timeout",
+                                  "Zeitüberschreitung — Dienst antwortet nicht.")
+            name = url.rsplit("/", 1)[-1]
+            if name not in self.dwd:
+                raise SourceError("http_status", f"HTTP 404 — {name} fehlt.")
+            return self.dwd[name]
+        raise AssertionError(f"unerwartete Text-URL: {url}")
+
     class _Lim:
         @staticmethod
         def stats():
@@ -89,7 +103,7 @@ class FakeOutbound:
 
 @pytest.fixture()
 def client(tmp_path, monkeypatch, zensus_600, overpass_combined, nominatim_reverse,
-           einkommen_muenchen, kreisprofil_muenchen):
+           einkommen_muenchen, kreisprofil_muenchen, dwd_klima):
     from gastroviewer.config import Settings
 
     settings = Settings()
@@ -97,7 +111,7 @@ def client(tmp_path, monkeypatch, zensus_600, overpass_combined, nominatim_rever
     settings.overpass_endpoints = ("https://overpass-api.de/api/interpreter",)
 
     fake = FakeOutbound(zensus_600, overpass_combined, nominatim_reverse,
-                        einkommen_muenchen, kreisprofil_muenchen)
+                        einkommen_muenchen, kreisprofil_muenchen, dwd_klima)
     app = create_app(settings)
 
     original_lifespan_state = {}
@@ -151,9 +165,9 @@ def test_zweiter_aufruf_erzeugt_keinen_outbound_traffic(client):
     """Abnahmekriterium §7."""
     client.get("/api/point", params={"lat": LAT, "lon": LON, "r": R})
     vorher = len(client.fake.calls)
-    # Nominatim, Zensus, Overpass — und der Regionalatlas fürs Einkommen (1)
-    # und Kreisprofil (5 Tabellen).
-    assert vorher == 9
+    # Nominatim, Zensus, Overpass — der Regionalatlas fürs Einkommen (1) und
+    # Kreisprofil (5 Tabellen) — und der DWD (5 Parameter x 2 Dateien).
+    assert vorher == 19
 
     d = client.get("/api/point", params={"lat": LAT, "lon": LON, "r": R}).json()
     assert len(client.fake.calls) == vorher, "Cache hat nicht gegriffen"
@@ -1178,6 +1192,34 @@ def test_kreisprofil_block_im_punkt_und_vergleich(client):
     assert z["et_je_1000_ew"] == 1159.1
     assert z["arbeitslosenquote"] == 5.4
     assert z["bev_entwicklung"] == 108.8
+
+
+def test_klima_block_im_punkt_und_vergleich(client):
+    d = client.get("/api/point", params={"lat": LAT, "lon": LON, "r": R}).json()
+    k = d["bloecke"]["klima"]
+    assert k["ok"], k.get("error")
+    werte = {z["schluessel"]: z for z in k["data"]["kennzahlen"]}
+    assert werte["sommertage"]["wert"] == 53.3
+    assert werte["sommertage"]["station"]["name"] == "München-Stadt"
+    assert werte["sonnenschein"]["wert"] == 1841.5
+    assert "1991–2020" in k["provenance"]["stand"]
+
+    client.post("/api/points", json={
+        "label": "Klimatest", "lat": LAT, "lon": LON, "radius": R})
+    v = client.get("/api/points/vergleich").json()
+    z = next(x for x in v["zeilen"] if x["label"] == "Klimatest")
+    assert z["sommertage"] == 53.3
+    assert z["sonnenschein"] == 1841.5
+
+
+def test_klima_dateien_cache_ist_landesweit(client):
+    """Die zehn DWD-Dateien beantworten jeden Punkt in Deutschland — ein
+    zweiter, ganz anderer Punkt darf keinen weiteren DWD-Abruf auslösen."""
+    client.get("/api/point/klima", params={"lat": LAT, "lon": LON})
+    vorher = client.fake.calls.count("dwd")
+    assert vorher == 10  # 5 Parameter x (Werte + Stationsliste)
+    client.get("/api/point/klima", params={"lat": 50.94, "lon": 6.96})
+    assert client.fake.calls.count("dwd") == vorher, "Dateien-Cache griff nicht"
 
 
 def test_kreisprofil_endpunkt_und_kreiscache(client):

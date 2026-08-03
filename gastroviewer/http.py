@@ -126,6 +126,17 @@ class Outbound:
         resp = await self.request(source, "POST", url, **kwargs)
         return _json_or_raise(resp)
 
+    async def get_text(
+        self, source: str, url: str, *, encoding: str | None = None, **kwargs: Any
+    ) -> str:
+        """Für Dienste, die Textdateien statt JSON liefern (DWD Open Data).
+        ``encoding`` überschreibt die geratene Kodierung — die DWD-Dateien
+        sind Latin-1 und deklarieren das nicht."""
+        resp = await self.request(source, "GET", url, **kwargs)
+        if encoding:
+            resp.encoding = encoding
+        return resp.text
+
 
 def _json_or_raise(resp: httpx.Response) -> Any:
     try:
