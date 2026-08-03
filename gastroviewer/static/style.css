@@ -303,6 +303,12 @@ table.daten th, table.daten td { text-align: left; padding: 5px 6px; border-bott
 table.daten th { color: var(--text-schwach); font-weight: 600; }
 table.daten td.num, table.daten th.num { text-align: right; font-variant-numeric: tabular-nums; }
 table.daten tr:last-child td { border-bottom: none; }
+/* Pflegeleiste im Standortvergleich: Sichern, Einspielen, Pflegelauf. */
+.pflegeleiste {
+  display: flex; gap: 8px; align-items: center; flex-wrap: wrap;
+  margin: 8px 0;
+}
+
 /* Themenzeile im Kreisprofil: trennt Tourismus / Arbeit / Bevölkerung. */
 table.daten tr.gruppe th {
   padding-top: 10px; font-size: 12px; text-transform: uppercase;

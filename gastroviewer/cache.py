@@ -306,6 +306,69 @@ class Cache:
             cur = conn.execute("DELETE FROM saved_points WHERE id = ?", (point_id,))
             return cur.rowcount > 0
 
+    # ------------------------------------------------------- Datensicherung
+
+    EXPORT_FORMAT = "gastroviewer-punkte"
+    EXPORT_VERSION = 1
+
+    def export_points(self) -> dict[str, Any]:
+        """Alle gemerkten Punkte samt Verlauf und eigener Einschätzung als ein
+        JSON-Dokument — Monate Sucharbeit hängen sonst an einer einzigen
+        SQLite-Datei auf einem Rechner."""
+        punkte = []
+        for p in self.list_points():
+            p["verlauf"] = [
+                {"ts": v["ts"], "payload": v["payload"]}
+                for v in self.list_verlauf(p["id"])
+            ]
+            punkte.append(p)
+        return {
+            "format": self.EXPORT_FORMAT,
+            "version": self.EXPORT_VERSION,
+            "exportiert_am": time.time(),
+            "punkte": punkte,
+        }
+
+    def import_points(self, daten: dict[str, Any]) -> dict[str, int]:
+        """Spielt eine Sicherung ein. Punkte bekommen neue IDs; ein Punkt gilt
+        als Dublette (und wird übersprungen), wenn Label, Koordinaten, Radius
+        und Anlagezeitpunkt exakt übereinstimmen."""
+        if daten.get("format") != self.EXPORT_FORMAT:
+            raise ValueError("Das ist keine Punkte-Sicherung dieses Werkzeugs.")
+        if daten.get("version") != self.EXPORT_VERSION:
+            raise ValueError(
+                f"Unbekannte Sicherungsversion {daten.get('version')!r} — "
+                f"dieses Werkzeug schreibt Version {self.EXPORT_VERSION}."
+            )
+        neu = uebersprungen = 0
+        with self._connect() as conn:
+            for p in daten.get("punkte") or []:
+                vorhanden = conn.execute(
+                    "SELECT 1 FROM saved_points WHERE label = ? AND lat = ? "
+                    "AND lon = ? AND radius = ? AND created_at = ?",
+                    (p["label"], p["lat"], p["lon"], p["radius"], p["created_at"]),
+                ).fetchone()
+                if vorhanden:
+                    uebersprungen += 1
+                    continue
+                cur = conn.execute(
+                    "INSERT INTO saved_points(label, lat, lon, radius, created_at,"
+                    " payload, notiz, bewertung, geprueft_am) VALUES (?,?,?,?,?,?,?,?,?)",
+                    (
+                        p["label"], p["lat"], p["lon"], p["radius"], p["created_at"],
+                        json.dumps(p["payload"], ensure_ascii=False),
+                        p.get("notiz"), p.get("bewertung"), p.get("geprueft_am"),
+                    ),
+                )
+                pid = int(cur.lastrowid or 0)
+                for v in p.get("verlauf") or []:
+                    conn.execute(
+                        "INSERT INTO point_verlauf(point_id, ts, payload) VALUES (?,?,?)",
+                        (pid, v["ts"], json.dumps(v["payload"], ensure_ascii=False)),
+                    )
+                neu += 1
+        return {"neu": neu, "uebersprungen": uebersprungen}
+
 
 class AsyncCache:
     """Dünne async-Hülle: SQLite-Aufrufe laufen in einem Worker-Thread,

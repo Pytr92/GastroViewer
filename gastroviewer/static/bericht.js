@@ -57,6 +57,52 @@ async function hole(pfad) {
   return r.json();
 }
 
+/* Kleine Verlaufslinie (SVG) für eine Kennzahl über die Stände. Lücken
+   (fehlende Werte) unterbrechen die Linie, statt als 0 gezeichnet zu werden. */
+function sparkline(titel, werte) {
+  const B = 220, H = 64, RAND = 6;
+  const zahlen = werte.filter((v) => typeof v === 'number');
+  const min = Math.min(...zahlen);
+  const max = Math.max(...zahlen);
+  const spannweite = max - min || 1;
+  const x = (i) => RAND + (i * (B - 2 * RAND)) / Math.max(1, werte.length - 1);
+  const y = (v) => H - RAND - ((v - min) / spannweite) * (H - 2 * RAND);
+
+  const svgNS = 'http://www.w3.org/2000/svg';
+  const svg = document.createElementNS(svgNS, 'svg');
+  svg.setAttribute('viewBox', `0 0 ${B} ${H}`);
+  svg.setAttribute('width', String(B));
+  svg.setAttribute('height', String(H));
+
+  let pfad = '';
+  let offen = false;
+  werte.forEach((v, i) => {
+    if (typeof v !== 'number') { offen = false; return; }
+    pfad += `${offen ? 'L' : 'M'}${x(i).toFixed(1)},${y(v).toFixed(1)} `;
+    offen = true;
+  });
+  const linie = document.createElementNS(svgNS, 'path');
+  linie.setAttribute('d', pfad.trim());
+  linie.setAttribute('fill', 'none');
+  linie.setAttribute('stroke', '#1f5f8b');
+  linie.setAttribute('stroke-width', '2');
+  svg.append(linie);
+  werte.forEach((v, i) => {
+    if (typeof v !== 'number') return;
+    const punkt = document.createElementNS(svgNS, 'circle');
+    punkt.setAttribute('cx', x(i).toFixed(1));
+    punkt.setAttribute('cy', y(v).toFixed(1));
+    punkt.setAttribute('r', '2.5');
+    punkt.setAttribute('fill', '#1f5f8b');
+    svg.append(punkt);
+  });
+
+  return el('div', { class: 'verlauf-chart' },
+    el('div', { class: 'kennung' },
+      `${titel} — ${NF.format(min)} bis ${NF.format(max)}`),
+    svg);
+}
+
 async function start() {
   const ziel = document.getElementById('bericht');
   const id = new URLSearchParams(location.search).get('punkt');
@@ -183,6 +229,24 @@ async function start() {
     teile.push(el('p', { class: 'hinweis' },
       '„Neu prüfen" legt vor jedem neuen Abruf den alten Stand ab. Beweglich '
       + 'sind OSM, GTFS und die Zählstellen — Zensuswerte behalten ihren Stichtag.'));
+
+    /* Ab drei Ständen als Linie: Zeitreihen liest man als Verlauf, nicht als
+       Zahlenspalte. Reines Inline-SVG, keine Bibliothek. */
+    if (staende.length >= 3) {
+      const REIHEN = [
+        ['gastro_gesamt', 'Gastronomie'],
+        ['gastro_bis_300', 'bis 300 m'],
+        ['leerstand_osm', 'Leerstände'],
+        ['frequenzbringer', 'Frequenzbringer'],
+      ];
+      const zeile = el('div', { class: 'verlauf-charts' });
+      for (const [key, titel] of REIHEN) {
+        const werte = staende.map((s) => (s.zeile || {})[key]);
+        if (werte.filter((v) => typeof v === 'number').length < 3) continue;
+        zeile.append(sparkline(titel, werte));
+      }
+      if (zeile.childNodes.length) teile.push(zeile);
+    }
     const tab = el('table', {},
       el('tr', {},
         el('th', {}, 'Stand'),

@@ -312,3 +312,32 @@ def test_ohne_geladene_gehstrecken_gibt_es_kein_angebot():
         },
     }
     assert schaetzung.vorgaben_aus_punkt(punkt)["gehweg_alternative"] is None
+
+
+# ------------------------------------------------------------ Mietprobe
+
+
+def test_mietprobe_findet_ohne_eingaben_nicht_statt():
+    assert rechne(basis())["mietprobe"] is None
+    assert rechne(basis(flaeche_qm=120))["mietprobe"] is None, \
+        "Fläche allein reicht nicht — es gibt keine Vorgabemiete"
+
+
+def test_mietprobe_rechnet_und_ordnet_ein():
+    d = rechne(basis(flaeche_qm=120, angebotsmiete_qm=25))
+    mp = d["mietprobe"]
+    assert mp["monatsmiete_eur"] == 3000
+    assert mp["jahresmiete_eur"] == 36000
+    assert mp["obergrenze_eur"] == d["ergebnis"]["monatsmiete_obergrenze_eur"]
+    assert mp["lage"] in {"unter", "innerhalb", "ueber"}
+    # Absurd teures Angebot liegt sicher über der Obergrenze.
+    teuer = rechne(basis(flaeche_qm=1000, angebotsmiete_qm=500))["mietprobe"]
+    assert teuer["lage"] == "ueber"
+    assert "trägt sie sich" in teuer["befund"]
+
+
+def test_mietprobe_veraendert_das_ergebnis_nicht():
+    ohne = rechne(basis())
+    mit = rechne(basis(flaeche_qm=120, angebotsmiete_qm=25))
+    assert ohne["ergebnis"] == mit["ergebnis"], \
+        "Die Mietprobe ist eine Gegenprobe, kein Rechenfaktor"

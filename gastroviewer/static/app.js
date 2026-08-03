@@ -2101,6 +2101,7 @@ async function zeigeVergleich() {
   // replaceChildren würde daraus das sichtbare Wort „null" machen.
   ziel.replaceChildren(...[
     schalter,
+    pflegeleiste(d.zeilen),
     ueberlappungsBox,
     el('div', { class: 'tabelle-rahmen' }, tab),
     rankingBereich(d),
@@ -2109,6 +2110,89 @@ async function zeigeVergleich() {
   // oder Löschen (beides landet hier) wird sie nachgeführt.
   ladePunkteEbene();
   document.getElementById('vergleich-dialog').showModal();
+}
+
+/* ------------------------------------- Datensicherung und Pflegelauf */
+
+/* Sichern lädt alle Punkte samt Verlauf als eine JSON-Datei herunter;
+   Einspielen liest so eine Datei wieder ein (Dubletten werden erkannt).
+   „Alle neu prüfen" ist der monatliche Pflegelauf in einem Klick — mit
+   Kostenansage, denn je Punkt läuft u. a. eine Overpass-Abfrage. */
+function pflegeleiste(zeilen) {
+  const dateiwahl = el('input', {
+    type: 'file', accept: 'application/json,.json', hidden: true,
+    onchange: async (ev) => {
+      const datei = ev.target.files && ev.target.files[0];
+      if (!datei) return;
+      let daten;
+      try {
+        daten = JSON.parse(await datei.text());
+      } catch {
+        alert('Die Datei ist kein lesbares JSON.');
+        return;
+      }
+      const r = await fetch('/api/points/import', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(daten),
+      });
+      const antwort = await r.json().catch(() => ({}));
+      if (!r.ok) {
+        alert(`Einspielen fehlgeschlagen: ${antwort.detail || `HTTP ${r.status}`}`);
+        return;
+      }
+      alert(`Sicherung eingespielt: ${antwort.neu} Punkt(e) neu, `
+        + `${antwort.uebersprungen} bereits vorhanden.`);
+      zeigeVergleich();
+    },
+  });
+  return el('div', { class: 'pflegeleiste' },
+    el('a', {
+      class: 'knopf-link', href: '/api/points/export',
+      title: 'Alle gemerkten Punkte samt Verlauf und Notizen als eine Datei sichern',
+    }, 'Sichern (Datei)'),
+    el('button', { onclick: () => dateiwahl.click() }, 'Sicherung einspielen'),
+    dateiwahl,
+    zeilen.length > 1 ? el('button', {
+      title: 'Alle gemerkten Punkte nacheinander neu prüfen (je Punkt u. a. eine Overpass-Abfrage)',
+      onclick: () => alleNeuPruefen(zeilen),
+    }, `alle ${zeilen.length} neu prüfen`) : null);
+}
+
+async function alleNeuPruefen(zeilen) {
+  const sicher = confirm(
+    `Alle ${zeilen.length} gemerkten Punkte jetzt neu prüfen?\n\n`
+    + 'Das fragt je Punkt alle Quellen erneut ab (am Cache vorbei), darunter '
+    + `je eine Overpass-Abfrage — insgesamt ${zeilen.length} Stück, nacheinander. `
+    + 'Der bisherige Stand wandert jeweils in den Verlauf.');
+  if (!sicher) return;
+  const inhalt = document.getElementById('vergleich-inhalt');
+  const box = el('div', { class: 'verlauf-ergebnis' });
+  inhalt.prepend(box);
+  const befunde = [];
+  for (let i = 0; i < zeilen.length; i += 1) {
+    const z = zeilen[i];
+    box.replaceChildren(el('div', { class: 'laden' }),
+      `Pflegelauf ${i + 1} von ${zeilen.length}: „${z.label}" …`);
+    try {
+      const r = await fetch(`/api/points/${z.id}/pruefung`, { method: 'POST' });
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      const d = await r.json();
+      const n = d.veraendert.length + d.neue_betriebe.length
+        + d.verschwundene_betriebe.length;
+      befunde.push(`${z.label}: ${n ? `${n} Veränderung(en)` : 'unverändert'}`);
+    } catch (e) {
+      befunde.push(`${z.label}: fehlgeschlagen (${e.message})`);
+    }
+  }
+  await zeigeVergleich();
+  document.getElementById('vergleich-inhalt').prepend(
+    el('div', { class: 'verlauf-ergebnis' },
+      el('strong', {}, `Pflegelauf abgeschlossen (${zeilen.length} Punkte)`),
+      el('ul', { class: 'liste' },
+        befunde.map((b) => el('li', {}, el('span', { class: 'haupt' }, b)))),
+      el('div', { class: 'hinweis-klein' },
+        'Details je Punkt: „neu prüfen" am einzelnen Punkt zeigt die '
+        + 'veränderten Kennzahlen und Betriebe.')));
 }
 
 /* --------------------------------------------- Neu prüfen (Verlauf) */
@@ -2459,6 +2543,12 @@ const FELDER = [
     hinweis: 'aus deiner Kalkulation — leer lassen, wenn unbekannt' },
   { key: 'personalkosten_prozent', label: 'Personalkosten (% vom Umsatz)', schritt: '0.5',
     hinweis: 'aus deiner Kalkulation — leer lassen, wenn unbekannt' },
+  /* Mietprobe gegen ein konkretes Exposé — Werte aus dem Angebot des
+     Vermieters. Leer = Probe entfällt. */
+  { key: 'flaeche_qm', label: 'Fläche laut Exposé (m²)', schritt: '1',
+    hinweis: 'aus dem Angebot — leer lassen, wenn keins vorliegt' },
+  { key: 'angebotsmiete_qm', label: 'Geforderte Kaltmiete (€/m² und Monat)', schritt: '0.5',
+    hinweis: 'aus dem Angebot — leer lassen, wenn keins vorliegt' },
 ];
 
 /* Der Umkreis ist ein Luftlinienkreis; zu Fuß ist er kleiner und an Flüssen
@@ -2763,7 +2853,28 @@ function zeigeSchaetzErgebnis(d, ziel) {
       `Bei ${d.eingaben.mietanteil_min_prozent} bis ${d.eingaben.mietanteil_max_prozent} % `
       + 'vom Umsatz. Faustregel aus notizen-standort-flaeche.md §6 — keine erhobene Statistik. '
       + 'Liegt die geforderte Miete darüber, trägt der Standort sich unter diesen Annahmen nicht.'),
+    ...mietprobeTeile(d.mietprobe),
     ...franchiseTeile);
+}
+
+/* Mietprobe gegen ein konkretes Exposé — nur, wenn Fläche und geforderte
+   Miete eingegeben wurden. Der Befund färbt sich nach der Lage zur Spanne. */
+function mietprobeTeile(mp) {
+  if (!mp) return [];
+  const klasse = mp.lage === 'ueber' ? 'warnung'
+    : mp.lage === 'innerhalb' ? 'warnung' : 'notiz';
+  return [
+    el('h3', { class: 'hinweis-klein' }, 'Mietprobe gegen das Exposé'),
+    el('div', { class: 'kennzahlen' },
+      kennzahl(`Monatsmiete (${NF.format(mp.flaeche_qm)} m² × ${NF1.format(mp.angebotsmiete_qm)} €/m²)`,
+        mp.monatsmiete_eur, '€'),
+      spanne('Obergrenze aus der Rechnung', mp.obergrenze_eur, '€ im Monat'),
+      mp.anteil_am_umsatz_prozent
+        ? spanne('Anteil am gerechneten Umsatz', mp.anteil_am_umsatz_prozent, '%', 1)
+        : null),
+    el('div', { class: klasse }, mp.befund.replaceAll('**', '')),
+    el('div', { class: 'hinweis-klein' }, mp.hinweis),
+  ];
 }
 
 /* Reiterumschaltung */

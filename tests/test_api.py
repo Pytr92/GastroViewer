@@ -1081,6 +1081,51 @@ def test_loeschen_raeumt_den_verlauf_mit_auf(client):
     client.delete(f"/api/points/{pid}")
     assert c.list_verlauf(pid) == [], "gelöschter Punkt darf keine Verlaufsleichen lassen"
 
+# --------------------------------------------------------- Datensicherung
+
+
+def test_export_und_import_der_punkte(client):
+    """Sichern und Einspielen: alles kommt wieder, Dubletten bleiben draußen."""
+    client.post("/api/points", json={
+        "label": "Sicherungstest", "lat": LAT, "lon": LON, "radius": R})
+    pid = client.get("/api/points").json()["punkte"][-1]["id"]
+    client.patch(f"/api/points/{pid}", json={"notiz": "Top-Lage", "bewertung": 2})
+    client.post(f"/api/points/{pid}/pruefung")  # legt einen Verlaufseintrag an
+
+    r = client.get("/api/points/export")
+    assert r.status_code == 200
+    assert "gastroviewer-punkte-" in r.headers["content-disposition"]
+    sicherung = r.json()
+    assert sicherung["format"] == "gastroviewer-punkte"
+    p = next(x for x in sicherung["punkte"] if x["label"] == "Sicherungstest")
+    assert p["notiz"] == "Top-Lage" and p["bewertung"] == 2
+    assert len(p["verlauf"]) == 1
+
+    # Einspielen in denselben Bestand: alles ist Dublette.
+    d = client.post("/api/points/import", json=sicherung).json()
+    assert d["neu"] == 0 and d["uebersprungen"] == len(sicherung["punkte"])
+
+    # Punkt löschen, Sicherung einspielen: der Punkt ist wieder da — samt
+    # Einschätzung und Verlauf.
+    client.delete(f"/api/points/{pid}")
+    d = client.post("/api/points/import", json=sicherung).json()
+    assert d["neu"] == 1
+    zeilen = client.get("/api/points/vergleich").json()["zeilen"]
+    wieder = next(z for z in zeilen if z["label"] == "Sicherungstest")
+    assert wieder["notiz"] == "Top-Lage"
+    v = client.get(f"/api/points/{wieder['id']}/verlauf").json()
+    assert v["anzahl"] == 2
+
+
+def test_import_weist_fremde_dateien_ab(client):
+    r = client.post("/api/points/import", json={"format": "irgendwas"})
+    assert r.status_code == 422
+    assert "keine Punkte-Sicherung" in r.json()["detail"]
+    r = client.post("/api/points/import",
+                    json={"format": "gastroviewer-punkte", "version": 99})
+    assert r.status_code == 422
+
+
 # ------------------------------------------------------- Franchise-Funktionen
 
 

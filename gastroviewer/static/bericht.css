@@ -122,3 +122,13 @@ button:hover { background: #e8eef3; }
   #bericht-karte { height: 380px; break-inside: avoid; }
   .leaflet-control-zoom { display: none; }
 }
+
+/* Verlaufslinien: eine kleine Linie je bewegliche Kennzahl */
+.verlauf-charts {
+  display: flex; flex-wrap: wrap; gap: 14px; margin: 10px 0 6px;
+}
+.verlauf-chart {
+  border: 1px solid #e3e8ed; border-radius: 4px; padding: 8px 10px 4px;
+  break-inside: avoid;
+}
+.verlauf-chart .kennung { font-size: 11.5px; color: #5b6570; margin-bottom: 2px; }

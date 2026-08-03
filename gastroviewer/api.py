@@ -64,6 +64,10 @@ class SchaetzEingaben(BaseModel):
     werbeabgabe_prozent: float | None = Field(None, ge=0, le=100)
     wareneinsatz_prozent: float | None = Field(None, ge=0, le=100)
     personalkosten_prozent: float | None = Field(None, ge=0, le=100)
+    # Mietprobe gegen ein konkretes Exposé — Werte aus dem Angebot des
+    # Vermieters, keine Vorgaben.
+    flaeche_qm: float | None = Field(None, gt=0, le=100_000)
+    angebotsmiete_qm: float | None = Field(None, ge=0, le=10_000)
 
 
 class PunktNotiz(BaseModel):
@@ -506,8 +510,41 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             "zeilen": [_row_for(r) for r in rows],
         }
 
-    # Muss NACH /api/points/vergleich registriert sein — sonst finge der
-    # Pfadparameter das Wort „vergleich" ab und antwortete mit 422.
+    @app.get("/api/points/export")
+    async def export_points(request: Request):
+        """Datensicherung: alle gemerkten Punkte samt Verlauf als eine Datei.
+
+        Monate Sucharbeit hängen sonst an einer einzigen SQLite-Datei auf
+        einem Rechner. Die Antwort ist als Download deklariert."""
+        cache: AsyncCache = request.app.state.cache
+        daten = await asyncio.to_thread(cache.sync.export_points)
+        datum = time.strftime("%Y-%m-%d", time.localtime())
+        return JSONResponse(
+            daten,
+            headers={
+                "Content-Disposition":
+                    f'attachment; filename="gastroviewer-punkte-{datum}.json"'
+            },
+        )
+
+    @app.post("/api/points/import")
+    async def import_points(request: Request, daten: dict):
+        """Spielt eine Sicherung ein. Neue IDs; exakte Dubletten (Label,
+        Koordinaten, Radius, Anlagezeitpunkt) werden übersprungen."""
+        cache: AsyncCache = request.app.state.cache
+        try:
+            ergebnis = await asyncio.to_thread(cache.sync.import_points, daten)
+        except ValueError as err:
+            raise HTTPException(422, str(err)) from err
+        except KeyError as err:
+            raise HTTPException(
+                422, f"Der Sicherung fehlt das Feld {err} — Datei beschädigt?"
+            ) from err
+        return ergebnis
+
+    # Muss NACH /api/points/vergleich und den festen Pfaden (export/import)
+    # registriert sein — sonst finge der Pfadparameter das Wort ab und
+    # antwortete mit 422.
     @app.get("/api/points/{point_id}")
     async def get_point(request: Request, point_id: int):
         """Ein gemerkter Punkt mit vollem Datenstand — Grundlage des Berichts."""

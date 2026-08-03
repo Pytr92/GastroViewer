@@ -190,6 +190,11 @@ class Eingaben:
     werbeabgabe_prozent: float | None = None
     wareneinsatz_prozent: float | None = None
     personalkosten_prozent: float | None = None
+    # Mietprobe gegen ein konkretes Exposé: Fläche und geforderte Kaltmiete
+    # je m². Beides kommt aus dem Angebot des Vermieters — auch hier gibt es
+    # bewusst keine Vorgabewerte. Leer gelassen findet die Probe nicht statt.
+    flaeche_qm: float | None = None
+    angebotsmiete_qm: float | None = None
 
     def naiver_marktanteil_prozent(self) -> float:
         return 100.0 / (max(0, int(self.wettbewerber)) + 1)
@@ -313,6 +318,68 @@ def franchise_kostenprobe(
     }
 
 
+def mietprobe(
+    e: Eingaben, umsatz_min: float, umsatz_max: float,
+    obergrenze_min: float, obergrenze_max: float,
+) -> dict[str, Any] | None:
+    """Hält ein konkretes Mietangebot gegen die Miet-Obergrenze der Rechnung.
+
+    Fläche × geforderte Kaltmiete je m² ergibt die Monatsmiete des Exposés;
+    die Obergrenze kommt aus der Umsatzspanne und dem Mietanteil (Faustregel
+    10–14 %, in der Oberfläche änderbar). Reine Multiplikation — und weil die
+    Umsatzspanne keine Prognose ist, ist auch dieser Befund keiner: er sagt
+    nur, unter welchen der selbst gesetzten Annahmen die Miete tragbar wäre.
+    """
+    if e.flaeche_qm is None or e.angebotsmiete_qm is None:
+        return None
+    if e.flaeche_qm <= 0 or e.angebotsmiete_qm < 0:
+        return None
+    monatsmiete = e.flaeche_qm * e.angebotsmiete_qm
+
+    anteile = None
+    if umsatz_min > 0 and umsatz_max > 0:
+        anteile = [
+            round(monatsmiete * 12 / umsatz_max * 100, 1),
+            round(monatsmiete * 12 / umsatz_min * 100, 1),
+        ]
+
+    if monatsmiete <= obergrenze_min:
+        befund = (
+            "Die geforderte Miete liegt **unter der unteren Obergrenze** — "
+            "selbst am unteren Rand der Umsatzspanne bliebe sie im Rahmen "
+            "der Faustregel."
+        )
+        lage = "unter"
+    elif monatsmiete <= obergrenze_max:
+        befund = (
+            "Die geforderte Miete liegt **innerhalb der Spanne** — sie trägt "
+            "sich nur, wenn der Umsatz eher am oberen Rand der Rechnung liegt."
+        )
+        lage = "innerhalb"
+    else:
+        befund = (
+            "Die geforderte Miete liegt **über der oberen Obergrenze** — "
+            "unter den gesetzten Annahmen trägt sie sich an diesem Standort "
+            "nicht. Verhandeln oder weiterziehen."
+        )
+        lage = "ueber"
+    return {
+        "flaeche_qm": e.flaeche_qm,
+        "angebotsmiete_qm": e.angebotsmiete_qm,
+        "monatsmiete_eur": round(monatsmiete),
+        "jahresmiete_eur": round(monatsmiete * 12),
+        "obergrenze_eur": [round(obergrenze_min), round(obergrenze_max)],
+        "anteil_am_umsatz_prozent": anteile,
+        "lage": lage,
+        "befund": befund,
+        "hinweis": (
+            "Kaltmiete gegen Faustregel-Mietanteil — Nebenkosten, Staffel- "
+            "und Indexklauseln, Instandhaltungspflichten stehen im Vertrag "
+            "und nicht in dieser Rechnung."
+        ),
+    }
+
+
 def rechne(e: Eingaben) -> dict[str, Any]:
     """Reine Funktion. Gleiche Eingaben, gleiches Ergebnis, nichts Verstecktes."""
     fehler = []
@@ -358,11 +425,17 @@ def rechne(e: Eingaben) -> dict[str, Any]:
 
     miete_min, miete_max = _spanne(e.mietanteil_min_prozent, e.mietanteil_max_prozent)
 
+    miete_obergrenze = (
+        umsatz_min / 12 * miete_min / 100,
+        umsatz_max / 12 * miete_max / 100,
+    )
+
     return {
         "kalibrierung": kalibrierung(
             e.kalibrierung_umsatz_eur, umsatz_min, umsatz_max, e.kalibrierung_bezeichnung
         ),
         "franchise": franchise_kostenprobe(e, umsatz_min, umsatz_max),
+        "mietprobe": mietprobe(e, umsatz_min, umsatz_max, *miete_obergrenze),
         "ok": True,
         "eingaben": {
             "einwohner": e.einwohner,
