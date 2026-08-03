@@ -437,15 +437,35 @@ karte.on('overlayremove', (ev) => {
 
 /* Feste, gewählte Klassen wie bei der Übersicht — beim Schwenken müssen die
    Farben vergleichbar bleiben. Grüne Skala, damit sie sich vom blauen
-   Zensusgitter unterscheidet. Dunkel = viele Anwohner je Betrieb. */
-const SCAN_GRENZEN = [100, 300, 700, 1500, 3000];
+   Zensusgitter unterscheidet.
+
+   Drei Metriken aus denselben Zellwerten — der Wechsel zeichnet nur um und
+   löst KEINE neue Abfrage aus. Die Klassengrenzen sind gewählt, keine
+   Statistik, und stehen als solche in der Legende. */
+const SCAN_METRIKEN = [
+  { key: 'je_betrieb', titel: 'Einwohner je Gastronomiebetrieb',
+    grenzen: [100, 300, 700, 1500, 3000],
+    deutung: 'Dunkel = viele Anwohner je Betrieb — ein Suchhinweis, keine Entscheidung.' },
+  { key: 'betriebe_umfeld', titel: 'Betriebe im 300-m-Umfeld',
+    grenzen: [1, 3, 7, 15, 30],
+    deutung: 'Dunkel = Gastro-Cluster. Cluster heißt Wettbewerb UND Lauflage — beides zugleich.' },
+  { key: 'einwohner_umfeld', titel: 'Einwohner im 300-m-Umfeld',
+    grenzen: [500, 1500, 3000, 6000, 10000],
+    deutung: 'Dunkel = dichte Wohnbevölkerung (Zensus 2022, ohne Büros und Touristen).' },
+];
+const SCAN_METRIK_SPEICHER = 'gastroviewer.scanmetrik';
 const SCAN_FARBEN = ['#f4f9f0', '#d9ecc6', '#b4d893', '#86bc62', '#569940', '#2f712c'];
 const SCAN_OHNE_BETRIEB = '#1c4f22';
+
+function scanMetrik() {
+  const key = localStorage.getItem(SCAN_METRIK_SPEICHER);
+  return SCAN_METRIKEN.find((m) => m.key === key) || SCAN_METRIKEN[0];
+}
 /* Etwas unter dem Server-Limit, damit die Kachelrundung des Backends die
    Box nicht über die Abweisungsgrenze hinausschiebt. */
 const SCAN_SPANNE = [0.055, 0.04];
 
-const scanState = { schluessel: null, laedt: false, status: null };
+const scanState = { schluessel: null, laedt: false, status: null, daten: null };
 
 const scanLegende = L.control({ position: 'bottomright' });
 scanLegende.onAdd = () => {
@@ -455,10 +475,14 @@ scanLegende.onAdd = () => {
   return c;
 };
 
-function scanFarbe(z) {
-  if (z.je_betrieb === null || z.je_betrieb === undefined) return SCAN_OHNE_BETRIEB;
+function scanFarbe(z, metrik) {
+  const wert = z[metrik.key];
+  if (wert === null || wert === undefined) {
+    // Nur bei „je Betrieb" ist Fehlend eine eigene Aussage (kein Betrieb).
+    return metrik.key === 'je_betrieb' ? SCAN_OHNE_BETRIEB : SCAN_FARBEN[0];
+  }
   let i = 0;
-  while (i < SCAN_GRENZEN.length && z.je_betrieb > SCAN_GRENZEN[i]) i += 1;
+  while (i < metrik.grenzen.length && wert > metrik.grenzen[i]) i += 1;
   return SCAN_FARBEN[i];
 }
 
@@ -478,27 +502,40 @@ function scanBox() {
 function zeigeScanLegende(status) {
   const c = document.getElementById('scan-legende');
   if (!c) return;
-  const zeilen = [el('strong', {}, 'Einwohner je Gastronomiebetrieb')];
+  const metrik = scanMetrik();
   if (status.hinweis) {
-    c.replaceChildren(zeilen[0], el('div', { class: 'hinweis-klein' }, status.hinweis));
+    c.replaceChildren(el('strong', {}, metrik.titel),
+      el('div', { class: 'hinweis-klein' }, status.hinweis));
     return;
   }
+  const auswahl = el('select', { onchange: (ev) => {
+    localStorage.setItem(SCAN_METRIK_SPEICHER, ev.target.value);
+    zeichneScan();
+  } }, SCAN_METRIKEN.map((m) => {
+    const o = el('option', { value: m.key }, m.titel);
+    if (m.key === metrik.key) o.selected = true;
+    return o;
+  }));
+  const zeilen = [el('strong', {}, 'Flächen-Scan'), auswahl];
   let von = 0;
-  for (let i = 0; i <= SCAN_GRENZEN.length; i += 1) {
-    const bis = SCAN_GRENZEN[i];
+  for (let i = 0; i <= metrik.grenzen.length; i += 1) {
+    const bis = metrik.grenzen[i];
     zeilen.push(el('div', { class: 'legende-zeile' },
       el('i', { style: `background:${SCAN_FARBEN[i]}` }),
       bis === undefined ? `über ${NF.format(von)}` : `${NF.format(von)} – ${NF.format(bis)}`));
     von = bis;
   }
-  zeilen.push(el('div', { class: 'legende-zeile' },
-    el('i', { style: `background:${SCAN_OHNE_BETRIEB}` }), 'kein Betrieb im Umfeld'));
+  if (metrik.key === 'je_betrieb') {
+    zeilen.push(el('div', { class: 'legende-zeile' },
+      el('i', { style: `background:${SCAN_OHNE_BETRIEB}` }), 'kein Betrieb im Umfeld'));
+  }
   zeilen.push(el('div', { class: 'hinweis-klein' },
     `${NF.format(status.zellen)} Zellen · ${NF.format(status.betriebe)} Betriebe · `
-    + '300-m-Umfeld je 100-m-Zelle · feste, gewählte Klassen'));
+    + '300-m-Umfeld je 100-m-Zelle · feste, gewählte Klassen · Wechsel der '
+    + 'Kennzahl zeichnet nur um, ohne neue Abfrage'));
   zeilen.push(el('div', { class: 'hinweis-klein' },
-    'Dunkel = viele Anwohner je Betrieb — ein Suchhinweis, keine Entscheidung. '
-    + 'OSM zählt Betriebe unvollständig; die Werte sind Obergrenzen.'));
+    `${metrik.deutung} OSM zählt Betriebe unvollständig; Betriebszahlen sind `
+    + 'Untergrenzen.'));
   if (status.veraltet) {
     zeilen.push(el('button', { class: 'scan-knopf', onclick: () => ladeScan() },
       'Diesen Ausschnitt scannen'));
@@ -559,41 +596,51 @@ async function ladeScan() {
       return;
     }
     scanState.schluessel = schluessel;
-    const gruppe = state.ebenen.scan;
-    gruppe.clearLayers();
-    let gezeichnet = 0;
-    for (const z of d.data.zellen) {
-      /* Niemand wohnt im Umfeld — dann trifft die Kennzahl keine Aussage. */
-      if (!z.einwohner_umfeld) continue;
-      const latlngs = z.ring.map((pt) => [pt[1], pt[0]]);
-      const mitte = [
-        latlngs.reduce((s, x) => s + x[0], 0) / latlngs.length,
-        latlngs.reduce((s, x) => s + x[1], 0) / latlngs.length,
-      ];
-      const poly = L.polygon(latlngs, {
-        renderer: state.scanRenderer,
-        color: '#ffffff', weight: 0.4,
-        fillColor: scanFarbe(z),
-        fillOpacity: 0.55 * state.deckkraft, opacity: 0.5 * state.deckkraft,
-        _basisDeckkraft: 0.55, _basisRand: 0.5,
-      });
-      poly.bindPopup(() => scanPopup(z, mitte), { maxWidth: 300 });
-      gruppe.addLayer(poly);
-      gezeichnet += 1;
-    }
-    /* Gestrichelter Rahmen: das ist die gescannte Fläche — wichtig, wenn der
-       Kartenausschnitt größer ist als das Scanfenster. */
-    const [w, s, o, n] = d.data.kachel;
-    gruppe.addLayer(L.rectangle([[s, w], [n, o]], {
-      color: '#2f712c', weight: 1.2, dashArray: '5 5', fill: false, opacity: 0.8,
-    }));
-    scanState.status = { zellen: gezeichnet, betriebe: d.data.betriebe_gesamt };
-    zeigeScanLegende(scanState.status);
+    scanState.daten = d.data;
+    zeichneScan();
   } catch (e) {
     zeigeScanLegende({ hinweis: `Scan nicht möglich: ${e.message}` });
   } finally {
     scanState.laedt = false;
   }
+}
+
+/* Zeichnet den zuletzt geladenen Scan mit der gewählten Metrik — reine
+   Umfärbung aus scanState.daten, keine neue Abfrage. */
+function zeichneScan() {
+  const daten = scanState.daten;
+  if (!daten) return;
+  const metrik = scanMetrik();
+  const gruppe = state.ebenen.scan;
+  gruppe.clearLayers();
+  let gezeichnet = 0;
+  for (const z of daten.zellen) {
+    /* Niemand wohnt im Umfeld — dann trifft keine der Kennzahlen eine Aussage. */
+    if (!z.einwohner_umfeld) continue;
+    const latlngs = z.ring.map((pt) => [pt[1], pt[0]]);
+    const mitte = [
+      latlngs.reduce((s, x) => s + x[0], 0) / latlngs.length,
+      latlngs.reduce((s, x) => s + x[1], 0) / latlngs.length,
+    ];
+    const poly = L.polygon(latlngs, {
+      renderer: state.scanRenderer,
+      color: '#ffffff', weight: 0.4,
+      fillColor: scanFarbe(z, metrik),
+      fillOpacity: 0.55 * state.deckkraft, opacity: 0.5 * state.deckkraft,
+      _basisDeckkraft: 0.55, _basisRand: 0.5,
+    });
+    poly.bindPopup(() => scanPopup(z, mitte), { maxWidth: 300 });
+    gruppe.addLayer(poly);
+    gezeichnet += 1;
+  }
+  /* Gestrichelter Rahmen: das ist die gescannte Fläche — wichtig, wenn der
+     Kartenausschnitt größer ist als das Scanfenster. */
+  const [w, s, o, n] = daten.kachel;
+  gruppe.addLayer(L.rectangle([[s, w], [n, o]], {
+    color: '#2f712c', weight: 1.2, dashArray: '5 5', fill: false, opacity: 0.8,
+  }));
+  scanState.status = { zellen: gezeichnet, betriebe: daten.betriebe_gesamt };
+  zeigeScanLegende(scanState.status);
 }
 
 /* Nach dem Schwenken wird NICHT automatisch neu gescannt — jeder Scan ist
@@ -1195,6 +1242,70 @@ function liste(eintraege, zeigeAnfangs = 12, zeichner) {
   return ul;
 }
 
+/* ------------------------------------------------- Branchenprofile
+   Für einen Imbiss sind 30 Cafés kein Wettbewerb. Ein Profil legt fest,
+   welche OSM-Typen (amenity) als direkter Wettbewerb zählen — mehr nicht:
+   es filtert vorhandene Daten, es lädt nichts nach und wertet nichts um.
+   Grundlage ist bewusst nur der amenity-Typ; das cuisine-Feld ist Freitext
+   und bleibt, wie überall im Werkzeug, unangetastet stehen. */
+const BRANCHEN = [
+  { key: 'alle', label: 'alle Gastronomie', typen: null },
+  { key: 'schnellrestaurant', label: 'Schnellrestaurant / Imbiss',
+    typen: ['fast_food', 'food_court'] },
+  { key: 'restaurant', label: 'Restaurant', typen: ['restaurant'] },
+  { key: 'cafe', label: 'Café', typen: ['cafe'] },
+  { key: 'bar', label: 'Bar / Kneipe / Abendlokal',
+    typen: ['bar', 'pub', 'biergarten'] },
+  { key: 'eisdiele', label: 'Eisdiele', typen: ['ice_cream'] },
+];
+const BRANCHE_SPEICHER = 'gastroviewer.branche';
+
+function brancheKennzahlen(gastro, typen) {
+  const treffer = typen ? gastro.filter((g) => typen.includes(g.typ)) : gastro;
+  const dist = treffer.map((g) => g.distanz_m).filter((d) => typeof d === 'number');
+  const einwohner = state.daten.zensus?.data?.bevoelkerung?.einwohner?.wert;
+  return {
+    anzahl: treffer.length,
+    bis300: treffer.filter((g) => g.distanz_m <= 300).length,
+    naechster: dist.length ? Math.min(...dist) : null,
+    ketten: treffer.filter((g) => g.kette).length,
+    je1000: einwohner ? (treffer.length / einwohner) * 1000 : null,
+  };
+}
+
+function brancheBereich(o) {
+  const inhalt = el('div', {});
+  const zeichne = (key) => {
+    const b = BRANCHEN.find((x) => x.key === key) || BRANCHEN[0];
+    const k = brancheKennzahlen(o.gastronomie || [], b.typen);
+    inhalt.replaceChildren(
+      el('div', { class: 'kennzahlen' },
+        kennzahl('Direkter Wettbewerb', k.anzahl),
+        kennzahl('davon bis 300 m', k.bis300),
+        kennzahl('nächster (m)', k.naechster),
+        kennzahl('davon Ketten', k.ketten),
+        kennzahl('je 1.000 Einwohner (berechnet)', k.je1000, '', 1)),
+      b.typen ? el('div', { class: 'hinweis-klein' },
+        `Gezählt werden die OSM-Typen: ${b.typen.join(', ')}. `
+        + 'Das cuisine-Feld ist Freitext und wird nicht ausgewertet — ein '
+        + 'Burger-Restaurant mit amenity=restaurant zählt hier nicht als '
+        + 'Schnellrestaurant.') : null);
+  };
+  const auswahl = el('select', { onchange: (ev) => {
+    localStorage.setItem(BRANCHE_SPEICHER, ev.target.value);
+    zeichne(ev.target.value);
+  } }, BRANCHEN.map((b) => {
+    const opt = el('option', { value: b.key }, b.label);
+    if (b.key === (localStorage.getItem(BRANCHE_SPEICHER) || 'alle')) opt.selected = true;
+    return opt;
+  }));
+  zeichne(localStorage.getItem(BRANCHE_SPEICHER) || 'alle');
+  return el('div', { class: 'branche' },
+    el('h3', { class: 'hinweis-klein' }, 'Branchenprofil — was zählt als direkter Wettbewerb?'),
+    auswahl,
+    inhalt);
+}
+
 function zeigeOsm(d) {
   const ids = ['gastronomie', 'franchise', 'umfeld', 'verkehr', 'leerstand'];
   for (const id of ids) setStatus(id, d.ok ? 'ok' : 'fehler', d.ok ? 'geladen' : 'nicht erreichbar');
@@ -1276,6 +1387,7 @@ function zeigeOsm(d) {
           }, `${t}: ${p.tags[t]}`))))));
 
   setInhalt('gastronomie', kzg,
+    brancheBereich(o),
     el('h3', { class: 'hinweis-klein' }, 'Nach Typ'), typTab,
     el('h3', { class: 'hinweis-klein' }, 'Wettbewerbsdichte nach Entfernung'), entfTab,
     el('h3', { class: 'hinweis-klein' }, 'Küchenverteilung'), kuecheTab,
@@ -2690,6 +2802,36 @@ function gehwegAngebot(alt) {
     }, 'zurück auf Luftlinie'));
 }
 
+/* Ist im Gastronomieblock ein Branchenprofil gewählt, wird dessen Zählung
+   als Wettbewerberzahl angeboten — wie beim Gehweg: sichtbar, ausdrücklich
+   zu übernehmen, nie stillschweigend gesetzt. */
+function brancheAngebot() {
+  const key = localStorage.getItem(BRANCHE_SPEICHER) || 'alle';
+  const b = BRANCHEN.find((x) => x.key === key);
+  if (!b || !b.typen) return null;
+  const gastro = state.daten.osm?.data?.gastronomie;
+  if (!gastro) return null;
+  const k = brancheKennzahlen(gastro, b.typen);
+  return el('div', { class: 'warnung' },
+    el('div', {},
+      `Im Gastronomieblock ist das Branchenprofil „${b.label}" gewählt: `
+      + `${NF.format(k.anzahl)} Betriebe der OSM-Typen ${b.typen.join(', ')} `
+      + 'im Umkreis.'),
+    el('div', { class: 'hinweis-klein', style: 'margin:5px 0 7px' },
+      'Wenn du übernimmst, rechne beide Standorte mit demselben Profil — '
+      + 'sonst vergleichst du verschiedene Wettbewerbsbegriffe.'),
+    el('button', {
+      type: 'button',
+      onclick: () => {
+        document.getElementById('sf-wettbewerber').value = String(k.anzahl);
+        const feld = document.getElementById('sf-wettbewerber')?.closest('.feld');
+        feld?.querySelector('.herkunft')?.replaceChildren(
+          `OpenStreetMap, Branchenprofil „${b.label}" (${b.typen.join(', ')}) — übernommen`);
+        rechneSchaetzung();
+      },
+    }, `Wettbewerber auf ${NF.format(k.anzahl)} setzen`));
+}
+
 function schaetzBlock(titel, ...inhalt) {
   return el('section', { class: 'block' },
     el('h2', {}, titel),
@@ -2766,7 +2908,8 @@ function baueSchaetzFormular() {
     v.wettbewerber_alternative ? el('div', { class: 'notiz' },
       `${v.wettbewerber_alternative.hinweis} Im Umkreis liegen insgesamt `
       + `${NF.format(v.wettbewerber_alternative.alle_gastronomie)} gastronomische Betriebe.`) : null,
-    gehwegAngebot(v.gehweg_alternative));
+    gehwegAngebot(v.gehweg_alternative),
+    brancheAngebot());
 
   const formel = schaetzBlock('Rechenweg',
     el('div', { class: 'formel' }, v.formel.join('\n')),

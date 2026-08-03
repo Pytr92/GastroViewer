@@ -303,6 +303,10 @@ table.daten th, table.daten td { text-align: left; padding: 5px 6px; border-bott
 table.daten th { color: var(--text-schwach); font-weight: 600; }
 table.daten td.num, table.daten th.num { text-align: right; font-variant-numeric: tabular-nums; }
 table.daten tr:last-child td { border-bottom: none; }
+/* Branchenprofil im Gastronomieblock */
+.branche { margin: 10px 0 4px; }
+.branche select { margin: 4px 0 8px; }
+
 /* Pflegeleiste im Standortvergleich: Sichern, Einspielen, Pflegelauf. */
 .pflegeleiste {
   display: flex; gap: 8px; align-items: center; flex-wrap: wrap;
