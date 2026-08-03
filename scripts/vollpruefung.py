@@ -212,6 +212,21 @@ def t_gitter():
 
 # --------------------------------------------------------------- Suche
 
+def t_einkommen():
+    d, dauer, _ = hole("/api/einkommen", {"ags": "09162000"})
+    assert d["ok"], d.get("error")
+    e = d["data"]
+    assert e["jahr"] >= 2022, "der Regionalatlas muss mindestens den Stand 2022 führen"
+    assert e["kreis"]["wert_eur"] > 30000, "München liegt deutlich über 30.000 €"
+    assert e["bund"]["wert_eur"] > 20000
+    assert e["kreis"]["wert_eur"] > e["bund"]["wert_eur"], (
+        "München unter dem Bundesschnitt wäre ein Datenfehler"
+    )
+    assert "Kreiswert" in d["provenance"]["note"]
+    hole("/api/einkommen", {"ags": "abc"}, erwartet=422)
+    return (f"{e['kreis']['name']}: {e['kreis']['wert_eur']} € · Bund "
+            f"{e['bund']['wert_eur']} € · Stand {e['jahr']} · {dauer:.1f} s")
+
 def t_scan():
     d, dauer, groesse = hole("/api/scan", {
         "west": M[1] - 0.012, "sued": M[0] - 0.008,
@@ -389,6 +404,7 @@ ALLE = [
     ("GET /api/point/planung", t_planung),
     ("GET /api/point/links", t_links),
     ("GET /api/gitter — Übersicht München + Bayern", t_gitter),
+    ("GET /api/einkommen — Regionalatlas live", t_einkommen),
     ("GET /api/scan — Flächen-Scan Innenstadt, live", t_scan),
     ("GET /api/geocode", t_geocode),
     ("GET /api/wms (Register)", t_wms_register),

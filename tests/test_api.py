@@ -22,14 +22,23 @@ LAT, LON, R = 48.1334, 11.5674, 600
 class FakeOutbound:
     """Ersetzt nur die Netz-Ebene und zählt die Aufrufe."""
 
-    def __init__(self, zensus, overpass, nominatim, fehler: set[str] | None = None):
+    def __init__(self, zensus, overpass, nominatim, einkommen=None,
+                 fehler: set[str] | None = None):
         self.zensus = zensus
         self.overpass = overpass
         self.nominatim = nominatim
+        self.einkommen = einkommen or {"features": []}
         self.fehler = fehler or set()
         self.calls: list[str] = []
 
     def _dispatch(self, url: str):
+        # Vor "arcgis" prüfen: auch der Regionalatlas läuft auf einem
+        # ArcGIS-Server und würde sonst die Zensus-Fixture bekommen.
+        if "regionalatlas" in url:
+            self.calls.append("einkommen")
+            if "einkommen" in self.fehler:
+                raise SourceError("timeout", "Zeitüberschreitung — Dienst antwortet nicht.")
+            return self.einkommen
         if "arcgis" in url:
             self.calls.append("zensus")
             if "zensus" in self.fehler:
@@ -68,14 +77,16 @@ class FakeOutbound:
 
 
 @pytest.fixture()
-def client(tmp_path, monkeypatch, zensus_600, overpass_combined, nominatim_reverse):
+def client(tmp_path, monkeypatch, zensus_600, overpass_combined, nominatim_reverse,
+           einkommen_muenchen):
     from gastroviewer.config import Settings
 
     settings = Settings()
     settings.data_dir = tmp_path
     settings.overpass_endpoints = ("https://overpass-api.de/api/interpreter",)
 
-    fake = FakeOutbound(zensus_600, overpass_combined, nominatim_reverse)
+    fake = FakeOutbound(zensus_600, overpass_combined, nominatim_reverse,
+                        einkommen_muenchen)
     app = create_app(settings)
 
     original_lifespan_state = {}
@@ -129,7 +140,8 @@ def test_zweiter_aufruf_erzeugt_keinen_outbound_traffic(client):
     """Abnahmekriterium §7."""
     client.get("/api/point", params={"lat": LAT, "lon": LON, "r": R})
     vorher = len(client.fake.calls)
-    assert vorher == 3
+    # Nominatim, Zensus, Overpass — und der Regionalatlas fürs Einkommen.
+    assert vorher == 4
 
     d = client.get("/api/point", params={"lat": LAT, "lon": LON, "r": R}).json()
     assert len(client.fake.calls) == vorher, "Cache hat nicht gegriffen"
@@ -1099,3 +1111,33 @@ def test_schaetzung_franchise_kostenprobe(client):
     # Negative Sätze weist die API ab.
     r = client.post("/api/schaetzung", json={**basis, "franchisegebuehr_prozent": -1})
     assert r.status_code == 422
+
+
+# ------------------------------------------------ Verfügbares Einkommen
+
+
+def test_einkommen_block_im_punkt_und_vergleich(client):
+    d = client.get("/api/point", params={"lat": LAT, "lon": LON, "r": R}).json()
+    e = d["bloecke"]["einkommen"]
+    assert e["ok"] and e["data"]["kreis"]["wert_eur"] == 35467
+    assert e["data"]["bund"]["wert_eur"] == 25830
+    assert "Kreiswert" in e["provenance"]["note"]
+
+    client.post("/api/points", json={
+        "label": "Einkommenstest", "lat": LAT, "lon": LON, "radius": R})
+    v = client.get("/api/points/vergleich").json()
+    z = next(x for x in v["zeilen"] if x["label"] == "Einkommenstest")
+    assert z["einkommen_kreis"] == 35467
+
+
+def test_einkommen_endpunkt_und_kreiscache(client):
+    r = client.get("/api/einkommen", params={"ags": "09162000"})
+    assert r.status_code == 200
+    assert r.json()["data"]["kreis"]["wert_eur"] == 35467
+    vorher = client.fake.calls.count("einkommen")
+    # Anderer Punkt, derselbe Kreis: der Wert ist identisch, der Cache
+    # greift über den Kreisschlüssel, nicht über die Koordinate.
+    client.get("/api/einkommen", params={"ags": "09162001"})
+    assert client.fake.calls.count("einkommen") == vorher, "Kreis-Cache griff nicht"
+    assert client.get("/api/einkommen", params={"ags": "9x"}).status_code == 422
+    assert client.get("/api/einkommen", params={"ags": "abcde"}).status_code == 422

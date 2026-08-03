@@ -18,8 +18,9 @@ from typing import Any, Awaitable, Callable
 from .cache import AsyncCache, cache_key
 from .config import Settings
 from .http import Outbound
-from .sources import (bayern, boris, gehweg, links, marke as marke_mod, muenchen,
-                      nominatim, overpass, planung, scan as scan_mod, zensus)
+from .sources import (bayern, boris, einkommen as einkommen_mod, gehweg, links,
+                      marke as marke_mod, muenchen, nominatim, overpass, planung,
+                      scan as scan_mod, zensus)
 from .sources.base import Provenance, SourceError, SourceResult
 
 Loader = Callable[[], Awaitable[SourceResult]]
@@ -216,6 +217,16 @@ class PointService:
 
         return await self._cached("zensus_gitter", key, laden)
 
+    async def einkommen(self, ags: str):
+        """Verfügbares Einkommen je Einwohner (VGRdL) — je Kreis gecacht,
+        denn der Wert ist für jeden Punkt im selben Kreis identisch."""
+        kreis = einkommen_mod.kreis_aus_ags(ags) or "unbekannt"
+        return await self._cached(
+            "einkommen",
+            f"einkommen|{kreis}",
+            lambda: einkommen_mod.load(self.outbound, self.settings, ags),
+        )
+
     async def marke(self, lat: float, lon: float, radius: int, marke: str):
         """Gebietsschutz-Check: Betriebe der eigenen Marke im großen Umkreis.
 
@@ -297,6 +308,21 @@ class PointService:
         adresse = blocks["adresse"].get("data") or {}
         zensus_data = blocks["zensus"].get("data") or {}
         ags = zensus_data.get("ags")
+
+        # Verfügbares Einkommen braucht den Gemeindeschlüssel aus dem Zensus —
+        # deshalb nach dem Sammeln, nicht parallel dazu. Je Kreis gecacht.
+        if ags:
+            try:
+                blocks["einkommen"] = (await self.einkommen(ags)).to_dict()
+            except Exception as exc:  # noqa: BLE001
+                blocks["einkommen"] = SourceResult.failed(
+                    "einkommen", SourceError("unknown", f"{type(exc).__name__}: {exc}")
+                ).to_dict()
+        else:
+            blocks["einkommen"] = SourceResult(
+                name="einkommen", ok=True, data=None,
+                warnings=["Ohne Gemeindeschlüssel lässt sich kein Kreiswert zuordnen."],
+            ).to_dict()
         bl_code = zensus_data.get("bundesland_code")
         gemeinde = adresse.get("gemeinde")
         plz = adresse.get("plz")

@@ -502,9 +502,38 @@ festen Spaltengruppe, geht in keine Rechnung ein und landet im CSV-Export.
 Eine Datenbank aus einer früheren Fassung wird beim Start um die beiden Spalten ergänzt,
 statt den Nutzer seine gemerkten Punkte zu kosten.
 
+## Verfügbares Einkommen (Kreisebene) — die ehrliche Kaufkraft-Näherung
+
+Kleinräumige Kaufkraft ist ein kommerzielles Datenprodukt; jede „freie" Zahl dazu wäre
+erfunden. Was es amtlich und frei gibt: das **verfügbare Einkommen der privaten Haushalte
+je Einwohner auf Kreisebene** aus den Volkswirtschaftlichen Gesamtrechnungen der Länder —
+Block **3b** zeigt es für den Kreis des Punktes, daneben Land und Bund zum Einordnen, dazu
+den Verlauf der letzten Jahre. Live-Gegenprobe bei der Anbindung am 02.08.2026:
+Deutschland 25.830 €, Bayern 28.643 €, München (Stadt) 35.467 €, Landkreis München
+35.832 € — deckungsgleich mit den VGRdL-Veröffentlichungen. Der Warnhinweis steht im
+Block: es ist ein **Kreiswert**, innerhalb einer Großstadt unterscheidet er keine
+Viertel; kleinräumige Anzeiger bleiben Nettokaltmiete und Eigentümerquote aus dem Zensus.
+
+Technisch läuft die Abfrage gegen den Kartendienst des **Regionalatlas Deutschland**
+(Statistische Ämter, ArcGIS-Server der IT.NRW, Tabelle `regionalatlas.ai016_1`), je Kreis
+gecacht — jeder Punkt im selben Kreis kostet keinen weiteren Abruf.
+
+**Geprüfter Irrweg, dokumentiert statt gebaut:** Die experimentellen
+**Passantenfrequenzen von Destatis** (auf hystreet-Basis) wären die wertvollere Quelle
+gewesen — die Prüfung ergab: zum **31.12.2025 eingestellt**, keine Datendateien mehr, nur
+21 Städte mit je einer Zählstelle. Gemessene Passantenfrequenz bleibt damit die eine
+Datenklasse, die es frei nicht gibt.
+
 ## Franchise: Systemgastronomie, Gebietsschutz, Kostenprobe
 
 Drei Ergänzungen aus der Sicht eines Franchisenehmers:
+
+**Kandidaten auf der Karte.** Die Ebene **„Gemerkte Punkte"** zeigt alle gemerkten
+Standorte mit Etikett und gestricheltem Einzugsgebietskreis; der Vergleichsdialog warnt,
+wenn sich zwei Einzugsgebiete überschneiden — solche Kandidaten teilen sich dieselben
+Einwohner und sind keine unabhängigen Optionen. Der Bericht enthält inzwischen auch eine
+**Lagekarte** (Umkreis + Wettbewerber aus dem gespeicherten Stand), und der ÖPNV-Block
+weist neben dem Mittags- auch das **Abendfenster 17–22 Uhr** aus.
 
 **Block 4c · Systemgastronomie & Marken.** Welche Systeme sitzen schon im Umkreis — je
 Marke mit Anzahl und nächster Entfernung, dazu der Kettenanteil an der Gastronomie (auch
@@ -721,6 +750,8 @@ Alles über Umgebungsvariablen, alles optional:
 | `GET /api/point/gehweg?lat=&lon=&r=` | Gehstrecken statt Luftlinie — **nur auf Anforderung**, siehe eigener Abschnitt |
 | `GET /api/gitter?ebene=&west=&sued=&ost=&nord=` | Übersichtsgitter 1 km/10 km je Kartenausschnitt |
 | `GET /api/scan?west=&sued=&ost=&nord=` | Flächen-Scan: Einwohner je Betrieb im 300-m-Umfeld, je 100-m-Zelle |
+| `GET /api/einkommen?ags=` | verfügbares Einkommen je Einwohner (VGRdL, Kreisebene) mit Land- und Bundesvergleich |
+| `GET /api/point/marke?lat=&lon=&marke=&r=` | Gebietsschutz-Check: Betriebe der eigenen Marke bis 20 km |
 | `GET /api/geocode?q=` | Adresssuche |
 | `GET /api/points` · `POST /api/points` · `DELETE /api/points/{id}` | gemerkte Punkte |
 | `GET /api/points/{id}` · `GET /api/points/{id}/verlauf` | ein Punkt mit vollem Datenstand bzw. seine abgelegten Stände |

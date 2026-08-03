@@ -127,6 +127,17 @@ class Settings:
         default_factory=lambda: _env_int("GASTROVIEWER_TTL_GEHWEG", 14 * 24 * 3600)
     )
 
+    # --- Regionalatlas (verfügbares Einkommen, Kreisebene) ---
+    # ArcGIS-Server der IT.NRW hinter dem Regionalatlas der Statistischen
+    # Ämter; am 02.08.2026 verifiziert (Tabelle regionalatlas.ai016_1).
+    regionalatlas_base: str = field(
+        default_factory=lambda: _env(
+            "GASTROVIEWER_REGIONALATLAS_BASE",
+            "https://www.gis-idmz.nrw.de/arcgis/rest/services/stba/regionalatlas"
+            "/MapServer",
+        )
+    )
+
     # --- GTFS (Phase 3) ---
     gtfs_url: str = field(
         default_factory=lambda: _env(
@@ -154,6 +165,9 @@ class Settings:
         if source.startswith("nominatim"):
             return self.ttl_nominatim
         if source.startswith("zensus"):
+            return self.ttl_zensus
+        # VGRdL-Kreiswerte ändern sich einmal im Jahr.
+        if source.startswith("einkommen"):
             return self.ttl_zensus
         return self.ttl_osm
 

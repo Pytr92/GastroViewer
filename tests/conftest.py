@@ -59,6 +59,11 @@ def nominatim_reverse():
     return load_fixture("raw_nominatim_reverse.json")
 
 
+@pytest.fixture(scope="session")
+def einkommen_muenchen():
+    return load_fixture("raw_einkommen_muenchen.json")
+
+
 @pytest.fixture()
 def settings(tmp_path):
     from gastroviewer.config import Settings

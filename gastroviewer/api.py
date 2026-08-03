@@ -291,6 +291,18 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             "grenzen": GRENZEN,
         }
 
+    @app.get("/api/einkommen")
+    async def einkommen(
+        request: Request,
+        ags: str = Query(..., min_length=5, max_length=8),
+    ):
+        """Verfügbares Einkommen je Einwohner (VGRdL) für den Kreis des
+        Gemeindeschlüssels — die ehrliche Kaufkraft-Näherung: amtlich, aber
+        Kreisebene."""
+        if not ags.isdigit():
+            raise HTTPException(422, "Der Gemeindeschlüssel besteht aus Ziffern.")
+        return (await svc(request).einkommen(ags)).to_dict()
+
     @app.get("/api/gitter")
     async def gitter(
         request: Request,
@@ -721,6 +733,10 @@ VERGLEICH_SPALTEN = [
     {"key": "einwohner", "titel": "Einwohner", "gruppe": "bevoelkerung"},
     {"key": "durchschnittsalter", "titel": "Durchschnittsalter", "gruppe": "bevoelkerung"},
     {"key": "haushaltsgroesse", "titel": "Haushaltsgröße", "gruppe": "detail"},
+    # Kreiswert aus den VGRdL — die ehrliche Kaufkraft-Näherung. In der
+    # Detailgruppe, weil er innerhalb einer Stadt keine Viertel unterscheidet.
+    {"key": "einkommen_kreis", "titel": "Verf. Einkommen €/Einw. (Kreis)",
+     "gruppe": "detail"},
     # "stellen" legt die Nachkommastellen in Tabelle und Export fest. Ohne die
     # Angabe rundet die Oberfläche auf eine Stelle — bei kleinen Verhältniszahlen
     # verschwindet damit genau der Unterschied, den man vergleichen will.
@@ -762,6 +778,8 @@ VERGLEICH_SPALTEN = [
     {"key": "linien", "titel": "Linien (eindeutig)", "gruppe": "detail"},
     {"key": "abfahrten", "titel": "Abfahrten/Tag (GTFS)", "gruppe": "verkehr"},
     {"key": "abfahrten_mittag", "titel": "Abfahrten 11–14 Uhr", "gruppe": "verkehr"},
+    # Für Abendkonzepte (Bar, Abendlokal) das relevantere Fenster.
+    {"key": "abfahrten_abend", "titel": "Abfahrten 17–22 Uhr", "gruppe": "detail"},
     {"key": "mittagsanteil", "titel": "Anteil Mittag % (berechnet)", "stellen": 1,
      "gruppe": "detail"},
     {"key": "abfahrten_je_einwohner", "titel": "Abfahrten je Einwohner (berechnet)",
@@ -790,6 +808,7 @@ def _row_for(saved: dict[str, Any]) -> dict[str, Any]:
     o = (bl.get("osm") or {}).get("data") or {}
     g = (bl.get("gtfs") or {}).get("data") or {}
     rad = ((bl.get("radzaehlung") or {}).get("data") or {}).get("naechste") or {}
+    eink = ((bl.get("einkommen") or {}).get("data") or {}) or {}
     gw = ((bl.get("gehweg") or {}).get("data") or {}) or {}
     gw_gas = gw.get("gastronomie") or {}
     gw_zen = gw.get("zensus") or {}
@@ -817,6 +836,7 @@ def _row_for(saved: dict[str, Any]) -> dict[str, Any]:
         "durchschnittsalter": _wert(bev.get("durchschnittsalter")),
         "haushaltsgroesse": _wert(bev.get("haushaltsgroesse")),
         "miete_qm": _wert(woh.get("miete_qm")),
+        "einkommen_kreis": (eink.get("kreis") or {}).get("wert_eur"),
         "leerstandsquote": _wert(woh.get("leerstandsquote")),
         "gastro_gesamt": gas.get("gesamt"),
         "fast_food": fastfood,
@@ -841,6 +861,7 @@ def _row_for(saved: dict[str, Any]) -> dict[str, Any]:
         # Eine Pendlerhaltestelle hat ihre Spitzen um 8 und um 18 Uhr und ist
         # mittags leer — das trennt die beiden Fälle.
         "abfahrten_mittag": mittag,
+        "abfahrten_abend": (g or {}).get("abfahrten_abend"),
         "mittagsanteil": je_bezugsgroesse(mittag, abfahrten, 100, 1),
         # Näherung für Zulauf, den der Zensus nicht sieht: viele Abfahrten bei
         # wenig Wohnbevölkerung heißt, die Leute kommen von woanders.

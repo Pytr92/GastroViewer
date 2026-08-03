@@ -162,7 +162,60 @@ def pruefe_gtfs_mittagsfenster(page) -> str:
     if "Kein GTFS-Fahrplan importiert" in t:
         return "übersprungen — kein Fahrplan importiert"
     fordere("11–14 Uhr" in t, "Mittagsfenster fehlt im ÖPNV-Block")
-    return "Mittagsfenster ausgewiesen"
+    fordere("17–22 Uhr" in t, "Abendfenster fehlt im ÖPNV-Block")
+    return "Mittags- und Abendfenster ausgewiesen"
+
+
+def pruefe_einkommen(page) -> str:
+    """Verfügbares Einkommen (Kreisebene) — die ehrliche Kaufkraft-Näherung."""
+    st = status(page, "einkommen")
+    if st not in ("geladen", "ok"):
+        return f"übersprungen — Regionalatlas nicht erreichbar ({st})"
+    t = text(page, "#inhalt-einkommen")
+    fordere("€/Einw." in t, "Einkommenswerte fehlen")
+    fordere("Deutschland" in t, "der Bundesvergleich fehlt")
+    fordere("Kreiswert" in t, "die Grenze (Kreisebene, keine Viertel) fehlt")
+    q = text(page, "#block-einkommen .quelle")
+    fordere("VGRdL" in q or "Gesamtrechnungen" in q, "Quellenangabe fehlt")
+    return "Kreis-, Landes- und Bundeswert mit Kreisebenen-Hinweis"
+
+
+def pruefe_punkte_ebene(page) -> str:
+    """Gemerkte Punkte als Kartenebene, Überlappungsrechnung."""
+    # Reine Geometrie der Überlappungsfunktion — 200 m Abstand bei 600-m-Radien
+    # überlappen, 3 km nicht.
+    befund = page.evaluate("""() => {
+        const eng = ueberlappungen([
+            { label: 'A', lat: 48.10, lon: 11.50, radius: 600 },
+            { label: 'B', lat: 48.1018, lon: 11.50, radius: 600 }]);
+        const weit = ueberlappungen([
+            { label: 'A', lat: 48.10, lon: 11.50, radius: 600 },
+            { label: 'C', lat: 48.127, lon: 11.50, radius: 600 }]);
+        return { eng: eng.length, weit: weit.length, um: eng[0]?.um_m };
+    }""")
+    fordere(befund["eng"] == 1 and befund["weit"] == 0,
+            f"Überlappungsrechnung falsch: {befund}")
+    fordere(900 < befund["um"] < 1100, f"Überlappungsmaß unplausibel: {befund['um']}")
+
+    page.evaluate("""() => {
+        state.ebenen.punkte.addTo(karte);
+        karte.fire('overlayadd', { layer: state.ebenen.punkte });
+    }""")
+    page.wait_for_timeout(1500)
+    n = page.evaluate("() => state.ebenen.punkte.getLayers().length")
+    fordere(n >= 4, f"zu wenige Ebenenobjekte für die Testpunkte: {n}")
+    etiketten = page.eval_on_selector_all(
+        ".punkt-etikett", "e=>e.map(x=>x.textContent)")
+    fordere(any("UI-Testpunkt" in e for e in etiketten),
+            f"Punktetiketten fehlen auf der Karte: {etiketten}")
+    page.evaluate("""() => {
+        karte.removeLayer(state.ebenen.punkte);
+        karte.fire('overlayremove', { layer: state.ebenen.punkte });
+    }""")
+    page.wait_for_timeout(400)
+    fordere(page.evaluate("() => state.ebenen.punkte.getLayers().length") == 0,
+            "Abschalten leert die Punktebene nicht")
+    return f"{n} Objekte (Kreise + Etiketten), Überlappung um {befund['um']} m erkannt"
 
 
 def pruefe_schaetzung_getrennt(page) -> str:
@@ -523,6 +576,11 @@ def pruefe_bericht(page) -> str:
         fordere("ODbL" in t, "die OSM-Lizenz fehlt im Bericht")
         fordere(bericht.query_selector("#bericht button") is not None,
                 "der Druckknopf fehlt")
+        fordere(bericht.query_selector("#bericht-karte.leaflet-container") is not None,
+                "die Lagekarte fehlt im Bericht")
+        marker = bericht.eval_on_selector_all(
+            "#bericht-karte path", "e=>e.length")
+        fordere(marker > 10, f"zu wenige Wettbewerber auf der Berichtskarte: {marker}")
     finally:
         bericht.close()
 
@@ -596,8 +654,9 @@ PRUEFUNGEN = [
     ("Grundgerüst und Blöcke", pruefe_grundgeruest),
     ("Quelle, Stand, Lizenz je Block", pruefe_quellenangaben),
     ("Wettbewerb nach Entfernung", pruefe_wettbewerb_nach_entfernung),
+    ("Verfügbares Einkommen (Kreis)", pruefe_einkommen),
     ("Systemgastronomie & Gebietsschutz", pruefe_franchise),
-    ("ÖPNV-Mittagsfenster", pruefe_gtfs_mittagsfenster),
+    ("ÖPNV-Mittags- und Abendfenster", pruefe_gtfs_mittagsfenster),
     ("Schätzung im eigenen Reiter", pruefe_schaetzung_getrennt),
     ("Deckkraftregler", pruefe_deckkraftregler),
     ("Vergleichstabelle", pruefe_vergleich),
@@ -609,6 +668,7 @@ PRUEFUNGEN = [
     ("Flächen-Scan (Einwohner je Betrieb)", pruefe_flaechenscan),
     ("Planung und Hochwasser", pruefe_planung_und_hochwasser),
     ("Standortbericht", pruefe_bericht),
+    ("Gemerkte Punkte auf der Karte", pruefe_punkte_ebene),
     ("Eigene Notiz und Note", pruefe_eigene_notiz),
     ("Gewichtetes Ranking", pruefe_ranking),
     ("Bodenrichtwert-Ebene (NRW)", pruefe_bodenrichtwert_ebene),

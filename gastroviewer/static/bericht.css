@@ -110,3 +110,15 @@ button:hover { background: #e8eef3; }
   h2 { break-after: avoid; }
   table, .notiz, .warnung, .eigene { break-inside: avoid; }
 }
+
+/* Lagekarte im Bericht */
+#bericht-karte {
+  height: 430px;
+  margin: 14px 0 4px;
+  border: 1px solid #e3e8ed;
+  border-radius: 4px;
+}
+@media print {
+  #bericht-karte { height: 380px; break-inside: avoid; }
+  .leaflet-control-zoom { display: none; }
+}

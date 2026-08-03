@@ -296,6 +296,10 @@ WEEKDAYS_DE = ["Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag", "Samst
 # gemessener Wert. Sie steht als Text neben der Zahl, damit sie nachvollziehbar
 # bleibt. Gezählt werden die Abfahrten der Stunden 11, 12 und 13.
 MITTAG_VON, MITTAG_BIS = 11, 14
+# Dasselbe für das Abendgeschäft (Bar, Abendlokal, Lieferbetrieb am Abend):
+# die Stunden 17 bis 21. Eine Pendlerhaltestelle ist um 18 Uhr noch voll und
+# um 21 Uhr leer — erst das Fenster über mehrere Stunden trennt die Fälle.
+ABEND_VON, ABEND_BIS = 17, 22
 
 
 def _reference_date(conn: sqlite3.Connection) -> dict[str, Any]:
@@ -497,6 +501,9 @@ def load(settings: Settings, lat: float, lon: float, radius: int) -> SourceResul
             # reine Pendlerhaltestelle hat ihre Spitzen um 8 und um 18 Uhr.
             "abfahrten_mittag": sum(hours[MITTAG_VON:MITTAG_BIS]),
             "mittagsfenster": f"{MITTAG_VON}–{MITTAG_BIS} Uhr",
+            # Für Abendkonzepte das relevantere Fenster.
+            "abfahrten_abend": sum(hours[ABEND_VON:ABEND_BIS]),
+            "abendfenster": f"{ABEND_VON}–{ABEND_BIS} Uhr",
             "haltestellen": haltestellen,
             "haltestellen_gesamt": len(bedient),
             "haltestellen_ohne_abfahrten": ohne,

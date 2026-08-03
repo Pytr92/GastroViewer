@@ -660,3 +660,15 @@ details.ranking > summary {
   border-radius: 4px;
 }
 .marke-form select { font-family: inherit; font-size: 13px; }
+
+/* Etiketten der gemerkten Punkte auf der Karte */
+.punkt-etikett {
+  background: #ffffff;
+  border: 1px solid #7a4b8f;
+  border-radius: 3px;
+  padding: 1px 5px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #4a2b5e;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+}

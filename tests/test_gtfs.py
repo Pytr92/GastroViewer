@@ -236,3 +236,11 @@ def test_mittagsfenster_wird_gezaehlt():
     from gastroviewer.sources import gtfs
 
     assert (gtfs.MITTAG_VON, gtfs.MITTAG_BIS) == (11, 14)
+
+
+def test_abendfenster_wird_gezaehlt():
+    """Die Stunden 17 bis 21 — für Abendkonzepte das relevantere Fenster;
+    auch hier steht die gewählte Spanne als Text neben der Zahl."""
+    from gastroviewer.sources import gtfs
+
+    assert (gtfs.ABEND_VON, gtfs.ABEND_BIS) == (17, 22)

@@ -197,6 +197,10 @@ state.ebenen.scan = L.layerGroup();
    Ebenenschalter: die Ebene entsteht durch die Suche und verschwindet mit dem
    Punktwechsel. */
 state.ebenen.marke = L.layerGroup();
+/* Gemerkte Punkte als Kartenebene — mit Einzugsgebietskreisen. Zwei
+   Kandidaten, deren Kreise sich überschneiden, teilen sich dieselben
+   Einwohner und sind keine zwei unabhängigen Optionen. */
+state.ebenen.punkte = L.layerGroup();
 state.ebenen.zensus.addTo(karte);
 state.ebenen.gastronomie.addTo(karte);
 
@@ -207,6 +211,7 @@ const ebenenSchalter = L.control.layers({
 }, {
   'Übersicht Einwohner (1/10 km)': state.ebenen.uebersicht,
   'Flächen-Scan (Einwohner je Betrieb)': state.ebenen.scan,
+  'Gemerkte Punkte': state.ebenen.punkte,
   'Zu Fuß erreichbar': state.ebenen.gehflaeche,
   'Zensus-Gitter': state.ebenen.zensus,
   'Gastronomie': state.ebenen.gastronomie,
@@ -623,6 +628,71 @@ karte.on('overlayremove', (ev) => {
   }
 });
 
+/* ------------------------------------------- Gemerkte Punkte als Ebene */
+
+/* Überschneidungen der Einzugsgebiete: Luftliniendistanz kleiner als die
+   Summe der Radien. Reine Geometrie — ob die Überschneidung schlimm ist,
+   hängt vom Konzept ab; der Hinweis sagt nur, DASS sie da ist. */
+function ueberlappungen(zeilen) {
+  const paare = [];
+  for (let i = 0; i < zeilen.length; i += 1) {
+    for (let j = i + 1; j < zeilen.length; j += 1) {
+      const a = zeilen[i];
+      const b = zeilen[j];
+      if (a.lat == null || b.lat == null) continue;
+      const dist = L.latLng(a.lat, a.lon).distanceTo(L.latLng(b.lat, b.lon));
+      const summe = (a.radius || 0) + (b.radius || 0);
+      if (dist < summe) {
+        paare.push({ a: a.label, b: b.label,
+          distanz_m: Math.round(dist), um_m: Math.round(summe - dist) });
+      }
+    }
+  }
+  return paare;
+}
+
+async function ladePunkteEbene() {
+  if (!karte.hasLayer(state.ebenen.punkte)) return;
+  const gruppe = state.ebenen.punkte;
+  gruppe.clearLayers();
+  let punkte = [];
+  try {
+    punkte = (await (await fetch('/api/points')).json()).punkte || [];
+  } catch { return; }
+  for (const p of punkte) {
+    const kreis = L.circle([p.lat, p.lon], {
+      radius: p.radius, color: '#7a4b8f', weight: 1.4, dashArray: '4 4',
+      fillColor: '#9a6cb1', fillOpacity: 0.07,
+    });
+    const marker = L.circleMarker([p.lat, p.lon], {
+      radius: 7, color: '#5a2f73', weight: 2, fillColor: '#9a6cb1', fillOpacity: 0.95,
+    });
+    marker.bindTooltip(p.label, { permanent: true, direction: 'top', offset: [0, -8],
+      className: 'punkt-etikett' });
+    marker.bindPopup(() => el('div', {},
+      el('h4', {}, p.label),
+      el('p', { class: 'hinweis-klein' },
+        `Radius ${NF.format(p.radius)} m`
+        + (p.bewertung ? ` · eigene Note ${p.bewertung}` : '')
+        + (p.notiz ? ` · ${p.notiz}` : '')),
+      el('button', {
+        style: 'margin-right:6px',
+        onclick: () => { karte.closePopup(); setzePunkt(p.lat, p.lon, true); },
+      }, 'Punkt laden'),
+      el('a', { class: 'knopf-link', href: `/bericht?punkt=${p.id}`, target: '_blank',
+        rel: 'noopener' }, 'Bericht')));
+    gruppe.addLayer(kreis);
+    gruppe.addLayer(marker);
+  }
+}
+
+karte.on('overlayadd', (ev) => {
+  if (ev.layer === state.ebenen.punkte) ladePunkteEbene();
+});
+karte.on('overlayremove', (ev) => {
+  if (ev.layer === state.ebenen.punkte) state.ebenen.punkte.clearLayers();
+});
+
 karte.on('click', (e) => setzePunkt(e.latlng.lat, e.latlng.lng));
 
 /* Choroplethen-Metriken: Feldname -> Beschriftung, Einheit, Nachkommastellen */
@@ -842,7 +912,12 @@ function lade(refresh = false) {
     });
 
   hole('/api/point/zensus', p)
-    .then((d) => { if (aktuell()) { state.daten.zensus = d; zeigeZensus(d); zeigeKopf(); ladeLinks(); } })
+    .then((d) => {
+      if (aktuell()) {
+        state.daten.zensus = d; zeigeZensus(d); zeigeKopf(); ladeLinks();
+        ladeEinkommen(d.data?.ags, lauf);
+      }
+    })
     .catch((e) => {
       if (!aktuell()) return;
       zeigeBlockFehler('bevoelkerung', e);
@@ -910,6 +985,7 @@ function baueGeruest() {
     block('kopf', '1 · Standort'),
     block('bevoelkerung', '2 · Bevölkerung'),
     block('wohnen', '3 · Wohnen'),
+    block('einkommen', '3b · Verfügbares Einkommen (Kreis)'),
     block('gastronomie', '4 · Gastronomie'),
     block('gehweg', '4b · Erreichbarkeit zu Fuß'),
     block('franchise', '4c · Systemgastronomie & Marken'),
@@ -1408,6 +1484,71 @@ async function ladeMarke() {
   }
 }
 
+/* --------------------------- Verfügbares Einkommen (Kreisebene, VGRdL) */
+
+/* Kleinräumige Kaufkraft ist ein kommerzielles Datenprodukt. Was es amtlich
+   und frei gibt, ist das verfügbare Einkommen je Einwohner auf Kreisebene —
+   der Block sagt beides ehrlich dazu. Braucht den Gemeindeschlüssel aus dem
+   Zensus, lädt deshalb erst nach diesem Block. */
+async function ladeEinkommen(ags, lauf) {
+  if (!ags) {
+    setStatus('einkommen', 'leer', 'kein Gemeindeschlüssel');
+    setInhalt('einkommen', el('div', { class: 'notiz' },
+      'Ohne Gemeindeschlüssel (aus dem Zensusblock) lässt sich kein Kreiswert '
+      + 'zuordnen.'));
+    return;
+  }
+  try {
+    const d = await hole('/api/einkommen', { ags });
+    if (lauf !== state.ladeLauf) return;
+    state.daten.einkommen = d;
+    zeigeEinkommen(d);
+  } catch (e) {
+    if (lauf === state.ladeLauf) zeigeBlockFehler('einkommen', e);
+  }
+}
+
+function zeigeEinkommen(d) {
+  const id = 'einkommen';
+  if (!d.ok) {
+    setStatus(id, 'fehler', 'nicht erreichbar');
+    setInhalt(id, fehlerbox(d.error));
+    setQuelle(id, d.provenance);
+    return;
+  }
+  const e = d.data;
+  if (!e) {
+    setStatus(id, 'leer', 'kein Wert');
+    setInhalt(id, ...warnungen(d.warnings || []));
+    setQuelle(id, d.provenance);
+    return;
+  }
+  setStatus(id, 'ok', 'geladen');
+
+  const kz = el('div', { class: 'kennzahlen' },
+    kennzahl(e.kreis?.name || 'Kreis', e.kreis?.wert_eur, '€/Einw.'),
+    kennzahl(e.land?.name || 'Land', e.land?.wert_eur, '€/Einw.'),
+    kennzahl(e.bund?.name || 'Deutschland', e.bund?.wert_eur, '€/Einw.'));
+
+  const verlauf = e.verlauf_kreis || [];
+  const tab = el('table', { class: 'daten' },
+    el('tr', {}, el('th', {}, 'Jahr'), el('th', { class: 'num' }, '€ je Einwohner')));
+  for (const v of verlauf.slice(-5)) {
+    tab.append(el('tr', {}, el('td', {}, v.jahr),
+      el('td', { class: 'num' }, NF.format(v.wert_eur))));
+  }
+
+  setInhalt(id, kz,
+    verlauf.length > 1 ? el('h3', { class: 'hinweis-klein' }, 'Verlauf des Kreises') : null,
+    verlauf.length > 1 ? tab : null,
+    el('div', { class: 'warnung' },
+      'Kreiswert — innerhalb einer Großstadt unterscheidet er keine Viertel. '
+      + 'Kleinräumige Anzeiger sind Nettokaltmiete und Eigentümerquote aus dem '
+      + 'Zensusblock. Und verfügbares Einkommen ist kein Kaufkraftindex.'),
+    ...warnungen(d.warnings || []));
+  setQuelle(id, d.provenance);
+}
+
 function zeigeGtfs(d) {
   const g = d.data;
   if (!g) {
@@ -1421,6 +1562,7 @@ function zeigeGtfs(d) {
     kennzahl(`Abfahrten am ${g.referenzdatum}`, g.abfahrten_gesamt),
     kennzahl('davon 6–24 Uhr', g.abfahrten_06_24),
     kennzahl(`davon ${g.mittagsfenster || '11–14 Uhr'}`, g.abfahrten_mittag),
+    kennzahl(`davon ${g.abendfenster || '17–22 Uhr'}`, g.abfahrten_abend),
     kennzahl('bediente Haltestellen', g.haltestellen_gesamt),
     kennzahl('Spitzenstunde', g.spitzenstunde ? g.spitzenstunde.abfahrten : null));
 
@@ -1688,13 +1830,31 @@ async function zeigeVergleich() {
     tab.append(tr);
   }
 
+  /* Überschneidende Einzugsgebiete sind keine unabhängigen Optionen. */
+  const paare = ueberlappungen(d.zeilen);
+  const ueberlappungsBox = paare.length
+    ? el('div', { class: 'warnung' },
+      el('strong', {}, 'Einzugsgebiete überschneiden sich: '),
+      paare.map((p) =>
+        `${p.a} ↔ ${p.b} (Abstand ${NF.format(p.distanz_m)} m, Kreise `
+        + `überlappen um ${NF.format(p.um_m)} m)`).join(' · '),
+      el('div', { class: 'hinweis-klein' },
+        'Diese Kandidaten teilen sich einen Teil derselben Einwohner — die '
+        + 'Kartenebene „Gemerkte Punkte" zeigt es. Ob das stört, hängt vom '
+        + 'Konzept ab; die Geometrie sagt nur, dass es so ist.'))
+    : null;
+
   // .filter(Boolean): rankingBereich() liefert unter zwei Punkten null, und
   // replaceChildren würde daraus das sichtbare Wort „null" machen.
   ziel.replaceChildren(...[
     schalter,
+    ueberlappungsBox,
     el('div', { class: 'tabelle-rahmen' }, tab),
     rankingBereich(d),
   ].filter(Boolean));
+  // Die Kartenebene „Gemerkte Punkte" spiegelt den Bestand — nach Merken
+  // oder Löschen (beides landet hier) wird sie nachgeführt.
+  ladePunkteEbene();
   document.getElementById('vergleich-dialog').showModal();
 }
 

@@ -113,6 +113,43 @@ async function start() {
       p.notiz ? el('div', {}, el('strong', {}, 'Notiz: '), p.notiz) : null));
   }
 
+  /* --- Karte: Umkreis und Wettbewerber. Bewusst im Bericht, denn ein
+     Kennzahlenblatt ohne Lagebild ist für Bank und Vermieter nur die halbe
+     Aussage. Gezeichnet wird aus dem GESPEICHERTEN Datenstand — die Karte
+     löst keinen neuen Abruf bei den Fachdiensten aus (die Kacheln kommen,
+     wie in der Anwendung, von OpenStreetMap). --- */
+  if (typeof L !== 'undefined' && p.lat && p.lon) {
+    const kartenBox = el('div', { id: 'bericht-karte' });
+    teile.push(kartenBox);
+    const gastro = payload.bloecke?.osm?.data?.gastronomie || [];
+    teile.push(el('p', { class: 'meta' },
+      `Karte: Radius ${NF.format(p.radius)} m um den Standort, rote Punkte = `
+      + `${NF.format(gastro.length)} gastronomische Betriebe zum gespeicherten `
+      + 'Stand. Karte © OpenStreetMap-Mitwirkende (ODbL).'));
+    // Nach dem Einhängen ins DOM initialisieren — Leaflet braucht Maße.
+    setTimeout(() => {
+      const karte = L.map('bericht-karte', {
+        zoomControl: true, attributionControl: true, scrollWheelZoom: false,
+      });
+      L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 19,
+        attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap-Mitwirkende</a>',
+      }).addTo(karte);
+      const kreis = L.circle([p.lat, p.lon], {
+        radius: p.radius, color: '#1f5f8b', weight: 1.5, fillOpacity: 0.05,
+      }).addTo(karte);
+      L.marker([p.lat, p.lon]).addTo(karte);
+      for (const g of gastro) {
+        L.circleMarker([g.lat, g.lon], {
+          radius: 4, color: '#a32020', weight: 1, fillColor: '#d94b4b',
+          fillOpacity: 0.85,
+        }).bindTooltip(`${g.name || '(ohne Name)'} · ${g.typ_label || ''}`)
+          .addTo(karte);
+      }
+      karte.fitBounds(kreis.getBounds().pad(0.08));
+    }, 0);
+  }
+
   /* --- Kennzahlen je Gruppe, mit denselben Definitionen wie der Vergleich --- */
   const uebersprungen = new Set(['label', 'bewertung', 'notiz', 'adresse', 'gemeinde', 'radius']);
   for (const g of defs.gruppen || []) {
