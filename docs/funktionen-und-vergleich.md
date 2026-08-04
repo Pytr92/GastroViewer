@@ -19,7 +19,7 @@ hinter Login bzw. Lizenz.
 | Grundkarten: OpenStreetMap, amtliche basemap.de (farbig/grau), in Bayern Luftbild und Flurstücke (ALKIS) | BKG, LDBV |
 | Deckkraftregler für alle aufgesetzten Ebenen | — |
 
-### Punktanalyse — WIE ist es hier? (ein Klick, 18 Blöcke)
+### Punktanalyse — WIE ist es hier? (ein Klick, 19 Blöcke)
 
 | Block | Inhalt |
 |---|---|
@@ -29,10 +29,11 @@ hinter Login bzw. Lizenz.
 | Verfügbares Einkommen (3b) | VGRdL-Kreiswert mit Land/Bund und Verlauf — die ehrliche Kaufkraft-Näherung |
 | Kreisprofil (3c) | Übernachtungen je EW, **Erwerbstätige am Arbeitsort je 1.000 EW** (Tagesbevölkerung), Beschäftigten-/Arbeitslosenquote, Bevölkerungsbewegung — Regionalatlas, je eigenes Datenjahr |
 | Pendler (3d) | Ein-/Auspendler, Saldo, Quoten, Binnenpendler der Gemeinde + Top-Herkünfte/-Ziele mit km (Pendlerrechnung der Länder) |
-| Gastronomie | Betriebe nach Typ, Küche, Kette/Einzelbetrieb, Wettbewerbsdichte nach Entfernung (150/300/600/900 m), nächster Betrieb, **Branchenprofil** (was zählt als direkter Wettbewerb), **Öffnungszeiten-Lücken** (sonntags/nach 22 Uhr — konservativ gezählte Mindestzahlen) |
+| Gastronomie | Betriebe nach Typ, Küche, Kette/Einzelbetrieb, Wettbewerbsdichte nach Entfernung (150/300/600/900 m), nächster Betrieb, **Branchenprofil** (was zählt als direkter Wettbewerb), **Öffnungszeiten-Lücken** (sonntags/nach 22 Uhr — konservativ gezählte Mindestzahlen), **Snack-Verkauf** als eigene Kategorie (Bäckerei/Confiserie/Kaffeeausschank), Nachtclubs und Saftbars |
 | Erreichbarkeit zu Fuß | echtes Wegenetz statt Luftlinie: erreichbare Fläche, Erschließungsgrad, Umwegfaktor, Gehstrecke je Betrieb |
 | Rad-Liefergebiet (4d) | erreichbare Einwohner in 5–15 min Radstrecke (Radprofil, 15 km/h als benannter gewählter Wert) |
 | Gastro-Dynamik (4e) | Jahresreihe der Gastro-Objekte aus der OSM-Historie (ohsome): wächst die Lage oder stirbt sie? — mit benannter Kartierungs-Grenze |
+| Wettbewerbs-Abgleich (4f) | Overture Places (Meta/Foursquare/Filiallisten, offene Lizenz) gegen OSM: in beiden / nur Overture / kombinierte Zahl, eigene Karten-Pins — am MIRA: OSM 3, Overture 15 |
 | Systemgastronomie & Marken | Ketten je Marke mit Anzahl und Entfernung, Kettenanteil, **Gebietsschutz-Check für die eigene Marke (5/10/20 km)** |
 | Umfeld | Frequenzbringer in 9 Kategorien (Einkauf, Bildung, Gesundheit, Büro, …) |
 | Klima (5b) | DWD-Normalwerte 1991–2020 der nächsten Station: Sommertage (mit Monatsbalken), Heiße Tage, Sonne, Niederschlag, Temperatur — für Außengastronomie |
@@ -62,7 +63,7 @@ hinter Login bzw. Lizenz.
 
 Läuft komplett lokal (localhost, SQLite), kein Konto, keine Cloud. Cache mit
 Kachel-Logik schont die freien Dienste; jeder echte Abruf steht im Protokoll.
-Geprüft durch 371 automatische Tests, 51 Live-Routenprüfungen, 34 Browser-Checks
+Geprüft durch 389 automatische Tests, 53 Live-Routenprüfungen, 36 Browser-Checks
 und 9 Abnahmekriterien.
 
 ---

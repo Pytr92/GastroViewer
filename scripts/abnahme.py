@@ -200,9 +200,11 @@ for name, d in daten.items():
     for block, inhalt in d["bloecke"].items():
         p = inhalt.get("provenance")
         # Blöcke, die begründet leer bleiben dürfen, tragen dann keine Quelle:
-        # GTFS ohne importierten Fahrplan, Lärm außerhalb Bayerns. Beide
-        # nennen den Grund in ihren warnings.
+        # GTFS ohne importierten Fahrplan, Lärm außerhalb Bayerns, Overture
+        # ohne lokalen Import. Alle nennen den Grund in ihren warnings.
         if block in ("gtfs", "laerm") and inhalt.get("data") is None:
+            continue
+        if block == "overture" and not (inhalt.get("data") or {}).get("importiert"):
             continue
         if not p or not p.get("source") or not p.get("license"):
             fehlend.append(f"{name}/{block}")

@@ -82,6 +82,7 @@ gastroviewer status                      # Cache- und GTFS-Status
 gastroviewer clear-cache                 # Cache leeren
 gastroviewer clear-cache --quelle zensus # nur eine Quelle
 gastroviewer import-gtfs --region muenchen
+gastroviewer import-overture --region muenchen   # zweite Wettbewerbsquelle (braucht: pip install overturemaps)
 gastroviewer check-wms                   # Bodenrichtwert-Dienste gegenprüfen
 ```
 
@@ -648,6 +649,33 @@ innerhalb der Ballungsräume (etwa München) ist die jüngste LfU-Fläche die Ka
 **2017** — die 2022er-Runde deckt nur Gebiete außerhalb ab; das Kartierungsjahr steht
 deshalb an jedem Wert. Außerhalb Bayerns bleibt der Block mit Begründung leer.
 
+## Zweite Wettbewerbsquelle: Overture Places (Block 4f)
+
+OSM zählt Betriebe unvollständig — am härtesten in Einkaufszentren. Gemessen am
+04.08.2026 am MIRA (München-Nordheide): OSM kennt dort **3** Gastro-Betriebe,
+Overture **15** (Hans im Glück, Thai Curry, Veneras Pizza, Van Hoa Sushi, Peking, …).
+**Overture Maps** ist das offene POI-Projekt von Meta, Microsoft, Amazon und TomTom;
+die Places speisen sich u. a. aus den Facebook/Instagram-Unternehmensprofilen,
+Foursquare und den offiziellen Filiallisten der Ketten — Quellen, die Ladenpassagen
+kennen. Lizenz CDLA-Permissive 2.0: darf (anders als Google-Daten) lokal gespeichert
+und auf der eigenen Karte angezeigt werden.
+
+Einrichtung wie beim GTFS-Fahrplan, einmalig:
+
+```bash
+pip install overturemaps
+gastroviewer import-overture --region muenchen
+```
+
+Danach zeigt Block 4f je Punkt den Abgleich: OSM-Untergrenze, Overture-Treffer ab
+einer benannten Verlässlichkeitsschwelle (0,5), „in beiden Quellen" (Abgleich über
+Name und Nähe), „nur in Overture" mit Namen, Adresse und eigenen lila Karten-Pins —
+und die **kombinierte Zahl**, die die Schätzung ausdrücklich (nie stillschweigend)
+als Wettbewerberzahl anbietet. Ehrliche Grenzen im Block: maschinell zusammengeführte
+Daten mit Ausreißern (auch Firmensitze ohne Ladentür), der Namensabgleich ist eine
+Heuristik, und Schließungen hinken in beiden Quellen hinterher — die kombinierte Zahl
+ist die bessere Näherung, die Begehung bleibt die Wahrheit.
+
 ## Rad-Liefergebiet (Block 4d) — erreichbare Einwohner in Lieferzeit
 
 Für Lieferkonzepte zählt nicht der Umkreis, sondern: wie viele Menschen erreicht ein
@@ -925,6 +953,7 @@ Alles über Umgebungsvariablen, alles optional:
 | `GET /api/pendler?ags=` | Pendlerrechnung der Gemeinde: Ein-/Auspendler, Saldo, Top-Verflechtungen |
 | `GET /api/point/klima?lat=&lon=` | DWD-Klimanormalwerte 1991–2020 der nächsten Station |
 | `GET /api/point/dynamik?lat=&lon=&r=` | Gastro-Dynamik: Jahresreihe der OSM-Objekte (ohsome) |
+| `GET /api/point/overture?lat=&lon=&r=` | Wettbewerbs-Abgleich OSM ↔ Overture Places (lokaler Import) |
 | `GET /api/point/laerm?lat=&lon=&bundesland_code=` | Straßenlärm am Punkt (LfU Bayern, LDEN/LNight) |
 | `GET /api/point/liefergebiet?lat=&lon=&minuten=` | Rad-Liefergebiet: erreichbare Einwohner in 5–15 min — **nur auf Anforderung** |
 | `GET /api/point/marke?lat=&lon=&marke=&r=` | Gebietsschutz-Check: Betriebe der eigenen Marke bis 20 km |
@@ -987,7 +1016,7 @@ Das letzte Protokoll steht in [`docs/abnahme.md`](docs/abnahme.md).
 
 ### Vollprüfung aller Endpunkte
 
-Die dritte Ebene: alle API-Routen (51 Prüfungen) live gegen einen laufenden Server, mit erzwungenen
+Die dritte Ebene: alle API-Routen (53 Prüfungen) live gegen einen laufenden Server, mit erzwungenen
 Frischabrufen bei Zensus, Overpass und „Neu prüfen" und unabhängigen Erwartungswerten
 (A9: 111.624 Kfz/Tag; Isarauen: HQ 100; Köln: Bodenrichtwert; Innenstadt-Scan: über
 100 Betriebe). Braucht Netz und einen GTFS-Import.
@@ -1006,7 +1035,7 @@ pip install playwright && playwright install chromium
 python scripts/uitest.py http://127.0.0.1:8011
 ```
 
-33 Prüfungen (dazu die Prüfung auf JavaScript-Fehler), darunter: jeder Block nennt
+35 Prüfungen (dazu die Prüfung auf JavaScript-Fehler), darunter: jeder Block nennt
 Quelle und Lizenz, im Datenreiter steht keine geschätzte Zahl, der Deckkraftregler wirkt
 auf die Ebenen und **nicht** auf die Grundkarte, der Gehwegblock lädt nur auf Anforderung
 und räumt seine Kartenebene beim Punktwechsel auf, der Flächen-Scan scannt nach dem

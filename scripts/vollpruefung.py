@@ -563,6 +563,37 @@ def t_wohnmiete_anker():
             f"das {vgl['verhaeltnis']}-Fache")
 
 
+def t_overture():
+    d, _, _ = hole("/api/point/overture", P)
+    assert d["ok"], d.get("error")
+    o = d["data"]
+    if not o.get("importiert"):
+        assert any("import-overture" in w for w in d["warnings"])
+        return "kein Import vorhanden — Block erklärt die Einrichtung"
+    assert o["kombiniert_gesamt"] == o["osm_gesamt"] + len(o["nur_overture"])
+    assert o["beide"] + o["nur_osm"] == o["osm_gesamt"]
+    # Innenstadt: dass Overture hier NICHTS kennt, was OSM fehlt, wäre ein
+    # Abgleichsfehler.
+    assert len(o["nur_overture"]) > 0
+    e = o["nur_overture"][0]
+    assert e["confidence"] >= o["schwelle"]
+    return (f"OSM {o['osm_gesamt']} · Overture {o['anzahl_overture']} · "
+            f"beide {o['beide']} · nur Overture {len(o['nur_overture'])} → "
+            f"kombiniert {o['kombiniert_gesamt']}")
+
+
+def t_snack_und_google_link():
+    d, _, _ = hole("/api/point/osm", P)
+    sn = d["data"]["zusammenfassung"]["snack_verkauf"]
+    assert sn["gesamt"] > 0, "Innenstadt ohne einen einzigen Snack-Laden?"
+    li, _, _ = hole("/api/point/links", P)
+    freq = next(g for g in li["weiterfuehrend"]
+                if g["gruppe"] == "Passantenfrequenz")
+    google = next(e for e in freq["eintraege"] if "Google Maps" in e["titel"])
+    assert google["url"].startswith("https://www.google.com/maps/search/")
+    return (f"{sn['gesamt']} Snack-Läden · Google-Handkontrolle verlinkt")
+
+
 def t_cache_wirkt():
     d1, _, _ = hole("/api/point", P)
     d2, _, _ = hole("/api/point", P)
@@ -620,6 +651,8 @@ ALLE = [
     ("Öffnungszeiten-Lücken (OSM, Mindestzahlen)", t_oeffnungszeiten),
     ("POST /api/schaetzung (Sensitivität)", t_sensitivitaet),
     ("Wohnmiete als Lage-Anker", t_wohnmiete_anker),
+    ("GET /api/point/overture — Wettbewerbs-Abgleich", t_overture),
+    ("Snack-Verkauf und Google-Handkontrolle", t_snack_und_google_link),
     ("Validierung (422-Pfade)", t_validierung),
     ("Cache-Nachweis", t_cache_wirkt),
 ]

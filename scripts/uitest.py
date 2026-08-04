@@ -91,7 +91,7 @@ def pruefe_grundgeruest(page) -> str:
     bloecke = page.eval_on_selector_all(
         ".block", "e=>e.map(x=>x.id.replace('block-',''))")
     for pflicht in ("kopf", "bevoelkerung", "wohnen", "gastronomie", "gehweg",
-                    "dynamik", "laerm",
+                    "dynamik", "laerm", "overture",
                     "umfeld", "verkehr", "gtfs", "leerstand", "quellen", "grenzen"):
         fordere(pflicht in bloecke, f"Block fehlt: {pflicht}")
 
@@ -318,6 +318,43 @@ def pruefe_sensitivitaet(page) -> str:
     page.eval_on_selector("#reiter button[data-reiter='daten']", "e=>e.click()")
     page.wait_for_timeout(300)
     return "Treiber-Balken, +1-Effekt und Wohnmiete-Anker vorhanden"
+
+
+def pruefe_overture(page) -> str:
+    """Block 4f: mit Import Kennzahlen + Nur-Overture-Liste, ohne Import die
+    Einrichtungs-Anleitung. Beides ist ein gültiger, ehrlicher Zustand."""
+    for _ in range(40):
+        st = status(page, "overture")
+        if st not in ("lädt …", ""):
+            break
+        page.wait_for_timeout(500)
+    inhalt = text(page, "#inhalt-overture")
+    if st == "kein Import":
+        fordere("import-overture" in inhalt, "Anleitung fehlt im Leerzustand")
+        return "übersprungen — kein Overture-Import auf dieser Maschine"
+    fordere(st == "geladen", f"Overture-Status: {st!r}")
+    for begriff in ("OSM (Untergrenze)", "nur in Overture", "kombiniert",
+                    "Verlässlichkeit"):
+        fordere(begriff in inhalt, f"Overture-Block ohne {begriff!r}")
+    eintraege = page.eval_on_selector_all(
+        "#inhalt-overture .liste li.springbar", "e=>e.length")
+    fordere(eintraege > 0, "keine ansteuerbaren Nur-Overture-Einträge")
+    # Schätzungsreiter: die kombinierte Zahl wird angeboten, nie gesetzt.
+    page.eval_on_selector("#reiter button[data-reiter='schaetzung']", "e=>e.click()")
+    page.wait_for_timeout(2000)
+    fordere(page.query_selector("#overture-angebot") is not None,
+            "kombinierte Wettbewerberzahl wird nicht angeboten")
+    page.eval_on_selector("#reiter button[data-reiter='daten']", "e=>e.click()")
+    page.wait_for_timeout(300)
+    return f"Kennzahlen, {eintraege} ansteuerbare Einträge, Schätzungs-Angebot"
+
+
+def pruefe_snack_verkauf(page) -> str:
+    inhalt = text(page, "#inhalt-gastronomie")
+    fordere("Snack-Verkauf" in inhalt, "Snack-Verkauf-Abschnitt fehlt")
+    fordere("Ladengeschäfte" in inhalt and "Gastro-Gesamtzahl" in inhalt,
+            "Die Abgrenzung (Läden, nicht in der Gesamtzahl) fehlt")
+    return "eigene Kategorie mit ehrlicher Abgrenzung"
 
 
 def pruefe_leerstand_sprung(page) -> str:
@@ -881,6 +918,8 @@ PRUEFUNGEN = [
     ("Kundenprofil-Satz", pruefe_kundenprofil),
     ("Radzählstellen-Jahresgang", pruefe_rad_jahresgang),
     ("Leerstand: Adresse und Kartensprung", pruefe_leerstand_sprung),
+    ("Wettbewerbs-Abgleich (Overture)", pruefe_overture),
+    ("Snack-Verkauf (Ladengeschäfte)", pruefe_snack_verkauf),
     ("Sensitivität und Wohnmiete-Anker", pruefe_sensitivitaet),
     ("Branchenprofil im Gastronomieblock", pruefe_branchenprofil),
     ("Systemgastronomie & Gebietsschutz", pruefe_franchise),

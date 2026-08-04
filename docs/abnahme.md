@@ -32,18 +32,18 @@ Vier Lagetypen laden …
 [OK   ] §7.3 Attribution OSM/ODbL und Zensus-Copyright sichtbar
          in der Fußzeile von index.html: OSM/ODbL=ja, Zensus=ja
 [OK   ] §7.4 Nominatim ≤ 1 req/s gedrosselt, User-Agent gesetzt
-         3 echte Suchen nacheinander (refresh=true): 2.07s (Untergrenze 2,0s)
-           Limiter: {'min_interval_s': 1.0, 'acquisitions': 15, 'throttled': 8}
+         3 echte Suchen nacheinander (refresh=true): 2.09s (Untergrenze 2,0s)
+           Limiter: {'min_interval_s': 1.0, 'acquisitions': 7, 'throttled': 4}
            User-Agent: gastroviewer/0.1.0 (https://github.com/Pytr92/GastroViewer)
 [OK   ] §7.5 Cache greift: zweiter Aufruf ohne Outbound-Traffic
-         erzwungener Abruf: Zähler 458 → 459 (+1)
-           danach derselbe Aufruf: Zähler bleibt bei 459
-           ganzer Punkt aus dem Cache: 262 ms, outbound_requests=0
+         erzwungener Abruf: Zähler 478 → 479 (+1)
+           danach derselbe Aufruf: Zähler bleibt bei 479
+           ganzer Punkt aus dem Cache: 258 ms, outbound_requests=0
            nachprüfbar unter http://127.0.0.1:8011/api/outbound
-[FEHLT] §7.6 Ausfall einer Quelle bricht die Seite nicht
+[OK   ] §7.6 Ausfall einer Quelle bricht die Seite nicht
          Overpass auf toten Endpunkt gezwungen: osm.ok=False
            Meldung: Verbindung nicht möglich — Dienst nicht erreichbar, DNS- oder Proxy-Pr
-           Zensus lief weiter: None Zellen, Gemeinde München
+           Zensus lief weiter: 118 Zellen, Gemeinde München
 [OK   ] §7.7 Vier Lagetypen liefern vollständige Ausgaben
          Großstadt-Innenstadt      118 Zellen   16370.0 Einw.   272 Gastro   26 Halte  München
          Großstadt-Wohnviertel      77 Zellen   13050.0 Einw.    18 Gastro    6 Halte  München
@@ -58,7 +58,6 @@ Vier Lagetypen laden …
          Start=ja · GTFS-Import=ja · Cache leeren=ja · Zensus-Lizenz=ja · OSM-Lizenz=ja · GTFS-Lizenz=ja · Nominatim=ja · hystreet-Auflage=ja
 
 ========================================================================
-8 von 9 Kriterien erfüllt.
-Nicht erfüllt:
-  - §7.6 Ausfall einer Quelle bricht die Seite nicht
+9 von 9 Kriterien erfüllt.
+Alle Abnahmekriterien aus §7 erfüllt.
 ```
