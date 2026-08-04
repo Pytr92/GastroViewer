@@ -24,7 +24,7 @@ class FakeOutbound:
 
     def __init__(self, zensus, overpass, nominatim, einkommen=None,
                  kreisprofil=None, dwd=None, pendler=None, ohsome=None,
-                 fehler: set[str] | None = None):
+                 laerm=None, fehler: set[str] | None = None):
         self.zensus = zensus
         self.overpass = overpass
         self.nominatim = nominatim
@@ -39,6 +39,8 @@ class FakeOutbound:
         # ohsome: {"gastro": Antwort, "fast_food": Antwort}.
         self.ohsome = ohsome or {"gastro": {"result": []},
                                  "fast_food": {"result": []}}
+        # Lärm-WMS: Antwort je Layername (query_layers).
+        self.laerm = laerm or {}
         self.fehler = fehler or set()
         self.calls: list[str] = []
 
@@ -79,6 +81,17 @@ class FakeOutbound:
             if name.startswith("gemeinden_2024"):
                 return self.pendler["gemeinden"]
             raise SourceError("http_status", f"HTTP 404 — {name} fehlt.")
+        # Genau der Lärmdienst — auch der Hochwasser-Block (planung) läuft
+        # auf lfu.bayern und soll hier weiterhin als „unerwartet" scheitern.
+        if "laerm/hauptverkehrsstrassen" in url:
+            self.calls.append("laerm")
+            if "laerm" in self.fehler:
+                raise SourceError("timeout",
+                                  "Zeitüberschreitung — Dienst antwortet nicht.")
+            layer = ((kw or {}).get("params") or {}).get("query_layers", "")
+            if layer not in self.laerm:
+                raise AssertionError(f"unerwarteter Lärm-Layer: {layer}")
+            return self.laerm[layer]
         if "ohsome" in url:
             self.calls.append("dynamik")
             if "dynamik" in self.fehler:
@@ -135,7 +148,7 @@ class FakeOutbound:
 @pytest.fixture()
 def client(tmp_path, monkeypatch, zensus_600, overpass_combined, nominatim_reverse,
            einkommen_muenchen, kreisprofil_muenchen, dwd_klima, pendler_muenchen,
-           ohsome_dynamik):
+           ohsome_dynamik, laerm_bayern):
     from gastroviewer.config import Settings
 
     settings = Settings()
@@ -144,7 +157,7 @@ def client(tmp_path, monkeypatch, zensus_600, overpass_combined, nominatim_rever
 
     fake = FakeOutbound(zensus_600, overpass_combined, nominatim_reverse,
                         einkommen_muenchen, kreisprofil_muenchen, dwd_klima,
-                        pendler_muenchen, ohsome_dynamik)
+                        pendler_muenchen, ohsome_dynamik, laerm_bayern)
     app = create_app(settings)
 
     original_lifespan_state = {}
@@ -201,8 +214,9 @@ def test_zweiter_aufruf_erzeugt_keinen_outbound_traffic(client):
     # Nominatim, Zensus, Overpass — der Regionalatlas fürs Einkommen (1) und
     # Kreisprofil (5 Tabellen) — der DWD (5 Parameter x 2 Dateien) — der
     # Pendleratlas (2 Jahres-Sondierungen mit 404, 6 Karten, Gemeindeliste,
-    # Verflechtungen) — und ohsome (2 Zeitreihen: Gastro gesamt, fast_food).
-    assert vorher == 31
+    # Verflechtungen) — ohsome (2 Zeitreihen: Gastro gesamt, fast_food) —
+    # und das Lärm-WMS (LDEN und LNight je 2022 mit NoData plus 2017 = 4).
+    assert vorher == 35
 
     d = client.get("/api/point", params={"lat": LAT, "lon": LON, "r": R}).json()
     assert len(client.fake.calls) == vorher, "Cache hat nicht gegriffen"
@@ -226,6 +240,22 @@ def test_point_dynamik_block_und_endpunkt(client):
     assert e["data"]["reihe"][0] == {
         "jahr": 2019, "gastro": 326, "schnellgastronomie": 29,
     }
+
+
+def test_point_laerm_block_mit_fallback_auf_2017(client):
+    """München ist Ballungsraum: die 2022er-Schicht antwortet NoData, der
+    Wert kommt aus der Kartierung 2017 — und das Jahr steht dabei."""
+    d = client.get("/api/point", params={"lat": LAT, "lon": LON, "r": R}).json()
+    la = d["bloecke"]["laerm"]
+    assert la["ok"]
+    assert la["data"]["lden"]["wert_db"] == 65.6
+    assert la["data"]["lden"]["kartierung"] == 2017
+    assert la["data"]["lnight"]["wert_db"] == 56.9
+    assert "LfU" in la["provenance"]["source"]
+
+    e = client.get("/api/point/laerm",
+                   params={"lat": LAT, "lon": LON, "bundesland_code": "05"}).json()
+    assert e["ok"] and e["data"] is None, "außerhalb Bayerns bleibt der Block leer"
 
 
 def test_refresh_umgeht_den_cache(client):

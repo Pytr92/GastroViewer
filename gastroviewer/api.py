@@ -285,6 +285,16 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         _validate(lat, lon, 600)
         return (await svc(request).klima(lat, lon)).to_dict()
 
+    @app.get("/api/point/laerm")
+    async def point_laerm(
+        request: Request, lat: float, lon: float,
+        bundesland_code: str | None = None,
+    ):
+        """Straßenlärm am Punkt (Umgebungslärmkartierung, LfU Bayern):
+        LDEN und LNight in dB(A) mit Kartierungsjahr."""
+        _validate(lat, lon, 600)
+        return (await svc(request).laerm(lat, lon, bundesland_code)).to_dict()
+
     @app.get("/api/point/dynamik")
     async def point_dynamik(request: Request, lat: float, lon: float, r: int = 600):
         """Gastro-Dynamik aus der OSM-Historie (ohsome): Jahresreihe der

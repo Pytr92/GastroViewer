@@ -206,6 +206,9 @@ class Settings:
         # fortgeschrieben erst mit dem nächsten Jahrgang.
         if source.startswith("muenchen_rad_jahr"):
             return self.ttl_zensus
+        # Lärmkartierung: EU-Rhythmus alle fünf Jahre.
+        if source.startswith("laerm"):
+            return self.ttl_zensus
         return self.ttl_osm
 
     def ensure_dirs(self) -> None:

@@ -20,7 +20,8 @@ from .config import Settings
 from .http import Outbound
 from .sources import (bayern, boris, dynamik as dynamik_mod,
                       einkommen as einkommen_mod, gehweg,
-                      klima as klima_mod, kreisprofil as kreisprofil_mod, links,
+                      klima as klima_mod, kreisprofil as kreisprofil_mod,
+                      laerm as laerm_mod, links,
                       marke as marke_mod, muenchen, nominatim, overpass,
                       pendler as pendler_mod, planung, scan as scan_mod, zensus)
 from .sources.base import Provenance, SourceError, SourceResult
@@ -409,6 +410,19 @@ class PointService:
             refresh=refresh,
         )
 
+    async def laerm(self, lat: float, lon: float, bundesland_code: str | None):
+        """Straßenlärm am Punkt (LfU Bayern). Braucht das Bundesland aus dem
+        Zensus — außerhalb Bayerns bleibt der Block mit Begründung leer,
+        ohne dass eine Anfrage hinausgeht."""
+        key = cache_key("laerm", lat, lon, 0) + f"|{bundesland_code or '-'}"
+        return await self._cached(
+            "laerm",
+            key,
+            lambda: laerm_mod.load(
+                self.outbound, self.settings, lat, lon, bundesland_code
+            ),
+        )
+
     async def klima(self, lat: float, lon: float) -> SourceResult:
         """Klimanormalwerte der nächsten DWD-Station.
 
@@ -531,12 +545,14 @@ class PointService:
         # Einkommen und Kreisprofil brauchen den Gemeindeschlüssel aus dem
         # Zensus — deshalb nach dem Sammeln, nicht parallel dazu. Je Kreis
         # gecacht; untereinander laufen die beiden wieder parallel.
+        bl_code = zensus_data.get("bundesland_code")
         if ags:
             kreis_results = await asyncio.gather(
                 self.einkommen(ags), self.kreisprofil(ags), self.pendler(ags),
+                self.laerm(lat, lon, bl_code),
                 return_exceptions=True,
             )
-            for name, res in zip(("einkommen", "kreisprofil", "pendler"),
+            for name, res in zip(("einkommen", "kreisprofil", "pendler", "laerm"),
                                  kreis_results):
                 if isinstance(res, BaseException):
                     blocks[name] = SourceResult.failed(
@@ -550,7 +566,11 @@ class PointService:
                     name=name, ok=True, data=None,
                     warnings=["Ohne Gemeindeschlüssel lässt sich kein Kreiswert zuordnen."],
                 ).to_dict()
-        bl_code = zensus_data.get("bundesland_code")
+            blocks["laerm"] = SourceResult(
+                name="laerm", ok=True, data=None,
+                warnings=["Ohne Bundesland (aus dem Zensusblock) lässt sich "
+                          "kein Lärmdienst zuordnen."],
+            ).to_dict()
         gemeinde = adresse.get("gemeinde")
         plz = adresse.get("plz")
 

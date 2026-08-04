@@ -96,3 +96,8 @@ def settings(tmp_path):
 @pytest.fixture()
 def muenchen_rad_tage():
     return load_fixture("raw_muenchen_rad_tage.json")
+
+
+@pytest.fixture()
+def laerm_bayern():
+    return load_fixture("raw_laerm_bayern.json")

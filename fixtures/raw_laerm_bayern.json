@@ -1,0 +1,57 @@
+{
+ "_hinweis": "Echte GetFeatureInfo-Antworten des LfU-WMS laerm/hauptverkehrsstrassen vom 2026-08-04, Punkt 48.1597 N 11.5385 O (Mittlerer Ring, Muenchen), Box +-0.0005 Grad, 101x101 px, Mittelpixel. Unveraendert.",
+ "mroadbylden2022": {
+  "type": "FeatureCollection",
+  "features": [
+   {
+    "type": "Feature",
+    "geometry": null,
+    "properties": {
+     "Classify.Pixel Value": "NoData"
+    },
+    "layerName": "mroadbylden2022"
+   }
+  ]
+ },
+ "mroadbyln2022": {
+  "type": "FeatureCollection",
+  "features": [
+   {
+    "type": "Feature",
+    "geometry": null,
+    "properties": {
+     "Classify.Pixel Value": "NoData"
+    },
+    "layerName": "mroadbyln2022"
+   }
+  ]
+ },
+ "mroadbylden2017": {
+  "type": "FeatureCollection",
+  "features": [
+   {
+    "type": "Feature",
+    "geometry": null,
+    "properties": {
+     "Classify.Pixel Value": "65.583473",
+     "Classify.Class value": "2"
+    },
+    "layerName": "mroadbylden2017"
+   }
+  ]
+ },
+ "mroadbyln2017": {
+  "type": "FeatureCollection",
+  "features": [
+   {
+    "type": "Feature",
+    "geometry": null,
+    "properties": {
+     "Classify.Pixel Value": "56.885761",
+     "Classify.Class value": "1"
+    },
+    "layerName": "mroadbyln2017"
+   }
+  ]
+ }
+}

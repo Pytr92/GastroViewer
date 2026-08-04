@@ -968,6 +968,7 @@ function lade(refresh = false) {
         ladeEinkommen(d.data?.ags, lauf);
         ladeKreisprofil(d.data?.ags, lauf);
         ladePendler(d.data?.ags, lauf);
+        ladeLaerm(d.data?.bundesland_code, lauf);
       }
     })
     .catch((e) => {
@@ -1060,6 +1061,7 @@ function baueGeruest() {
     block('radzaehlung', '6c · Gemessene Radverkehrsfrequenz'),
     block('verkehrsmenge', '6d · Verkehrsmenge (DTV, Bayern)'),
     block('planung', '6e · Planungsrecht und Hochwasser'),
+    block('laerm', '6f · Straßenlärm (Umgebungslärmkartierung, Bayern)'),
     block('leerstand', '7 · Leerstände'),
     block('quellen', '8 · Weiterführende Quellen'),
     block('grenzen', 'Bekannte Grenzen dieser Daten'),
@@ -1991,6 +1993,68 @@ function zeigeKlima(d) {
       'Stationswerte der Normalperiode 1991–2020 — kein aktuelles Jahr, keine '
       + 'Prognose, und der Wert der Station, nicht des Punktes. Am Alpenrand '
       + 'kann die Stationshöhe den Unterschied machen.'),
+    ...warnungen(d.warnings || []));
+  setQuelle(id, d.provenance);
+}
+
+/* Block 6f — Straßenlärm am Punkt (Umgebungslärmkartierung, LfU Bayern).
+   Berechnete Pegel an Hauptverkehrsstraßen; „nicht kartiert" heißt „keine
+   kartierte Hauptverkehrsstraße am Punkt", nicht „leise". */
+async function ladeLaerm(bundeslandCode, lauf) {
+  try {
+    const d = await hole('/api/point/laerm', {
+      lat: state.lat, lon: state.lon,
+      bundesland_code: bundeslandCode || '',
+    });
+    if (lauf !== state.ladeLauf) return;
+    state.daten.laerm = d;
+    zeigeLaerm(d);
+  } catch (e) {
+    if (lauf !== state.ladeLauf) return;
+    zeigeBlockFehler('laerm', e);
+  }
+}
+
+function zeigeLaerm(d) {
+  const id = 'laerm';
+  if (!d.ok) {
+    setStatus(id, 'fehler', 'nicht erreichbar');
+    setInhalt(id, fehlerbox(d.error));
+    setQuelle(id, d.provenance);
+    return;
+  }
+  const l = d.data;
+  if (!l) {
+    setStatus(id, 'leer', 'außerhalb Bayerns');
+    setInhalt(id, ...warnungen(d.warnings || []));
+    setQuelle(id, d.provenance);
+    return;
+  }
+  if (!l.kartiert) {
+    setStatus(id, 'ok', 'nicht kartiert');
+    setInhalt(id,
+      el('div', { class: 'notiz' },
+        'Am Punkt liegt keine kartierte Hauptverkehrsstraßen-Belastung — für '
+        + 'Außengastronomie meist die gute Nachricht.'),
+      ...(l.hinweise || []).map((h) => el('div', { class: 'hinweis-klein' }, h)),
+      ...warnungen(d.warnings || []));
+    setQuelle(id, d.provenance);
+    return;
+  }
+  setStatus(id, 'ok', 'geladen');
+  const zelle = (p, titel) => el('div', { class: 'kennzahl' },
+    el('div', { class: 'titel' }, titel),
+    el('div', { class: 'wert' },
+      p.wert_db === null ? 'nicht kartiert' : `${NF1.format(p.wert_db)} dB(A)`),
+    el('div', { class: 'basis' },
+      p.wert_db === null
+        ? 'keine kartierte Hauptverkehrsstraße am Punkt'
+        : `Band ${p.klasse} · Kartierung ${p.kartierung}`));
+  setInhalt(id,
+    el('div', { class: 'kennzahlen' },
+      zelle(l.lden, 'LDEN (Tag-Abend-Nacht-Pegel)'),
+      zelle(l.lnight, 'LNight (Nachtpegel 22–6 Uhr)')),
+    ...(l.hinweise || []).map((h) => el('div', { class: 'hinweis-klein' }, h)),
     ...warnungen(d.warnings || []));
   setQuelle(id, d.provenance);
 }
