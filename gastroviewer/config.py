@@ -202,6 +202,10 @@ class Settings:
         # Jahreswechsel ändert sich an der Reihe nichts Wesentliches.
         if source.startswith("dynamik"):
             return self.ttl_zensus
+        # Tageswerte-Jahresdatei der Radzählstellen: ein abgeschlossenes Jahr,
+        # fortgeschrieben erst mit dem nächsten Jahrgang.
+        if source.startswith("muenchen_rad_jahr"):
+            return self.ttl_zensus
         return self.ttl_osm
 
     def ensure_dirs(self) -> None:

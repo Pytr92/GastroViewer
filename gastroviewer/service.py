@@ -104,6 +104,45 @@ class PointService:
             refresh=refresh,
         )
 
+    async def _rad_jahresgang(self):
+        """Tageswerte des jüngsten Jahres, geparst — **einmal** stadtweit
+        gecacht, nicht je Punkt: dieselbe Datei beantwortet jeden Münchner
+        Punkt. Dateiname über die CKAN-API aufgelöst, nie geraten."""
+
+        async def laden() -> SourceResult:
+            listing = await self.outbound.get_json(
+                "muenchen_rad_jahr", muenchen.CKAN_JAHRESZAHLEN, timeout=45.0,
+                limiter="muenchen", min_interval=1.0,
+            )
+            fund = muenchen.finde_tageswerte(listing)
+            if not fund:
+                raise SourceError(
+                    "api_error",
+                    "Keine Tageswerte-Ressource im Open-Data-Portal gefunden.",
+                )
+            jahr, url = fund
+            text = await self.outbound.get_text(
+                "muenchen_rad_jahr", url, timeout=60.0,
+                limiter="muenchen", min_interval=1.0,
+            )
+            stationen = muenchen.parse_tageswerte(text)
+            if not stationen:
+                raise SourceError(
+                    "parse", f"Tageswerte {jahr} ließen sich nicht lesen."
+                )
+            return SourceResult(
+                name="muenchen_rad_jahr", ok=True,
+                data={"jahr": jahr, "stationen": stationen},
+            )
+
+        res = await self._cached("muenchen_rad_jahr", "muenchen_rad_jahr", laden)
+        if not res.ok:
+            raise SourceError(
+                (res.error or {}).get("kind", "unknown"),
+                (res.error or {}).get("message", "unbekannter Fehler"),
+            )
+        return res.data
+
     async def radzaehlung(self, lat: float, lon: float, radius: int, refresh: bool = False):
         # Die sechs Zählstellen ändern sich nicht stündlich; der Cache-Schlüssel
         # rundet ohnehin auf 4 Nachkommastellen. TTL wie OSM: 24 h.
@@ -111,7 +150,10 @@ class PointService:
         return await self._cached(
             "muenchen_rad",
             key,
-            lambda: muenchen.zaehlstellen(self.outbound, self.settings, lat, lon, radius),
+            lambda: muenchen.zaehlstellen(
+                self.outbound, self.settings, lat, lon, radius,
+                jahresgang_laden=self._rad_jahresgang,
+            ),
             refresh=refresh,
         )
 

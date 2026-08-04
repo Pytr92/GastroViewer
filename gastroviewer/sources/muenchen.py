@@ -108,6 +108,92 @@ def aufbereiten(
     }
 
 
+# ------------------------------------------- Jahresgang aus den Tages-Rohdaten
+#
+# Die WFS-Stammdaten tragen nur Jahressumme und laufenden Monat. Der
+# **Jahresgang** — wie stark Sommer und Winter auseinanderliegen — steht in
+# den Tageswerte-CSVs des Open-Data-Portals. Verifiziert am 2026-08-04:
+# CKAN ``package_show?id=daten-der-raddauerzaehlstellen-muenchen-jahreszahlen``
+# listet je Jahr eine Datei „Tageswerte Wetter {Jahr}" mit den Spalten
+# ``datum,uhrzeit_start,uhrzeit_ende,zaehlstelle,richtung_1,richtung_2,gesamt,…``
+# (Datum als ``2025.01.01``; in den Monatsdateien sind die Felder mit
+# Leerzeichen aufgefüllt — deshalb wird überall gestrippt). Die Dateinamen
+# sind unregelmäßig („rad_2025_tage_export_19_01_25.csv") und werden deshalb
+# über die CKAN-API aufgelöst, nie geraten.
+CKAN_JAHRESZAHLEN = (
+    "https://opendata.muenchen.de/api/3/action/package_show"
+    "?id=daten-der-raddauerzaehlstellen-muenchen-jahreszahlen"
+)
+MONATE_KURZ = ["Jan", "Feb", "Mär", "Apr", "Mai", "Jun",
+               "Jul", "Aug", "Sep", "Okt", "Nov", "Dez"]
+
+
+def finde_tageswerte(payload: Any) -> tuple[int, str] | None:
+    """Jüngste „Tageswerte Wetter {Jahr}"-Ressource aus der CKAN-Antwort."""
+    beste: tuple[int, str] | None = None
+    for r in ((payload or {}).get("result") or {}).get("resources") or []:
+        name = str(r.get("name") or "")
+        m = re.search(r"Tageswerte.*?(\d{4})", name)
+        if not m or not r.get("url"):
+            continue
+        jahr = int(m.group(1))
+        if beste is None or jahr > beste[0]:
+            beste = (jahr, r["url"])
+    return beste
+
+
+def parse_tageswerte(text: str) -> dict[str, dict[str, Any]]:
+    """Tages-CSV → je Zählstelle: Messtage, Tagesmittel, Monatsmittel, Spitzentag.
+
+    Nur Zeilen mit lesbarem Datum und Gesamtwert zählen; die Zahl der
+    Messtage steht im Ergebnis, denn nicht jede Stelle misst das ganze Jahr
+    (Kreuther hatte 2025 nur 92 Tage).
+    """
+    zeilen = [z for z in text.replace("﻿", "").splitlines() if z.strip()]
+    if not zeilen:
+        return {}
+    kopf = [c.strip() for c in zeilen[0].split(",")]
+    try:
+        i_datum = kopf.index("datum")
+        i_stelle = kopf.index("zaehlstelle")
+        i_gesamt = kopf.index("gesamt")
+    except ValueError:
+        return {}
+
+    je_stelle: dict[str, dict[int, list[int]]] = {}
+    for zeile in zeilen[1:]:
+        teile = [c.strip() for c in zeile.split(",")]
+        if len(teile) <= max(i_datum, i_stelle, i_gesamt):
+            continue
+        m = re.fullmatch(r"(\d{4})\.(\d{2})\.(\d{2})", teile[i_datum])
+        if not m:
+            continue
+        monat = int(m.group(2))
+        stelle = teile[i_stelle]
+        if not stelle or not re.fullmatch(r"-?\d+", teile[i_gesamt] or ""):
+            continue
+        wert = int(teile[i_gesamt])
+        if wert < 0:
+            continue
+        je_stelle.setdefault(stelle, {}).setdefault(monat, []).append(wert)
+
+    out: dict[str, dict[str, Any]] = {}
+    for stelle, monate in je_stelle.items():
+        alle = [w for ws in monate.values() for w in ws]
+        if not alle:
+            continue
+        out[stelle] = {
+            "messtage": len(alle),
+            "je_tag_mittel": round(sum(alle) / len(alle)),
+            "monatsmittel": [
+                round(sum(monate[m]) / len(monate[m])) if monate.get(m) else None
+                for m in range(1, 13)
+            ],
+            "spitzentag": max(alle),
+        }
+    return out
+
+
 HINWEISE = [
     "Gezählt werden **Radfahrende**, keine Fußgänger. Für eine Fußgängerzone sagt "
     "die Zahl wenig, für eine Radachse viel.",
@@ -119,8 +205,17 @@ HINWEISE = [
 
 
 async def zaehlstellen(
-    out: Outbound, settings: Settings, lat: float, lon: float, radius: int
+    out: Outbound,
+    settings: Settings,
+    lat: float,
+    lon: float,
+    radius: int,
+    jahresgang_laden: Any = None,
 ) -> SourceResult:
+    """``jahresgang_laden``: optionale async-Funktion, die die geparsten
+    Tageswerte liefert — sie wird nur gerufen, wenn überhaupt eine Zählstelle
+    in Reichweite liegt, damit Punkte außerhalb Münchens die 100-KB-Datei
+    nie anfassen. Ihr Ausfall kostet nur den Jahresgang, nicht den Block."""
     started = time.perf_counter()
     params = {
         "service": "WFS",
@@ -148,6 +243,22 @@ async def zaehlstellen(
     data = aufbereiten(features, lat, lon, radius)
 
     warnungen: list[str] = []
+    if data["in_reichweite"] and jahresgang_laden is not None:
+        try:
+            jg = await jahresgang_laden()
+        except SourceError as err:
+            warnungen.append(f"Jahresgang nicht ladbar: {err.message}")
+            jg = None
+        if jg:
+            data["jahresgang_jahr"] = jg.get("jahr")
+            stationen = jg.get("stationen") or {}
+            for s in data["in_reichweite"]:
+                s["jahresgang"] = stationen.get(s["kurzname"])
+            if data["naechste"]:
+                data["naechste"]["jahresgang"] = stationen.get(
+                    data["naechste"]["kurzname"]
+                )
+
     if not data["in_reichweite"]:
         warnungen.append(
             f"Keine Zählstelle innerhalb von {MAX_DISTANZ_M} m. Die sechs Stellen "

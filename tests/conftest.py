@@ -91,3 +91,8 @@ def settings(tmp_path):
     s = Settings()
     s.data_dir = tmp_path
     return s
+
+
+@pytest.fixture()
+def muenchen_rad_tage():
+    return load_fixture("raw_muenchen_rad_tage.json")

@@ -176,3 +176,58 @@ async def test_punkt_ausserhalb_muenchens_meldet_das(settings):
     assert res.ok
     assert res.data["in_reichweite"] == []
     assert "decken München nicht flächig ab" in res.warnings[0]
+
+
+# ------------------------------------------- Jahresgang aus den Tages-Rohdaten
+
+
+def test_finde_tageswerte_nimmt_das_juengste_jahr(muenchen_rad_tage):
+    fund = muenchen.finde_tageswerte(muenchen_rad_tage["ckan"])
+    assert fund is not None
+    jahr, url = fund
+    assert jahr == 2025
+    assert url.endswith("rad_2025_tage_export_19_01_25.csv")
+
+
+def test_finde_tageswerte_ohne_treffer():
+    assert muenchen.finde_tageswerte({"result": {"resources": []}}) is None
+    assert muenchen.finde_tageswerte(None) is None
+
+
+def test_parse_tageswerte_gegen_die_echten_zahlen(muenchen_rad_tage):
+    """Kontrollwerte aus den echten CSV-Zeilen selbst errechnet: Arnulf 365
+    Messtage, Mittel 1.184, Spitzentag 2.510; Kreuther nur 92 Tage (Okt–Dez,
+    echtes Teiljahr)."""
+    st = muenchen.parse_tageswerte(muenchen_rad_tage["tageswerte_2025"])
+    a = st["Arnulf"]
+    assert a["messtage"] == 365
+    assert a["je_tag_mittel"] == 1184
+    assert a["spitzentag"] == 2510
+    # Jahresgang: Juli fast dreimal Januar — der Winter halbiert die Achse.
+    assert a["monatsmittel"][0] == 645
+    assert a["monatsmittel"][6] == 1662
+
+    k = st["Kreuther"]
+    assert k["messtage"] == 92
+    assert k["je_tag_mittel"] == 453
+    # Monate ohne Messtage sind None, nicht 0 — keine erfundene Flaute.
+    assert k["monatsmittel"][0] is None
+    assert k["monatsmittel"][9] is not None
+
+
+def test_parse_tageswerte_mit_aufgefuellten_feldern():
+    """Die Monatsdateien füllen Felder mit Leerzeichen auf — strip überall."""
+    text = (
+        "﻿datum     ,uhrzeit_start,uhrzeit_ende,zaehlstelle,richtung_1,"
+        "richtung_2,gesamt\n"
+        "2026.07.01,00:00        ,       23:59,Kreuther   ,       350,"
+        "       297,   647\n"
+    )
+    st = muenchen.parse_tageswerte(text)
+    assert st["Kreuther"]["je_tag_mittel"] == 647
+    assert st["Kreuther"]["messtage"] == 1
+
+
+def test_parse_tageswerte_unlesbares_bricht_nicht():
+    assert muenchen.parse_tageswerte("") == {}
+    assert muenchen.parse_tageswerte("voellig,anderes,format\n1,2,3") == {}

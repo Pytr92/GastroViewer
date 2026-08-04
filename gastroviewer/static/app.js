@@ -3661,8 +3661,36 @@ function zeigeRadzaehlung(d) {
       el('td', { class: 'num' }, s.summe_vorjahr === null ? '—' : NF.format(s.summe_vorjahr))));
   }
 
+  /* Jahresgang der nächsten Zählstelle aus den Tages-Rohdaten: wie weit
+     Sommer und Winter auseinanderliegen, sagt die Jahressumme nicht. */
+  let jahresgang = null;
+  const jg = n.jahresgang;
+  if (jg && Array.isArray(jg.monatsmittel)) {
+    const max = Math.max(1, ...jg.monatsmittel.map((m) => m || 0));
+    jahresgang = el('div', { id: 'rad-jahresgang' },
+      el('h3', { class: 'hinweis-klein' },
+        `Jahresgang ${r.jahresgang_jahr} (${n.kurzname}) — Tagesmittel je Monat`),
+      el('div', { style: 'display:flex;align-items:flex-end;gap:2px;height:60px;margin:6px 0 2px;' },
+        jg.monatsmittel.map((m, i) => el('div', {
+          title: m === null || m === undefined
+            ? `${['Jan', 'Feb', 'Mär', 'Apr', 'Mai', 'Jun', 'Jul', 'Aug', 'Sep', 'Okt', 'Nov', 'Dez'][i]} — keine Messtage`
+            : `${['Jan', 'Feb', 'Mär', 'Apr', 'Mai', 'Jun', 'Jul', 'Aug', 'Sep', 'Okt', 'Nov', 'Dez'][i]} — Ø ${NF.format(m)} Radfahrende/Tag`,
+          style: `flex:1;border-radius:2px 2px 0 0;`
+            + (m === null || m === undefined
+              ? 'background:#d5dbe1;height:3px;'
+              : `background:var(--akzent);opacity:.75;height:${Math.max(3, (m / max) * 100)}%;`),
+        }))),
+      el('div', { style: 'display:flex;justify-content:space-between;font-size:11px;color:#5b6570;' },
+        el('span', {}, 'Jan'), el('span', {}, 'Jun'), el('span', {}, 'Dez')),
+      el('div', { class: 'hinweis-klein' },
+        `${NF.format(jg.messtage)} Messtage im Jahr ${r.jahresgang_jahr}; `
+        + `Ø ${NF.format(jg.je_tag_mittel)} je Tag, stärkster Tag ${NF.format(jg.spitzentag)}. `
+        + (jg.messtage < 300 ? 'Deutlich weniger als 365 Messtage — Ausfallzeiten, das Mittel ist entsprechend unsicher. ' : '')
+        + 'Wetter und Jahreszeit schlagen stark durch.'));
+  }
+
   const besonders = r.in_reichweite.filter((s) => s.besonderheiten);
-  setInhalt(id, kz, tab,
+  setInhalt(id, kz, tab, jahresgang,
     ...besonders.map((s) => el('div', { class: 'notiz' },
       el('strong', {}, `${s.kurzname}: `), s.besonderheiten)),
     ...warnungen(d.warnings),
