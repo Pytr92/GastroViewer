@@ -19,7 +19,7 @@ hinter Login bzw. Lizenz.
 | Grundkarten: OpenStreetMap, amtliche basemap.de (farbig/grau), in Bayern Luftbild und Flurstücke (ALKIS) | BKG, LDBV |
 | Deckkraftregler für alle aufgesetzten Ebenen | — |
 
-### Punktanalyse — WIE ist es hier? (ein Klick, 16 Blöcke)
+### Punktanalyse — WIE ist es hier? (ein Klick, 18 Blöcke)
 
 | Block | Inhalt |
 |---|---|
@@ -29,15 +29,17 @@ hinter Login bzw. Lizenz.
 | Verfügbares Einkommen (3b) | VGRdL-Kreiswert mit Land/Bund und Verlauf — die ehrliche Kaufkraft-Näherung |
 | Kreisprofil (3c) | Übernachtungen je EW, **Erwerbstätige am Arbeitsort je 1.000 EW** (Tagesbevölkerung), Beschäftigten-/Arbeitslosenquote, Bevölkerungsbewegung — Regionalatlas, je eigenes Datenjahr |
 | Pendler (3d) | Ein-/Auspendler, Saldo, Quoten, Binnenpendler der Gemeinde + Top-Herkünfte/-Ziele mit km (Pendlerrechnung der Länder) |
-| Gastronomie | Betriebe nach Typ, Küche, Kette/Einzelbetrieb, Wettbewerbsdichte nach Entfernung (150/300/600/900 m), nächster Betrieb, **Branchenprofil** (was zählt als direkter Wettbewerb) |
+| Gastronomie | Betriebe nach Typ, Küche, Kette/Einzelbetrieb, Wettbewerbsdichte nach Entfernung (150/300/600/900 m), nächster Betrieb, **Branchenprofil** (was zählt als direkter Wettbewerb), **Öffnungszeiten-Lücken** (sonntags/nach 22 Uhr — konservativ gezählte Mindestzahlen) |
 | Erreichbarkeit zu Fuß | echtes Wegenetz statt Luftlinie: erreichbare Fläche, Erschließungsgrad, Umwegfaktor, Gehstrecke je Betrieb |
 | Rad-Liefergebiet (4d) | erreichbare Einwohner in 5–15 min Radstrecke (Radprofil, 15 km/h als benannter gewählter Wert) |
+| Gastro-Dynamik (4e) | Jahresreihe der Gastro-Objekte aus der OSM-Historie (ohsome): wächst die Lage oder stirbt sie? — mit benannter Kartierungs-Grenze |
 | Systemgastronomie & Marken | Ketten je Marke mit Anzahl und Entfernung, Kettenanteil, **Gebietsschutz-Check für die eigene Marke (5/10/20 km)** |
 | Umfeld | Frequenzbringer in 9 Kategorien (Einkauf, Bildung, Gesundheit, Büro, …) |
 | Klima (5b) | DWD-Normalwerte 1991–2020 der nächsten Station: Sommertage (mit Monatsbalken), Heiße Tage, Sonne, Niederschlag, Temperatur — für Außengastronomie |
 | Verkehr/ÖPNV | Haltestellen, Linien, GTFS-Abfahrten je Stunde eines konkreten Tages, Mittagsfenster 11–14, Abendfenster 17–22, Nachtfenster 22–1 Uhr |
-| Gemessene Frequenz | Radzählstellen München (Tageswerte), Kfz-Verkehrsstärke DTV (BAYSIS, ganz Bayern) |
+| Gemessene Frequenz | Radzählstellen München (Jahressumme + **Jahresgang aus Tages-Rohdaten**: Monatsmittel, Messtage, Spitzentag), Kfz-Verkehrsstärke DTV (BAYSIS, ganz Bayern) |
 | Planungsrecht | Hochwassergefahrenflächen HQhäufig/HQ100/HQextrem (Bayern), Bebauungsplan-Umgriffe (München) |
+| Straßenlärm (6f) | LDEN/LNight in dB(A) am Punkt aus der EU-Umgebungslärmkartierung (LfU Bayern) — mit Kartierungsjahr und ehrlicher „nicht kartiert ≠ leise“-Grenze |
 | Bodenrichtwerte | Kartenebene + Klickabfrage in 7 Bundesländern, Portallinks für alle |
 | Leerstände | OSM-Leerstand als Untergrenze, mit Verweis auf Kataster/Begehung |
 
@@ -45,7 +47,7 @@ hinter Login bzw. Lizenz.
 
 | Funktion | Besonderheit |
 |---|---|
-| Vergleichstabelle: 51 Kennzahlen in 6 schaltbaren Gruppen | jede berechnete Spalte ist als „berechnet" beschriftet |
+| Vergleichstabelle: 54 Kennzahlen in 6 schaltbaren Gruppen | jede berechnete Spalte ist als „berechnet" beschriftet |
 | Gewichtetes Ranking | Punktzahl allein aus eigenen Gewichten, jeder Beitrag offen |
 | Eigene Note (1–5) und Notiz je Punkt | einzige Wertung im Werkzeug — und sie kommt vom Nutzer |
 | Verlauf & „Neu prüfen" | Quellen erneut abfragen; eröffnete/verschwundene Betriebe namentlich; ab drei Ständen Verlaufslinien im Bericht |
@@ -53,14 +55,14 @@ hinter Login bzw. Lizenz.
 | Standortbericht | druckbare Seite je Punkt mit Lagekarte, PDF über Browserdruck |
 | **Duell-Bericht A gegen B** | zwei Kandidaten Spalte an Spalte, beide Lagekarten, Differenzspalte als Fakt statt Wertung |
 | Adressliste | bis 25 Makler-Adressen auf einmal geocodieren und als Punkte merken (Nominatim-Limit gewahrt) |
-| Umsatzschätzung | Spanne, offene Formel, Prüfstein gegen echten Umsatz, **Franchise-Kostenprobe** (Gebühr, Werbeabgabe, Wareneinsatz, Personal → Verbleib vor Miete), **Mietprobe** gegen das konkrete Exposé |
+| Umsatzschätzung | Spanne, offene Formel, Prüfstein gegen echten Umsatz, **Franchise-Kostenprobe** (Gebühr, Werbeabgabe, Wareneinsatz, Personal → Verbleib vor Miete), **Mietprobe** gegen das konkrete Exposé mit **Wohnmiete-Lage-Anker** (Zensus), **Sensitivität** (exakte Spannen-Zerlegung, Effekt eines übersehenen Wettbewerbers) |
 | Export & Datensicherung | JSON und CSV je Punkt, CSV des Vergleichs; alle Punkte samt Verlauf als Sicherungsdatei mit Wiedereinspielen |
 
 ### Betrieb
 
 Läuft komplett lokal (localhost, SQLite), kein Konto, keine Cloud. Cache mit
 Kachel-Logik schont die freien Dienste; jeder echte Abruf steht im Protokoll.
-Geprüft durch 326 automatische Tests, 45 Live-Routenprüfungen, 27 Browser-Checks
+Geprüft durch 371 automatische Tests, 51 Live-Routenprüfungen, 33 Browser-Checks
 und 9 Abnahmekriterien.
 
 ---

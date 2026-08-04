@@ -199,7 +199,10 @@ fehlend = []
 for name, d in daten.items():
     for block, inhalt in d["bloecke"].items():
         p = inhalt.get("provenance")
-        if block == "gtfs" and inhalt.get("data") is None:
+        # Blöcke, die begründet leer bleiben dürfen, tragen dann keine Quelle:
+        # GTFS ohne importierten Fahrplan, Lärm außerhalb Bayerns. Beide
+        # nennen den Grund in ihren warnings.
+        if block in ("gtfs", "laerm") and inhalt.get("data") is None:
             continue
         if not p or not p.get("source") or not p.get("license"):
             fehlend.append(f"{name}/{block}")

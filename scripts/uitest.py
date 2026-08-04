@@ -91,6 +91,7 @@ def pruefe_grundgeruest(page) -> str:
     bloecke = page.eval_on_selector_all(
         ".block", "e=>e.map(x=>x.id.replace('block-',''))")
     for pflicht in ("kopf", "bevoelkerung", "wohnen", "gastronomie", "gehweg",
+                    "dynamik", "laerm",
                     "umfeld", "verkehr", "gtfs", "leerstand", "quellen", "grenzen"):
         fordere(pflicht in bloecke, f"Block fehlt: {pflicht}")
 
@@ -229,6 +230,94 @@ def pruefe_klima(page) -> str:
         "#inhalt-klima div[title*='Tage']", "e=>e.length")
     fordere(balken == 12, f"{balken} statt 12 Monatsbalken")
     return "5 Kennzahlen mit Station, 12 Monatsbalken"
+
+
+def pruefe_dynamik(page) -> str:
+    """Block 4e: Jahresreihe der Gastro-Objekte mit Balken, Tabelle und der
+    zentralen Kartierer-Warnung."""
+    fordere(status(page, "dynamik") != "", "Dynamik-Block ohne Status")
+    inhalt = text(page, "#inhalt-dynamik")
+    for begriff in ("Gastro-Objekte", "Veränderung", "Kartierer"):
+        fordere(begriff in inhalt, f"Dynamikblock ohne {begriff!r}")
+    balken = page.eval_on_selector_all(
+        "#dynamik-balken div", "e=>e.length")
+    fordere(balken >= 5, f"nur {balken} Jahresbalken")
+    zeilen = page.eval_on_selector_all(
+        "#inhalt-dynamik table.daten tr", "e=>e.length")
+    fordere(zeilen >= 6, f"nur {zeilen} Tabellenzeilen")
+    return f"{balken} Jahresbalken, {zeilen - 1} Jahre in der Tabelle, Warnung vorhanden"
+
+
+def pruefe_laerm(page) -> str:
+    """Block 6f: am Marienplatz (keine Hauptverkehrsstraße) ist „nicht
+    kartiert" das erwartete, ehrlich beschriftete Ergebnis."""
+    st = status(page, "laerm")
+    fordere(st in ("geladen", "nicht kartiert"), f"Lärm-Status: {st!r}")
+    inhalt = text(page, "#inhalt-laerm")
+    fordere("Hauptverkehrsstraße" in inhalt or "Hauptverkehrsstraßen" in inhalt,
+            "Lärmblock ohne Hauptverkehrsstraßen-Einordnung")
+    if st == "geladen":
+        fordere("dB(A)" in inhalt and "Kartierung" in inhalt,
+                "Wert ohne Einheit oder Kartierungsjahr")
+        return "Pegel mit Kartierungsjahr angezeigt"
+    fordere("keine kartierte" in inhalt, "„nicht kartiert“ ohne Erklärung")
+    return "nicht kartiert — mit ehrlicher Erklärung"
+
+
+def pruefe_oeffnungsluecken(page) -> str:
+    """Sonntags- und Abendlücke im Gastronomieblock — als Mindestzahlen."""
+    inhalt = text(page, "#inhalt-gastronomie")
+    fordere("Öffnungszeiten-Lücken" in inhalt, "Lücken-Abschnitt fehlt")
+    fordere("Mindestzahlen" in inhalt, "Mindestzahlen-Beschriftung fehlt")
+    kacheln = page.eval_on_selector_all(
+        "#oeffnungsluecken .kennzahl", "e=>e.length")
+    fordere(kacheln == 4, f"{kacheln} statt 4 Kennzahlen")
+    fordere("Sonntags geöffnet" in inhalt and "auswertbaren" in inhalt,
+            "Sonntagszahl ohne Bezugsgröße")
+    return "4 Mindestzahlen mit Bezugsgröße und Hinweis"
+
+
+def pruefe_kundenprofil(page) -> str:
+    """Deskriptiver Kundenprofil-Satz im Bevölkerungsblock."""
+    fordere(page.query_selector("#kundenprofil") is not None,
+            "Kundenprofil-Satz fehlt")
+    t = text(page, "#kundenprofil")
+    fordere("Größte Altersgruppe" in t and "%" in t, "Satz ohne Altersgruppe")
+    fordere("Einpendler" in t or "wohnt" in t,
+            "Die Grenze (Wohnbevölkerung ≠ Kundschaft) fehlt")
+    return "Größte Altersgruppe samt Grenze benannt"
+
+
+def pruefe_rad_jahresgang(page) -> str:
+    """Jahresgang der nächsten Zählstelle aus den Tages-Rohdaten."""
+    st = status(page, "radzaehlung")
+    if st != "geladen":
+        return f"übersprungen — keine Zählstelle in Reichweite ({st})"
+    if not page.query_selector("#rad-jahresgang"):
+        raise Befund("Zählstelle geladen, aber kein Jahresgang")
+    t = text(page, "#rad-jahresgang")
+    fordere("Jahresgang" in t and "Messtage" in t, "Jahresgang ohne Messtage")
+    balken = page.eval_on_selector_all(
+        "#rad-jahresgang div[title]", "e=>e.length")
+    fordere(balken == 12, f"{balken} statt 12 Monatsbalken")
+    return f"12 Monatsbalken, {t.split('Messtage')[0].split()[-1]} Messtage"
+
+
+def pruefe_sensitivitaet(page) -> str:
+    """Sensitivität im Schätzungsreiter: Treiber-Tabelle mit Balken und der
+    +1-Wettbewerber-Warnung."""
+    page.eval_on_selector("#reiter button[data-reiter='schaetzung']", "e=>e.click()")
+    page.wait_for_timeout(2500)
+    t = text(page, "#panel-schaetzung")
+    fordere("Woran die Spanne hängt" in t, "Sensitivitäts-Abschnitt fehlt")
+    fordere("Marktanteil" in t and "Durchschnittsbon" in t, "Treiber fehlen")
+    fordere("übersehener Wettbewerber" in t, "+1-Wettbewerber-Effekt fehlt")
+    balken = page.eval_on_selector_all(".sens-balken", "e=>e.length")
+    fordere(balken == 2, f"{balken} statt 2 Treiber-Balken")
+    fordere("Wohnungsmiete im Umkreis" in t, "Wohnmiete-Anker-Feld fehlt")
+    page.eval_on_selector("#reiter button[data-reiter='daten']", "e=>e.click()")
+    page.wait_for_timeout(300)
+    return "Treiber-Balken, +1-Effekt und Wohnmiete-Anker vorhanden"
 
 
 def pruefe_branchenprofil(page) -> str:
@@ -770,6 +859,12 @@ PRUEFUNGEN = [
     ("Kreisprofil (Regionalatlas)", pruefe_kreisprofil),
     ("Pendler (Gemeinde)", pruefe_pendler),
     ("Klima für Außengastronomie (DWD)", pruefe_klima),
+    ("Gastro-Dynamik (OSM-Historie)", pruefe_dynamik),
+    ("Straßenlärm (LfU Bayern)", pruefe_laerm),
+    ("Öffnungszeiten-Lücken", pruefe_oeffnungsluecken),
+    ("Kundenprofil-Satz", pruefe_kundenprofil),
+    ("Radzählstellen-Jahresgang", pruefe_rad_jahresgang),
+    ("Sensitivität und Wohnmiete-Anker", pruefe_sensitivitaet),
     ("Branchenprofil im Gastronomieblock", pruefe_branchenprofil),
     ("Systemgastronomie & Gebietsschutz", pruefe_franchise),
     ("ÖPNV-Mittags- und Abendfenster", pruefe_gtfs_mittagsfenster),

@@ -467,6 +467,102 @@ def t_duell_seite():
     return "Seite wird ausgeliefert"
 
 
+def t_dynamik():
+    d, dauer, _ = hole("/api/point/dynamik", P)
+    assert d["ok"], d.get("error")
+    reihe = d["data"]["reihe"]
+    assert len(reihe) >= 5, f"nur {len(reihe)} Jahrespunkte"
+    # Innenstadt München: dreistellige Gastro-Zahl in jedem Jahr, sonst
+    # stimmt Filter oder Radius nicht.
+    assert all(100 < r["gastro"] < 2000 for r in reihe), reihe
+    v = d["data"]["veraenderung"]
+    assert v and v["bis_jahr"] > v["von_jahr"]
+    assert any("Kartierer" in h for h in d["data"]["hinweise"]), \
+        "die zentrale Grenze fehlt in den Daten"
+    return (f"{reihe[0]['jahr']}: {reihe[0]['gastro']} → "
+            f"{reihe[-1]['jahr']}: {reihe[-1]['gastro']} Gastro-Objekte "
+            f"({v['absolut']:+d}) in {dauer:.1f} s")
+
+
+def t_laerm():
+    # Landshuter Allee (Mittlerer Ring) — eine der lautesten Straßen
+    # Deutschlands; hier MUSS ein kartierter Wert kommen.
+    d, _, _ = hole("/api/point/laerm",
+                   {"lat": 48.1597, "lon": 11.5385, "bundesland_code": "09"})
+    assert d["ok"], d.get("error")
+    lden = d["data"]["lden"]
+    assert lden["wert_db"] is not None and 55 <= lden["wert_db"] <= 90, lden
+    assert lden["kartierung"] in (2017, 2022)
+    # Außerhalb Bayerns: leer mit Begründung, ohne Abruf.
+    k, _, _ = hole("/api/point/laerm",
+                   {"lat": KOELN[0], "lon": KOELN[1], "bundesland_code": "05"})
+    assert k["ok"] and k["data"] is None
+    return (f"LDEN {lden['wert_db']} dB(A) ({lden['klasse']}, "
+            f"Kartierung {lden['kartierung']}) · außerhalb Bayerns leer")
+
+
+def t_rad_jahresgang():
+    d, _, _ = hole("/api/point/radzaehlung", P)
+    assert d["ok"], d.get("error")
+    n = (d["data"] or {}).get("naechste")
+    if not n:
+        return "keine Zählstelle in Reichweite — Jahresgang entfällt hier"
+    jg = n.get("jahresgang")
+    assert jg, "Zählstelle in Reichweite, aber kein Jahresgang angehängt"
+    assert jg["messtage"] > 0 and len(jg["monatsmittel"]) == 12
+    mm = [m for m in jg["monatsmittel"] if m is not None]
+    assert mm and all(0 <= m < 50_000 for m in mm)
+    return (f"{n['kurzname']}: {jg['messtage']} Messtage "
+            f"{d['data'].get('jahresgang_jahr')}, Ø {jg['je_tag_mittel']}/Tag, "
+            f"Spitze {jg['spitzentag']}")
+
+
+def t_oeffnungszeiten():
+    d, _, _ = hole("/api/point/osm", P)
+    oz = d["data"]["zusammenfassung"]["gastronomie"]["oeffnungszeiten"]
+    assert oz["auswertbar"] <= oz["mit_angabe"] <= oz["gesamt"]
+    assert oz["sonntag_offen"] + oz["sonntag_geschlossen"] == oz["auswertbar"]
+    # Innenstadt München: dass dort sonntags GAR nichts offen wäre, wäre ein
+    # Parserfehler, kein Befund über die Lage.
+    assert oz["sonntag_offen"] > 0
+    return (f"{oz['auswertbar']} von {oz['mit_angabe']} Angaben auswertbar · "
+            f"sonntags offen mind. {oz['sonntag_offen']}, "
+            f"nach 22 Uhr mind. {oz['nach22_offen']}")
+
+
+def t_sensitivitaet():
+    body = {"einwohner": 16370, "wettbewerber": 26,
+            "besuche_je_einwohner": 60.3, "bon_min": 7.15, "bon_max": 10.21}
+    d, _, _ = hole("/api/schaetzung", methode="POST", body=body)
+    s = d["sensitivitaet"]
+    produkt = 1.0
+    for t in s["treiber"]:
+        produkt *= t["faktor"]
+    assert abs(produkt - s["spannenfaktor_gesamt"]) < 0.1, \
+        "Zerlegung geht nicht auf"
+    u = d["ergebnis"]["jahresumsatz_eur"]
+    assert abs(s["spannenfaktor_gesamt"] - u[1] / u[0]) < 0.1
+    assert s["wettbewerber_plus_eins"]["wirkung_prozent"] < 0
+    return (f"Spannenfaktor {s['spannenfaktor_gesamt']} = "
+            + " × ".join(f"{t['titel']} {t['faktor']}" for t in s["treiber"])
+            + f" · +1 Wettbewerber: {s['wettbewerber_plus_eins']['wirkung_prozent']} %")
+
+
+def t_wohnmiete_anker():
+    v, _, _ = hole("/api/schaetzung/vorgaben", P)
+    assert v["zensus_wohnmiete_qm"] and 5 < v["zensus_wohnmiete_qm"] < 40, \
+        f"unplausible Wohnmiete {v['zensus_wohnmiete_qm']} €/m² für München"
+    body = {"einwohner": 16370, "wettbewerber": 26,
+            "besuche_je_einwohner": 60.3, "bon_min": 7.15, "bon_max": 10.21,
+            "flaeche_qm": 120, "angebotsmiete_qm": 45,
+            "zensus_wohnmiete_qm": v["zensus_wohnmiete_qm"]}
+    d, _, _ = hole("/api/schaetzung", methode="POST", body=body)
+    vgl = d["mietprobe"]["wohnmiete_vergleich"]
+    assert vgl and vgl["verhaeltnis"] == round(45 / v["zensus_wohnmiete_qm"], 2)
+    return (f"Anker {v['zensus_wohnmiete_qm']} €/m² · 45 €/m² gefordert = "
+            f"das {vgl['verhaeltnis']}-Fache")
+
+
 def t_cache_wirkt():
     d1, _, _ = hole("/api/point", P)
     d2, _, _ = hole("/api/point", P)
@@ -518,6 +614,12 @@ ALLE = [
     ("GET /api/export/point.csv", t_export_csv),
     ("GET /api/export/vergleich.csv", t_export_vergleich),
     ("DELETE /api/points/{id}", t_punkt_loeschen),
+    ("GET /api/point/dynamik — ohsome live", t_dynamik),
+    ("GET /api/point/laerm — LfU live (Mittlerer Ring)", t_laerm),
+    ("Radzählstellen-Jahresgang aus Tages-Rohdaten", t_rad_jahresgang),
+    ("Öffnungszeiten-Lücken (OSM, Mindestzahlen)", t_oeffnungszeiten),
+    ("POST /api/schaetzung (Sensitivität)", t_sensitivitaet),
+    ("Wohnmiete als Lage-Anker", t_wohnmiete_anker),
     ("Validierung (422-Pfade)", t_validierung),
     ("Cache-Nachweis", t_cache_wirkt),
 ]

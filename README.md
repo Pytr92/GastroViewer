@@ -266,6 +266,33 @@ Der Marktanteil ist die einzige Größe, für die es keine Datenquelle gibt. Er 
 geschätzt, sondern verlangt: Vorgabe ist die naive Gleichverteilung `1/(Wettbewerber+1)`,
 aufgespannt mit einem sichtbaren Unsicherheitsfaktor.
 
+### Sensitivität: Woran die Spanne hängt — exakt, ohne Prüf-Störgrößen
+
+Weil die Formel eine reine Multiplikationskette ist, braucht die Sensitivitätsanalyse
+keine gewählten „±25 %"-Störgrößen — alles folgt exakt aus der Rechnung selbst:
+
+- Die Umsatzspanne zerlegt sich **exakt** in Marktanteil-Faktor × Bon-Faktor
+  (Standard: 4,0 × 1,43 = Spannenfaktor 5,7). Wer die Spanne enger haben will, weiß
+  damit, an welcher Annahme das liegt — fast immer am Marktanteil.
+- Ein **übersehener Wettbewerber** (OSM zählt Untergrenzen!) senkt den Umsatz um
+  exakt 100/(n+2) Prozent — bei 3 gezählten Wettbewerbern sind das −20 %, bei 26
+  nur −3,6 %. Je leerer das Umfeld gezählt ist, desto teurer jeder übersehene Betrieb.
+- Einwohner und Besuche je Einwohner wirken 1:1; Öffnungstage und -stunden verändern
+  den Jahresumsatz gar nicht, nur die Bestellungen je Tag/Stunde.
+
+Das Ergebnis sagt damit konkret, **welche Annahme man vor Ort zuerst prüfen muss**.
+
+### Wohnmiete als Lage-Anker der Mietprobe
+
+Die Mietprobe (Fläche × geforderte Kaltmiete gegen die Miet-Obergrenze der Rechnung)
+bekommt einen zweiten, gemessenen Bezugspunkt: die **durchschnittliche
+Wohnungs-Nettokaltmiete des Umkreises aus dem Zensus-Gitter** (100-m-Zellen, Stichtag
+15.05.2022), sichtbar vorbefüllt und änderbar. Sie ist ausdrücklich **keine** Ober-
+oder Untergrenze für Gewerbemieten — die liegen regelmäßig darüber. Ihr Nutzen ist der
+Vergleich: dieselbe geforderte Gewerbemiete ist im 8-€-Wohnviertel ein anderes Angebot
+als im 16-€-Viertel, und das Verhältnis („das 2,8-Fache der örtlichen Wohnungsmiete")
+macht zwei Standorte vergleichbar. In keine Umsatzrechnung geht der Wert ein.
+
 ### Referenzwerte, am 01.08.2026 selbst nachgeschlagen
 
 | Größe | Wert | Stand | Quelle |
@@ -311,6 +338,14 @@ Beispiel Sendlinger Tor: Erhardtstraße in 1.294 m, 1.415.000 Radfahrende 2025, 
 3.877 je Tag. Die Grenzen stehen im Block: **Radfahrende, keine Fußgänger**, und sechs
 Querschnitte für 1,6 Mio. Einwohner. Über 3 km bleibt der Block leer statt eine Zahl von
 der anderen Stadtseite zu zeigen.
+
+Dazu der **Jahresgang aus den Tages-Rohdaten**: Die Jahressumme verdeckt, wie weit
+Sommer und Winter auseinanderliegen. Die Tageswerte-Jahresdatei des Open-Data-Portals
+(über die CKAN-API aufgelöst, die Dateinamen sind unregelmäßig) liefert je Zählstelle
+die Monatsmittel als Balken, die Zahl der Messtage und den Spitzentag — an der
+Arnulfstraße 2025 z. B. Januar Ø 645 gegen Juli Ø 1.662 Radfahrende/Tag. Teiljahre
+werden ehrlich ausgewiesen (Kreuther 2025: nur 92 Messtage), Monate ohne Messung sind
+Lücken, keine erfundene Flaute.
 
 **Verkehrsmenge (DTV).** Für einen Standort an einer Ausfallstraße, mit Drive-through
 oder mit Parkplatz ist die durchschnittliche tägliche Verkehrsstärke die
@@ -575,6 +610,43 @@ Niederschlag), am Marienplatz stammen die Werte z. B. von München-Stadt,
 München-Bogenhausen und St. Bonifaz. Ab 30 km Entfernung warnt der Block. Gecacht werden
 die zehn Deutschland-weiten Dateien, nicht der Punkt — der zweite Punkt irgendwo in
 Deutschland kostet keinen Abruf mehr.
+
+## Gastro-Dynamik (Block 4e) — wächst die Lage oder stirbt sie?
+
+Der OSM-Block ist eine Momentaufnahme; die **ohsome-API** (HeiGIT Heidelberg, ohne
+Konto) wertet die volle OSM-Historie aus und liefert die Zahl der Gastro-Objekte im
+Umkreis als Jahresreihe, jeweils zum 1. Januar der letzten sieben Jahre — mit
+Schnellgastronomie-Teilreihe und demselben Gastronomiebegriff wie der OSM-Block
+(Marienplatz r=600: 326 → 369 seit 2019). Die eine Grenze steht über allem und in
+jedem Ergebnis: die Kurve misst die **OSM-Datenbank**, nicht direkt die Wirklichkeit.
+Ein Anstieg kann Neueröffnungen zeigen — oder fleißigere Kartierer. Als
+Mehrjahres-Trend brauchbar, als Absolutzahl je Jahr nicht; Schließungen erscheinen
+nur, wenn jemand sie einträgt.
+
+## Öffnungszeiten-Lücken — Sonntags- und Abendangebot, konservativ gezählt
+
+Aus den ohnehin geladenen OSM-Daten (kein neuer Abruf): Wie viele Betriebe im Umfeld
+haben sonntags geöffnet, wie viele nach 22 Uhr? Der Parser ist bewusst konservativ —
+bewertet wird eine `opening_hours`-Angabe nur, wenn sie vollständig aus einfachen
+Wochentag-Uhrzeit-Regeln besteht („Mo-Fr 11:00-22:00; Su off", „24/7"); Feiertags-,
+Saison- und Sonderregeln zählen als **nicht auswertbar, nie als geschlossen**. Alle
+Zahlen sind deshalb Mindestzahlen („mindestens X von Y auswertbaren"), und
+Mitternachtsüberhang bleibt beim genannten Tag: Samstagnacht bis 4 Uhr ist nicht
+„sonntags geöffnet". Ob eine Lücke Chance (niemand versorgt den Sonntag) oder
+Warnzeichen (der Sonntag lohnt für niemanden) ist, entscheidet der Blick vor Ort.
+
+## Straßenlärm (Block 6f) — Umgebungslärmkartierung, Bayern
+
+Für Außengastronomie ist Straßenlärm eine Standorteigenschaft wie Sonne. Das
+Lärm-WMS des LfU Bayern liefert per Rasterabfrage die berechneten Pegel der
+EU-Umgebungslärmkartierung am Punkt: **LDEN** (Tag-Abend-Nacht) und **LNight**
+(22–6 Uhr) in dB(A), samt Band der Kartierungslegende. Drei ehrliche Grenzen stehen
+im Block: Kartiert sind nur **Hauptverkehrsstraßen** — „nicht kartiert" heißt „keine
+kartierte Hauptverkehrsstraße am Punkt", nicht „leise" (Nebenstraßen-, Schienen-,
+Flug- und Gewerbelärm fehlen). Es sind berechnete Pegel, keine Messwerte. Und
+innerhalb der Ballungsräume (etwa München) ist die jüngste LfU-Fläche die Kartierung
+**2017** — die 2022er-Runde deckt nur Gebiete außerhalb ab; das Kartierungsjahr steht
+deshalb an jedem Wert. Außerhalb Bayerns bleibt der Block mit Begründung leer.
 
 ## Rad-Liefergebiet (Block 4d) — erreichbare Einwohner in Lieferzeit
 
@@ -852,6 +924,8 @@ Alles über Umgebungsvariablen, alles optional:
 | `GET /api/kreisprofil?ags=` | Kreisprofil: Übernachtungen, Erwerbstätige am Arbeitsort, Arbeitsmarkt, Bevölkerung |
 | `GET /api/pendler?ags=` | Pendlerrechnung der Gemeinde: Ein-/Auspendler, Saldo, Top-Verflechtungen |
 | `GET /api/point/klima?lat=&lon=` | DWD-Klimanormalwerte 1991–2020 der nächsten Station |
+| `GET /api/point/dynamik?lat=&lon=&r=` | Gastro-Dynamik: Jahresreihe der OSM-Objekte (ohsome) |
+| `GET /api/point/laerm?lat=&lon=&bundesland_code=` | Straßenlärm am Punkt (LfU Bayern, LDEN/LNight) |
 | `GET /api/point/liefergebiet?lat=&lon=&minuten=` | Rad-Liefergebiet: erreichbare Einwohner in 5–15 min — **nur auf Anforderung** |
 | `GET /api/point/marke?lat=&lon=&marke=&r=` | Gebietsschutz-Check: Betriebe der eigenen Marke bis 20 km |
 | `GET /api/geocode?q=` | Adresssuche |
@@ -913,7 +987,7 @@ Das letzte Protokoll steht in [`docs/abnahme.md`](docs/abnahme.md).
 
 ### Vollprüfung aller Endpunkte
 
-Die dritte Ebene: alle API-Routen (45 Prüfungen) live gegen einen laufenden Server, mit erzwungenen
+Die dritte Ebene: alle API-Routen (51 Prüfungen) live gegen einen laufenden Server, mit erzwungenen
 Frischabrufen bei Zensus, Overpass und „Neu prüfen" und unabhängigen Erwartungswerten
 (A9: 111.624 Kfz/Tag; Isarauen: HQ 100; Köln: Bodenrichtwert; Innenstadt-Scan: über
 100 Betriebe). Braucht Netz und einen GTFS-Import.
@@ -932,7 +1006,7 @@ pip install playwright && playwright install chromium
 python scripts/uitest.py http://127.0.0.1:8011
 ```
 
-Achtzehn Prüfungen (dazu die Prüfung auf JavaScript-Fehler), darunter: jeder Block nennt
+32 Prüfungen (dazu die Prüfung auf JavaScript-Fehler), darunter: jeder Block nennt
 Quelle und Lizenz, im Datenreiter steht keine geschätzte Zahl, der Deckkraftregler wirkt
 auf die Ebenen und **nicht** auf die Grundkarte, der Gehwegblock lädt nur auf Anforderung
 und räumt seine Kartenebene beim Punktwechsel auf, der Flächen-Scan scannt nach dem

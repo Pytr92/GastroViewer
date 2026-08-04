@@ -1,6 +1,6 @@
 # Abnahmeprotokoll
 
-Erzeugt am 2026-08-01 mit `python scripts/abnahme.py http://127.0.0.1:PORT`
+Erzeugt am 2026-08-04 mit `python scripts/abnahme.py http://127.0.0.1:PORT`
 gegen einen laufenden Server mit importiertem GTFS-Fahrplan.
 
 Das Skript prüft jedes Kriterium aus §7 der Spec mit echten Aufrufen.
@@ -12,14 +12,14 @@ wird das Kriterium als **nicht prüfbar** ausgewiesen und der Lauf endet mit Cod
 Weder ein falscher Alarm noch ein falscher Freispruch.
 
 ```
-Abnahmeprüfung gegen http://127.0.0.1:8021
+Abnahmeprüfung gegen http://127.0.0.1:8011
 ========================================================================
 
 Vier Lagetypen laden …
-  Großstadt-Innenstadt       0.2s (aus dem Cache)
-  Großstadt-Wohnviertel      1.0s (echt abgerufen)
-  Kleinstadt                 0.7s (echt abgerufen)
-  ländlich                   0.0s (aus dem Cache)
+  Großstadt-Innenstadt       0.3s (aus dem Cache)
+  Großstadt-Wohnviertel      0.1s (aus dem Cache)
+  Kleinstadt                 0.1s (aus dem Cache)
+  ländlich                   0.1s (aus dem Cache)
 [OK   ] §7.1 Jede Zahl ist auf eine reale API-Antwort zurückführbar
          Zensus direkt abgefragt: 118 Zellen, Summe Einwohner 16370
            Anwendung zeigt: 118 Zellen, 16370 Einwohner
@@ -32,20 +32,20 @@ Vier Lagetypen laden …
 [OK   ] §7.3 Attribution OSM/ODbL und Zensus-Copyright sichtbar
          in der Fußzeile von index.html: OSM/ODbL=ja, Zensus=ja
 [OK   ] §7.4 Nominatim ≤ 1 req/s gedrosselt, User-Agent gesetzt
-         3 echte Suchen nacheinander (refresh=true): 2.08s (Untergrenze 2,0s)
-           Limiter: {'min_interval_s': 1.0, 'acquisitions': 4, 'throttled': 2}
+         3 echte Suchen nacheinander (refresh=true): 2.07s (Untergrenze 2,0s)
+           Limiter: {'min_interval_s': 1.0, 'acquisitions': 15, 'throttled': 8}
            User-Agent: gastroviewer/0.1.0 (https://github.com/Pytr92/GastroViewer)
 [OK   ] §7.5 Cache greift: zweiter Aufruf ohne Outbound-Traffic
-         erzwungener Abruf: Zähler 172 → 173 (+1)
-           danach derselbe Aufruf: Zähler bleibt bei 173
-           ganzer Punkt aus dem Cache: 111 ms, outbound_requests=0
-           nachprüfbar unter http://127.0.0.1:8021/api/outbound
-[OK   ] §7.6 Ausfall einer Quelle bricht die Seite nicht
+         erzwungener Abruf: Zähler 458 → 459 (+1)
+           danach derselbe Aufruf: Zähler bleibt bei 459
+           ganzer Punkt aus dem Cache: 262 ms, outbound_requests=0
+           nachprüfbar unter http://127.0.0.1:8011/api/outbound
+[FEHLT] §7.6 Ausfall einer Quelle bricht die Seite nicht
          Overpass auf toten Endpunkt gezwungen: osm.ok=False
            Meldung: Verbindung nicht möglich — Dienst nicht erreichbar, DNS- oder Proxy-Pr
-           Zensus lief weiter: 118 Zellen, Gemeinde München
+           Zensus lief weiter: None Zellen, Gemeinde München
 [OK   ] §7.7 Vier Lagetypen liefern vollständige Ausgaben
-         Großstadt-Innenstadt      118 Zellen   16370.0 Einw.   270 Gastro   26 Halte  München
+         Großstadt-Innenstadt      118 Zellen   16370.0 Einw.   272 Gastro   26 Halte  München
          Großstadt-Wohnviertel      77 Zellen   13050.0 Einw.    18 Gastro    6 Halte  München
          Kleinstadt                 69 Zellen    1460.0 Einw.    13 Gastro    8 Halte  Greding
          ländlich                    3 Zellen      21.0 Einw.     0 Gastro    0 Halte  Gransee
@@ -58,40 +58,7 @@ Vier Lagetypen laden …
          Start=ja · GTFS-Import=ja · Cache leeren=ja · Zensus-Lizenz=ja · OSM-Lizenz=ja · GTFS-Lizenz=ja · Nominatim=ja · hystreet-Auflage=ja
 
 ========================================================================
-9 von 9 Kriterien erfüllt.
-Alle Abnahmekriterien aus §7 erfüllt.
+8 von 9 Kriterien erfüllt.
+Nicht erfüllt:
+  - §7.6 Ausfall einer Quelle bricht die Seite nicht
 ```
-
-## Nicht in dieser Umgebung prüfbar
-
-- **Kartenkacheln im Browser.** Der ausgehende Proxy dieses Containers beantwortet
-  Kachelanfragen aus dem Browser nicht — weder für `tile.openstreetmap.org` noch für
-  `sgx.geodatenzentrum.de`. Dieselben URLs liefern per `curl` HTTP 200. Geprüft wurde
-  daher die korrekte URL-Bildung und Umschaltung, nicht das Kartenbild.
-- **Overpass-Spiegel.** `overpass.kumi.systems` und `overpass.private.coffee` laufen
-  hier in ein Timeout, `overpass-api.de` funktioniert. Siehe Befund A-1 in
-  `endpoints-verified.md`. Der Reihum-Fallback ist eingebaut und mit Ersatzobjekten
-  getestet (`tests/test_overpass.py`).
-
-## Browserprüfungen
-
-Sechs Playwright-Läufe gegen den laufenden Server, alle am 01.08.2026 ohne Befund:
-Datenteil und Vergleichstabelle, GTFS-Block, Umsatzschätzungsreiter,
-Bodenrichtwert-Ebene mit Klickabfrage, München-Erweiterung mit Zählstellen und
-bayerischen Kartenebenen, Verkehrsmengen-Block an einem autobahnnahen Punkt und
-in der Innenstadt.
-
-## Bodenrichtwert-Kartendienste (Phase 4)
-
-`gastroviewer check-wms` prüft die sieben eingebundenen Landesdienste einzeln mit
-`GetCapabilities` und meldet, wenn eine URL oder ein Layername nicht mehr stimmt.
-Letzter Lauf am 01.08.2026: **7 von 7 in Ordnung.** Die vollständigen Prüfergebnisse
-inklusive `GetMap`- und `GetFeatureInfo`-Belegen stehen in `endpoints-verified.md`.
-
-## Umsatzschätzung (§9)
-
-Die Auflagen aus §9 sind nicht Teil der §7-Kriterien, sondern in
-`tests/test_schaetzung.py` festgehalten: Ausgabe immer als Spanne, Bestellungen je
-Tag und je Öffnungsstunde als Pflichtausgabe, Formel in der Ausgabe, Beschriftung als
-Vergleichsmaß, jede benutzte Annahme wird auch ausgewiesen. Dazu die Gegenprobe, dass
-keine Schätzgröße in den Datenteil sickert (`test_schaetzung_beruehrt_den_datenteil_nicht`).
