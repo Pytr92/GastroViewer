@@ -80,6 +80,11 @@ def pendler_muenchen():
 
 
 @pytest.fixture()
+def ohsome_dynamik():
+    return load_fixture("raw_ohsome_dynamik.json")
+
+
+@pytest.fixture()
 def settings(tmp_path):
     from gastroviewer.config import Settings
 

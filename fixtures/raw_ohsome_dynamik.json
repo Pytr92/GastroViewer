@@ -1,0 +1,85 @@
+{
+ "_hinweis": "Echte ohsome-Antworten vom 2026-08-04, Marienplatz lon=11.5755 lat=48.1372 r=600, time=2019-01-01/2026-01-01/P1Y. Unveraendert.",
+ "gastro": {
+  "attribution": {
+   "url": "https://ohsome.org/copyrights",
+   "text": "© OpenStreetMap contributors"
+  },
+  "apiVersion": "1.10.4",
+  "result": [
+   {
+    "timestamp": "2019-01-01T00:00:00Z",
+    "value": 326.0
+   },
+   {
+    "timestamp": "2020-01-01T00:00:00Z",
+    "value": 337.0
+   },
+   {
+    "timestamp": "2021-01-01T00:00:00Z",
+    "value": 334.0
+   },
+   {
+    "timestamp": "2022-01-01T00:00:00Z",
+    "value": 335.0
+   },
+   {
+    "timestamp": "2023-01-01T00:00:00Z",
+    "value": 337.0
+   },
+   {
+    "timestamp": "2024-01-01T00:00:00Z",
+    "value": 339.0
+   },
+   {
+    "timestamp": "2025-01-01T00:00:00Z",
+    "value": 344.0
+   },
+   {
+    "timestamp": "2026-01-01T00:00:00Z",
+    "value": 369.0
+   }
+  ]
+ },
+ "fast_food": {
+  "attribution": {
+   "url": "https://ohsome.org/copyrights",
+   "text": "© OpenStreetMap contributors"
+  },
+  "apiVersion": "1.10.4",
+  "result": [
+   {
+    "timestamp": "2019-01-01T00:00:00Z",
+    "value": 29.0
+   },
+   {
+    "timestamp": "2020-01-01T00:00:00Z",
+    "value": 28.0
+   },
+   {
+    "timestamp": "2021-01-01T00:00:00Z",
+    "value": 26.0
+   },
+   {
+    "timestamp": "2022-01-01T00:00:00Z",
+    "value": 30.0
+   },
+   {
+    "timestamp": "2023-01-01T00:00:00Z",
+    "value": 34.0
+   },
+   {
+    "timestamp": "2024-01-01T00:00:00Z",
+    "value": 36.0
+   },
+   {
+    "timestamp": "2025-01-01T00:00:00Z",
+    "value": 32.0
+   },
+   {
+    "timestamp": "2026-01-01T00:00:00Z",
+    "value": 33.0
+   }
+  ]
+ }
+}

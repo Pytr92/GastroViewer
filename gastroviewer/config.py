@@ -149,6 +149,15 @@ class Settings:
         )
     )
 
+    # --- ohsome (OSM-Historie, Gastro-Dynamik) ---
+    # Offene API des HeiGIT Heidelberg, ohne Konto; am 04.08.2026 verifiziert
+    # (POST /elements/count mit bcircles, filter, time).
+    ohsome_base: str = field(
+        default_factory=lambda: _env(
+            "GASTROVIEWER_OHSOME_BASE", "https://api.ohsome.org/v1"
+        )
+    )
+
     # --- GTFS (Phase 3) ---
     gtfs_url: str = field(
         default_factory=lambda: _env(
@@ -188,6 +197,10 @@ class Settings:
             return self.ttl_zensus
         # Pendlerrechnung: ein Berichtsjahr, einmal jährlich fortgeschrieben.
         if source.startswith("pendler"):
+            return self.ttl_zensus
+        # OSM-Jahresreihe: der jüngste Datenpunkt ist der 1. Januar — vor dem
+        # Jahreswechsel ändert sich an der Reihe nichts Wesentliches.
+        if source.startswith("dynamik"):
             return self.ttl_zensus
         return self.ttl_osm
 

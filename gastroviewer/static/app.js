@@ -1011,6 +1011,10 @@ function lade(refresh = false) {
     .then((d) => { if (aktuell()) { state.daten.klima = d; zeigeKlima(d); } })
     .catch((e) => aktuell() && zeigeBlockFehler('klima', e));
 
+  hole('/api/point/dynamik', p)
+    .then((d) => { if (aktuell()) { state.daten.dynamik = d; zeigeDynamik(d); } })
+    .catch((e) => aktuell() && zeigeBlockFehler('dynamik', e));
+
   aktualisiereFuss();
 }
 
@@ -1048,6 +1052,7 @@ function baueGeruest() {
     block('gehweg', '4b · Erreichbarkeit zu Fuß'),
     block('liefergebiet', '4d · Rad-Liefergebiet'),
     block('franchise', '4c · Systemgastronomie & Marken'),
+    block('dynamik', '4e · Gastro-Dynamik (OSM-Historie)'),
     block('umfeld', '5 · Umfeld'),
     block('klima', '5b · Klima für Außengastronomie (DWD)'),
     block('verkehr', '6 · Verkehr'),
@@ -1986,6 +1991,70 @@ function zeigeKlima(d) {
       'Stationswerte der Normalperiode 1991–2020 — kein aktuelles Jahr, keine '
       + 'Prognose, und der Wert der Station, nicht des Punktes. Am Alpenrand '
       + 'kann die Stationshöhe den Unterschied machen.'),
+    ...warnungen(d.warnings || []));
+  setQuelle(id, d.provenance);
+}
+
+/* Block 4e — Gastro-Dynamik aus der OSM-Historie (ohsome). Jahresreihe der
+   Gastro-Objekte im Umkreis, jeweils zum 1. Januar. Die eine Grenze über
+   allem: die Kurve misst die OSM-Datenbank, nicht direkt die Wirklichkeit —
+   als Mehrjahres-Trend brauchbar, als Absolutzahl je Jahr nicht. */
+function zeigeDynamik(d) {
+  const id = 'dynamik';
+  if (!d.ok) {
+    setStatus(id, 'fehler', 'nicht erreichbar');
+    setInhalt(id, fehlerbox(d.error));
+    setQuelle(id, d.provenance);
+    return;
+  }
+  const dat = d.data || {};
+  const reihe = dat.reihe || [];
+  if (!reihe.length) {
+    setStatus(id, 'leer', 'keine Reihe');
+    setInhalt(id, ...warnungen(d.warnings || []));
+    setQuelle(id, d.provenance);
+    return;
+  }
+  setStatus(id, 'ok', `${reihe[0].jahr}–${reihe[reihe.length - 1].jahr}`);
+
+  const v = dat.veraenderung;
+  const vorz = (x, f) => (x > 0 ? `+${f.format(x)}` : f.format(x));
+  const kz = v ? el('div', { class: 'kennzahlen' },
+    kennzahl(`Gastro-Objekte 1.1.${v.von_jahr}`, v.von),
+    kennzahl(`Gastro-Objekte 1.1.${v.bis_jahr}`, v.bis),
+    el('div', { class: 'kennzahl' },
+      el('div', { class: 'titel' }, 'Veränderung'),
+      el('div', { class: 'wert' }, vorz(v.absolut, NF)
+        + (v.prozent !== null && v.prozent !== undefined
+          ? ` (${vorz(v.prozent, NF1)} %)` : '')),
+      el('div', { class: 'basis' }, 'OSM-Objekte, nicht zwingend Betriebe'))) : null;
+
+  const max = Math.max(1, ...reihe.map((r) => r.gastro));
+  const balken = el('div', { id: 'dynamik-balken', style: 'display:flex;align-items:flex-end;gap:3px;height:80px;margin:8px 0 2px;' },
+    reihe.map((r) => el('div', {
+      title: `1.1.${r.jahr}: ${NF.format(r.gastro)} Gastro-Objekte`
+        + (r.schnellgastronomie !== null && r.schnellgastronomie !== undefined
+          ? `, davon ${NF.format(r.schnellgastronomie)} Schnellgastronomie` : ''),
+      style: `flex:1;background:var(--akzent);opacity:.75;border-radius:2px 2px 0 0;`
+        + `height:${Math.max(3, (r.gastro / max) * 100)}%;`,
+    })));
+  const achse = el('div', { style: 'display:flex;justify-content:space-between;font-size:11px;color:#5b6570;' },
+    el('span', {}, String(reihe[0].jahr)), el('span', {}, String(reihe[reihe.length - 1].jahr)));
+
+  const tab = el('table', { class: 'daten' },
+    el('tr', {}, el('th', {}, 'Stichtag 1. Januar'),
+      el('th', { class: 'num' }, 'Gastro gesamt'),
+      el('th', { class: 'num' }, 'davon Schnellgastronomie')));
+  for (const r of reihe) {
+    tab.append(el('tr', {}, el('td', {}, String(r.jahr)),
+      el('td', { class: 'num' }, NF.format(r.gastro)),
+      el('td', { class: 'num' },
+        r.schnellgastronomie === null || r.schnellgastronomie === undefined
+          ? '—' : NF.format(r.schnellgastronomie))));
+  }
+
+  setInhalt(id, kz, balken, achse, tab,
+    ...(dat.hinweise || []).map((h) => el('div', { class: 'warnung' }, h)),
     ...warnungen(d.warnings || []));
   setQuelle(id, d.provenance);
 }

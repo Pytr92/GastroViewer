@@ -285,6 +285,13 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         _validate(lat, lon, 600)
         return (await svc(request).klima(lat, lon)).to_dict()
 
+    @app.get("/api/point/dynamik")
+    async def point_dynamik(request: Request, lat: float, lon: float, r: int = 600):
+        """Gastro-Dynamik aus der OSM-Historie (ohsome): Jahresreihe der
+        Gastro-Objekte im Umkreis — wächst die Lage oder stirbt sie?"""
+        _validate(lat, lon, r)
+        return (await svc(request).dynamik(lat, lon, r)).to_dict()
+
     @app.get("/api/point/liefergebiet")
     async def point_liefergebiet(
         request: Request, lat: float, lon: float,
@@ -910,6 +917,17 @@ VERGLEICH_SPALTEN = [
     {"key": "pendler_saldo", "titel": "Pendlersaldo (Gemeinde)", "gruppe": "detail"},
     {"key": "einpendler_quote", "titel": "Einpendlerquote % (Gemeinde)",
      "stellen": 1, "gruppe": "detail"},
+
+    # --- Gastro-Dynamik (OSM-Historie) — Trendzahl, misst auch
+    # Kartier-Aktivität; deshalb Detailgruppe.
+    {"key": "gastro_trend", "titel": "Gastro-Trend (OSM-Objekte, Mehrjahr)",
+     "gruppe": "detail"},
+
+    # --- Öffnungszeiten-Lücken (Mindestzahlen aus OSM).
+    {"key": "sonntag_offen", "titel": "Sonntags geöffnet (mind., OSM)",
+     "gruppe": "detail"},
+    {"key": "nach22_offen", "titel": "Nach 22 Uhr geöffnet (mind., OSM)",
+     "gruppe": "detail"},
 ]
 
 
@@ -933,6 +951,8 @@ def _row_for(saved: dict[str, Any]) -> dict[str, Any]:
                   .get("kennzahlen") or [])
     }
     pen = ((bl.get("pendler") or {}).get("data") or {}) or {}
+    dyn = (((bl.get("dynamik") or {}).get("data") or {})
+           .get("veraenderung") or {})
     gw = ((bl.get("gehweg") or {}).get("data") or {}) or {}
     gw_gas = gw.get("gastronomie") or {}
     gw_zen = gw.get("zensus") or {}
@@ -969,6 +989,9 @@ def _row_for(saved: dict[str, Any]) -> dict[str, Any]:
         "sonnenschein": kl.get("sonnenschein"),
         "pendler_saldo": pen.get("saldo"),
         "einpendler_quote": pen.get("einpendler_quote"),
+        "gastro_trend": dyn.get("absolut"),
+        "sonntag_offen": (gas.get("oeffnungszeiten") or {}).get("sonntag_offen"),
+        "nach22_offen": (gas.get("oeffnungszeiten") or {}).get("nach22_offen"),
         "leerstandsquote": _wert(woh.get("leerstandsquote")),
         "gastro_gesamt": gas.get("gesamt"),
         "fast_food": fastfood,

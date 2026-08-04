@@ -23,7 +23,7 @@ class FakeOutbound:
     """Ersetzt nur die Netz-Ebene und zählt die Aufrufe."""
 
     def __init__(self, zensus, overpass, nominatim, einkommen=None,
-                 kreisprofil=None, dwd=None, pendler=None,
+                 kreisprofil=None, dwd=None, pendler=None, ohsome=None,
                  fehler: set[str] | None = None):
         self.zensus = zensus
         self.overpass = overpass
@@ -36,6 +36,9 @@ class FakeOutbound:
         self.dwd = dwd or {}
         # Pendleratlas: {"dateien": {Dateiname: CSV-Text}, "gemeinden": {...}}.
         self.pendler = pendler or {"dateien": {}, "gemeinden": {"features": []}}
+        # ohsome: {"gastro": Antwort, "fast_food": Antwort}.
+        self.ohsome = ohsome or {"gastro": {"result": []},
+                                 "fast_food": {"result": []}}
         self.fehler = fehler or set()
         self.calls: list[str] = []
 
@@ -76,6 +79,15 @@ class FakeOutbound:
             if name.startswith("gemeinden_2024"):
                 return self.pendler["gemeinden"]
             raise SourceError("http_status", f"HTTP 404 — {name} fehlt.")
+        if "ohsome" in url:
+            self.calls.append("dynamik")
+            if "dynamik" in self.fehler:
+                raise SourceError("timeout",
+                                  "Zeitüberschreitung — Dienst antwortet nicht.")
+            filter_ = ((kw or {}).get("data") or {}).get("filter", "")
+            return self.ohsome[
+                "fast_food" if filter_ == "amenity=fast_food" else "gastro"
+            ]
         raise AssertionError(f"unerwartete URL: {url}")
 
     async def start(self):
@@ -122,7 +134,8 @@ class FakeOutbound:
 
 @pytest.fixture()
 def client(tmp_path, monkeypatch, zensus_600, overpass_combined, nominatim_reverse,
-           einkommen_muenchen, kreisprofil_muenchen, dwd_klima, pendler_muenchen):
+           einkommen_muenchen, kreisprofil_muenchen, dwd_klima, pendler_muenchen,
+           ohsome_dynamik):
     from gastroviewer.config import Settings
 
     settings = Settings()
@@ -131,7 +144,7 @@ def client(tmp_path, monkeypatch, zensus_600, overpass_combined, nominatim_rever
 
     fake = FakeOutbound(zensus_600, overpass_combined, nominatim_reverse,
                         einkommen_muenchen, kreisprofil_muenchen, dwd_klima,
-                        pendler_muenchen)
+                        pendler_muenchen, ohsome_dynamik)
     app = create_app(settings)
 
     original_lifespan_state = {}
@@ -186,16 +199,33 @@ def test_zweiter_aufruf_erzeugt_keinen_outbound_traffic(client):
     client.get("/api/point", params={"lat": LAT, "lon": LON, "r": R})
     vorher = len(client.fake.calls)
     # Nominatim, Zensus, Overpass — der Regionalatlas fürs Einkommen (1) und
-    # Kreisprofil (5 Tabellen) — der DWD (5 Parameter x 2 Dateien) — und der
+    # Kreisprofil (5 Tabellen) — der DWD (5 Parameter x 2 Dateien) — der
     # Pendleratlas (2 Jahres-Sondierungen mit 404, 6 Karten, Gemeindeliste,
-    # Verflechtungen).
-    assert vorher == 29
+    # Verflechtungen) — und ohsome (2 Zeitreihen: Gastro gesamt, fast_food).
+    assert vorher == 31
 
     d = client.get("/api/point", params={"lat": LAT, "lon": LON, "r": R}).json()
     assert len(client.fake.calls) == vorher, "Cache hat nicht gegriffen"
     assert d["meta"]["outbound_requests"] == 0
     assert d["meta"]["aus_cache"] is True
     assert d["bloecke"]["zensus"]["provenance"]["cached"] is True
+
+
+def test_point_dynamik_block_und_endpunkt(client):
+    """Der Dynamik-Block hängt am Gesamtpunkt UND am eigenen Endpunkt —
+    beide gegen die echte ohsome-Fixture (326 → 369 am Marienplatz)."""
+    d = client.get("/api/point", params={"lat": LAT, "lon": LON, "r": R}).json()
+    dy = d["bloecke"]["dynamik"]
+    assert dy["ok"]
+    assert dy["data"]["veraenderung"]["von"] == 326
+    assert dy["data"]["veraenderung"]["bis"] == 369
+    assert "ohsome" in dy["provenance"]["source"]
+
+    e = client.get("/api/point/dynamik",
+                   params={"lat": LAT, "lon": LON, "r": R}).json()
+    assert e["data"]["reihe"][0] == {
+        "jahr": 2019, "gastro": 326, "schnellgastronomie": 29,
+    }
 
 
 def test_refresh_umgeht_den_cache(client):

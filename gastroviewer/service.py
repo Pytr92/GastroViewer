@@ -18,7 +18,8 @@ from typing import Any, Awaitable, Callable
 from .cache import AsyncCache, cache_key
 from .config import Settings
 from .http import Outbound
-from .sources import (bayern, boris, einkommen as einkommen_mod, gehweg,
+from .sources import (bayern, boris, dynamik as dynamik_mod,
+                      einkommen as einkommen_mod, gehweg,
                       klima as klima_mod, kreisprofil as kreisprofil_mod, links,
                       marke as marke_mod, muenchen, nominatim, overpass,
                       pendler as pendler_mod, planung, scan as scan_mod, zensus)
@@ -354,6 +355,18 @@ class PointService:
 
         return await self._cached("liefergebiet", key, laden)
 
+    async def dynamik(self, lat: float, lon: float, radius: int, refresh: bool = False):
+        """Gastro-Dynamik aus der OSM-Historie (ohsome). Zwei kleine
+        POST-Anfragen je Punkt; der jüngste Datenpunkt ist der 1. Januar,
+        entsprechend lange darf das Ergebnis liegen bleiben."""
+        key = cache_key("dynamik", lat, lon, radius)
+        return await self._cached(
+            "dynamik",
+            key,
+            lambda: dynamik_mod.load(self.outbound, self.settings, lat, lon, radius),
+            refresh=refresh,
+        )
+
     async def klima(self, lat: float, lon: float) -> SourceResult:
         """Klimanormalwerte der nächsten DWD-Station.
 
@@ -455,10 +468,11 @@ class PointService:
             self.verkehrsmenge(lat, lon, radius, refresh),
             self.planung(lat, lon, radius, refresh),
             self.klima(lat, lon),
+            self.dynamik(lat, lon, radius, refresh),
             return_exceptions=True,
         )
         names = ["adresse", "zensus", "osm", "gtfs", "radzaehlung", "verkehrsmenge",
-                 "planung", "klima"]
+                 "planung", "klima", "dynamik"]
         blocks: dict[str, Any] = {}
         for name, res in zip(names, results):
             if isinstance(res, BaseException):
