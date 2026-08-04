@@ -393,3 +393,45 @@ def test_sensitivitaet_veraendert_das_ergebnis_nicht():
     mit = rechne(basis())
     assert mit["sensitivitaet"] is not None
     assert mit["ergebnis"] == rechne(basis())["ergebnis"]
+
+
+# --------------------------------------------- Wohnmiete als Lage-Anker
+
+
+def test_vorgaben_liefern_zensus_wohnmiete(zensus_600, overpass_combined):
+    """Die Wohnmiete des Umkreises wird als Anker vorbefüllt — mit Herkunft."""
+    from gastroviewer.sources import overpass, zensus
+
+    cells = zensus.build_cells(zensus_600["features"])
+    zdata = zensus.summarize(cells, 48.1334, 11.5674)
+    punkt = {"punkt": {"radius_m": 600},
+             "bloecke": {"zensus": {"data": zdata}}}
+    v = schaetzung.vorgaben_aus_punkt(punkt)
+    erwartet = zdata["wohnen"]["miete_qm"]["wert"]
+    assert v["zensus_wohnmiete_qm"] == erwartet
+    assert erwartet > 0
+    assert "Wohnungen" in v["zensus_wohnmiete_herkunft"]
+    assert "Gewerbemiete" in v["zensus_wohnmiete_herkunft"]
+
+
+def test_mietprobe_ordnet_gegen_wohnmiete_ein():
+    d = rechne(basis(flaeche_qm=100, angebotsmiete_qm=30, zensus_wohnmiete_qm=15))
+    vgl = d["mietprobe"]["wohnmiete_vergleich"]
+    assert vgl["verhaeltnis"] == 2.0
+    assert vgl["wohnmiete_qm"] == 15
+    assert "WOHNUNGEN" in vgl["hinweis"]
+
+
+def test_wohnmiete_veraendert_keine_rechnung():
+    """Der Anker ist Einordnung, kein Rechenfaktor: Umsatz, Obergrenzen und
+    Mietproben-Befund bleiben mit und ohne Anker identisch."""
+    ohne = rechne(basis(flaeche_qm=100, angebotsmiete_qm=30))
+    mit = rechne(basis(flaeche_qm=100, angebotsmiete_qm=30, zensus_wohnmiete_qm=15))
+    assert ohne["ergebnis"] == mit["ergebnis"]
+    assert ohne["mietprobe"]["lage"] == mit["mietprobe"]["lage"]
+    assert ohne["mietprobe"]["wohnmiete_vergleich"] is None
+
+
+def test_wohnmiete_ohne_exposeeingaben_keine_probe():
+    d = rechne(basis(zensus_wohnmiete_qm=15))
+    assert d["mietprobe"] is None

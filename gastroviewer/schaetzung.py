@@ -195,6 +195,12 @@ class Eingaben:
     # bewusst keine Vorgabewerte. Leer gelassen findet die Probe nicht statt.
     flaeche_qm: float | None = None
     angebotsmiete_qm: float | None = None
+    # Wohnungsmiete des Umkreises aus dem Zensus-Gitter (100-m-Zellen,
+    # Stichtag 15.05.2022). Wird aus den Punktdaten vorbefüllt und sichtbar
+    # angezeigt. Sie ist eine WOHNungsmiete und taugt deshalb nicht als
+    # Obergrenze für eine Gewerbemiete — wohl aber als Lage-Anker, der zwei
+    # Standorte vergleichbar macht. Geht in keine Umsatzrechnung ein.
+    zensus_wohnmiete_qm: float | None = None
 
     def naiver_marktanteil_prozent(self) -> float:
         return 100.0 / (max(0, int(self.wettbewerber)) + 1)
@@ -363,9 +369,34 @@ def mietprobe(
             "nicht. Verhandeln oder weiterziehen."
         )
         lage = "ueber"
+    # Lage-Anker gegen die örtliche Wohnungsmiete (Zensus 2022). Kein Befund
+    # im Sinne von tragbar/untragbar — Gewerbemieten liegen regelmäßig über
+    # Wohnmieten. Der Wert macht zwei Standorte vergleichbar: dieselbe
+    # geforderte Gewerbemiete ist in einem 8-€-Wohnviertel ein anderes
+    # Angebot als in einem 16-€-Viertel.
+    wohnmiete_vergleich = None
+    if (
+        isinstance(e.zensus_wohnmiete_qm, (int, float))
+        and e.zensus_wohnmiete_qm > 0
+        and e.angebotsmiete_qm > 0
+    ):
+        wohnmiete_vergleich = {
+            "wohnmiete_qm": round(float(e.zensus_wohnmiete_qm), 2),
+            "verhaeltnis": round(e.angebotsmiete_qm / e.zensus_wohnmiete_qm, 2),
+            "hinweis": (
+                "Die Zensus-Zahl ist die durchschnittliche Nettokaltmiete für "
+                "WOHNUNGEN im Umkreis (Stichtag 15.05.2022) — keine Ober- oder "
+                "Untergrenze für Gewerbemieten, die regelmäßig darüber liegen. "
+                "Das Verhältnis taugt zum Vergleich zweier Standorte: dieselbe "
+                "Forderung ist im teuren Wohnviertel ein anderes Angebot als "
+                "im günstigen."
+            ),
+        }
+
     return {
         "flaeche_qm": e.flaeche_qm,
         "angebotsmiete_qm": e.angebotsmiete_qm,
+        "wohnmiete_vergleich": wohnmiete_vergleich,
         "monatsmiete_eur": round(monatsmiete),
         "jahresmiete_eur": round(monatsmiete * 12),
         "obergrenze_eur": [round(obergrenze_min), round(obergrenze_max)],
@@ -648,6 +679,8 @@ def vorgaben_aus_punkt(punkt: dict[str, Any]) -> dict[str, Any]:
     einwohner = ((z.get("bevoelkerung") or {}).get("einwohner") or {}).get("wert")
     gastro = (o.get("zusammenfassung") or {}).get("gastronomie") or {}
     schnell = (gastro.get("nach_typ") or {}).get("Schnellrestaurant", 0)
+    miete = (z.get("wohnen") or {}).get("miete_qm") or {}
+    miete_wert = miete.get("wert")
 
     besuche = besuche_je_einwohner_und_jahr()
     return {
@@ -675,6 +708,13 @@ def vorgaben_aus_punkt(punkt: dict[str, Any]) -> dict[str, Any]:
             ),
         },
         "gehweg_alternative": _gehweg_alternative(bloecke, einwohner),
+        "zensus_wohnmiete_qm": miete_wert,
+        "zensus_wohnmiete_herkunft": (
+            f"Zensus 2022, Ø Nettokaltmiete für Wohnungen über {miete.get('zellen', 0)} "
+            "Gitterzellen (Stichtag 15.05.2022) — Lage-Anker, keine Gewerbemiete"
+            if miete_wert is not None
+            else "keine Mietangabe in den Zensuszellen des Umkreises"
+        ),
         "besuche_je_einwohner": besuche["wert"],
         "besuche_herleitung": besuche,
         "bon_min": _ref("systemgastronomie_bon")["wert"],

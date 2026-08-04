@@ -68,6 +68,9 @@ class SchaetzEingaben(BaseModel):
     # Vermieters, keine Vorgaben.
     flaeche_qm: float | None = Field(None, gt=0, le=100_000)
     angebotsmiete_qm: float | None = Field(None, ge=0, le=10_000)
+    # Lage-Anker aus dem Zensus-Gitter (Wohnungsmiete, vorbefüllt und sichtbar).
+    # Geht in keine Umsatzrechnung ein — nur in die Einordnung der Mietprobe.
+    zensus_wohnmiete_qm: float | None = Field(None, gt=0, le=100)
 
 
 class PunktNotiz(BaseModel):

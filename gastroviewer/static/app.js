@@ -1316,7 +1316,7 @@ function zeigeZensus(d) {
       el('td', { class: 'num' }, ew && v !== undefined && v !== null ? `${NF1.format((v / ew) * 100)} %` : '—')));
   }
 
-  setInhalt('bevoelkerung', kz, tab,
+  setInhalt('bevoelkerung', kz, tab, kundenprofilSatz(b, ew),
     ...(z.hinweise || []).map((h) => el('div', { class: 'notiz' }, h)),
     ...warnungen(d.warnings));
   setQuelle('bevoelkerung', d.provenance);
@@ -1342,6 +1342,35 @@ function zeigeZensus(d) {
 
   setInhalt('wohnen', kzw, bau, ...warnungen(d.warnings));
   setQuelle('wohnen', d.provenance);
+}
+
+/* Kundenprofil: ein zusammenfassender Satz aus den angezeigten Zahlen —
+   rein deskriptiv (größte Altersgruppe, Alter, Haushaltsgröße), ohne
+   gewählte Schwellen und ohne Bewertung. Wer hier wohnt, ist nicht
+   automatisch, wer hier isst — Einpendler und Passanten fehlen. */
+function kundenprofilSatz(b, ew) {
+  if (!ew) return null;
+  let groesste = null;
+  for (const [label, agg] of Object.entries(b.altersgruppen || {})) {
+    const v = agg?.wert;
+    if (typeof v === 'number' && (!groesste || v > groesste.wert)) {
+      groesste = { label, wert: v };
+    }
+  }
+  if (!groesste) return null;
+  const teile = [
+    `Größte Altersgruppe im Umkreis: ${groesste.label} `
+    + `(${NF1.format((groesste.wert / ew) * 100)} % der Einwohner)`,
+  ];
+  const alter = b.durchschnittsalter?.wert;
+  if (typeof alter === 'number') teile.push(`Durchschnittsalter ${NF1.format(alter)} Jahre`);
+  const hh = b.haushaltsgroesse?.wert;
+  if (typeof hh === 'number') teile.push(`Ø Haushalt ${NF2.format(hh)} Personen`);
+  return el('div', { class: 'notiz', id: 'kundenprofil' },
+    el('b', {}, 'Kundenprofil der Wohnbevölkerung: '), `${teile.join(' · ')}. `,
+    'Rein deskriptiv aus den Zahlen oben — wer hier wohnt, ist nicht '
+    + 'automatisch, wer hier einkehrt: Einpendler, Touristen und Passanten '
+    + 'stehen nicht im Zensus-Gitter.');
 }
 
 function liste(eintraege, zeigeAnfangs = 12, zeichner) {
@@ -2883,6 +2912,11 @@ const FELDER = [
     hinweis: 'aus dem Angebot — leer lassen, wenn keins vorliegt' },
   { key: 'angebotsmiete_qm', label: 'Geforderte Kaltmiete (€/m² und Monat)', schritt: '0.5',
     hinweis: 'aus dem Angebot — leer lassen, wenn keins vorliegt' },
+  /* Lage-Anker: Wohnungsmiete des Umkreises aus dem Zensus-Gitter. Vorbefüllt,
+     sichtbar, änderbar — geht in keine Umsatzrechnung ein, nur in die
+     Einordnung der Mietprobe. */
+  { key: 'zensus_wohnmiete_qm', label: 'Wohnungsmiete im Umkreis (€/m², Zensus 2022)',
+    schritt: '0.1', herkunft: 'zensus_wohnmiete_herkunft' },
 ];
 
 /* Der Umkreis ist ein Luftlinienkreis; zu Fuß ist er kleiner und an Flüssen
@@ -3278,6 +3312,10 @@ function mietprobeTeile(mp) {
         ? spanne('Anteil am gerechneten Umsatz', mp.anteil_am_umsatz_prozent, '%', 1)
         : null),
     el('div', { class: klasse }, mp.befund.replaceAll('**', '')),
+    mp.wohnmiete_vergleich ? el('div', { class: 'notiz' },
+      el('b', {}, `Lage-Anker Wohnungsmiete: das ${NF2.format(mp.wohnmiete_vergleich.verhaeltnis)}-Fache `
+        + `der örtlichen Wohnungsmiete (${NF2.format(mp.wohnmiete_vergleich.wohnmiete_qm)} €/m², Zensus 2022). `),
+      mp.wohnmiete_vergleich.hinweis) : null,
     el('div', { class: 'hinweis-klein' }, mp.hinweis),
   ];
 }
