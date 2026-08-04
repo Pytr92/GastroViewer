@@ -330,3 +330,62 @@ def test_adresse_helfer():
                               "addr:housenumber": "6"}) == "Brunnstraße 6"
     assert overpass._adresse({"addr:street": "Schwanthalerstraße"}) == "Schwanthalerstraße"
     assert overpass._adresse({}) is None
+
+
+# ------------------------------------------------- Snack-Verkauf & Nachtrüstung
+
+
+def test_snack_verkauf_aus_dem_fixture(overpass_combined):
+    """25 Snack-Läden stecken in der aufgezeichneten Antwort; 4 davon tragen
+    zusätzlich amenity=cafe (Müller, Götterspeise, …) und zählen als echte
+    Gastronomie — bleiben also 21 reine Ladengeschäfte, nichts doppelt."""
+    cls = overpass.classify(overpass_combined["elements"], LAT, LON, R)
+    assert len(cls["snack_verkauf"]) == 21
+    z = overpass.summarize(cls, R)
+    assert z["snack_verkauf"]["gesamt"] == 21
+    assert "Bäckerei" in z["snack_verkauf"]["nach_art"]
+    # Die Gastro-Gesamtzahl bleibt davon unberührt — Läden sind keine Restaurants.
+    assert z["gastronomie"]["gesamt"] == len(cls["gastronomie"])
+
+
+def test_baeckerei_bleibt_auch_frequenzbringer(overpass_combined):
+    """Kein Bruch der bisherigen Zählung: Bäckereien stehen weiter im
+    Einkaufs-Block der Frequenzbringer."""
+    cls = overpass.classify(overpass_combined["elements"], LAT, LON, R)
+    baecker_freq = [f for f in cls["frequenzbringer"] if f["art"] == "Bäckerei"]
+    assert baecker_freq, "Bäckereien fehlen bei den Frequenzbringern"
+
+
+def test_query_holt_die_neuen_typen():
+    q = overpass.build_query(LAT, LON, R)
+    for begriff in ("nightclub", "juice_bar", "pastry", "confectionery",
+                    '"cuisine"'):
+        assert begriff in q, f"Abfrage ohne {begriff}"
+
+
+def test_nachtclub_und_saftbar_sind_gastronomie():
+    elements = [
+        {"type": "node", "id": 1, "lat": LAT, "lon": LON,
+         "tags": {"amenity": "nightclub", "name": "La Nuit"}},
+        {"type": "node", "id": 2, "lat": LAT, "lon": LON,
+         "tags": {"amenity": "juice_bar", "name": "Squeeze"}},
+    ]
+    cls = overpass.classify(elements, LAT, LON, R)
+    labels = {g["typ_label"] for g in cls["gastronomie"]}
+    assert labels == {"Nachtclub", "Saftbar"}
+
+
+def test_cuisine_ohne_typ_wird_gastronomie():
+    """Nur ein cuisine-Tag, sonst nichts: echte Gastronomie mit unbestimmtem
+    Typ — aber nicht, wenn das Objekt erkennbar etwas anderes ist."""
+    elements = [
+        {"type": "node", "id": 1, "lat": LAT, "lon": LON,
+         "tags": {"cuisine": "bavarian", "name": "Kilians"}},
+        {"type": "node", "id": 2, "lat": LAT, "lon": LON,
+         "tags": {"cuisine": "bavarian", "railway": "station", "name": "Falsch"}},
+    ]
+    cls = overpass.classify(elements, LAT, LON, R)
+    assert len(cls["gastronomie"]) == 1
+    g = cls["gastronomie"][0]
+    assert g["name"] == "Kilians"
+    assert g["typ_label"] == "Gastronomie (Typ unbestimmt)"

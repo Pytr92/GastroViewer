@@ -137,6 +137,23 @@ def build(
     )
     frequenz = [
         {
+            # Reiner Absprunglink — keine API, kein Scraping. Google-Daten
+            # dürfen weder gecacht noch auf unserer Karte gezeigt werden;
+            # als Handkontrolle im Browser sind sie aber der Goldstandard
+            # für die Vollständigkeit der Wettbewerbszählung.
+            "titel": "Google Maps — Gastronomie am Punkt (Handkontrolle)",
+            "url": (
+                f"https://www.google.com/maps/search/Restaurants/"
+                f"@{lat:.5f},{lon:.5f},17z"
+            ),
+            "beschreibung": (
+                "Öffnet Google Maps mit Gastronomie-Suche an genau diesem "
+                "Punkt. Zum Gegenzählen von Hand — OSM und Overture sind "
+                "Untergrenzen, Google kennt fast alles, darf aber nicht in "
+                "das Werkzeug eingebunden werden (Lizenz)."
+            ),
+        },
+        {
             "titel": "hystreet — Passantenfrequenz",
             "url": "https://hystreet.com/",
             "beschreibung": "322 Messpunkte in 112 Städten (Stand Jahresbilanz 2024). "

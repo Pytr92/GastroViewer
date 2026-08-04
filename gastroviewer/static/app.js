@@ -1393,6 +1393,25 @@ function zeigeZensus(d) {
   setQuelle('wohnen', d.provenance);
 }
 
+/* Snack-Verkauf: Ladengeschäfte (Bäckerei, Confiserie, Kaffeeausschank …),
+   die um denselben Snack-Euro konkurrieren. Bewusst getrennt von der
+   Gastro-Gesamtzahl — es sind Läden, keine Restaurants. */
+function snackBereich(o, z) {
+  const sn = z.snack_verkauf;
+  if (!sn || !sn.gesamt) return [];
+  const arten = Object.entries(sn.nach_art || {})
+    .map(([art, n]) => `${art}: ${NF.format(n)}`).join(' · ');
+  return [
+    el('h3', { class: 'hinweis-klein' }, 'Snack-Verkauf (Ladengeschäfte)'),
+    el('div', { class: 'kennzahlen', id: 'snack-verkauf' },
+      kennzahl('Läden mit Snack-Angebot', sn.gesamt)),
+    el('div', { class: 'hinweis-klein' },
+      `${arten}. Konkurrieren um denselben Snack-Euro, zählen aber nicht in `
+      + 'der Gastro-Gesamtzahl oben — es sind Ladengeschäfte. Bäckereien und '
+      + 'Konditoreien stehen zusätzlich bei den Frequenzbringern.'),
+  ];
+}
+
 /* Öffnungszeiten-Lücken: Sonntags- und Abendangebot des Umfelds — als
    Mindestzahlen, denn nur einfache Wochentag-Uhrzeit-Regeln werden bewertet.
    Eine Lücke kann eine Chance sein (niemand versorgt den Sonntag) oder ein
@@ -1472,7 +1491,7 @@ const BRANCHEN = [
   { key: 'restaurant', label: 'Restaurant', typen: ['restaurant'] },
   { key: 'cafe', label: 'Café', typen: ['cafe'] },
   { key: 'bar', label: 'Bar / Kneipe / Abendlokal',
-    typen: ['bar', 'pub', 'biergarten'] },
+    typen: ['bar', 'pub', 'biergarten', 'nightclub'] },
   { key: 'eisdiele', label: 'Eisdiele', typen: ['ice_cream'] },
 ];
 const BRANCHE_SPEICHER = 'gastroviewer.branche';
@@ -1609,6 +1628,7 @@ function zeigeOsm(d) {
     el('h3', { class: 'hinweis-klein' }, 'Wettbewerbsdichte nach Entfernung'), entfTab,
     el('h3', { class: 'hinweis-klein' }, 'Küchenverteilung'), kuecheTab,
     el('h3', { class: 'hinweis-klein' }, 'Betriebe nach Entfernung'), gListe,
+    ...snackBereich(o, z),
     ...oeffnungsluecken(g.oeffnungszeiten),
     ...warnungen(d.warnings));
   setQuelle('gastronomie', d.provenance);

@@ -35,6 +35,10 @@ GASTRO_AMENITIES = [
     "ice_cream",
     "biergarten",
     "food_court",
+    # Nachgerüstet 08/2026: beides ist Gastronomie und war vorher unsichtbar
+    # (am Marienplatz z. B. zwei Nachtclubs).
+    "nightclub",
+    "juice_bar",
 ]
 
 GASTRO_LABELS = {
@@ -46,6 +50,25 @@ GASTRO_LABELS = {
     "ice_cream": "Eisdiele",
     "biergarten": "Biergarten",
     "food_court": "Food-Court",
+    "nightclub": "Nachtclub",
+    "juice_bar": "Saftbar",
+    # Objekte, die nur ein cuisine-Tag tragen (ohne amenity/shop) — echte
+    # Gastronomie, deren Typ der Kartierer nicht gesetzt hat.
+    "unbestimmt": "Gastronomie (Typ unbestimmt)",
+}
+
+# Snack-Verkauf: Ladengeschäfte, die um denselben Snack-Euro konkurrieren —
+# eine Rischart-Filiale mit Stehtischen ist für einen Imbiss Wettbewerb.
+# Bewusst eine EIGENE Kategorie neben der Gastronomie: es sind Läden, keine
+# Restaurants, und sie fließen in keine Gastro-Gesamtzahl stillschweigend ein.
+# Bäckerei/Konditorei stehen zusätzlich wie bisher bei den Frequenzbringern.
+SNACK_SHOPS = {
+    "bakery": "Bäckerei",
+    "pastry": "Feinbäckerei/Patisserie",
+    "confectionery": "Confiserie",
+    "coffee": "Kaffeeladen mit Ausschank",
+    "tea": "Teeladen",
+    "frozen_yogurt": "Frozen Yogurt",
 }
 
 # Frequenzbringer nach Kategorie.
@@ -127,7 +150,7 @@ def build_query(lat: float, lon: float, radius: int, timeout: int = 90) -> str:
     a = f"(around:{radius},{lat},{lon})"
     gastro = "|".join(GASTRO_AMENITIES)
     freq_am = "|".join(FREQ_AMENITIES)
-    shops = "|".join(list(FREQ_SHOPS) + ["vacant"])
+    shops = "|".join(sorted({*FREQ_SHOPS, *SNACK_SHOPS, "vacant"}))
     leisure = "|".join(FREQ_LEISURE)
     tourism = "|".join(FREQ_TOURISM)
     return f"""[out:json][timeout:{timeout}];
@@ -135,6 +158,7 @@ def build_query(lat: float, lon: float, radius: int, timeout: int = 90) -> str:
   nwr["amenity"~"^({gastro})$"]{a};
   nwr["amenity"~"^({freq_am})$"]{a};
   nwr["shop"~"^({shops})$"]{a};
+  nwr["cuisine"]["amenity"!~"."]["shop"!~"."]{a};
   nwr["leisure"~"^({leisure})$"]{a};
   nwr["office"]{a};
   nwr["building"="office"]{a};
@@ -213,6 +237,7 @@ def classify(
     elements: list[dict[str, Any]], lat: float, lon: float, radius: int
 ) -> dict[str, Any]:
     gastro: list[dict[str, Any]] = []
+    snack: list[dict[str, Any]] = []
     frequenz: list[dict[str, Any]] = []
     oepnv: list[dict[str, Any]] = []
     leerstand: list[dict[str, Any]] = []
@@ -309,6 +334,17 @@ def classify(
             )
             continue
 
+        # Snack-Verkauf: zusätzlich erfassen, ohne die bisherige Einordnung zu
+        # ändern — eine Bäckerei bleibt auch Frequenzbringer (Einkauf).
+        if shop in SNACK_SHOPS:
+            snack.append({
+                **base,
+                "typ": shop,
+                "art": SNACK_SHOPS[shop],
+                "marke": tags.get("brand") or tags.get("operator"),
+                "tags": _service_tags(tags),
+            })
+
         kat: tuple[str, str] | None = None
         if amenity in FREQ_AMENITIES:
             kat = FREQ_AMENITIES[amenity]
@@ -326,16 +362,38 @@ def classify(
             continue
 
         if highway == "bus_stop" or railway in TRANSPORT_LABELS or ptrans == "station":
-            art = TRANSPORT_LABELS.get(railway or "") or (
-                "Bushaltestelle" if highway == "bus_stop" else "Station"
-            )
-            oepnv.append({**base, "art": art, "netz": tags.get("network")})
+            oepnv.append({
+                **base,
+                "art": TRANSPORT_LABELS.get(railway or "") or (
+                    "Bushaltestelle" if highway == "bus_stop" else "Station"
+                ),
+                "netz": tags.get("network"),
+            })
+            continue
 
-    for lst in (gastro, frequenz, oepnv, leerstand):
+        # Nur ein cuisine-Tag, sonst nichts: echte Gastronomie, deren Typ der
+        # Kartierer nicht gesetzt hat (gemessen am Marienplatz: „Kilians").
+        if (
+            tags.get("cuisine")
+            and not amenity and not shop and not leisure and not tourism
+            and not office and not highway and not railway and not ptrans
+        ):
+            gastro.append({
+                **base,
+                "typ": "unbestimmt",
+                "typ_label": GASTRO_LABELS["unbestimmt"],
+                "kette": bool(tags.get("brand")),
+                "marke": tags.get("brand") or tags.get("operator"),
+                "cuisine": tags.get("cuisine"),
+                "tags": _service_tags(tags),
+            })
+
+    for lst in (gastro, snack, frequenz, oepnv, leerstand):
         lst.sort(key=lambda x: x["distanz_m"])
 
     return {
         "gastronomie": gastro,
+        "snack_verkauf": snack,
         "frequenzbringer": frequenz,
         "oepnv": oepnv,
         "leerstand": leerstand,
@@ -560,6 +618,17 @@ def summarize(cls: dict[str, Any], radius: int | None = None) -> dict[str, Any]:
                 if radius
                 else []
             ),
+        },
+        "snack_verkauf": {
+            "gesamt": len(cls.get("snack_verkauf") or []),
+            "nach_art": dict(sorted(
+                (
+                    (art, sum(1 for s in cls.get("snack_verkauf") or []
+                              if s["art"] == art))
+                    for art in {s["art"] for s in cls.get("snack_verkauf") or []}
+                ),
+                key=lambda kv: -kv[1],
+            )),
         },
         "frequenzbringer": {
             "gesamt": len(cls["frequenzbringer"]),

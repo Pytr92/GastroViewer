@@ -316,8 +316,12 @@ def test_weiterfuehrende_links_sind_vorbefuellt(client):
     d = client.get("/api/point", params={"lat": LAT, "lon": LON, "r": R}).json()
     gruppen = {g["gruppe"]: g for g in d["weiterfuehrend"]}
     assert "Passantenfrequenz" in gruppen
-    hystreet = gruppen["Passantenfrequenz"]["eintraege"][0]
+    frequenz = gruppen["Passantenfrequenz"]["eintraege"]
+    hystreet = next(e for e in frequenz if e["titel"].startswith("hystreet"))
     assert "gewerbliche Nutzung untersagt" in hystreet["warnung"]
+    google = next(e for e in frequenz if "Google Maps" in e["titel"])
+    assert google["url"].startswith("https://www.google.com/maps/search/")
+    assert "nicht" in google["beschreibung"], "die Lizenzgrenze muss dabeistehen"
     wettbewerb = gruppen["Wettbewerb & Frequenz vor Ort"]["eintraege"][0]
     assert wettbewerb["url"].startswith("https://overpass-turbo.eu/?Q=")
 
