@@ -23,6 +23,7 @@ from .sources import (bayern, boris, dynamik as dynamik_mod,
                       klima as klima_mod, kreisprofil as kreisprofil_mod,
                       laerm as laerm_mod, links,
                       marke as marke_mod, muenchen, nominatim, overpass,
+                      overture as overture_mod,
                       pendler as pendler_mod, planung, scan as scan_mod, zensus)
 from .sources.base import Provenance, SourceError, SourceResult
 
@@ -507,6 +508,18 @@ class PointService:
             gtfs_mod.load, self.settings, lat, lon, radius
         )
 
+    async def overture(self, lat: float, lon: float, radius: int) -> SourceResult:
+        """Zweite Wettbewerbsquelle (lokaler Overture-Import). Braucht die
+        OSM-Gastronomie für den Abgleich — die kommt aus dem normalen
+        OSM-Cache, es geht also keine zusätzliche Anfrage hinaus."""
+        osm_res = await self.osm(lat, lon, radius)
+        osm_gastro = None
+        if osm_res.ok and osm_res.data:
+            osm_gastro = osm_res.data.get("gastronomie")
+        return await asyncio.to_thread(
+            overture_mod.load, self.settings, lat, lon, radius, osm_gastro
+        )
+
     # -------------------------------------------------------- Gesamtpunkt
 
     async def point(
@@ -545,6 +558,15 @@ class PointService:
         # Einkommen und Kreisprofil brauchen den Gemeindeschlüssel aus dem
         # Zensus — deshalb nach dem Sammeln, nicht parallel dazu. Je Kreis
         # gecacht; untereinander laufen die beiden wieder parallel.
+        # Overture-Abgleich: rein lokal, braucht die schon geladene
+        # OSM-Gastronomie — deshalb nach dem Sammeln.
+        try:
+            blocks["overture"] = (await self.overture(lat, lon, radius)).to_dict()
+        except Exception as exc:  # noqa: BLE001
+            blocks["overture"] = SourceResult.failed(
+                "overture", SourceError("unknown", f"{type(exc).__name__}: {exc}")
+            ).to_dict()
+
         bl_code = zensus_data.get("bundesland_code")
         if ags:
             kreis_results = await asyncio.gather(

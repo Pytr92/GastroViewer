@@ -174,6 +174,10 @@ class Settings:
         return self.data_dir / "gtfs.sqlite"
 
     @property
+    def overture_db_path(self) -> Path:
+        return self.data_dir / "overture.sqlite"
+
+    @property
     def user_agent(self) -> str:
         return f"gastroviewer/{self.version} ({self.contact})"
 

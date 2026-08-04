@@ -12,6 +12,7 @@ import argparse
 import shutil
 import sys
 import tempfile
+import time
 import urllib.request
 from pathlib import Path
 
@@ -136,6 +137,112 @@ def cmd_import_gtfs(args: argparse.Namespace, settings: Settings) -> int:
     return 0
 
 
+def cmd_import_overture(args: argparse.Namespace, settings: Settings) -> int:
+    """Overture-Places-Import (zweite Wettbewerbsquelle neben OSM).
+
+    Wie der GTFS-Import: einmal laufen lassen, danach beantwortet eine lokale
+    SQLite jede Punktabfrage ohne Netz. Braucht das Paket ``overturemaps``
+    (zieht pyarrow mit — deshalb bewusst NICHT in den Basisabhängigkeiten)."""
+    try:
+        from overturemaps import record_batch_reader
+        from overturemaps.core import get_latest_release
+    except ImportError:
+        print(
+            "Das Paket 'overturemaps' fehlt. Einmal installieren:\n"
+            "  pip install overturemaps",
+            file=sys.stderr,
+        )
+        return 2
+
+    from .sources import overture
+
+    bbox = None
+    region_name = None
+    if args.region:
+        if args.region not in REGIONEN:
+            print(
+                f"Unbekannte Region: {args.region}. Möglich: "
+                + ", ".join(sorted(REGIONEN)),
+                file=sys.stderr,
+            )
+            return 2
+        beschreibung, bbox = REGIONEN[args.region]
+        region_name = f"{args.region} ({beschreibung})"
+        print(f"Ausschnitt: {beschreibung} {bbox}")
+    if args.bbox:
+        try:
+            parts = [float(x) for x in args.bbox.split(",")]
+            if len(parts) != 4:
+                raise ValueError
+            bbox = (parts[0], parts[1], parts[2], parts[3])
+            region_name = f"bbox {args.bbox}"
+        except ValueError:
+            print("--bbox erwartet min_lat,min_lon,max_lat,max_lon", file=sys.stderr)
+            return 2
+    if bbox is None:
+        print("Bitte --region oder --bbox angeben (z. B. --region muenchen).",
+              file=sys.stderr)
+        return 2
+
+    try:
+        release = get_latest_release()
+    except Exception:  # noqa: BLE001 — Katalog nicht erreichbar: trotzdem importieren
+        release = None
+    # Overture erwartet (min_lon, min_lat, max_lon, max_lat).
+    o_bbox = (bbox[1], bbox[0], bbox[3], bbox[2])
+    print(f"Overture-Release: {release or 'Paket-Standard'} — lade Places …")
+
+    settings.ensure_dirs()
+    ziel = settings.overture_db_path
+    tmp = ziel.with_suffix(".sqlite.neu")
+    conn = overture.db_init(tmp)
+    geprueft = uebernommen = 0
+    try:
+        reader = record_batch_reader("place", o_bbox, release=release)
+        if reader is None:
+            raise RuntimeError("Overture lieferte keinen Datenstrom.")
+        for batch in reader:
+            for row in batch.to_pylist():
+                geprueft += 1
+                punkt = overture.wkb_punkt(row.get("geometry"))
+                if punkt is None:
+                    continue
+                zeile = overture.zeile_aus_properties(row, *punkt)
+                if zeile is None:
+                    continue
+                conn.execute(
+                    "INSERT OR REPLACE INTO places VALUES "
+                    "(:id,:name,:kategorie,:gruppe,:confidence,:lat,:lon,"
+                    ":adresse,:plz,:ort,:marke,:quellen)",
+                    zeile,
+                )
+                uebernommen += 1
+            print(f"  geprüft: {geprueft:,}, Gastro übernommen: {uebernommen:,}"
+                  .replace(",", "."))
+        conn.executemany(
+            "INSERT OR REPLACE INTO meta VALUES (?, ?)",
+            [
+                ("release", release or "unbekannt"),
+                ("region", region_name or ""),
+                ("bbox", ",".join(str(x) for x in bbox)),
+                ("importiert_am", time.strftime("%Y-%m-%d", time.gmtime())),
+                ("geprueft", str(geprueft)),
+                ("uebernommen", str(uebernommen)),
+            ],
+        )
+        conn.commit()
+    except Exception as exc:  # noqa: BLE001 — CLI soll die Ursache zeigen
+        conn.close()
+        tmp.unlink(missing_ok=True)
+        print(f"Import fehlgeschlagen: {type(exc).__name__}: {exc}", file=sys.stderr)
+        return 1
+    conn.close()
+    tmp.replace(ziel)
+    print(f"Fertig: {uebernommen:,} Gastro-Orte aus {geprueft:,} geprüften "
+          f"Einträgen → {ziel}".replace(",", "."))
+    return 0
+
+
 def cmd_clear_cache(args: argparse.Namespace, settings: Settings) -> int:
     from .cache import Cache
 
@@ -231,6 +338,20 @@ def build_parser() -> argparse.ArgumentParser:
     )
     g.add_argument("--keep", action="store_true", help="ZIP nach dem Import behalten")
     g.set_defaults(func=cmd_import_gtfs)
+
+    ov = sub.add_parser(
+        "import-overture",
+        help="Overture-Places importieren (zweite Wettbewerbsquelle neben OSM)",
+    )
+    ov.add_argument(
+        "--region",
+        help="voreingestellter Ausschnitt: " + ", ".join(sorted(REGIONEN)),
+    )
+    ov.add_argument(
+        "--bbox",
+        help="min_lat,min_lon,max_lat,max_lon — überschreibt --region",
+    )
+    ov.set_defaults(func=cmd_import_overture)
 
     c = sub.add_parser("clear-cache", help="Cache leeren")
     c.add_argument("--quelle", help="nur eine Quelle (zensus, overpass, nominatim)")

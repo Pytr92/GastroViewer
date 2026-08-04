@@ -178,7 +178,8 @@ const basemapGrau = new BasemapDe('', {
 
 osmKarte.addTo(karte);
 
-for (const name of ['zensus', 'gastronomie', 'frequenzbringer', 'oepnv', 'leerstand']) {
+for (const name of ['zensus', 'gastronomie', 'frequenzbringer', 'oepnv', 'leerstand',
+  'overture']) {
   state.ebenen[name] = L.layerGroup();
 }
 /* Die zu Fuß erreichbare Fläche. Canvas statt SVG, weil es je nach Lage einige
@@ -218,6 +219,7 @@ const ebenenSchalter = L.control.layers({
   'Rad-Liefergebiet': state.ebenen.liefergebiet,
   'Zensus-Gitter': state.ebenen.zensus,
   'Gastronomie': state.ebenen.gastronomie,
+  'Wettbewerb nur in Overture': state.ebenen.overture,
   'Frequenzbringer': state.ebenen.frequenzbringer,
   'ÖPNV': state.ebenen.oepnv,
   'Leerstände (OSM)': state.ebenen.leerstand,
@@ -244,7 +246,7 @@ state.rasterEbenen = new Set();
 function wendeDeckkraftAn() {
   const f = state.deckkraft;
   for (const name of ['zensus', 'gastronomie', 'frequenzbringer', 'oepnv', 'leerstand',
-    'uebersicht', 'scan', 'marke', 'gehflaeche', 'liefergebiet']) {
+    'overture', 'uebersicht', 'scan', 'marke', 'gehflaeche', 'liefergebiet']) {
     state.ebenen[name]?.eachLayer((l) => {
       const basis = l.options?._basisDeckkraft;
       if (basis === undefined || !l.setStyle) return;
@@ -859,6 +861,7 @@ const POI_STIL = {
   frequenzbringer: { color: '#1f5f8b', fill: '#4a8fbd' },
   oepnv: { color: '#2b6a3f', fill: '#4f9c68' },
   leerstand: { color: '#8a5a00', fill: '#c9922a' },
+  overture: { color: '#4a2b8a', fill: '#8a6fd1' },
 };
 
 /* Klick in einer Objektliste: Karte springt zum Objekt, blendet die passende
@@ -908,12 +911,15 @@ function poiPopup(p, name) {
   feld('Marke', p.marke);
   feld('Netz', p.netz);
   feld('Früher', p.frueher);
+  feld('Adresse', p.adresse);
+  feld('Verlässlichkeit', p.confidence !== undefined ? NF2.format(p.confidence) : null);
+  feld('Datenquellen', p.quellen);
   feld('Entfernung', `${NF.format(p.distanz_m)} m ${p.richtung}`);
   for (const [k, v] of Object.entries(p.tags || {})) feld(k, v);
   return `<h4>${esc(p.name || '(ohne Name)')}</h4><table>${zeilen.join('')}</table>
     ${p.distanz_hinweis ? `<p class="hinweis-klein">${esc(p.distanz_hinweis)}</p>` : ''}
-    <p class="hinweis-klein"><a href="${esc(p.osm_url)}" target="_blank" rel="noopener">In OpenStreetMap ansehen</a>
-    — dort steht der Rohdatensatz.</p>`;
+    ${p.osm_url ? `<p class="hinweis-klein"><a href="${esc(p.osm_url)}" target="_blank" rel="noopener">In OpenStreetMap ansehen</a>
+    — dort steht der Rohdatensatz.</p>` : ''}`;
 }
 
 /* -------------------------------------------------------------- Punkt */
@@ -965,8 +971,10 @@ function lade(refresh = false) {
   document.getElementById('start-hinweis')?.remove();
   baueGeruest();
   state.daten = {};
-  // Markensuche gehört zum vorigen Punkt — beim Wechsel weg damit.
+  // Markensuche gehört zum vorigen Punkt — beim Wechsel weg damit. Die
+  // Overture-Pins ebenso: sonst behaupten alte Pins etwas über den neuen Punkt.
   state.ebenen.marke?.clearLayers();
+  state.ebenen.overture?.clearLayers();
   // Der Schätzungsreiter hängt an den Punktdaten. Ist er gerade offen, muss er
   // mitwandern statt die Werte des vorigen Punktes stehen zu lassen.
   if (!document.getElementById('panel-schaetzung').hidden) {
@@ -1008,10 +1016,19 @@ function lade(refresh = false) {
     });
 
   hole('/api/point/osm', p)
-    .then((d) => { if (aktuell()) { state.daten.osm = d; zeigeOsm(d); } })
+    .then((d) => {
+      if (aktuell()) {
+        state.daten.osm = d; zeigeOsm(d);
+        // Der Overture-Abgleich braucht die OSM-Gastronomie — deshalb danach.
+        hole('/api/point/overture', { lat, lon, r: radius })
+          .then((o) => { if (aktuell()) { state.daten.overture = o; zeigeOverture(o); } })
+          .catch((e2) => aktuell() && zeigeBlockFehler('overture', e2));
+      }
+    })
     .catch((e) => {
       if (!aktuell()) return;
-      for (const id of ['gastronomie', 'franchise', 'umfeld', 'verkehr', 'leerstand']) {
+      for (const id of ['gastronomie', 'franchise', 'umfeld', 'verkehr', 'leerstand',
+        'overture']) {
         zeigeBlockFehler(id, e);
       }
     });
@@ -1078,6 +1095,7 @@ function baueGeruest() {
     block('liefergebiet', '4d · Rad-Liefergebiet'),
     block('franchise', '4c · Systemgastronomie & Marken'),
     block('dynamik', '4e · Gastro-Dynamik (OSM-Historie)'),
+    block('overture', '4f · Wettbewerbs-Abgleich (Overture)'),
     block('umfeld', '5 · Umfeld'),
     block('klima', '5b · Klima für Außengastronomie (DWD)'),
     block('verkehr', '6 · Verkehr'),
@@ -2027,6 +2045,77 @@ function zeigeKlima(d) {
       'Stationswerte der Normalperiode 1991–2020 — kein aktuelles Jahr, keine '
       + 'Prognose, und der Wert der Station, nicht des Punktes. Am Alpenrand '
       + 'kann die Stationshöhe den Unterschied machen.'),
+    ...warnungen(d.warnings || []));
+  setQuelle(id, d.provenance);
+}
+
+/* Block 4f — Wettbewerbs-Abgleich mit Overture Places (lokaler Import).
+   OSM ist die Untergrenze; Overture (Facebook/Instagram-Profile, Foursquare,
+   Ketten-Filiallisten) kontrolliert sie nach oben. Nur-Overture-Treffer
+   kommen als eigene Pins auf die Karte — lila, damit sie sich von den
+   OSM-Pins unterscheiden. */
+function zeigeOverture(d) {
+  const id = 'overture';
+  if (!d.ok) {
+    setStatus(id, 'fehler', 'nicht verfügbar');
+    setInhalt(id, fehlerbox(d.error));
+    setQuelle(id, d.provenance);
+    return;
+  }
+  const o = d.data || {};
+  if (!o.importiert) {
+    setStatus(id, 'leer', 'kein Import');
+    setInhalt(id,
+      el('p', { class: 'hinweis-klein' },
+        'OSM zählt Betriebe unvollständig — gerade in Einkaufszentren. Die '
+        + 'offenen Overture-Daten (u. a. Facebook/Instagram-Unternehmensprofile) '
+        + 'kontrollieren diese Untergrenze nach oben. Einmalig einrichten:'),
+      el('div', { class: 'formel' },
+        'pip install overturemaps\ngastroviewer import-overture --region muenchen'),
+      el('p', { class: 'hinweis-klein' },
+        'Danach zeigt dieser Block je Punkt, wie viele Betriebe OSM fehlen — '
+        + 'mit Namen, Adresse und eigenen Karten-Pins.'),
+      ...warnungen(d.warnings || []));
+    setQuelle(id, d.provenance);
+    return;
+  }
+
+  zeichnePois('overture', o.nur_overture);
+  setStatus(id, 'ok', 'geladen');
+
+  const kz = el('div', { class: 'kennzahlen' },
+    kennzahl('OSM (Untergrenze)', o.osm_gesamt),
+    kennzahl('Overture', o.anzahl_overture, `ab Verlässlichkeit ${NF1.format(o.schwelle)}`),
+    kennzahl('in beiden Quellen', o.beide),
+    kennzahl('nur in Overture', o.nur_overture.length),
+    kennzahl('kombiniert', o.kombiniert_gesamt, 'OSM + nur-Overture', 0));
+
+  const teile = [kz];
+  if (o.nur_overture.length) {
+    teile.push(
+      el('h3', { class: 'hinweis-klein' },
+        'Betriebe, die in OSM fehlen (Klick: Karte springt hin)'),
+      liste(o.nur_overture, 10, (p) => el('li', {
+        class: 'springbar',
+        title: 'Klick: Karte springt zu diesem Betrieb',
+        onclick: () => springeZuPoi(p, 'overture'),
+      },
+        el('span', { class: 'dist' }, `${NF.format(p.distanz_m)} m`,
+          el('div', { class: 'basis' }, p.richtung || '')),
+        el('span', { class: 'haupt' },
+          el('div', { class: 'name' }, p.name),
+          el('div', { class: 'meta' },
+            [p.gruppe_label, p.adresse,
+              `Verlässlichkeit ${NF2.format(p.confidence)}`,
+              p.quellen].filter(Boolean).join(' · '))))));
+  } else {
+    teile.push(el('div', { class: 'notiz' },
+      'Overture kennt hier keinen Betrieb, der in OSM fehlt — die '
+      + 'OSM-Zählung ist an diesem Punkt ungewöhnlich vollständig.'));
+  }
+
+  setInhalt(id, ...teile,
+    ...(o.hinweise || []).map((h) => el('div', { class: 'hinweis-klein' }, h)),
     ...warnungen(d.warnings || []));
   setQuelle(id, d.provenance);
 }
@@ -3169,6 +3258,33 @@ function brancheAngebot() {
     }, `Wettbewerber auf ${NF.format(k.anzahl)} setzen`));
 }
 
+/* Kennt Overture Betriebe, die in OSM fehlen, wird die kombinierte Zahl als
+   Wettbewerberzahl angeboten — wie beim Gehweg und beim Branchenprofil:
+   sichtbar, ausdrücklich zu übernehmen, nie stillschweigend gesetzt. */
+function overtureAngebot() {
+  const o = state.daten.overture?.data;
+  if (!o?.importiert || !(o.nur_overture || []).length) return null;
+  return el('div', { class: 'warnung', id: 'overture-angebot' },
+    el('div', {},
+      `Der Overture-Abgleich kennt ${NF.format(o.nur_overture.length)} Betriebe, `
+      + `die in OSM fehlen — kombiniert sind es ${NF.format(o.kombiniert_gesamt)} `
+      + `statt ${NF.format(o.osm_gesamt)} Wettbewerber im Umkreis.`),
+    el('div', { class: 'hinweis-klein', style: 'margin:5px 0 7px' },
+      'Wenn du übernimmst, rechne beide Standorte mit derselben Quelle — '
+      + 'sonst vergleichst du eine Untergrenze mit einer kombinierten Zahl.'),
+    el('button', {
+      type: 'button',
+      onclick: () => {
+        document.getElementById('sf-wettbewerber').value = String(o.kombiniert_gesamt);
+        const feld = document.getElementById('sf-wettbewerber')?.closest('.feld');
+        feld?.querySelector('.herkunft')?.replaceChildren(
+          `OSM + Overture kombiniert (${NF.format(o.osm_gesamt)} OSM, `
+          + `${NF.format(o.nur_overture.length)} nur Overture) — übernommen`);
+        rechneSchaetzung();
+      },
+    }, `Wettbewerber auf ${NF.format(o.kombiniert_gesamt)} setzen (OSM+Overture)`));
+}
+
 function schaetzBlock(titel, ...inhalt) {
   return el('section', { class: 'block' },
     el('h2', {}, titel),
@@ -3246,7 +3362,8 @@ function baueSchaetzFormular() {
       `${v.wettbewerber_alternative.hinweis} Im Umkreis liegen insgesamt `
       + `${NF.format(v.wettbewerber_alternative.alle_gastronomie)} gastronomische Betriebe.`) : null,
     gehwegAngebot(v.gehweg_alternative),
-    brancheAngebot());
+    brancheAngebot(),
+    overtureAngebot());
 
   const formel = schaetzBlock('Rechenweg',
     el('div', { class: 'formel' }, v.formel.join('\n')),

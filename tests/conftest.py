@@ -101,3 +101,13 @@ def muenchen_rad_tage():
 @pytest.fixture()
 def laerm_bayern():
     return load_fixture("raw_laerm_bayern.json")
+
+
+@pytest.fixture(scope="session")
+def overture_mira():
+    return load_fixture("raw_overture_mira.geojson")
+
+
+@pytest.fixture(scope="session")
+def overture_marienplatz():
+    return load_fixture("raw_overture_marienplatz.geojson")

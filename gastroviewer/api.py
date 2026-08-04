@@ -285,6 +285,13 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         _validate(lat, lon, 600)
         return (await svc(request).klima(lat, lon)).to_dict()
 
+    @app.get("/api/point/overture")
+    async def point_overture(request: Request, lat: float, lon: float, r: int = 600):
+        """Zweite Wettbewerbsquelle: Overture Places (lokaler Import) mit
+        Abgleich gegen die OSM-Gastronomie — Untergrenze trifft Kontrolle."""
+        _validate(lat, lon, r)
+        return (await svc(request).overture(lat, lon, r)).to_dict()
+
     @app.get("/api/point/laerm")
     async def point_laerm(
         request: Request, lat: float, lon: float,
@@ -933,6 +940,11 @@ VERGLEICH_SPALTEN = [
     {"key": "gastro_trend", "titel": "Gastro-Trend (OSM-Objekte, Mehrjahr)",
      "gruppe": "detail"},
 
+    # --- Overture-Abgleich: OSM-Untergrenze plus Nur-Overture-Treffer.
+    # Abgeleiteter Wert → Detailgruppe, damit die Vorgabeansicht schlank bleibt.
+    {"key": "wettbewerb_kombiniert", "titel": "Gastro kombiniert (OSM+Overture)",
+     "gruppe": "detail"},
+
     # --- Öffnungszeiten-Lücken (Mindestzahlen aus OSM).
     {"key": "sonntag_offen", "titel": "Sonntags geöffnet (mind., OSM)",
      "gruppe": "detail"},
@@ -1000,6 +1012,10 @@ def _row_for(saved: dict[str, Any]) -> dict[str, Any]:
         "pendler_saldo": pen.get("saldo"),
         "einpendler_quote": pen.get("einpendler_quote"),
         "gastro_trend": dyn.get("absolut"),
+        "wettbewerb_kombiniert": (
+            (((bl.get("overture") or {}).get("data") or {}) or {})
+            .get("kombiniert_gesamt")
+        ),
         "sonntag_offen": (gas.get("oeffnungszeiten") or {}).get("sonntag_offen"),
         "nach22_offen": (gas.get("oeffnungszeiten") or {}).get("nach22_offen"),
         "leerstandsquote": _wert(woh.get("leerstandsquote")),

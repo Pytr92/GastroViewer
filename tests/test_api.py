@@ -1388,3 +1388,15 @@ def test_kreisprofil_endpunkt_und_kreiscache(client):
     client.get("/api/kreisprofil", params={"ags": "09162001"})
     assert client.fake.calls.count("kreisprofil") == vorher, "Kreis-Cache griff nicht"
     assert client.get("/api/kreisprofil", params={"ags": "9x"}).status_code == 422
+
+
+def test_point_overture_block_ohne_import(client):
+    """Ohne lokalen Overture-Import: Block da, ehrliche Anleitung statt Zahlen."""
+    d = client.get("/api/point", params={"lat": LAT, "lon": LON, "r": R}).json()
+    ov = d["bloecke"]["overture"]
+    assert ov["ok"] and ov["data"] == {"importiert": False}
+    assert any("import-overture" in w for w in ov["warnings"])
+
+    e = client.get("/api/point/overture",
+                   params={"lat": LAT, "lon": LON, "r": R}).json()
+    assert e["data"] == {"importiert": False}
