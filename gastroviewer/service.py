@@ -555,9 +555,10 @@ GRENZEN = [
     "Die angezeigte Wettbewerbsdichte ist eine Untergrenze.",
     "Zensus-Stichtag ist der 15.05.2022 mit stochastischer Überlagerung. "
     "Neubaugebiete nach 2022 fehlen.",
-    "Öffnungszeiten werden unverändert aus OSM übernommen und nicht interpretiert. "
-    "Die opening_hours-Syntax kennt Feiertage, Saisons und Ausnahmen — ein einfacher "
-    "Parser deckt das nicht ab.",
+    "Öffnungszeiten aus OSM werden nur bewertet, wo die Angabe vollständig aus "
+    "einfachen Wochentag-Uhrzeit-Regeln besteht — Feiertags-, Saison- und "
+    "Sonderregeln bleiben unbewertet. Alle Öffnungszeiten-Zahlen sind deshalb "
+    "Mindestzahlen („mindestens X von Y“).",
     "Passantenströme fehlen komplett. Fußgängerzone und Seitenstraße sind in diesen "
     "Daten nicht unterscheidbar. Dafür hystreet, GTFS-Abfahrten und eigene Zählung.",
     "Die Umsatzstärke der Wettbewerber ist unbekannt.",

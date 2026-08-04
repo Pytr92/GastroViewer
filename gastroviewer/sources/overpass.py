@@ -331,6 +331,159 @@ def classify(
     }
 
 
+# ------------------------------------------------- Öffnungszeiten-Lücken
+#
+# Grundsatz: konservativ. Die opening_hours-Syntax kennt Feiertage, Saisons,
+# Wochennummern und Sonnenstände — ein Parser, der davon etwas falsch deutet,
+# erzeugt falsche Zahlen im Messwert-Kostüm. Deshalb wird eine Angabe nur
+# bewertet, wenn sie vollständig aus einfachen Wochentag-Uhrzeit-Regeln
+# besteht („Mo-Fr 11:00-22:00; Sa 12:00-23:00", „24/7", „Su off"). Alles
+# andere zählt als „nicht auswertbar", und jede Auswertungszahl ist damit
+# eine Mindestzahl. Einzige geduldete Sonderregel: „PH off/closed" — sie
+# betrifft weder die Sonntags- noch die Abendfrage und wird übersprungen.
+#
+# Mitternachtsüberhang („Fr-Sa 20:00-04:00") bleibt dem genannten Tag
+# zugeordnet: eine Bar, die Samstagnacht bis 4 Uhr offen hat, gilt nicht als
+# „sonntags geöffnet" — das entspricht dem alltäglichen Sprachgebrauch und
+# steht im Hinweistext.
+
+_OH_TAGE = ["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"]
+# Ab hier gilt „abends geöffnet": nach 22 Uhr. 22 Uhr ist die Grenze des
+# GTFS-Nachtfensters dieses Werkzeugs — dieselbe Grenze, damit sich beide
+# Blöcke aufeinander beziehen lassen. Eine gewählte Grenze, kein Messwert.
+NACHT_AB_MINUTE = 22 * 60
+
+
+def _oh_zeitspanne(t: str) -> tuple[int, int] | None:
+    import re as _re
+
+    m = _re.fullmatch(r"(\d{1,2}):(\d{2})-(\d{1,2}):(\d{2})", t)
+    if not m:
+        return None
+    a = int(m.group(1)) * 60 + int(m.group(2))
+    b = int(m.group(3)) * 60 + int(m.group(4))
+    if a > 24 * 60 or b > 24 * 60:
+        return None
+    if b <= a:  # über Mitternacht
+        b += 24 * 60
+    return (a, b)
+
+
+def _oh_tage(spec: str) -> set[int] | None:
+    tage: set[int] = set()
+    for teil in spec.split(","):
+        teil = teil.strip()
+        if "-" in teil:
+            a, _, b = teil.partition("-")
+            if a not in _OH_TAGE or b not in _OH_TAGE:
+                return None
+            i, j = _OH_TAGE.index(a), _OH_TAGE.index(b)
+            if i <= j:
+                tage.update(range(i, j + 1))
+            else:  # Wochenwechsel, z. B. Sa-Mo
+                tage.update(range(i, 7))
+                tage.update(range(0, j + 1))
+        elif teil in _OH_TAGE:
+            tage.add(_OH_TAGE.index(teil))
+        else:
+            return None
+    return tage
+
+
+def bewerte_oeffnungszeiten(oh: Any) -> dict[str, bool] | None:
+    """Bewertet eine opening_hours-Angabe — oder lehnt sie ab.
+
+    ``None`` heißt „nicht auswertbar", nie „geschlossen". Rückgabe sonst:
+    ``sonntag`` (am Sonntag geöffnet), ``nach22`` (an mindestens einem Tag
+    nach 22 Uhr geöffnet), ``immer`` (24/7).
+    """
+    import re as _re
+
+    if not oh:
+        return None
+    s = " ".join(str(oh).split())
+    if s == "24/7":
+        return {"sonntag": True, "nach22": True, "immer": True}
+
+    belegung: dict[int, list[tuple[int, int]]] = {i: [] for i in range(7)}
+    for teil in s.split(";"):
+        teil = teil.strip()
+        if not teil:
+            continue
+        if _re.fullmatch(r"PH (off|closed)", teil):
+            continue
+        m = _re.fullmatch(r"(?:([A-Za-z,\- ]+) )?([\d:,\- ]+|off|closed)", teil)
+        if not m:
+            return None
+        tage = (
+            _oh_tage(m.group(1).replace(" ", "")) if m.group(1) else set(range(7))
+        )
+        if tage is None:
+            return None
+        zeit_spec = m.group(2).strip()
+        if zeit_spec in ("off", "closed"):
+            for t in tage:
+                belegung[t] = []
+            continue
+        spannen = []
+        for z in zeit_spec.replace(" ", "").split(","):
+            sp = _oh_zeitspanne(z)
+            if sp is None:
+                return None
+            spannen.append(sp)
+        # Spätere Regeln überschreiben frühere für die genannten Tage —
+        # das ist die Grundsemantik von opening_hours.
+        for t in tage:
+            belegung[t] = list(spannen)
+
+    return {
+        "sonntag": bool(belegung[6]),
+        "nach22": any(b > NACHT_AB_MINUTE for spannen in belegung.values()
+                      for _, b in spannen),
+        "immer": False,
+    }
+
+
+def oeffnungszeiten_luecken(gastro: list[dict[str, Any]]) -> dict[str, Any]:
+    """Sonntags- und Abendlücke im Umfeld — ausschließlich Mindestzahlen."""
+    gesamt = len(gastro)
+    mit_angabe = auswertbar = sonntag = sonntag_zu = nach22 = rund_um_die_uhr = 0
+    for g in gastro:
+        oh = (g.get("tags") or {}).get("opening_hours")
+        if not oh:
+            continue
+        mit_angabe += 1
+        b = bewerte_oeffnungszeiten(oh)
+        if b is None:
+            continue
+        auswertbar += 1
+        if b["sonntag"]:
+            sonntag += 1
+        else:
+            sonntag_zu += 1
+        if b["nach22"]:
+            nach22 += 1
+        if b["immer"]:
+            rund_um_die_uhr += 1
+    return {
+        "gesamt": gesamt,
+        "mit_angabe": mit_angabe,
+        "auswertbar": auswertbar,
+        "sonntag_offen": sonntag,
+        "sonntag_geschlossen": sonntag_zu,
+        "nach22_offen": nach22,
+        "rund_um_die_uhr": rund_um_die_uhr,
+        "nacht_ab": "22:00",
+        "hinweis": (
+            "Nur einfache Wochentag-Uhrzeit-Regeln werden bewertet; Feiertags-, "
+            "Saison- und Sonderregeln zählen als nicht auswertbar. Alle Zahlen "
+            "sind deshalb Mindestzahlen. Mitternachtsüberhang bleibt dem "
+            "genannten Tag zugeordnet — Samstagnacht bis 4 Uhr ist nicht "
+            "„sonntags geöffnet“."
+        ),
+    }
+
+
 # Entfernungsstufen für die Wettbewerbsdichte. Ein Imbiss in 50 m konkurriert
 # anders als einer am Rand des Umkreises; die reine Umkreiszahl verwischt das.
 # Es sind Zählgrenzen, keine Gewichte — gewichtet wird nirgends.
@@ -387,6 +540,7 @@ def summarize(cls: dict[str, Any], radius: int | None = None) -> dict[str, Any]:
             "ohne_kuechenangabe": sum(1 for g in gastro if not g.get("cuisine")),
             "nach_entfernung": nach_entfernung(gastro, radius) if radius else [],
             "naechster_m": gastro[0]["distanz_m"] if gastro else None,
+            "oeffnungszeiten": oeffnungszeiten_luecken(gastro),
             "schnellrestaurants_nach_entfernung": (
                 nach_entfernung(
                     [g for g in gastro if g["typ_label"] == "Schnellrestaurant"], radius

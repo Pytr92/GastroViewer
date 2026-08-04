@@ -1344,6 +1344,29 @@ function zeigeZensus(d) {
   setQuelle('wohnen', d.provenance);
 }
 
+/* Öffnungszeiten-Lücken: Sonntags- und Abendangebot des Umfelds — als
+   Mindestzahlen, denn nur einfache Wochentag-Uhrzeit-Regeln werden bewertet.
+   Eine Lücke kann eine Chance sein (niemand versorgt den Sonntag) oder ein
+   Warnzeichen (der Sonntag lohnt hier für niemanden) — das entscheidet der
+   Blick vor Ort, nicht das Werkzeug. */
+function oeffnungsluecken(oz) {
+  if (!oz || !oz.gesamt) return [];
+  const teile = [
+    el('h3', { class: 'hinweis-klein' }, 'Öffnungszeiten-Lücken (Mindestzahlen)'),
+    el('div', { class: 'kennzahlen', id: 'oeffnungsluecken' },
+      kennzahl('Sonntags geöffnet', { wert: oz.sonntag_offen }, `von ${oz.auswertbar} auswertbaren`),
+      kennzahl('Sonntags zu', { wert: oz.sonntag_geschlossen }, `von ${oz.auswertbar} auswertbaren`),
+      kennzahl(`Abends nach ${oz.nacht_ab} Uhr geöffnet`, { wert: oz.nach22_offen },
+        `von ${oz.auswertbar} auswertbaren`),
+      kennzahl('Angabe in OSM', { wert: oz.mit_angabe }, `von ${oz.gesamt} Betrieben`)),
+    el('div', { class: 'hinweis-klein' },
+      `${NF.format(oz.auswertbar)} von ${NF.format(oz.mit_angabe)} Angaben bestehen `
+      + 'aus einfachen Wochentag-Uhrzeit-Regeln und wurden bewertet. '
+      + oz.hinweis),
+  ];
+  return teile;
+}
+
 /* Kundenprofil: ein zusammenfassender Satz aus den angezeigten Zahlen —
    rein deskriptiv (größte Altersgruppe, Alter, Haushaltsgröße), ohne
    gewählte Schwellen und ohne Bewertung. Wer hier wohnt, ist nicht
@@ -1537,10 +1560,7 @@ function zeigeOsm(d) {
     el('h3', { class: 'hinweis-klein' }, 'Wettbewerbsdichte nach Entfernung'), entfTab,
     el('h3', { class: 'hinweis-klein' }, 'Küchenverteilung'), kuecheTab,
     el('h3', { class: 'hinweis-klein' }, 'Betriebe nach Entfernung'), gListe,
-    el('div', { class: 'notiz' },
-      'Öffnungszeiten stehen unverändert so in OSM, wie sie dort eingetragen sind. '
-      + 'Sie werden nicht ausgewertet — die opening_hours-Syntax kennt Feiertage, '
-      + 'Saisons und Ausnahmen, die ein einfacher Parser falsch verstehen würde.'),
+    ...oeffnungsluecken(g.oeffnungszeiten),
     ...warnungen(d.warnings));
   setQuelle('gastronomie', d.provenance);
 

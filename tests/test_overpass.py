@@ -227,3 +227,83 @@ async def test_load_uebernimmt_datenstand_aus_der_antwort(settings, overpass_com
     assert res.provenance.stand == f"OSM-Datenstand {erwartet}"
     assert "ODbL" in res.provenance.license
     assert "Untergrenze" in res.provenance.note
+
+
+# ------------------------------------------- Öffnungszeiten-Lücken (konservativ)
+
+
+class TestOeffnungszeiten:
+    """Der Parser bewertet nur, was er sicher versteht — alles andere ist
+    „nicht auswertbar", nie „geschlossen"."""
+
+    def test_einfache_woche(self):
+        b = overpass.bewerte_oeffnungszeiten("Mo-Fr 09:00-18:00")
+        assert b == {"sonntag": False, "nach22": False, "immer": False}
+
+    def test_ganze_woche_abends(self):
+        b = overpass.bewerte_oeffnungszeiten("Mo-Su 11:00-23:00")
+        assert b["sonntag"] and b["nach22"]
+
+    def test_rund_um_die_uhr(self):
+        b = overpass.bewerte_oeffnungszeiten("24/7")
+        assert b["sonntag"] and b["nach22"] and b["immer"]
+
+    def test_sonntag_ausdruecklich_zu(self):
+        b = overpass.bewerte_oeffnungszeiten("Mo-Sa 10:00-20:00; Su off")
+        assert b["sonntag"] is False
+
+    def test_mitternachtsueberhang_bleibt_beim_genannten_tag(self):
+        """Samstagnacht bis 4 Uhr ist nicht „sonntags geöffnet" — aber ein
+        Abendangebot."""
+        b = overpass.bewerte_oeffnungszeiten("Fr-Sa 20:00-04:00")
+        assert b["sonntag"] is False
+        assert b["nach22"] is True
+
+    def test_mehrere_zeitfenster(self):
+        b = overpass.bewerte_oeffnungszeiten("Mo-Fr 11:30-14:30,17:00-23:00")
+        assert b["nach22"] is True
+        assert b["sonntag"] is False
+
+    def test_feiertagsregel_wird_geduldet(self):
+        b = overpass.bewerte_oeffnungszeiten("Mo-Su 12:00-22:00; PH off")
+        assert b is not None
+        assert b["sonntag"] is True
+        # 22:00 ist die Grenze, nicht „nach 22 Uhr".
+        assert b["nach22"] is False
+
+    def test_wochenwechsel(self):
+        b = overpass.bewerte_oeffnungszeiten("Sa-Mo 10:00-15:00")
+        assert b["sonntag"] is True
+
+    @pytest.mark.parametrize("oh", [
+        "Jan-Mar Mo-Fr 10:00-20:00",   # Saison
+        "Mo-Su 08:00+",                # offenes Ende
+        "sunrise-sunset",              # Sonnenstand
+        "Mo-Fr 09:00-18:00; PH 10:00-14:00",  # Feiertag mit Zeiten
+        "week 1-26 Mo 10:00-12:00",    # Wochennummern
+        "Kaputt",
+    ])
+    def test_nicht_auswertbar_statt_falsch(self, oh):
+        assert overpass.bewerte_oeffnungszeiten(oh) is None
+
+    def test_leer_ist_nicht_auswertbar(self):
+        assert overpass.bewerte_oeffnungszeiten(None) is None
+        assert overpass.bewerte_oeffnungszeiten("") is None
+
+    def test_spaetere_regel_ueberschreibt(self):
+        b = overpass.bewerte_oeffnungszeiten("Mo-Su 10:00-23:00; Su 10:00-18:00")
+        assert b["sonntag"] is True
+        assert b["nach22"] is True  # Mo-Sa bleiben bis 23 Uhr
+
+
+def test_oeffnungszeiten_luecken_am_echten_fixture(overpass_combined):
+    """Aggregat über die echte Innenstadt-Antwort: Zahlen sind konsistent und
+    ausschließlich Mindestzahlen."""
+    cls = overpass.classify(overpass_combined["elements"], 48.1334, 11.5674, 600)
+    oz = overpass.summarize(cls, 600)["gastronomie"]["oeffnungszeiten"]
+    assert oz["gesamt"] == len(cls["gastronomie"])
+    assert 0 < oz["mit_angabe"] <= oz["gesamt"]
+    assert 0 < oz["auswertbar"] <= oz["mit_angabe"]
+    assert oz["sonntag_offen"] + oz["sonntag_geschlossen"] == oz["auswertbar"]
+    assert oz["nach22_offen"] <= oz["auswertbar"]
+    assert "Mindestzahlen" in oz["hinweis"]
