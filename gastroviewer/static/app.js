@@ -861,6 +861,30 @@ const POI_STIL = {
   leerstand: { color: '#8a5a00', fill: '#c9922a' },
 };
 
+/* Klick in einer Objektliste: Karte springt zum Objekt, blendet die passende
+   Ebene ein und öffnet dessen Popup; zusätzlich ein kurzlebiger Ring, damit
+   das Auge den Pin sofort findet. */
+let sprungRing = null;
+function springeZuPoi(p, ebene) {
+  const gruppe = state.ebenen[ebene];
+  if (gruppe && !karte.hasLayer(gruppe)) gruppe.addTo(karte);
+  karte.setView([p.lat, p.lon], Math.max(karte.getZoom(), 18));
+  if (sprungRing) { karte.removeLayer(sprungRing); sprungRing = null; }
+  sprungRing = L.circleMarker([p.lat, p.lon], {
+    radius: 16, color: '#c62828', weight: 3, fill: false, interactive: false,
+  }).addTo(karte);
+  setTimeout(() => {
+    if (sprungRing) { karte.removeLayer(sprungRing); sprungRing = null; }
+  }, 4000);
+  // Das zugehörige Popup öffnen, wenn der Marker gezeichnet ist.
+  gruppe?.eachLayer((m) => {
+    const ll = m.getLatLng?.();
+    if (ll && Math.abs(ll.lat - p.lat) < 1e-6 && Math.abs(ll.lng - p.lon) < 1e-6) {
+      m.openPopup();
+    }
+  });
+}
+
 function zeichnePois(name, liste) {
   const gruppe = state.ebenen[name];
   gruppe.clearLayers();
@@ -1630,11 +1654,21 @@ function zeigeOsm(d) {
   } else {
     setInhalt('leerstand',
       el('div', { class: 'kennzahlen' }, kennzahl('Leerstände in OSM', z.leerstand.gesamt)),
-      liste(o.leerstand, 10, (p) => el('li', {},
-        el('span', { class: 'dist' }, `${NF.format(p.distanz_m)} m`),
+      liste(o.leerstand, 10, (p) => el('li', {
+        class: 'springbar',
+        title: 'Klick: Karte springt zu diesem Leerstand',
+        onclick: () => springeZuPoi(p, 'leerstand'),
+      },
+        el('span', { class: 'dist' }, `${NF.format(p.distanz_m)} m`,
+          el('div', { class: 'basis' }, p.richtung || '')),
         el('span', { class: 'haupt' },
-          el('div', { class: 'name' }, p.name || '(ohne Name)'),
-          el('div', { class: 'meta' }, `${p.art}${p.frueher ? ` · früher: ${p.frueher}` : ''}`)))),
+          el('div', { class: 'name' }, p.name || p.adresse || '(ohne Name)'),
+          el('div', { class: 'meta' },
+            [p.adresse, p.art, p.frueher ? `früher: ${p.frueher}` : null]
+              .filter(Boolean).join(' · '))))),
+      el('div', { class: 'hinweis-klein' },
+        'Klick auf einen Eintrag: die Karte springt dorthin und markiert den '
+        + 'Leerstand. Straße/Hausnummer erscheinen, soweit sie in OSM hinterlegt sind.'),
       el('div', { class: 'notiz' },
         'OSM-Leerstand ist lückenhaft gepflegt. Die Zahl ist eine Untergrenze.'));
   }

@@ -307,3 +307,26 @@ def test_oeffnungszeiten_luecken_am_echten_fixture(overpass_combined):
     assert oz["sonntag_offen"] + oz["sonntag_geschlossen"] == oz["auswertbar"]
     assert oz["nach22_offen"] <= oz["auswertbar"]
     assert "Mindestzahlen" in oz["hinweis"]
+
+
+# ----------------------------------------------------- Leerstand mit Adresse
+
+
+def test_leerstand_traegt_adresse_aus_osm(overpass_combined):
+    """Straße/Hausnummer aus den addr:-Tags, damit die Liste ansteuerbar ist —
+    was in OSM fehlt, bleibt None statt erfunden."""
+    cls = overpass.classify(overpass_combined["elements"], LAT, LON, R)
+    leer = cls["leerstand"]
+    assert leer, "Fixture enthält Leerstände"
+    mit = [e for e in leer if e.get("adresse")]
+    assert mit, "kein einziger Leerstand mit Adresse — im Fixture sind welche"
+    # Echte Werte aus der aufgezeichneten Antwort:
+    assert any(e["adresse"].startswith("Sonnenstraße") for e in mit)
+    assert all("adresse" in e for e in leer)
+
+
+def test_adresse_helfer():
+    assert overpass._adresse({"addr:street": "Brunnstraße",
+                              "addr:housenumber": "6"}) == "Brunnstraße 6"
+    assert overpass._adresse({"addr:street": "Schwanthalerstraße"}) == "Schwanthalerstraße"
+    assert overpass._adresse({}) is None

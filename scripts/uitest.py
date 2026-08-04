@@ -320,6 +320,22 @@ def pruefe_sensitivitaet(page) -> str:
     return "Treiber-Balken, +1-Effekt und Wohnmiete-Anker vorhanden"
 
 
+def pruefe_leerstand_sprung(page) -> str:
+    """Klick auf einen Leerstand-Eintrag: Karte springt hin, Ring erscheint."""
+    if not page.query_selector("#inhalt-leerstand .liste li.springbar"):
+        return "übersprungen — keine Leerstände am Testpunkt"
+    ziel = page.eval_on_selector(
+        "#inhalt-leerstand .liste li.springbar", "e => { e.click(); return e.innerText; }")
+    page.wait_for_timeout(600)
+    zoom = page.evaluate("() => karte.getZoom()")
+    fordere(zoom >= 18, f"Karte zoomt nicht heran (Zoom {zoom})")
+    ring = page.evaluate("() => !!sprungRing")
+    fordere(ring, "Hervorhebungsring fehlt nach dem Klick")
+    inhalt = text(page, "#inhalt-leerstand")
+    fordere("Klick auf einen Eintrag" in inhalt, "Bedienhinweis fehlt")
+    return f"Sprung mit Ring und Zoom {zoom} — Eintrag: {ziel.splitlines()[0][:40]}"
+
+
 def pruefe_branchenprofil(page) -> str:
     """Das Profil filtert die vorhandenen OSM-Daten um — ohne neue Abfrage."""
     alle = page.evaluate("""() => {
@@ -864,6 +880,7 @@ PRUEFUNGEN = [
     ("Öffnungszeiten-Lücken", pruefe_oeffnungsluecken),
     ("Kundenprofil-Satz", pruefe_kundenprofil),
     ("Radzählstellen-Jahresgang", pruefe_rad_jahresgang),
+    ("Leerstand: Adresse und Kartensprung", pruefe_leerstand_sprung),
     ("Sensitivität und Wohnmiete-Anker", pruefe_sensitivitaet),
     ("Branchenprofil im Gastronomieblock", pruefe_branchenprofil),
     ("Systemgastronomie & Gebietsschutz", pruefe_franchise),

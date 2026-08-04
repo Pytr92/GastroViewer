@@ -200,6 +200,15 @@ def _service_tags(tags: dict[str, str]) -> dict[str, str]:
     return {k: tags[k] for k in GASTRO_TAGS if k in tags}
 
 
+def _adresse(tags: dict[str, str]) -> str | None:
+    """Straße + Hausnummer aus den addr:-Tags — was da ist, nichts erfunden."""
+    strasse = (tags.get("addr:street") or "").strip()
+    nummer = (tags.get("addr:housenumber") or "").strip()
+    if strasse and nummer:
+        return f"{strasse} {nummer}"
+    return strasse or None
+
+
 def classify(
     elements: list[dict[str, Any]], lat: float, lon: float, radius: int
 ) -> dict[str, Any]:
@@ -278,6 +287,9 @@ def classify(
                         else ("disused:shop" if "disused:shop" in tags else "disused:amenity")
                     ),
                     "frueher": tags.get("disused:shop") or tags.get("disused:amenity"),
+                    # Wo genau steht der Leerstand? Straße/Hausnummer aus OSM,
+                    # damit der Eintrag in der Liste ansteuerbar wird.
+                    "adresse": _adresse(tags),
                 }
             )
             continue

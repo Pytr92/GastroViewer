@@ -701,3 +701,7 @@ details.ranking > summary {
   background: var(--akzent);
   opacity: 0.75;
 }
+
+/* Listeneinträge, die zur Karte springen (Leerstand) */
+.liste li.springbar { cursor: pointer; }
+.liste li.springbar:hover { background: var(--akzent-hell); }

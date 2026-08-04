@@ -1006,7 +1006,7 @@ pip install playwright && playwright install chromium
 python scripts/uitest.py http://127.0.0.1:8011
 ```
 
-32 Prüfungen (dazu die Prüfung auf JavaScript-Fehler), darunter: jeder Block nennt
+33 Prüfungen (dazu die Prüfung auf JavaScript-Fehler), darunter: jeder Block nennt
 Quelle und Lizenz, im Datenreiter steht keine geschätzte Zahl, der Deckkraftregler wirkt
 auf die Ebenen und **nicht** auf die Grundkarte, der Gehwegblock lädt nur auf Anforderung
 und räumt seine Kartenebene beim Punktwechsel auf, der Flächen-Scan scannt nach dem

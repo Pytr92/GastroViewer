@@ -41,7 +41,7 @@ hinter Login bzw. Lizenz.
 | Planungsrecht | Hochwassergefahrenflächen HQhäufig/HQ100/HQextrem (Bayern), Bebauungsplan-Umgriffe (München) |
 | Straßenlärm (6f) | LDEN/LNight in dB(A) am Punkt aus der EU-Umgebungslärmkartierung (LfU Bayern) — mit Kartierungsjahr und ehrlicher „nicht kartiert ≠ leise“-Grenze |
 | Bodenrichtwerte | Kartenebene + Klickabfrage in 7 Bundesländern, Portallinks für alle |
-| Leerstände | OSM-Leerstand als Untergrenze, mit Verweis auf Kataster/Begehung |
+| Leerstände | OSM-Leerstand als Untergrenze mit Adresse; Klick springt in der Karte zum Objekt |
 
 ### Entscheidung — WELCHER Kandidat?
 
@@ -62,7 +62,7 @@ hinter Login bzw. Lizenz.
 
 Läuft komplett lokal (localhost, SQLite), kein Konto, keine Cloud. Cache mit
 Kachel-Logik schont die freien Dienste; jeder echte Abruf steht im Protokoll.
-Geprüft durch 371 automatische Tests, 51 Live-Routenprüfungen, 33 Browser-Checks
+Geprüft durch 371 automatische Tests, 51 Live-Routenprüfungen, 34 Browser-Checks
 und 9 Abnahmekriterien.
 
 ---
