@@ -341,3 +341,55 @@ def test_mietprobe_veraendert_das_ergebnis_nicht():
     mit = rechne(basis(flaeche_qm=120, angebotsmiete_qm=25))
     assert ohne["ergebnis"] == mit["ergebnis"], \
         "Die Mietprobe ist eine Gegenprobe, kein Rechenfaktor"
+
+
+# ------------------------------------------------------- Sensitivität
+
+
+def test_sensitivitaet_zerlegt_die_spanne_exakt():
+    """Marktanteil-Faktor × Bon-Faktor muss exakt den Gesamtfaktor ergeben —
+    die Zerlegung ist Mathematik, kein gewählter Prüfwert."""
+    d = rechne(basis())
+    s = d["sensitivitaet"]
+    assert s is not None
+    produkt = 1.0
+    for t in s["treiber"]:
+        produkt *= t["faktor"]
+    assert produkt == pytest.approx(s["spannenfaktor_gesamt"], rel=0.02)
+    u = d["ergebnis"]["jahresumsatz_eur"]
+    assert s["spannenfaktor_gesamt"] == pytest.approx(u[1] / u[0], rel=0.02)
+
+
+def test_sensitivitaet_default_marktanteil_dominiert():
+    """Mit Unsicherheitsfaktor 2 spannt der Marktanteil Faktor 4 auf — mehr als
+    der Bon (10,21/7,15 ≈ 1,43). Der Befund muss das benennen."""
+    s = rechne(basis())["sensitivitaet"]
+    assert s["treiber"][0]["key"] == "marktanteil"
+    assert s["treiber"][0]["faktor"] == pytest.approx(4.0, rel=0.01)
+    assert "Marktanteil" in s["befund"]
+
+
+def test_sensitivitaet_wettbewerber_plus_eins_exakt():
+    """26 Wettbewerber: ein übersehener senkt den Umsatz um 100/28 ≈ 3,6 %."""
+    s = rechne(basis())["sensitivitaet"]
+    w = s["wettbewerber_plus_eins"]
+    assert w["wirkung_prozent"] == pytest.approx(-100.0 / 28, abs=0.05)
+    # Gegenprobe mit echter Neurechnung: +1 Wettbewerber, Mitte vergleichen.
+    u0 = rechne(basis())["ergebnis"]["jahresumsatz_eur"]
+    u1 = rechne(basis(wettbewerber=27))["ergebnis"]["jahresumsatz_eur"]
+    gemessen = (sum(u1) / sum(u0) - 1) * 100
+    assert gemessen == pytest.approx(w["wirkung_prozent"], abs=0.1)
+
+
+def test_sensitivitaet_bei_gesetztem_marktanteil_ohne_wettbewerbereffekt():
+    """Ist der Marktanteil vom Nutzer gesetzt, hat die Wettbewerberzahl keinen
+    Einfluss mehr — der +1-Effekt darf dann nicht angezeigt werden."""
+    s = rechne(basis(marktanteil_min_prozent=2, marktanteil_max_prozent=5))["sensitivitaet"]
+    assert s["wettbewerber_plus_eins"] is None
+    assert "gesetzt" in s["treiber"][0]["erklaerung"] or "gesetzt" in s["treiber"][1]["erklaerung"]
+
+
+def test_sensitivitaet_veraendert_das_ergebnis_nicht():
+    mit = rechne(basis())
+    assert mit["sensitivitaet"] is not None
+    assert mit["ergebnis"] == rechne(basis())["ergebnis"]

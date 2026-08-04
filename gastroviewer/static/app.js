@@ -3219,7 +3219,47 @@ function zeigeSchaetzErgebnis(d, ziel) {
       + 'vom Umsatz. Faustregel aus notizen-standort-flaeche.md §6 — keine erhobene Statistik. '
       + 'Liegt die geforderte Miete darüber, trägt der Standort sich unter diesen Annahmen nicht.'),
     ...mietprobeTeile(d.mietprobe),
+    ...sensitivitaetTeile(d.sensitivitaet),
     ...franchiseTeile);
+}
+
+/* Sensitivität: Woran die Spanne hängt — exakt aus der Formel hergeleitet,
+   keine gewählten Störgrößen. Balkenlänge proportional zum Spannenfaktor. */
+function sensitivitaetTeile(s) {
+  if (!s) return [];
+  const maxFaktor = Math.max(...s.treiber.map((t) => t.faktor), 1);
+  const tab = el('table', { class: 'daten' },
+    el('tr', {}, el('th', {}, 'Annahme'), el('th', { class: 'num' }, 'Spannenfaktor'),
+      el('th', {}, '')));
+  for (const t of s.treiber) {
+    tab.append(el('tr', {},
+      el('td', {}, el('b', {}, t.titel),
+        el('div', { class: 'hinweis-klein' }, t.erklaerung)),
+      el('td', { class: 'num' }, `× ${NF2.format(t.faktor)}`),
+      el('td', { style: 'width:34%;vertical-align:middle;' },
+        el('div', {
+          class: 'sens-balken',
+          style: `width:${Math.round((t.faktor / maxFaktor) * 100)}%;`,
+          title: `Faktor ${NF2.format(t.faktor)}`,
+        }))));
+  }
+  const teile = [
+    el('h3', { class: 'hinweis-klein' }, 'Woran die Spanne hängt'),
+    tab,
+    el('div', { class: 'notiz' }, s.befund),
+  ];
+  if (s.wettbewerber_plus_eins) {
+    const w = s.wettbewerber_plus_eins;
+    teile.push(el('div', { class: 'warnung' },
+      el('b', {}, `Ein übersehener Wettbewerber: ${NF1.format(w.wirkung_prozent)} % Umsatz. `),
+      w.erklaerung));
+  }
+  teile.push(
+    el('div', { class: 'hinweis-klein' },
+      `${s.linear.felder.join(' und ')}: ${s.linear.erklaerung}. `
+      + `${s.ohne_wirkung.felder.join(' und ')}: ${s.ohne_wirkung.erklaerung}.`),
+    el('div', { class: 'hinweis-klein' }, s.hinweis));
+  return teile;
 }
 
 /* Mietprobe gegen ein konkretes Exposé — nur, wenn Fläche und geforderte

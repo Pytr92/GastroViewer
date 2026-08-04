@@ -692,3 +692,12 @@ details.ranking > summary {
   color: #4a2b5e;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
 }
+
+/* Sensitivität: Balken proportional zum Spannenfaktor */
+.sens-balken {
+  height: 14px;
+  min-width: 3px;
+  border-radius: 3px;
+  background: var(--akzent);
+  opacity: 0.75;
+}

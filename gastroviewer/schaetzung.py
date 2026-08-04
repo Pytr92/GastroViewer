@@ -380,6 +380,114 @@ def mietprobe(
     }
 
 
+def sensitivitaet(
+    e: Eingaben,
+    anteil_min: float,
+    anteil_max: float,
+    bon_min: float,
+    bon_max: float,
+    umsatz_min: float,
+    umsatz_max: float,
+    marktanteil_gesetzt: bool,
+) -> dict[str, Any] | None:
+    """Welche Annahme muss man vor Ort zuerst prüfen?
+
+    Bewusst ohne gewählte Störgrößen (kein „±25 %"-Prüfwert): weil die Formel
+    eine reine Multiplikationskette ist, lässt sich alles exakt herleiten.
+
+    * Die Umsatzspanne zerlegt sich **exakt** in Marktanteil-Faktor ×
+      Bon-Faktor: ``umsatz_max/umsatz_min = (anteil_max/anteil_min) ×
+      (bon_max/bon_min)``. Wer die Spanne enger haben will, weiß damit, an
+      welcher Annahme das liegt.
+    * Einwohner und Besuche je Einwohner wirken 1:1 — 20 % Fehler in der
+      Eingabe sind 20 % Fehler im Ergebnis, an beiden Rändern gleich.
+    * Ein **übersehener Wettbewerber** (OSM zählt Untergrenzen!) senkt den
+      naiven Marktanteil von 1/(n+1) auf 1/(n+2), also den Umsatz um exakt
+      100/(n+2) Prozent. Je weniger Wettbewerber gezählt sind, desto härter
+      schlägt jeder übersehene durch.
+    * Öffnungstage und -stunden verändern den Jahresumsatz gar nicht, nur die
+      Bestellungen je Tag/Stunde. Das übersieht man leicht.
+    """
+    if umsatz_min <= 0 or umsatz_max <= 0 or anteil_min <= 0 or bon_min <= 0:
+        return None
+
+    gesamt = umsatz_max / umsatz_min
+    f_anteil = anteil_max / anteil_min
+    f_bon = bon_max / bon_min
+
+    treiber = [
+        {
+            "key": "marktanteil",
+            "titel": "Marktanteil",
+            "faktor": round(f_anteil, 2),
+            "erklaerung": (
+                "vom Nutzer gesetzte Spanne"
+                if marktanteil_gesetzt
+                else (
+                    f"naive Gleichverteilung, mit dem Unsicherheitsfaktor "
+                    f"{e.unsicherheitsfaktor:g} nach beiden Seiten aufgespannt "
+                    f"(ergibt Faktor {e.unsicherheitsfaktor * e.unsicherheitsfaktor:g})"
+                )
+            ),
+        },
+        {
+            "key": "bon",
+            "titel": "Durchschnittsbon",
+            "faktor": round(f_bon, 2),
+            "erklaerung": f"Spanne {bon_min:.2f} bis {bon_max:.2f} € je Besuch",
+        },
+    ]
+    treiber.sort(key=lambda t: -t["faktor"])
+
+    n = max(0, int(e.wettbewerber))
+    if marktanteil_gesetzt:
+        wettbewerber_plus_eins = None
+    else:
+        wettbewerber_plus_eins = {
+            "wettbewerber": n,
+            "wirkung_prozent": round(-100.0 / (n + 2), 1),
+            "erklaerung": (
+                f"Der naive Marktanteil fällt von 1/{n + 1} auf 1/{n + 2}. "
+                "OSM zählt Betriebe unvollständig — diese Zahl sagt, wie teuer "
+                "jeder übersehene Wettbewerber die Rechnung macht."
+            ),
+        }
+
+    groesster = treiber[0]
+    befund = (
+        f"Die Umsatzspanne (Faktor {gesamt:.1f}) zerlegt sich exakt in "
+        f"Marktanteil (Faktor {f_anteil:.1f}) × Bon (Faktor {f_bon:.1f}). "
+        f"Die größte Unsicherheit steckt im {groesster['titel']} — diese "
+        "Annahme zuerst vor Ort prüfen."
+    )
+
+    return {
+        "spannenfaktor_gesamt": round(gesamt, 2),
+        "treiber": treiber,
+        "linear": {
+            "felder": ["Einwohner", "Besuche je Einwohner"],
+            "erklaerung": (
+                "wirken 1:1 auf beide Ränder — 20 % Eingabefehler sind 20 % "
+                "Ergebnisfehler, die Spannenbreite ändert sich dadurch nicht"
+            ),
+        },
+        "wettbewerber_plus_eins": wettbewerber_plus_eins,
+        "ohne_wirkung": {
+            "felder": ["Öffnungstage", "Öffnungsstunden"],
+            "erklaerung": (
+                "verändern den Jahresumsatz nicht, nur Bestellungen je Tag "
+                "und je Stunde"
+            ),
+        },
+        "befund": befund,
+        "hinweis": (
+            "Alles exakt aus der Formel hergeleitet, keine gewählten "
+            "Prüf-Störgrößen. Die Zerlegung gilt, weil die Rechnung eine "
+            "reine Multiplikationskette ist."
+        ),
+    }
+
+
 def rechne(e: Eingaben) -> dict[str, Any]:
     """Reine Funktion. Gleiche Eingaben, gleiches Ergebnis, nichts Verstecktes."""
     fehler = []
@@ -436,6 +544,13 @@ def rechne(e: Eingaben) -> dict[str, Any]:
         ),
         "franchise": franchise_kostenprobe(e, umsatz_min, umsatz_max),
         "mietprobe": mietprobe(e, umsatz_min, umsatz_max, *miete_obergrenze),
+        "sensitivitaet": sensitivitaet(
+            e, anteil_min, anteil_max, bon_min, bon_max, umsatz_min, umsatz_max,
+            marktanteil_gesetzt=(
+                e.marktanteil_min_prozent is not None
+                and e.marktanteil_max_prozent is not None
+            ),
+        ),
         "ok": True,
         "eingaben": {
             "einwohner": e.einwohner,
