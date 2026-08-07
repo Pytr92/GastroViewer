@@ -76,6 +76,25 @@ def test_arbeitsmarkt_und_bevoelkerung(kreisprofil_muenchen):
     assert saldo["kreis"] == 81.2
 
 
+def test_wirtschaftskraft_bip(kreisprofil_muenchen):
+    """ai017_1, nachgeladen am 07.08.2026: München 97.406 € BIP je EW —
+    fast das Doppelte des Bundeswerts. Feldbedeutungen amtlich belegt
+    (Regionalatlas-Katalog AI017-1)."""
+    payload = kreisprofil_muenchen["regionalatlas.ai017_1"]
+    erg = auswerten_tabelle(payload, _tabelle("regionalatlas.ai017_1"),
+                            "09162", "09")
+    bip = _indikator(erg, "bip_je_ew")
+    assert bip["jahr"] == 2023
+    assert bip["kreis"] == 97406
+    assert bip["land"] == 57725
+    assert bip["bund"] == 49525
+    assert len(bip["verlauf_kreis"]) >= 5
+    je_et = _indikator(erg, "bip_je_erwerbstaetigen")
+    assert je_et["kreis"] == 122227
+    delta = _indikator(erg, "bip_veraenderung")
+    assert delta["kreis"] == 4.8
+
+
 def test_fremder_kreis_liefert_nichts(kreisprofil_muenchen):
     erg = auswerten_tabelle(
         kreisprofil_muenchen["regionalatlas.ai012_5"],

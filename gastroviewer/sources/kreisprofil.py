@@ -90,6 +90,24 @@ TABELLEN: list[dict[str, Any]] = [
         ],
     },
     {
+        # Feldbedeutungen amtlich belegt (Regionalatlas-Katalog AI017-1,
+        # bundesAPI-Dokumentation) und am 2026-08-07 live geprüft:
+        # München 97.406 € BIP je EW gegen Bayern 57.725 € / Bund 49.525 €.
+        "tabelle": "regionalatlas.ai017_1",
+        "thema": "Wirtschaftskraft",
+        "indikatoren": [
+            {"schluessel": "bip_je_ew", "feld": "ai1703",
+             "titel": "Bruttoinlandsprodukt je Einwohner",
+             "einheit": "€", "stellen": 0, "verlauf": True},
+            {"schluessel": "bip_je_erwerbstaetigen", "feld": "ai1701",
+             "titel": "BIP je Erwerbstätigen",
+             "einheit": "€", "stellen": 0, "verlauf": False},
+            {"schluessel": "bip_veraenderung", "feld": "ai1702",
+             "titel": "Veränderung des BIP zum Vorjahr",
+             "einheit": "%", "stellen": 1, "verlauf": False},
+        ],
+    },
+    {
         "tabelle": "regionalatlas.ai002_1_5",
         "thema": "Bevölkerung",
         "indikatoren": [

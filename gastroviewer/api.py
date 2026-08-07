@@ -950,6 +950,18 @@ VERGLEICH_SPALTEN = [
      "gruppe": "detail"},
     {"key": "nach22_offen", "titel": "Nach 22 Uhr geöffnet (mind., OSM)",
      "gruppe": "detail"},
+
+    # --- Wirtschaftskraft (Regionalatlas, Kreiswert).
+    {"key": "bip_je_ew", "titel": "BIP je Einwohner € (Kreis)",
+     "gruppe": "detail"},
+
+    # --- München-Quellen: leer außerhalb der Stadt, deshalb Detailgruppe.
+    {"key": "baustellen_laufend", "titel": "Baustellen laufend im Radius (M)",
+     "gruppe": "detail"},
+    {"key": "maerkte_reichweite", "titel": "Städt. Märkte bis 2 km (M)",
+     "gruppe": "detail"},
+    {"key": "einpersonenhaushalte", "titel": "Einpersonenhaushalte % (Bezirk M)",
+     "stellen": 1, "gruppe": "detail"},
 ]
 
 
@@ -1018,6 +1030,23 @@ def _row_for(saved: dict[str, Any]) -> dict[str, Any]:
         ),
         "sonntag_offen": (gas.get("oeffnungszeiten") or {}).get("sonntag_offen"),
         "nach22_offen": (gas.get("oeffnungszeiten") or {}).get("nach22_offen"),
+        "bip_je_ew": kp.get("bip_je_ew"),
+        "baustellen_laufend": (
+            ((bl.get("baustellen") or {}).get("data") or {}).get("laufend")
+        ),
+        "maerkte_reichweite": (
+            len(((bl.get("maerkte") or {}).get("data")).get("in_reichweite") or [])
+            if (bl.get("maerkte") or {}).get("data") else None
+        ),
+        "einpersonenhaushalte": next(
+            (
+                (z_.get("bezirk") or {}).get("wert")
+                for z_ in (((bl.get("indikatoren") or {}).get("data") or {})
+                           .get("indikatoren") or [])
+                if z_.get("schluessel") == "einpersonenhaushalte"
+            ),
+            None,
+        ),
         "leerstandsquote": _wert(woh.get("leerstandsquote")),
         "gastro_gesamt": gas.get("gesamt"),
         "fast_food": fastfood,

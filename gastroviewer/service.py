@@ -18,10 +18,13 @@ from typing import Any, Awaitable, Callable
 from .cache import AsyncCache, cache_key
 from .config import Settings
 from .http import Outbound
-from .sources import (bayern, boris, dynamik as dynamik_mod,
+from .sources import (baustellen as baustellen_mod, bayern, boris,
+                      dynamik as dynamik_mod,
                       einkommen as einkommen_mod, gehweg,
+                      indikatoren as indikatoren_mod,
                       klima as klima_mod, kreisprofil as kreisprofil_mod,
                       laerm as laerm_mod, links,
+                      maerkte as maerkte_mod,
                       marke as marke_mod, muenchen, nominatim, overpass,
                       overture as overture_mod,
                       pendler as pendler_mod, planung, scan as scan_mod, zensus)
@@ -145,6 +148,71 @@ class PointService:
             )
         return res.data
 
+    async def _indikatoren_stadt(self):
+        """Indikatorenatlas: eine CKAN-Suche plus sechs CSVs — **einmal**
+        stadtweit gecacht und schon auf die kompakten Reihen reduziert.
+        Jeder Münchner Punkt rechnet danach nur noch lokal."""
+
+        async def laden() -> SourceResult:
+            listing = await self.outbound.get_json(
+                "muenchen_indikatoren", indikatoren_mod.CKAN_SEARCH_URL,
+                params=indikatoren_mod.CKAN_SEARCH_PARAMS, timeout=45.0,
+                limiter="muenchen", min_interval=1.0,
+            )
+            urls, fehlend = indikatoren_mod.finde_csv_urls(listing)
+            if not urls:
+                raise SourceError(
+                    "api_error",
+                    "Keine Indikatorenatlas-CSVs im Open-Data-Portal gefunden.",
+                )
+            texte: dict[str, str] = {}
+            for datei, url in urls.items():
+                texte[datei] = await self.outbound.get_text(
+                    "muenchen_indikatoren", url, timeout=60.0,
+                    limiter="muenchen", min_interval=1.0,
+                )
+            kompakt = indikatoren_mod.reduzieren(texte)
+            if not kompakt:
+                raise SourceError(
+                    "parse", "Indikatorenatlas-CSVs ließen sich nicht lesen."
+                )
+            jahre = [
+                reihe[-1][0]
+                for raeume in kompakt.values()
+                for reihe in raeume.values()
+                if reihe
+            ]
+            stand = f"Jahresreihen bis {max(jahre)}" if jahre else None
+            warn = [
+                f"Im Open-Data-Portal nicht gefunden: {t}" for t in fehlend
+            ]
+            return SourceResult(
+                name="muenchen_indikatoren", ok=True,
+                data={"kompakt": kompakt, "stand": stand,
+                      "fehlend_warnungen": warn},
+            )
+
+        res = await self._cached(
+            "muenchen_indikatoren", "muenchen_indikatoren", laden
+        )
+        if not res.ok:
+            raise SourceError(
+                (res.error or {}).get("kind", "unknown"),
+                (res.error or {}).get("message", "unbekannter Fehler"),
+            )
+        return res.data
+
+    async def indikatoren(self, adresse: dict[str, Any] | None):
+        """Viertel-Steckbrief. Braucht Gemeinde und Ortsteil aus der schon
+        geladenen Adresse — deshalb nach dem Sammeln, ohne eigene Anfrage
+        außerhalb Münchens."""
+        a = adresse or {}
+        return await indikatoren_mod.load(
+            self.outbound, self.settings,
+            a.get("gemeinde"), a.get("ortsteil"),
+            self._indikatoren_stadt,
+        )
+
     async def radzaehlung(self, lat: float, lon: float, radius: int, refresh: bool = False):
         # Die sechs Zählstellen ändern sich nicht stündlich; der Cache-Schlüssel
         # rundet ohnehin auf 4 Nachkommastellen. TTL wie OSM: 24 h.
@@ -155,6 +223,30 @@ class PointService:
             lambda: muenchen.zaehlstellen(
                 self.outbound, self.settings, lat, lon, radius,
                 jahresgang_laden=self._rad_jahresgang,
+            ),
+            refresh=refresh,
+        )
+
+    async def maerkte(self, lat: float, lon: float, radius: int, refresh: bool = False):
+        """Städtische Märkte München. Außerhalb des Stadtgebiets entscheidet
+        die Quelle selbst — dann geht keine Anfrage hinaus."""
+        key = cache_key("muenchen_maerkte", lat, lon, radius)
+        return await self._cached(
+            "muenchen_maerkte",
+            key,
+            lambda: maerkte_mod.load(self.outbound, self.settings, lat, lon, radius),
+            refresh=refresh,
+        )
+
+    async def baustellen(self, lat: float, lon: float, radius: int, refresh: bool = False):
+        """Baustellen-Vorschau der Stadt München. Außerhalb des Stadtgebiets
+        entscheidet die Quelle selbst — dann geht keine Anfrage hinaus."""
+        key = cache_key("muenchen_baustellen", lat, lon, radius)
+        return await self._cached(
+            "muenchen_baustellen",
+            key,
+            lambda: baustellen_mod.load(
+                self.outbound, self.settings, lat, lon, radius
             ),
             refresh=refresh,
         )
@@ -538,10 +630,12 @@ class PointService:
             self.planung(lat, lon, radius, refresh),
             self.klima(lat, lon),
             self.dynamik(lat, lon, radius, refresh),
+            self.baustellen(lat, lon, radius, refresh),
+            self.maerkte(lat, lon, radius, refresh),
             return_exceptions=True,
         )
         names = ["adresse", "zensus", "osm", "gtfs", "radzaehlung", "verkehrsmenge",
-                 "planung", "klima", "dynamik"]
+                 "planung", "klima", "dynamik", "baustellen", "maerkte"]
         blocks: dict[str, Any] = {}
         for name, res in zip(names, results):
             if isinstance(res, BaseException):
@@ -565,6 +659,14 @@ class PointService:
         except Exception as exc:  # noqa: BLE001
             blocks["overture"] = SourceResult.failed(
                 "overture", SourceError("unknown", f"{type(exc).__name__}: {exc}")
+            ).to_dict()
+
+        # Viertel-Steckbrief: braucht Gemeinde/Ortsteil aus der Adresse.
+        try:
+            blocks["indikatoren"] = (await self.indikatoren(adresse)).to_dict()
+        except Exception as exc:  # noqa: BLE001
+            blocks["indikatoren"] = SourceResult.failed(
+                "indikatoren", SourceError("unknown", f"{type(exc).__name__}: {exc}")
             ).to_dict()
 
         bl_code = zensus_data.get("bundesland_code")

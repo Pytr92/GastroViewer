@@ -24,7 +24,8 @@ class FakeOutbound:
 
     def __init__(self, zensus, overpass, nominatim, einkommen=None,
                  kreisprofil=None, dwd=None, pendler=None, ohsome=None,
-                 laerm=None, fehler: set[str] | None = None):
+                 laerm=None, fehler: set[str] | None = None,
+                 baustellen=None, maerkte=None, indikatoren=None):
         self.zensus = zensus
         self.overpass = overpass
         self.nominatim = nominatim
@@ -41,6 +42,17 @@ class FakeOutbound:
                                  "fast_food": {"result": []}}
         # Lärm-WMS: Antwort je Layername (query_layers).
         self.laerm = laerm or {}
+        # München-Quellen: Baustellen-WFS, Märkte-WFS, Indikatorenatlas
+        # (CKAN-Suche + CSVs; CSV-URLs aus der Fixture-Suche aufgelöst).
+        self.baustellen = baustellen
+        self.maerkte = maerkte
+        self.indikatoren = indikatoren
+        self.indikatoren_csv_urls: dict[str, str] = {}
+        if indikatoren:
+            from gastroviewer.sources import indikatoren as ind_mod
+
+            urls, _ = ind_mod.finde_csv_urls(indikatoren["suche"])
+            self.indikatoren_csv_urls = {url: datei for datei, url in urls.items()}
         self.fehler = fehler or set()
         self.calls: list[str] = []
 
@@ -92,6 +104,26 @@ class FakeOutbound:
             if layer not in self.laerm:
                 raise AssertionError(f"unerwarteter Lärm-Layer: {layer}")
             return self.laerm[layer]
+        if "gsm_wfs" in url:
+            self.calls.append("maerkte")
+            if "maerkte" in self.fehler or self.maerkte is None:
+                raise SourceError("timeout",
+                                  "Zeitüberschreitung — Dienst antwortet nicht.")
+            return self.maerkte
+        if "mor_wfs" in url and "baustellen" in str(
+            ((kw or {}).get("params") or {}).get("typeName", "")
+        ):
+            self.calls.append("baustellen")
+            if "baustellen" in self.fehler or self.baustellen is None:
+                raise SourceError("timeout",
+                                  "Zeitüberschreitung — Dienst antwortet nicht.")
+            return self.baustellen
+        if "package_search" in url:
+            self.calls.append("indikatoren")
+            if "indikatoren" in self.fehler or self.indikatoren is None:
+                raise SourceError("timeout",
+                                  "Zeitüberschreitung — Dienst antwortet nicht.")
+            return self.indikatoren["suche"]
         if "ohsome" in url:
             self.calls.append("dynamik")
             if "dynamik" in self.fehler:
@@ -135,6 +167,12 @@ class FakeOutbound:
                 # Jahres-Sondierung: nicht vorhandene Jahrgänge sind ein 404.
                 raise SourceError("http_status", f"HTTP 404 — {name} fehlt.")
             return self.pendler["dateien"][name]
+        if url in self.indikatoren_csv_urls:
+            self.calls.append("indikatoren")
+            if "indikatoren" in self.fehler:
+                raise SourceError("timeout",
+                                  "Zeitüberschreitung — Dienst antwortet nicht.")
+            return self.indikatoren["csv"][self.indikatoren_csv_urls[url]]
         raise AssertionError(f"unerwartete Text-URL: {url}")
 
     class _Lim:
@@ -148,7 +186,8 @@ class FakeOutbound:
 @pytest.fixture()
 def client(tmp_path, monkeypatch, zensus_600, overpass_combined, nominatim_reverse,
            einkommen_muenchen, kreisprofil_muenchen, dwd_klima, pendler_muenchen,
-           ohsome_dynamik, laerm_bayern):
+           ohsome_dynamik, laerm_bayern, muenchen_baustellen, muenchen_maerkte,
+           muenchen_indikatoren):
     from gastroviewer.config import Settings
 
     settings = Settings()
@@ -157,7 +196,9 @@ def client(tmp_path, monkeypatch, zensus_600, overpass_combined, nominatim_rever
 
     fake = FakeOutbound(zensus_600, overpass_combined, nominatim_reverse,
                         einkommen_muenchen, kreisprofil_muenchen, dwd_klima,
-                        pendler_muenchen, ohsome_dynamik, laerm_bayern)
+                        pendler_muenchen, ohsome_dynamik, laerm_bayern,
+                        baustellen=muenchen_baustellen, maerkte=muenchen_maerkte,
+                        indikatoren=muenchen_indikatoren)
     app = create_app(settings)
 
     original_lifespan_state = {}
@@ -212,11 +253,13 @@ def test_zweiter_aufruf_erzeugt_keinen_outbound_traffic(client):
     client.get("/api/point", params={"lat": LAT, "lon": LON, "r": R})
     vorher = len(client.fake.calls)
     # Nominatim, Zensus, Overpass — der Regionalatlas fürs Einkommen (1) und
-    # Kreisprofil (5 Tabellen) — der DWD (5 Parameter x 2 Dateien) — der
-    # Pendleratlas (2 Jahres-Sondierungen mit 404, 6 Karten, Gemeindeliste,
+    # Kreisprofil (6 Tabellen inkl. BIP) — der DWD (5 Parameter x 2 Dateien) —
+    # der Pendleratlas (2 Jahres-Sondierungen mit 404, 6 Karten, Gemeindeliste,
     # Verflechtungen) — ohsome (2 Zeitreihen: Gastro gesamt, fast_food) —
-    # und das Lärm-WMS (LDEN und LNight je 2022 mit NoData plus 2017 = 4).
-    assert vorher == 35
+    # das Lärm-WMS (LDEN und LNight je 2022 mit NoData plus 2017 = 4) —
+    # Baustellen-WFS (1) — Märkte-WFS (1) — Indikatorenatlas (CKAN-Suche
+    # plus 6 CSVs = 7, stadtweit nur einmal).
+    assert vorher == 45
 
     d = client.get("/api/point", params={"lat": LAT, "lon": LON, "r": R}).json()
     assert len(client.fake.calls) == vorher, "Cache hat nicht gegriffen"

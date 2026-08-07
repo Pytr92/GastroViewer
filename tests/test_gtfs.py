@@ -85,11 +85,32 @@ def test_abfahrten_werden_gezaehlt(importiert):
 
 
 def test_nur_fahrten_des_referenztags_zaehlen(importiert):
-    """Gegenprobe: ohne Verkehrstagsfilter wären es alle 8.136 Halte."""
+    """Gegenprobe: ohne Verkehrstagsfilter wären es alle 8.136 Halte.
+
+    Der Referenztag wandert mit dem Testdatum („nächster Dienstag"), und der
+    echte August-Feed fährt nicht jeden Dienstag gleich (04.08.: 942 —
+    11.08.: 1040 — 18.08., Ferien: 463). Für eine feste Sollzahl wird das
+    Datum deshalb auf den 04.08.2026 genagelt und danach zurückgesetzt,
+    denn die übrigen Tests teilen sich diesen Import."""
     s, _ = importiert
-    res = gtfs.load(s, LAT, LON, 600)
-    assert res.data["abfahrten_gesamt"] == 942
-    assert 942 < 8136
+    conn = sqlite3.connect(s.gtfs_db_path)
+    vorher = conn.execute(
+        "SELECT value FROM meta WHERE key='referenzdatum'"
+    ).fetchone()[0]
+    try:
+        conn.execute(
+            "UPDATE meta SET value='20260804' WHERE key='referenzdatum'"
+        )
+        conn.commit()
+        res = gtfs.load(s, LAT, LON, 600)
+        assert res.data["abfahrten_gesamt"] == 942
+        assert 942 < 8136
+    finally:
+        conn.execute(
+            "UPDATE meta SET value=? WHERE key='referenzdatum'", (vorher,)
+        )
+        conn.commit()
+        conn.close()
 
 
 def test_stationen_ohne_abfahrten_werden_getrennt_ausgewiesen(importiert):

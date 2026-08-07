@@ -154,6 +154,21 @@ def build(
             ),
         },
         {
+            # Ebenfalls reiner Absprunglink: Mapillary (Meta) zeigt freie
+            # Straßenfotos — die „Begehung vom Schreibtisch aus", bevor man
+            # hinfährt. Erreichbarkeit der App-URL geprüft am 2026-08-07.
+            "titel": "Mapillary — Straßenfotos am Punkt (virtuelle Begehung)",
+            "url": (
+                f"https://www.mapillary.com/app/"
+                f"?lat={lat:.5f}&lng={lon:.5f}&z=17"
+            ),
+            "beschreibung": (
+                "Von Freiwilligen aufgenommene Straßenfotos, ohne Konto "
+                "einsehbar. Ladenfront, Leerstand und Umfeld vorab ansehen — "
+                "Bildstand kann je nach Straße Monate bis Jahre alt sein."
+            ),
+        },
+        {
             "titel": "hystreet — Passantenfrequenz",
             "url": "https://hystreet.com/",
             "beschreibung": "322 Messpunkte in 112 Städten (Stand Jahresbilanz 2024). "

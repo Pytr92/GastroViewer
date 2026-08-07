@@ -104,6 +104,21 @@ def laerm_bayern():
 
 
 @pytest.fixture(scope="session")
+def muenchen_baustellen():
+    return load_fixture("raw_muenchen_baustellen.json")
+
+
+@pytest.fixture(scope="session")
+def muenchen_indikatoren():
+    return load_fixture("raw_muenchen_indikatoren.json")
+
+
+@pytest.fixture(scope="session")
+def muenchen_maerkte():
+    return load_fixture("raw_muenchen_maerkte.json")
+
+
+@pytest.fixture(scope="session")
 def overture_mira():
     return load_fixture("raw_overture_mira.geojson")
 

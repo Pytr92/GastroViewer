@@ -213,6 +213,17 @@ class Settings:
         # Lärmkartierung: EU-Rhythmus alle fünf Jahre.
         if source.startswith("laerm"):
             return self.ttl_zensus
+        # Stadtbezirks-Indikatoren: jährliche Fortschreibung, stadtweit ein
+        # Abruf — wie die Rad-Jahresdatei.
+        if source.startswith("muenchen_indikatoren"):
+            return self.ttl_zensus
+        # Städtische Marktliste: ändert sich selten.
+        if source.startswith("muenchen_maerkte"):
+            return self.ttl_zensus
+        # Baustellen-Vorschau: rollierende vier Wochen — bewusst die kurze
+        # TTL, damit „Neu laden" nicht der einzige Weg zu frischen Daten ist.
+        if source.startswith("muenchen_baustellen"):
+            return self.ttl_osm
         return self.ttl_osm
 
     def ensure_dirs(self) -> None:
