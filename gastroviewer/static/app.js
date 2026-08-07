@@ -1149,7 +1149,7 @@ function baueGeruest() {
     block('radzaehlung', '6c · Gemessene Radverkehrsfrequenz'),
     block('verkehrsmenge', '6d · Verkehrsmenge (DTV, Bayern)'),
     block('planung', '6e · Planungsrecht und Hochwasser'),
-    block('laerm', '6f · Straßenlärm (Umgebungslärmkartierung, Bayern)'),
+    block('laerm', '6f · Straßenlärm (EU-Umgebungslärmkartierung)'),
     block('baustellen', '6g · Baustellen (Stadt München)'),
     block('leerstand', '7 · Leerstände'),
     block('quellen', '8 · Weiterführende Quellen'),
@@ -2215,7 +2215,7 @@ function zeigeLaerm(d) {
   }
   const l = d.data;
   if (!l) {
-    setStatus(id, 'leer', 'außerhalb Bayerns');
+    setStatus(id, 'leer', 'keine Kartierung');
     setInhalt(id, ...warnungen(d.warnings || []));
     setQuelle(id, d.provenance);
     return;
@@ -2224,26 +2224,43 @@ function zeigeLaerm(d) {
     setStatus(id, 'ok', 'nicht kartiert');
     setInhalt(id,
       el('div', { class: 'notiz' },
-        'Am Punkt liegt keine kartierte Hauptverkehrsstraßen-Belastung — für '
+        'Am Punkt liegt keine kartierte Hauptlärmquelle — für '
         + 'Außengastronomie meist die gute Nachricht.'),
       ...(l.hinweise || []).map((h) => el('div', { class: 'hinweis-klein' }, h)),
       ...warnungen(d.warnings || []));
     setQuelle(id, d.provenance);
     return;
   }
-  setStatus(id, 'ok', 'geladen');
+  setStatus(id, 'ok', l.dienst === 'uba' ? 'bundesweit (Klassen)' : 'geladen');
+  // LfU (Bayern) liefert Rasterwerte mit Nachkommastelle, der
+  // UBA-Bundesdienst 5-dB-Klassen — beide Formen ehrlich beschriftet.
   const zelle = (p, titel) => el('div', { class: 'kennzahl' },
     el('div', { class: 'titel' }, titel),
     el('div', { class: 'wert' },
-      p.wert_db === null ? 'nicht kartiert' : `${NF1.format(p.wert_db)} dB(A)`),
+      p.wert_db !== null && p.wert_db !== undefined
+        ? `${NF1.format(p.wert_db)} dB(A)`
+        : (p.klasse || 'nicht kartiert')),
     el('div', { class: 'basis' },
-      p.wert_db === null
-        ? 'keine kartierte Hauptverkehrsstraße am Punkt'
-        : `Band ${p.klasse} · Kartierung ${p.kartierung}`));
+      p.wert_db !== null && p.wert_db !== undefined
+        ? `Band ${p.klasse} · Kartierung ${p.kartierung}`
+        : (p.klasse
+          ? `Pegelklasse · Kartierung ${p.kartierung}`
+            + (p.abdeckung ? ` · ${p.abdeckung}` : '')
+          : 'keine kartierte Hauptlärmquelle am Punkt')));
+  const extra = [];
+  const wq = l.weitere_quellen || {};
+  if (wq.schiene || wq.flug) {
+    const teile = [];
+    if (wq.schiene) teile.push(`Schienenlärm ${wq.schiene}`);
+    if (wq.flug) teile.push(`Fluglärm ${wq.flug}`);
+    extra.push(el('div', { class: 'notiz' },
+      `Zusätzlich kartiert am Punkt: ${teile.join(' · ')} (LDEN).`));
+  }
   setInhalt(id,
     el('div', { class: 'kennzahlen' },
       zelle(l.lden, 'LDEN (Tag-Abend-Nacht-Pegel)'),
       zelle(l.lnight, 'LNight (Nachtpegel 22–6 Uhr)')),
+    ...extra,
     ...(l.hinweise || []).map((h) => el('div', { class: 'hinweis-klein' }, h)),
     ...warnungen(d.warnings || []));
   setQuelle(id, d.provenance);
@@ -4914,12 +4931,13 @@ function zeigePlanung(d) {
   }
   const p = d.data;
   if (!p) {
-    setStatus(id, 'leer', 'außerhalb Bayerns');
+    setStatus(id, 'leer', 'keine Daten');
     setInhalt(id, ...warnungen(d.warnings || []));
     setQuelle(id, d.provenance);
     return;
   }
-  setStatus(id, 'ok', 'geladen');
+  setStatus(id, 'ok',
+    (p.hochwasser || {}).dienst === 'bfg' ? 'bundesweit' : 'geladen');
 
   const hw = p.hochwasser || {};
   const bp = p.bebauungsplan;

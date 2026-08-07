@@ -301,11 +301,66 @@ ZUSATZEBENEN: dict[str, list[dict[str, Any]]] = {
 }
 
 
+# Bundesweite Ebenen — in jedem Land verfügbar. GetMap am 2026-08-07 mit
+# Inhalt belegt (UBA Berlin 173 kB, BfG Passau 15 kB; leere Fläche liefert
+# ein transparentes PNG unter 1 kB).
+BUNDESEBENEN: list[dict[str, Any]] = [
+    {
+        "schluessel": "de_laerm",
+        "titel": "Straßenlärm L_den bundesweit (Kartierung 2022)",
+        "url": "https://datahub.uba.de/server/services/VeLa/LK/MapServer/WMSServer",
+        "version": "1.3.0",
+        # Ballungsräume (27) + Hauptverkehrsstraßen außerhalb (30).
+        "layers": "27,30",
+        "format": "image/png",
+        "transparent": True,
+        "als_grundkarte": False,
+        "max_scale": None,
+        "lizenz": "keine Zugriffsbeschränkungen (UBA)",
+        "attribution": (
+            "Lärmkartierung © Umweltbundesamt / Länder "
+            "(EU-Umgebungslärmrichtlinie, Runde 2022)"
+        ),
+        "beschreibung": (
+            "Tag-Abend-Nacht-Pegel der EU-Umgebungslärmkartierung, "
+            "bundesweit: Ballungsräume und Hauptverkehrsstraßen. In Bayern "
+            "gibt es zusätzlich die feinere LfU-Ebene."
+        ),
+    },
+    {
+        "schluessel": "de_hochwasser",
+        "titel": "Hochwassergefahren bundesweit (HQhäufig/HQ100/HQextrem)",
+        "url": (
+            "https://geoportal.bafg.de/arcgis1/services/INSPIRE/NZ/"
+            "MapServer/WMSServer"
+        ),
+        "version": "1.3.0",
+        "layers": "NZ.HazardArea",
+        "format": "image/png",
+        "transparent": True,
+        "als_grundkarte": False,
+        "max_scale": None,
+        "lizenz": "keine Zugriffsbeschränkungen (BfG)",
+        "attribution": (
+            "Hochwassergefahrenkarten © BfG/LAWA — INSPIRE Natural Risk "
+            "Zones DE (HWRM-Richtlinie)"
+        ),
+        "beschreibung": (
+            "Hochwassergefahrenflächen der Länder nach HWRM-Richtlinie in "
+            "einem Bundesdienst: hohe (HQhäufig), mittlere (HQ100) und "
+            "niedrige Wahrscheinlichkeit (HQextrem). Der Klick im Block "
+            "„Planungsrecht“ fragt dieselben Flächen punktgenau ab."
+        ),
+    },
+]
+
+
 def zusatzebenen(code: str | None) -> list[dict[str, Any]]:
-    """Zusätzliche Kartenebenen für ein Bundesland, mit abgeleiteter Mindestzoomstufe."""
+    """Zusätzliche Kartenebenen: Länderebenen plus die Bundesebenen, mit
+    abgeleiteter Mindestzoomstufe."""
     return [
         {**e, "min_zoom": min_zoom_fuer(e["max_scale"]), "verifiziert_am": VERIFIZIERT_AM}
-        for e in ZUSATZEBENEN.get(code or "", [])
+        for e in ZUSATZEBENEN.get(code or "", []) + BUNDESEBENEN
     ]
 
 

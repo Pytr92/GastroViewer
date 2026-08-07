@@ -26,7 +26,8 @@ class FakeOutbound:
                  kreisprofil=None, dwd=None, pendler=None, ohsome=None,
                  laerm=None, fehler: set[str] | None = None,
                  baustellen=None, maerkte=None, indikatoren=None,
-                 airbnb=None, messe=None, tourismus=None):
+                 airbnb=None, messe=None, tourismus=None,
+                 uba=None, bfg_hochwasser=None):
         self.zensus = zensus
         self.overpass = overpass
         self.nominatim = nominatim
@@ -43,6 +44,10 @@ class FakeOutbound:
                                  "fast_food": {"result": []}}
         # Lärm-WMS: Antwort je Layername (query_layers).
         self.laerm = laerm or {}
+        # UBA-Bundesdienst (Lärm): Antwort je Layernummer.
+        self.uba = uba or {}
+        # BfG-Hochwasser (bundesweit): XML-Text der Klickabfrage.
+        self.bfg_hochwasser = bfg_hochwasser
         # München-Quellen: Baustellen-WFS, Märkte-WFS, Indikatorenatlas
         # (CKAN-Suche + CSVs; CSV-URLs aus der Fixture-Suche aufgelöst).
         self.baustellen = baustellen
@@ -65,6 +70,15 @@ class FakeOutbound:
     def _dispatch(self, url: str, kw=None):
         # Vor "arcgis" prüfen: auch der Regionalatlas läuft auf einem
         # ArcGIS-Server und würde sonst die Zensus-Fixture bekommen.
+        if "datahub.uba.de" in url:
+            self.calls.append("uba_laerm")
+            if "uba_laerm" in self.fehler:
+                raise SourceError("timeout",
+                                  "Zeitüberschreitung — Dienst antwortet nicht.")
+            layer = ((kw or {}).get("params") or {}).get("query_layers", "")
+            if layer not in self.uba:
+                raise AssertionError(f"unerwarteter UBA-Layer: {layer}")
+            return self.uba[layer]
         if "regionalatlas" in url:
             layer = ((kw or {}).get("data") or {}).get("layer", "")
             tabelle = next((t for t in self.kreisprofil if t in layer), None)
@@ -203,6 +217,12 @@ class FakeOutbound:
                 raise SourceError("timeout",
                                   "Zeitüberschreitung — Dienst antwortet nicht.")
             return self.airbnb["csv"]
+        if "bafg.de" in url:
+            self.calls.append("bfg_hochwasser")
+            if "bfg_hochwasser" in self.fehler or self.bfg_hochwasser is None:
+                raise SourceError("timeout",
+                                  "Zeitüberschreitung — Dienst antwortet nicht.")
+            return self.bfg_hochwasser
         raise AssertionError(f"unerwartete Text-URL: {url}")
 
     async def post_text(self, source, url, **kw):
@@ -223,7 +243,7 @@ def client(tmp_path, monkeypatch, zensus_600, overpass_combined, nominatim_rever
            einkommen_muenchen, kreisprofil_muenchen, dwd_klima, pendler_muenchen,
            ohsome_dynamik, laerm_bayern, muenchen_baustellen, muenchen_maerkte,
            muenchen_indikatoren, airbnb_muenchen, messe_muenchen,
-           tourismus_muenchen):
+           tourismus_muenchen, uba_laerm, bfg_hochwasser):
     from gastroviewer.config import Settings
 
     # Der Genesis-Block ist ein Opt-in — die Testumgebung darf keine echte
@@ -241,7 +261,11 @@ def client(tmp_path, monkeypatch, zensus_600, overpass_combined, nominatim_rever
                         pendler_muenchen, ohsome_dynamik, laerm_bayern,
                         baustellen=muenchen_baustellen, maerkte=muenchen_maerkte,
                         indikatoren=muenchen_indikatoren, airbnb=airbnb_muenchen,
-                        messe=messe_muenchen, tourismus=tourismus_muenchen)
+                        messe=messe_muenchen, tourismus=tourismus_muenchen,
+                        uba={"35": uba_laerm["leer"],
+                             "30": uba_laerm["hlq_den"],
+                             "29": uba_laerm["hlq_night"]},
+                        bfg_hochwasser=bfg_hochwasser["koeln_rheinufer"])
     app = create_app(settings)
 
     original_lifespan_state = {}
@@ -344,7 +368,11 @@ def test_point_laerm_block_mit_fallback_auf_2017(client):
 
     e = client.get("/api/point/laerm",
                    params={"lat": LAT, "lon": LON, "bundesland_code": "05"}).json()
-    assert e["ok"] and e["data"] is None, "außerhalb Bayerns bleibt der Block leer"
+    assert e["ok"], "außerhalb Bayerns übernimmt der UBA-Bundesdienst"
+    assert e["data"]["dienst"] == "uba"
+    assert e["data"]["lden"]["wert_db"] is None
+    assert e["data"]["lden"]["klasse"] == "über 75 dB(A)"
+    assert "Umweltbundesamt" in e["provenance"]["source"]
 
 
 def test_refresh_umgeht_den_cache(client):
@@ -746,11 +774,14 @@ def test_bodenrichtwerte_ohne_bundesland_haben_dieselbe_form(client):
 
 def test_wms_ebenen_endpunkt(client):
     d = client.get("/api/wms/ebenen", params={"bundesland_code": "09"}).json()
-    assert len(d["ebenen"]) == 4
+    assert len(d["ebenen"]) == 6
     assert {e["schluessel"] for e in d["ebenen"]} == {
-        "by_dop40", "by_verkehrsmengen", "by_laerm", "by_alkis"}
+        "by_dop40", "by_verkehrsmengen", "by_laerm", "by_alkis",
+        "de_laerm", "de_hochwasser"}
+    # Länder ohne eigene Dienste bekommen die beiden Bundesebenen.
     d2 = client.get("/api/wms/ebenen", params={"bundesland_code": "05"}).json()
-    assert d2["ebenen"] == []
+    assert {e["schluessel"] for e in d2["ebenen"]} == {
+        "de_laerm", "de_hochwasser"}
 
 
 def test_radzaehlung_ist_teil_des_punktes_und_des_exports(client, monkeypatch):

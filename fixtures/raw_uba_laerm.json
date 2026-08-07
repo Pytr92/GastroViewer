@@ -1,0 +1,150 @@
+{
+ "kommentar": "Echte GetFeatureInfo-Antworten des UBA-WMS VeLa/LK (datahub.uba.de, Lärmkartierung nach EU-Umgebungslärmrichtlinie, Runde 2022, Datenstand 12/2023), aufgezeichnet 2026-08-07. ballungsraum: Layer 35 (LK_BLR_Abfrage) am Sendlinger Tor München — road Lden6569/Lnight5559, ein Polygon zusätzlich mit Schiene. hlq_den/hlq_night: Layer 30/29 am Berliner Hermannplatz — LdenGreaterThan75+Lden7074 bzw. Lnight6569. leer: Layer 27 am Kölner Ring (Punkttreffer neben dem Lärmband).",
+ "ballungsraum": {
+  "type": "FeatureCollection",
+  "features": [
+   {
+    "type": "Feature",
+    "geometry": null,
+    "properties": {
+     "OBJECTID": "119122",
+     "Shape": "Polygon",
+     "road_den": "Lden6569",
+     "road_night": "Lnight5559",
+     "rail_den": "",
+     "rail_night": "",
+     "air_den": "",
+     "air_night": "",
+     "CLC18": "111",
+     "GEN": "München",
+     "BEZ": "Stadt",
+     "Shape_Length": "36851.617426",
+     "Shape_Area": "44225.112679"
+    },
+    "layerName": "LK_BLR_Abfrage"
+   },
+   {
+    "type": "Feature",
+    "geometry": null,
+    "properties": {
+     "OBJECTID": "119571",
+     "Shape": "Polygon",
+     "road_den": "Lden6064",
+     "road_night": "Lnight5054",
+     "rail_den": "",
+     "rail_night": "",
+     "air_den": "",
+     "air_night": "",
+     "CLC18": "111",
+     "GEN": "München",
+     "BEZ": "Stadt",
+     "Shape_Length": "79894.821169",
+     "Shape_Area": "76237.912575"
+    },
+    "layerName": "LK_BLR_Abfrage"
+   },
+   {
+    "type": "Feature",
+    "geometry": null,
+    "properties": {
+     "OBJECTID": "119871",
+     "Shape": "Polygon",
+     "road_den": "Lden6064",
+     "road_night": "Lnight5559",
+     "rail_den": "",
+     "rail_night": "",
+     "air_den": "",
+     "air_night": "",
+     "CLC18": "111",
+     "GEN": "München",
+     "BEZ": "Stadt",
+     "Shape_Length": "34384.789372",
+     "Shape_Area": "5350.524728"
+    },
+    "layerName": "LK_BLR_Abfrage"
+   },
+   {
+    "type": "Feature",
+    "geometry": null,
+    "properties": {
+     "OBJECTID": "137762",
+     "Shape": "Polygon",
+     "road_den": "Lden6569",
+     "road_night": "Lnight5559",
+     "rail_den": "Lden6064",
+     "rail_night": "Lnight6569",
+     "air_den": "",
+     "air_night": "",
+     "CLC18": "111",
+     "GEN": "München",
+     "BEZ": "Stadt",
+     "Shape_Length": "11551.464898",
+     "Shape_Area": "63468.192783"
+    },
+    "layerName": "LK_BLR_Abfrage"
+   }
+  ]
+ },
+ "hlq_den": {
+  "type": "FeatureCollection",
+  "features": [
+   {
+    "type": "Feature",
+    "geometry": null,
+    "properties": {
+     "OBJECTID": "11",
+     "Shape": "Polygon",
+     "id": "130100001",
+     "Lärmpegelklasse": "LdenGreaterThan75",
+     "source": "majorRoadsIncludingAgglomeration",
+     "measureTim": " ",
+     "measureT_1": " ",
+     "Shape_Length": "1910203.573977",
+     "Shape_Area": "28883033.156311"
+    },
+    "layerName": "LK_HLQ_road_Den"
+   },
+   {
+    "type": "Feature",
+    "geometry": null,
+    "properties": {
+     "OBJECTID": "15",
+     "Shape": "Polygon",
+     "id": "130100005",
+     "Lärmpegelklasse": "Lden7074",
+     "source": "majorRoadsIncludingAgglomeration",
+     "measureTim": " ",
+     "measureT_1": " ",
+     "Shape_Length": "5806627.581328",
+     "Shape_Area": "73039049.5201"
+    },
+    "layerName": "LK_HLQ_road_Den"
+   }
+  ]
+ },
+ "hlq_night": {
+  "type": "FeatureCollection",
+  "features": [
+   {
+    "type": "Feature",
+    "geometry": null,
+    "properties": {
+     "OBJECTID": "13",
+     "Shape": "Polygon",
+     "id": "130100003",
+     "Lärmpegelklasse": "Lnight6569",
+     "source": "majorRoadsIncludingAgglomeration",
+     "measureTim": " ",
+     "measureT_1": " ",
+     "Shape_Length": "3511162.655269",
+     "Shape_Area": "42474617.057038"
+    },
+    "layerName": "LK_HLQ_road_Night"
+   }
+  ]
+ },
+ "leer": {
+  "type": "FeatureCollection",
+  "features": []
+ }
+}

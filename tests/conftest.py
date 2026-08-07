@@ -134,6 +134,16 @@ def genesis_gemeinde_ffcsv():
 
 
 @pytest.fixture(scope="session")
+def uba_laerm():
+    return load_fixture("raw_uba_laerm.json")
+
+
+@pytest.fixture(scope="session")
+def bfg_hochwasser():
+    return load_fixture("raw_bfg_hochwasser.json")
+
+
+@pytest.fixture(scope="session")
 def overture_mira():
     return load_fixture("raw_overture_mira.geojson")
 

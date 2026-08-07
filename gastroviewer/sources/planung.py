@@ -40,6 +40,7 @@ Verwendet wird deshalb ``CRS:84`` (WGS84 mit lon,lat-Reihenfolge).
 from __future__ import annotations
 
 import time
+import xml.etree.ElementTree as ET
 from typing import Any
 
 from ..config import Settings
@@ -68,6 +69,24 @@ BPLAN_LIZENZ = (
 # --- Erhaltungssatzungen (Milieuschutz), Landeshauptstadt München ---
 ERHALT_URL = "https://geoportal.muenchen.de/geoserver/plan/wms"
 ERHALT_LAYER = "satz_erhalt_poly"
+
+# --- Hochwassergefahren bundesweit: BfG INSPIRE „Natural Risk Zones" ---
+# Phase-0 am 2026-08-07: GetFeatureInfo auf ``NZ.HazardArea`` liefert am
+# Passauer Rathausplatz drei Treffer (LikelihoodOfOccurrence high, medium,
+# low/extrem — also HQhäufig, HQ100, HQextrem in einem Aufruf), am Kölner
+# Rheinufer nur low/extrem (hinter der Schutzlinie plausibel) und am
+# trockenen Kölner Ring eine leere Antwort. Antwortformat: ESRI-XML
+# (``FeatureInfoResponse`` mit ``FIELDS``-Attributen). AccessConstraints:
+# „Es gelten keine Zugriffsbeschränkungen".
+BUND_HOCHWASSER_URL = (
+    "https://geoportal.bafg.de/arcgis1/services/INSPIRE/NZ/MapServer/WMSServer"
+)
+BUND_HOCHWASSER_LAYER = "NZ.HazardArea"
+BUND_HOCHWASSER_LIZENZ = (
+    "Bundesanstalt für Gewässerkunde (BfG) / LAWA — INSPIRE View Service "
+    "Natural Risk Zones DE; Hochwassergefahrenkarten der Länder nach "
+    "HWRM-Richtlinie. „Es gelten keine Zugriffsbeschränkungen“"
+)
 
 # Bayern grob — außerhalb spart der Check den Netzaufruf.
 BAYERN_BBOX = (47.20, 8.90, 50.60, 13.90)
@@ -156,6 +175,57 @@ def hochwasser_aufbereiten(payload: Any) -> dict[str, Any]:
     }
 
 
+# Zuordnung der INSPIRE-Wahrscheinlichkeitsstufen zu den HQ-Szenarien der
+# Hochwassergefahrenkarten (HWRM-RL): high = häufig, medium = HQ100,
+# low/extrem = Extremereignis.
+_BUND_STUFEN = {
+    "high": ("hq_haeufig", "HQhäufig (hohe Wahrscheinlichkeit)"),
+    "medium": ("hq_100", "HQ100 (mittlere Wahrscheinlichkeit)"),
+    "low/extrem": ("hq_extrem", "HQextrem (niedrig/Extremereignis)"),
+}
+
+
+def bund_hochwasser_aufbereiten(xml_text: str) -> dict[str, Any]:
+    """ESRI-``FeatureInfoResponse`` des BfG-Dienstes → gleiche Form wie die
+    LfU-Auswertung, damit Anzeige und Bericht nichts unterscheiden müssen."""
+    ergebnis: dict[str, Any] = {
+        "betroffen": False, "gebiete": [],
+        "hq_haeufig": False, "hq_100": False, "hq_extrem": False,
+    }
+    try:
+        wurzel = ET.fromstring(xml_text)
+    except ET.ParseError as exc:
+        raise SourceError(
+            "parse",
+            f"BfG-Hochwasserantwort ist kein XML: {xml_text[:120]!r}",
+        ) from exc
+    gesehen: set[str] = set()
+    for feld in wurzel.iter():
+        if not feld.tag.endswith("FIELDS"):
+            continue
+        stufe = (feld.get("LikelihoodOfOccurrence") or "").strip().lower()
+        art = feld.get("SpecificHazardType")
+        if stufe in gesehen or stufe not in _BUND_STUFEN:
+            continue
+        gesehen.add(stufe)
+        flag, text = _BUND_STUFEN[stufe]
+        ergebnis[flag] = True
+        ergebnis["gebiete"].append({
+            "gewaesser": None,
+            "jaehrlichkeit": text,
+            "ermittelt": None,
+            "amt": None,
+            "rohwerte": {"LikelihoodOfOccurrence": stufe,
+                         "SpecificHazardType": art},
+        })
+    ergebnis["betroffen"] = bool(ergebnis["gebiete"])
+    # Ernstestes Szenario zuerst.
+    reihenfolge = {"HQhäufig": 0, "HQ100": 1, "HQextrem": 2}
+    ergebnis["gebiete"].sort(
+        key=lambda g: reihenfolge.get(g["jaehrlichkeit"].split(" ")[0], 9))
+    return ergebnis
+
+
 def erhalt_aufbereiten(payload: Any) -> dict[str, Any]:
     """Erhaltungssatzungs-Treffer: Gebietsname, gültig ab, Satzungs-PDFs."""
     gebiete = [
@@ -217,28 +287,84 @@ PORTALE = [
 ]
 
 
+def _bund_gfi_params(lat: float, lon: float) -> dict[str, str]:
+    """GetFeatureInfo für den BfG-INSPIRE-Dienst. Er antwortet mit
+    ESRI-XML (``text/xml``) — live verifiziert; ``CRS:84`` wie überall."""
+    d = BOX
+    return {
+        "service": "WMS",
+        "version": "1.3.0",
+        "request": "GetFeatureInfo",
+        "layers": BUND_HOCHWASSER_LAYER,
+        "query_layers": BUND_HOCHWASSER_LAYER,
+        "styles": "",
+        "crs": "CRS:84",
+        "bbox": f"{lon - d},{lat - d},{lon + d},{lat + d}",
+        "width": "101",
+        "height": "101",
+        "i": "50",
+        "j": "50",
+        "info_format": "text/xml",
+        "feature_count": "10",
+    }
+
+
 async def load(
     out: Outbound, settings: Settings, lat: float, lon: float, radius: int
 ) -> SourceResult:
     started = time.perf_counter()
     if not in_bayern(lat, lon):
+        # Bundesweite Hochwassergefahrenkarten (BfG/LAWA); Bebauungsplan
+        # und Milieuschutz bleiben Stadtdienste und fehlen hier ehrlich.
+        warnungen = [
+            "Bebauungspläne und Erhaltungssatzungen sind kommunale Dienste "
+            "und hier nur für München eingebunden — außerhalb sagt der "
+            "Block dazu nichts. Die Hochwassergefahren kommen bundesweit "
+            "von BfG/LAWA."
+        ]
+        data: dict[str, Any] = {
+            "portale": [PORTALE[-1]], "hinweise": HINWEISE,
+        }
+        try:
+            text = await out.get_text(
+                "bfg_hochwasser",
+                BUND_HOCHWASSER_URL,
+                params=_bund_gfi_params(lat, lon),
+                timeout=60.0,
+                limiter="bfg",
+                min_interval=1.0,
+            )
+            data["hochwasser"] = bund_hochwasser_aufbereiten(text)
+            data["hochwasser"]["dienst"] = "bfg"
+        except SourceError as err:
+            return SourceResult.failed(
+                "planung", err, int((time.perf_counter() - started) * 1000)
+            )
         return _SR(
             name="planung",
             ok=True,
-            data=None,
-            warnings=[
-                "Die Hochwasser- und Planungsdienste dieses Blocks decken Bayern "
-                "bzw. München ab. Für andere Länder führen die Behörden eigene "
-                "Dienste; im Werkzeug ist keiner davon eingebunden."
-            ],
+            data=data,
+            duration_ms=int((time.perf_counter() - started) * 1000),
+            warnings=warnungen,
             provenance=Provenance(
-                source="Planung & Hochwasser (außerhalb Bayerns)",
-                license=HOCHWASSER_LIZENZ,
+                source=(
+                    "Hochwassergefahrenkarten der Länder (HWRM-Richtlinie) "
+                    "über den BfG-INSPIRE-Dienst „Natural Risk Zones DE“"
+                ),
+                license=BUND_HOCHWASSER_LIZENZ,
+                endpoint=BUND_HOCHWASSER_URL,
+                retrieved_at=now_iso(),
+                note=(
+                    "Punktabfrage über GetFeatureInfo. Stufen: high = "
+                    "HQhäufig, medium = HQ100, low/extrem = HQextrem. "
+                    "Gewässername und Ermittlungsdatum führt der "
+                    "Bundesdienst nicht — dafür die Landesportale."
+                ),
             ),
         )
 
-    warnungen: list[str] = []
-    data: dict[str, Any] = {"portale": PORTALE, "hinweise": HINWEISE}
+    warnungen = []
+    data = {"portale": PORTALE, "hinweise": HINWEISE}
 
     try:
         payload = await out.get_json(
@@ -250,6 +376,7 @@ async def load(
             min_interval=1.0,
         )
         data["hochwasser"] = hochwasser_aufbereiten(payload)
+        data["hochwasser"]["dienst"] = "lfu"
     except SourceError as err:
         return SourceResult.failed(
             "planung", err, int((time.perf_counter() - started) * 1000)

@@ -804,11 +804,15 @@ class PointService:
                     name=name, ok=True, data=None,
                     warnings=["Ohne Gemeindeschlüssel lässt sich kein Kreiswert zuordnen."],
                 ).to_dict()
-            blocks["laerm"] = SourceResult(
-                name="laerm", ok=True, data=None,
-                warnings=["Ohne Bundesland (aus dem Zensusblock) lässt sich "
-                          "kein Lärmdienst zuordnen."],
-            ).to_dict()
+            # Der Lärmdienst braucht keinen Gemeindeschlüssel — der
+            # UBA-Bundesdienst deckt ganz Deutschland ab.
+            try:
+                blocks["laerm"] = (await self.laerm(lat, lon, bl_code)).to_dict()
+            except Exception as exc:  # noqa: BLE001
+                blocks["laerm"] = SourceResult.failed(
+                    "laerm",
+                    SourceError("unknown", f"{type(exc).__name__}: {exc}"),
+                ).to_dict()
         gemeinde = adresse.get("gemeinde")
         plz = adresse.get("plz")
 

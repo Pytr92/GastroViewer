@@ -144,14 +144,21 @@ def test_erhaltungssatzung_ohne_treffer():
 # ------------------------------------------------------------- Ablauf
 
 
-async def test_ausserhalb_bayerns_kein_netzaufruf(settings):
+async def test_ausserhalb_bayerns_kein_lfu_oder_muenchen_aufruf(settings, bfg_hochwasser):
+    """Seit W4 läuft außerhalb Bayerns der BfG-Bundesdienst (get_text);
+    LfU- und München-Abfragen (get_json) bleiben tabu."""
     class FakeOut:
-        async def get_json(self, *a, **kw):
-            raise AssertionError("außerhalb Bayerns darf nichts abgerufen werden")
+        async def get_text(self, *a, **kw):
+            return bfg_hochwasser["koeln_ring"]
+
+        async def get_json(self, *a, **kw):  # pragma: no cover
+            raise AssertionError("außerhalb Bayerns kein LfU-/München-Abruf")
 
     res = await planung.load(FakeOut(), settings, 50.9413, 6.9583, 600)
-    assert res.ok and res.data is None
-    assert "Bayern" in res.warnings[0]
+    assert res.ok
+    assert res.data["hochwasser"]["betroffen"] is False
+    assert res.data["hochwasser"]["dienst"] == "bfg"
+    assert any("München" in w for w in res.warnings)
 
 
 async def test_ausserhalb_muenchens_nur_hochwasser(settings):
@@ -225,3 +232,61 @@ async def test_ausfall_des_hochwasserdienstes_wird_benannt(settings):
     res = await planung.load(FakeOut(), settings, 48.1450, 11.4200, 600)
     assert res.ok is False
     assert res.error["kind"] == "http_status"
+
+
+# ------------------------------- Hochwasser bundesweit (BfG/LAWA, W4)
+
+
+def test_bund_hochwasser_passau_alle_drei_szenarien(bfg_hochwasser):
+    """Passauer Rathausplatz: high + medium + low/extrem in einer Antwort;
+    das ernsteste Szenario steht vorn."""
+    hw = planung.bund_hochwasser_aufbereiten(bfg_hochwasser["passau_rathaus"])
+    assert hw["betroffen"] is True
+    assert hw["hq_haeufig"] and hw["hq_100"] and hw["hq_extrem"]
+    assert [g["jaehrlichkeit"].split(" ")[0] for g in hw["gebiete"]] == [
+        "HQhäufig", "HQ100", "HQextrem"]
+    assert hw["gebiete"][0]["rohwerte"]["SpecificHazardType"] == "fluvial"
+
+
+def test_bund_hochwasser_koeln_nur_extrem(bfg_hochwasser):
+    """Kölner Rheinufer hinter der Schutzlinie: nur das Extremszenario."""
+    hw = planung.bund_hochwasser_aufbereiten(bfg_hochwasser["koeln_rheinufer"])
+    assert hw["betroffen"] is True
+    assert hw["hq_extrem"] and not hw["hq_haeufig"] and not hw["hq_100"]
+
+
+def test_bund_hochwasser_leer_heisst_nicht_betroffen(bfg_hochwasser):
+    hw = planung.bund_hochwasser_aufbereiten(bfg_hochwasser["koeln_ring"])
+    assert hw == {"betroffen": False, "gebiete": [], "hq_haeufig": False,
+                  "hq_100": False, "hq_extrem": False}
+
+
+def test_bund_hochwasser_kaputtes_xml_wird_benannt():
+    with pytest.raises(Exception) as err:
+        planung.bund_hochwasser_aufbereiten("<html>Wartungsseite</html")
+    assert "kein XML" in str(err.value)
+
+
+async def test_ausserhalb_bayerns_fragt_den_bundesdienst(settings, bfg_hochwasser):
+    class FakeOut:
+        def __init__(self):
+            self.urls = []
+
+        async def get_text(self, source, url, params=None, **kw):
+            self.urls.append(url)
+            assert params["query_layers"] == planung.BUND_HOCHWASSER_LAYER
+            assert params["info_format"] == "text/xml"
+            assert params["crs"] == "CRS:84"
+            return bfg_hochwasser["koeln_rheinufer"]
+
+        async def get_json(self, *a, **k):  # pragma: no cover
+            raise AssertionError("Außerhalb Bayerns darf kein LfU-Abruf laufen.")
+
+    out = FakeOut()
+    res = await planung.load(out, settings, 50.9370, 6.9600, 600)
+    assert res.ok
+    assert res.data["hochwasser"]["dienst"] == "bfg"
+    assert res.data["hochwasser"]["hq_extrem"] is True
+    assert res.data["bebauungsplan"] is None if "bebauungsplan" in res.data else True
+    assert out.urls == [planung.BUND_HOCHWASSER_URL]
+    assert "Natural Risk Zones" in res.provenance.source
