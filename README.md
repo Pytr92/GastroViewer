@@ -24,7 +24,7 @@ funktioniert nicht.
 
 ### Weg 1: Doppelklick-Paket, ohne Python (Windows/macOS/Linux)
 
-Unter **Releases** auf der GitHub-Seite liegt je eine fertige Datei pro System
+Unter **[Releases](https://github.com/Pytr92/GastroViewer/releases)** liegt je eine fertige Datei pro System
 (gebaut und rauchgeprüft vom Workflow `.github/workflows/installer.yml`; ein neues
 Release entsteht mit jedem Versions-Tag):
 
