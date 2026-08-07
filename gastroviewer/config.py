@@ -232,6 +232,10 @@ class Settings:
         # Fortschreibung, Kreiswerte.
         if source.startswith("genesis"):
             return self.ttl_zensus
+        # BASt-Jahresdatei: ein abgeschlossenes Jahr, bundesweit ein
+        # Download — wie die Rad-Jahresdatei.
+        if source.startswith("bast"):
+            return self.ttl_zensus
         return self.ttl_osm
 
     def ensure_dirs(self) -> None:

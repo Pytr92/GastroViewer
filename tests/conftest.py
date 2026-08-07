@@ -144,6 +144,11 @@ def bfg_hochwasser():
 
 
 @pytest.fixture(scope="session")
+def bast_jawe():
+    return load_fixture("raw_bast_jawe2024.json")
+
+
+@pytest.fixture(scope="session")
 def overture_mira():
     return load_fixture("raw_overture_mira.geojson")
 

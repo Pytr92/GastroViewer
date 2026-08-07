@@ -1147,7 +1147,7 @@ function baueGeruest() {
     block('verkehr', '6 · Verkehr'),
     block('gtfs', '6b · Abfahrten (GTFS)'),
     block('radzaehlung', '6c · Gemessene Radverkehrsfrequenz'),
-    block('verkehrsmenge', '6d · Verkehrsmenge (DTV, Bayern)'),
+    block('verkehrsmenge', '6d · Verkehrsmenge (DTV)'),
     block('planung', '6e · Planungsrecht und Hochwasser'),
     block('laerm', '6f · Straßenlärm (EU-Umgebungslärmkartierung)'),
     block('baustellen', '6g · Baustellen (Stadt München)'),
@@ -5034,12 +5034,13 @@ function zeigeVerkehrsmenge(d) {
   }
   const v = d.data;
   if (!v || !v.zaehlstellen.length) {
-    setStatus(id, 'leer', v ? 'keine Zählstelle' : 'nur Bayern');
-    setInhalt(id, ...warnungen(d.warnings));
+    setStatus(id, 'leer', 'keine Zählstelle');
+    setInhalt(id, ...warnungen(d.warnings),
+      ...((v && v.hinweise) || []).map((h) => el('div', { class: 'hinweis-klein' }, h)));
     setQuelle(id, d.provenance);
     return;
   }
-  setStatus(id, 'ok', 'geladen');
+  setStatus(id, 'ok', v.dienst === 'bast' ? `bundesweit (${v.jahr})` : 'geladen');
   const s = v.staerkste || v.naechste;
   const kz = el('div', { class: 'kennzahlen' },
     kennzahl('Stärkste Zählstelle', s.dtv_kfz, 'Kfz/Tag'),
@@ -5066,10 +5067,14 @@ function zeigeVerkehrsmenge(d) {
       'Vorbeifahrender Verkehr ist keine Kundschaft. Ohne Zufahrt, Parkplatz oder '
       + 'Drive-through nutzt eine hohe Verkehrsstärke wenig — und der Außengastronomie '
       + 'schadet sie eher. Der DTV ist ein Jahresmittel über alle Wochentage.'),
+    ...(v.hinweise || []).map((h) => el('div', { class: 'hinweis-klein' }, h)),
     el('div', { class: 'notiz' },
-      'Gezählt wird nur das klassifizierte Straßennetz (Autobahnen, Bundes-, Staats- '
-      + 'und Kreisstraßen). Innerstädtische Gemeindestraßen und Fußgängerzonen fehlen. ',
+      v.dienst === 'bast'
+        ? 'Gemessen werden bundesweit nur Autobahnen und Bundesstraßen '
+          + '(BASt-Dauerzählstellen). Innerstädtische Straßen fehlen. '
+        : 'Gezählt wird nur das klassifizierte Straßennetz (Autobahnen, Bundes-, Staats- '
+          + 'und Kreisstraßen). Innerstädtische Gemeindestraßen und Fußgängerzonen fehlen. ',
       el('a', { href: v.portal, target: '_blank', rel: 'noopener' },
-        'Straßenverkehrszählung bei BAYSIS')));
+        v.dienst === 'bast' ? 'Zählstellen bei der BASt' : 'Straßenverkehrszählung bei BAYSIS')));
   setQuelle(id, d.provenance);
 }

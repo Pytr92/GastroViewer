@@ -19,6 +19,7 @@ from .cache import AsyncCache, cache_key
 from .config import Settings
 from .http import Outbound
 from .sources import (airbnb as airbnb_mod,
+                      bast as bast_mod,
                       baustellen as baustellen_mod, bayern, boris,
                       dynamik as dynamik_mod,
                       einkommen as einkommen_mod, gehweg,
@@ -349,12 +350,51 @@ class PointService:
             refresh=refresh,
         )
 
+    async def _bast_zaehlstellen(self, refresh: bool = False) -> list[dict[str, Any]]:
+        """Bundesweite BASt-Jahresdatei, **einmal** geladen und als
+        reduzierte Zählstellenliste gecacht (Jahresdatei — lange TTL).
+        Jeder Punkt außerhalb Bayerns rechnet danach lokal."""
+
+        async def laden() -> SourceResult:
+            csv_text = await self.outbound.get_text(
+                "bast", bast_mod.CSV_URL, timeout=120.0,
+                limiter="bast", min_interval=1.0,
+                encoding="latin-1",
+            )
+            stellen = bast_mod.parse_zaehlstellen(csv_text)
+            if not stellen:
+                raise SourceError(
+                    "parse", "BASt-Jahresdatei ohne verwertbare Zählstellen.")
+            return SourceResult(name="bast", ok=True,
+                                data={"zaehlstellen": stellen})
+
+        res = await self._cached("bast", f"bast|{bast_mod.JAHR}", laden,
+                                 refresh=refresh)
+        if not res.ok or not res.data:
+            raise SourceError(
+                (res.error or {}).get("kind", "unknown"),
+                (res.error or {}).get("message", "unbekannter Fehler"),
+            )
+        return res.data["zaehlstellen"]
+
     async def verkehrsmenge(self, lat: float, lon: float, radius: int, refresh: bool = False):
-        key = cache_key("baysis", lat, lon, radius)
+        """In Bayern BAYSIS (9 441 Zählstellen, ganzes klassifiziertes
+        Netz), sonst die bundesweiten BASt-Dauerzählstellen."""
+        if bayern.in_bayern(lat, lon):
+            key = cache_key("baysis", lat, lon, radius)
+            return await self._cached(
+                "baysis",
+                key,
+                lambda: bayern.verkehrsmengen(self.outbound, self.settings, lat, lon, radius),
+                refresh=refresh,
+            )
+        key = cache_key("bast_punkt", lat, lon, radius)
         return await self._cached(
-            "baysis",
+            "bast_punkt",
             key,
-            lambda: bayern.verkehrsmengen(self.outbound, self.settings, lat, lon, radius),
+            lambda: bast_mod.verkehrsmengen(
+                lat, lon, radius,
+                lambda: self._bast_zaehlstellen(refresh)),
             refresh=refresh,
         )
 
