@@ -50,6 +50,30 @@ REST_BASE = "https://www.regionalstatistik.de/genesisws/rest/2020"
 TAB_UMSATZ = "73311-01-02-4"
 TAB_GEWERBE = "52311-01-04-4"
 
+# Gemeindeebene — Phase-0 am 2026-08-07 über den öffentlichen Werteabruf
+# verifiziert (Struktur, Codes und Sollwerte; Fixtures unter
+# ``fixtures/raw_genesis_gemeinde_ffcsv.json``):
+#
+# * ``13111-01-03-5`` — SV-Beschäftigte am **Arbeitsort**, Stichtag 30.06.
+#   (Zeitcode STAG, Wertcode ERW032). Der Tagesbevölkerungs-Indikator, den
+#   es unterhalb der Kreisebene sonst nirgends offen gibt: München
+#   976 230 (30.06.2025), Garching b.München 32 823.
+# * ``45412-01-03-5`` — Tourismus-Jahressumme der Gemeinde (GAST01
+#   Ankünfte, GAST02 Übernachtungen, GAST04 geöffnete Betriebe, GAST05
+#   Schlafgelegenheiten). München 2024: 19 712 703 Übernachtungen.
+# * ``13211-01-03-5`` — Arbeitslose im Jahresdurchschnitt (ERWP06).
+#   Garching 2025: 347.
+#
+# Befund zur Klassifikation: **Kreisfreie Städte führen im
+# Gemeinde-Merkmal (GEMEIN) keinen eigenen Knoten** — sie kommen als
+# KREISE-Zeilen mit dem 5-stelligen Schlüssel zurück (im Werteabruf
+# nachgeprüft, Wildcard ``09162*`` liefert nur den Kreisknoten). Der
+# Abruf versucht deshalb je nach Schlüssel GEMEIN (AGS8) und fällt auf
+# KREISE (AGS5) zurück; beide Zeilenformen stehen in den Fixtures.
+TAB_BESCHAEFTIGTE = "13111-01-03-5"
+TAB_TOURISMUS_GEMEINDE = "45412-01-03-5"
+TAB_ARBEITSLOSE_GEMEINDE = "13211-01-03-5"
+
 LIZENZ = (
     "Datenlizenz Deutschland Namensnennung 2.0 (dl-de/by-2-0) · "
     "Statistische Ämter des Bundes und der Länder (Regionaldatenbank)"
@@ -240,6 +264,125 @@ def umsatz_auswerten(rows: list[dict[str, str]], ags5: str) -> dict[str, Any]:
     }
 
 
+# ------------------------------------------------- Gemeinde-Tabellen
+
+def _jahr(zeit: str) -> int | None:
+    """GENESIS-Zeitangabe → Jahr. JAHR-Tabellen liefern „2024",
+    STAG-Tabellen (Stichtag) „2025-06-30"."""
+    s = str(zeit or "")[:4]
+    return int(s) if s.isdigit() else None
+
+
+def _gemeinde_zeilen(
+    rows: list[dict[str, str]], ags8: str
+) -> tuple[list[dict[str, str]], str | None, str | None]:
+    """Zeilen des Gemeindeknotens. Echte Gemeinden kommen als
+    GEMEIN-Zeilen mit AGS8, kreisfreie Städte nur als KREISE-Zeilen mit
+    dem 5-stelligen Schlüssel (sie haben keinen eigenen Gemeindeknoten —
+    Phase-0-Befund). GEMEIN gewinnt, damit der gleichzeitig enthaltene
+    Landkreis nie mit der Gemeinde verwechselt wird."""
+    gem = [r for r in rows
+           if r.get("1_variable_code") == "GEMEIN"
+           and r.get("1_variable_attribute_code") == ags8]
+    if gem:
+        return gem, gem[0].get("1_variable_attribute_label"), "Gemeinde"
+    kreis = [r for r in rows
+             if r.get("1_variable_code") == "KREISE"
+             and r.get("1_variable_attribute_code") == ags8[:5]]
+    if kreis:
+        return (kreis, kreis[0].get("1_variable_attribute_label"),
+                "kreisfreie Stadt")
+    return [], None, None
+
+
+def _insgesamt(r: dict[str, str]) -> bool:
+    """Nur Insgesamt-Zeilen: alle Untergliederungs-Attribute leer
+    (ffcsv führt z. B. NAT/GES oder Personengruppen als 2_/3_-Spalten)."""
+    return not (r.get("2_variable_attribute_code")
+                or r.get("3_variable_attribute_code"))
+
+
+def _reihe_aufbauen(
+    je_jahr: dict[int, dict[str, Any]], feld: str
+) -> tuple[list[dict[str, Any]], dict[str, Any] | None]:
+    reihe = [{"jahr": j, **je_jahr[j]} for j in sorted(je_jahr)]
+    aktuell = next(
+        (r for r in reversed(reihe) if r.get(feld) is not None), None)
+    return reihe, aktuell
+
+
+def beschaeftigte_auswerten(
+    rows: list[dict[str, str]], ags8: str
+) -> dict[str, Any]:
+    """Tabelle 13111-01-03-5: SV-Beschäftigte am Arbeitsort je Stichtag
+    30.06. — der Tagesbevölkerungs-Indikator der Gemeinde."""
+    zeilen, name, ebene = _gemeinde_zeilen(rows, ags8)
+    je_jahr: dict[int, dict[str, Any]] = {}
+    for r in zeilen:
+        jahr = _jahr(r.get("time"))
+        if jahr is None or r.get("value_variable_code") != "ERW032":
+            continue
+        if not _insgesamt(r):
+            continue
+        je_jahr[jahr] = {"beschaeftigte": _zahl(r.get("value"))}
+    reihe, aktuell = _reihe_aufbauen(je_jahr, "beschaeftigte")
+    veraenderung = None
+    if aktuell:
+        frueher = next(
+            (r for r in reihe
+             if r["jahr"] == aktuell["jahr"] - 5
+             and r.get("beschaeftigte")), None)
+        if frueher and aktuell["beschaeftigte"]:
+            veraenderung = round(
+                (aktuell["beschaeftigte"] / frueher["beschaeftigte"] - 1)
+                * 100, 1)
+    return {"name": name, "ebene": ebene, "aktuell": aktuell,
+            "veraenderung_5j_prozent": veraenderung, "reihe": reihe[-10:]}
+
+
+_TOURISMUS_FELDER = {
+    "GAST01": "ankuenfte",
+    "GAST02": "uebernachtungen",
+    "GAST04": "betriebe",
+    "GAST05": "schlafgelegenheiten",
+}
+
+
+def tourismus_gemeinde_auswerten(
+    rows: list[dict[str, str]], ags8: str
+) -> dict[str, Any]:
+    """Tabelle 45412-01-03-5: Tourismus-Jahressumme der Gemeinde."""
+    zeilen, name, ebene = _gemeinde_zeilen(rows, ags8)
+    je_jahr: dict[int, dict[str, Any]] = {}
+    for r in zeilen:
+        jahr = _jahr(r.get("time"))
+        feld = _TOURISMUS_FELDER.get(r.get("value_variable_code") or "")
+        if jahr is None or feld is None or not _insgesamt(r):
+            continue
+        je_jahr.setdefault(jahr, {})[feld] = _zahl(r.get("value"))
+    reihe, aktuell = _reihe_aufbauen(je_jahr, "uebernachtungen")
+    return {"name": name, "ebene": ebene, "aktuell": aktuell,
+            "reihe": reihe[-10:]}
+
+
+def arbeitslose_auswerten(
+    rows: list[dict[str, str]], ags8: str
+) -> dict[str, Any]:
+    """Tabelle 13211-01-03-5: Arbeitslose im Jahresdurchschnitt."""
+    zeilen, name, ebene = _gemeinde_zeilen(rows, ags8)
+    je_jahr: dict[int, dict[str, Any]] = {}
+    for r in zeilen:
+        jahr = _jahr(r.get("time"))
+        if jahr is None or r.get("value_variable_code") != "ERWP06":
+            continue
+        if not _insgesamt(r):
+            continue
+        je_jahr[jahr] = {"arbeitslose": _zahl(r.get("value"))}
+    reihe, aktuell = _reihe_aufbauen(je_jahr, "arbeitslose")
+    return {"name": name, "ebene": ebene, "aktuell": aktuell,
+            "reihe": reihe[-10:]}
+
+
 # Attribut-Codes der Gewerbeanzeigentabelle (live aus dem ffcsv abgelesen).
 _GEWERBE_FELDER = {
     ("GEW011", None): "anmeldungen",
@@ -287,7 +430,8 @@ def gewerbe_auswerten(rows: list[dict[str, str]], ags5: str) -> dict[str, Any]:
 # ---------------------------------------------------------------- Abruf
 
 async def _tabelle(
-    out: Outbound, zugang: dict[str, str], name: str, ags5: str
+    out: Outbound, zugang: dict[str, str], name: str, ags5: str,
+    regionalvariable: str = "KREISE",
 ) -> tuple[str, str | None]:
     """Eine Tabelle als ffcsv-Text. Die REST-Antwort ist JSON mit dem CSV in
     ``Object.Content``; einzelne GENESIS-Stände liefern das CSV auch direkt —
@@ -300,8 +444,8 @@ async def _tabelle(
             "name": name,
             "area": "all",
             # Merkmalscode aus dem Tabellenaufbau (öffentlich einsehbar):
-            # KREISE = Kreisfreie Städte und Kreise.
-            "regionalvariable": "KREISE",
+            # KREISE = Kreisfreie Städte und Kreise, GEMEIN = Gemeinden.
+            "regionalvariable": regionalvariable,
             "regionalkey": ags5,
             "startyear": str(START_JAHR),
             "format": "ffcsv",
@@ -350,6 +494,70 @@ HINWEISE = [
     "die Gründungsdynamik des Kreises, nicht der Branche.",
 ]
 
+GEMEINDE_HINWEISE = [
+    "**Beschäftigte am Arbeitsort** ist der Tagesbevölkerungs-Indikator "
+    "fürs Mittagsgeschäft: Wer hier arbeitet, isst hier zu Mittag — "
+    "unabhängig davon, wo er wohnt. Stichtag jeweils 30.06.; feiner als "
+    "die Gemeinde wird der Wert aus Datenschutzgründen nirgends "
+    "veröffentlicht.",
+    "Bei **kreisfreien Städten** ist die Gemeinde flächengleich mit dem "
+    "Kreis — die Gemeindewerte sind dann Stadtwerte und bringen gegenüber "
+    "dem Kreisprofil keine feinere Auflösung. Ihren Wert entfalten sie im "
+    "Umland: Garching, Erding oder Freising bekommen eigene Zahlen statt "
+    "des Landkreis-Durchschnitts.",
+]
+
+
+GEMEINDE_TABELLEN = (
+    ("beschaeftigte", TAB_BESCHAEFTIGTE, beschaeftigte_auswerten),
+    ("tourismus", TAB_TOURISMUS_GEMEINDE, tourismus_gemeinde_auswerten),
+    ("arbeitslose", TAB_ARBEITSLOSE_GEMEINDE, arbeitslose_auswerten),
+)
+
+
+async def _gemeinde_laden(
+    out: Outbound, zugang: dict[str, str], ags8: str,
+    warnungen: list[str],
+) -> dict[str, Any] | None:
+    """Die drei Gemeindetabellen. Kreisfreie Städte (AGS endet auf 000)
+    haben keinen Gemeindeknoten und werden direkt über KREISE abgerufen;
+    für alle anderen gilt GEMEIN mit KREISE-Rückfall, falls ein Stand der
+    Klassifikation den Schlüssel nicht kennt."""
+    kreisfrei = ags8.endswith("000")
+    versuche = (
+        [("KREISE", ags8[:5])] if kreisfrei
+        else [("GEMEIN", ags8), ("KREISE", ags8[:5])]
+    )
+    ergebnis: dict[str, Any] = {
+        "ags": ags8, "name": None, "ebene": None,
+        "beschaeftigte": None, "tourismus": None, "arbeitslose": None,
+        "hinweise": GEMEINDE_HINWEISE,
+    }
+    geliefert = False
+    for schluessel, tabelle, auswerten_fn in GEMEINDE_TABELLEN:
+        for variable, key in versuche:
+            try:
+                text, warnung = await _tabelle(
+                    out, zugang, tabelle, key, regionalvariable=variable)
+            except SourceError as err:
+                warnungen.append(f"Tabelle {tabelle} ({variable}): "
+                                 f"{err.message}")
+                continue
+            if warnung:
+                warnungen.append(f"Tabelle {tabelle}: {warnung}")
+            try:
+                teil = auswerten_fn(parse_ffcsv(text), ags8)
+            except SourceError as err:
+                warnungen.append(f"Tabelle {tabelle}: {err.message}")
+                break
+            if teil.get("reihe"):
+                ergebnis[schluessel] = teil
+                ergebnis["name"] = ergebnis["name"] or teil.get("name")
+                ergebnis["ebene"] = ergebnis["ebene"] or teil.get("ebene")
+                geliefert = True
+                break
+    return ergebnis if geliefert else None
+
 
 async def load(
     out: Outbound, settings: Settings, ags: str
@@ -372,12 +580,14 @@ async def load(
             warnings=["Ohne Kreisschlüssel lässt sich kein Kreiswert abrufen."],
         )
 
+    ags8 = "".join(c for c in str(ags) if c.isdigit())[:8]
     warnungen: list[str] = []
     daten: dict[str, Any] = {
         "ags": ags5,
         "kreis": None,
         "umsatz": None,
         "gewerbe": None,
+        "gemeinde": None,
         "hinweise": HINWEISE,
     }
     fehler: SourceError | None = None
@@ -397,7 +607,12 @@ async def load(
             fehler = err
             warnungen.append(f"Tabelle {tabelle}: {err.message}")
 
-    if daten["umsatz"] is None and daten["gewerbe"] is None:
+    if len(ags8) == 8:
+        daten["gemeinde"] = await _gemeinde_laden(
+            out, zugang, ags8, warnungen)
+
+    if (daten["umsatz"] is None and daten["gewerbe"] is None
+            and daten["gemeinde"] is None):
         return SourceResult.failed(
             "genesis",
             fehler or SourceError("api_error", "Keine der Tabellen lieferbar."),
@@ -412,7 +627,10 @@ async def load(
         provenance=Provenance(
             source=(
                 "Regionaldatenbank Deutschland (GENESIS): Umsatzsteuerstatistik "
-                f"{TAB_UMSATZ}, Gewerbeanzeigen {TAB_GEWERBE}"
+                f"{TAB_UMSATZ}, Gewerbeanzeigen {TAB_GEWERBE}; Gemeindeebene: "
+                f"SV-Beschäftigte am Arbeitsort {TAB_BESCHAEFTIGTE}, "
+                f"Tourismus {TAB_TOURISMUS_GEMEINDE}, "
+                f"Arbeitslose {TAB_ARBEITSLOSE_GEMEINDE}"
             ),
             license=LIZENZ,
             endpoint=f"{REST_BASE}/data/table",
@@ -420,7 +638,7 @@ async def load(
             retrieved_at=now_iso(),
             note=(
                 "Abruf mit hinterlegter (kostenloser) Kennung — Opt-in. "
-                "Kreiswerte, kein Punktbezug."
+                "Kreis- und Gemeindewerte, kein Punktbezug."
             ),
         ),
     )

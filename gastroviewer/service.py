@@ -268,10 +268,12 @@ class PointService:
         30 Tage auf einen leeren Cache-Eintrag zu warten."""
         if genesis_mod.lade_zugang(self.settings) is None:
             return await genesis_mod.load(self.outbound, self.settings, ags)
-        kreis = einkommen_mod.kreis_aus_ags(ags) or "unbekannt"
+        # Gemeindegenau cachen — seit den Gemeindetabellen unterscheiden
+        # sich die Blockdaten innerhalb desselben Kreises.
+        gemeinde = "".join(c for c in str(ags) if c.isdigit())[:8] or "unbekannt"
         return await self._cached(
             "genesis",
-            f"genesis|{kreis}",
+            f"genesis|{gemeinde}",
             lambda: genesis_mod.load(self.outbound, self.settings, ags),
         )
 

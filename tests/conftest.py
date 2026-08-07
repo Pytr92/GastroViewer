@@ -129,6 +129,11 @@ def genesis_ffcsv():
 
 
 @pytest.fixture(scope="session")
+def genesis_gemeinde_ffcsv():
+    return load_fixture("raw_genesis_gemeinde_ffcsv.json")
+
+
+@pytest.fixture(scope="session")
 def overture_mira():
     return load_fixture("raw_overture_mira.geojson")
 

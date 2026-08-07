@@ -2771,11 +2771,14 @@ function zeigeGenesisOptIn(d, zugang, ags) {
   setStatus(id, 'leer', 'Opt-in');
   setInhalt(id,
     el('p', { class: 'hinweis-klein' },
-      'Zwei amtliche Anker gibt es nur über die Regionaldatenbank der '
+      'Diese amtlichen Anker gibt es nur über die Regionaldatenbank der '
       + 'Statistischen Ämter (regionalstatistik.de): den steuerbaren '
       + 'Umsatz je Umsatzsteuerpflichtigem im Gastgewerbe des Kreises '
-      + '(Prüfstein für die eigene Umsatzschätzung) und die '
-      + 'Gewerbean-/-abmeldungen (Gründungsdynamik).'),
+      + '(Prüfstein für die eigene Umsatzschätzung), die '
+      + 'Gewerbean-/-abmeldungen (Gründungsdynamik) — und drei '
+      + 'Gemeindewerte für ganz Deutschland: Beschäftigte am Arbeitsort '
+      + '(die Tagesbevölkerung fürs Mittagsgeschäft), '
+      + 'Gästeübernachtungen und Arbeitslose der Gemeinde.'),
     el('p', { class: 'hinweis-klein' },
       'Der maschinelle Abruf verlangt eine kostenlose Kennung — das '
       + 'einzige Konto, das dieses Werkzeug überhaupt kennt, und nur als '
@@ -2899,7 +2902,56 @@ function zeigeGenesis(d, ags) {
     }
   }
 
-  setInhalt(id, kz, tab,
+  // Gemeindewerte (bundesweit): Beschäftigte am Arbeitsort,
+  // Übernachtungen, Arbeitslose — je Gemeinde statt je Kreis.
+  const gem = g.gemeinde || null;
+  const gemTeile = [];
+  if (gem) {
+    const b = (gem.beschaeftigte || {}).aktuell;
+    const t = (gem.tourismus || {}).aktuell;
+    const a = (gem.arbeitslose || {}).aktuell;
+    gemTeile.push(el('h4', {},
+      `Gemeindewerte: ${gem.name || gem.ags}`
+      + (gem.ebene === 'kreisfreie Stadt' ? ' (kreisfreie Stadt)' : '')));
+    gemTeile.push(el('div', { class: 'kennzahlen' },
+      el('div', { class: 'kennzahl' },
+        el('div', { class: 'titel' }, 'Beschäftigte am Arbeitsort'),
+        el('div', { class: `wert${b ? '' : ' fehlt'}` },
+          b ? NF.format(b.beschaeftigte) : 'keine Angabe'),
+        el('div', { class: 'basis' }, b
+          ? `Stichtag 30.06.${b.jahr}`
+            + ((gem.beschaeftigte || {}).veraenderung_5j_prozent !== null
+               && (gem.beschaeftigte || {}).veraenderung_5j_prozent !== undefined
+              ? ` · ${gem.beschaeftigte.veraenderung_5j_prozent > 0 ? '+' : ''}`
+                + `${gem.beschaeftigte.veraenderung_5j_prozent} % in 5 Jahren`
+              : '')
+          : '')),
+      kennzahl(t ? `Übernachtungen (${t.jahr})` : 'Übernachtungen',
+        t ? t.uebernachtungen : null),
+      kennzahl(t ? `Beherbergungsbetriebe (${t.jahr})` : 'Beherbergungsbetriebe',
+        t ? t.betriebe : null),
+      kennzahl(a ? `Arbeitslose (Ø ${a.jahr})` : 'Arbeitslose',
+        a ? a.arbeitslose : null)));
+    const br = (gem.beschaeftigte || {}).reihe || [];
+    if (br.length > 1) {
+      const btab = el('table', { class: 'daten' },
+        el('tr', {},
+          el('th', {}, 'Stichtag 30.06.'),
+          el('th', { class: 'num' }, 'Beschäftigte am Arbeitsort')));
+      for (const z of br.slice(-8)) {
+        btab.append(el('tr', {},
+          el('td', {}, String(z.jahr)),
+          el('td', { class: 'num' },
+            z.beschaeftigte === null ? '—' : NF.format(z.beschaeftigte))));
+      }
+      gemTeile.push(btab);
+    }
+    for (const h of gem.hinweise || []) {
+      gemTeile.push(el('div', { class: 'hinweis-klein' }, h));
+    }
+  }
+
+  setInhalt(id, kz, tab, ...gemTeile,
     ...(g.hinweise || []).map((h) => el('div', { class: 'hinweis-klein' }, h)),
     ...warnungen(d.warnings || []),
     el('div', { class: 'pflegeleiste' },
