@@ -1,0 +1,483 @@
+{
+ "kommentar": "Echter Auszug des VIZ-GeoJSON baustellen_sperrungen_viz.json (api.viz.berlin.de, dl-de/by-2-0, 231 Features am 2026-08-07) — reduziert auf die 8 Massnahmen um den Wolfensteindamm Steglitz (52.4571, 13.3185). GeometryCollection-Geometrien unveraendert.",
+ "feed": {
+  "type": "FeatureCollection",
+  "features": [
+   {
+    "type": "Feature",
+    "properties": {
+     "id": "8/2025",
+     "lms_id": "LMS-BR/r_LMS-BR/373434_LMS-BR/72",
+     "tstore": "2026-08-07T08:50:38.410833Z",
+     "objectState": "modified",
+     "subtype": "Baustelle",
+     "icon": "baustelle",
+     "severity": "keine Sperrung",
+     "direction": "Beidseitig",
+     "street": "Wolfensteindamm (Steglitz)",
+     "section": "in beiden Richtungen Schloßstraße/Aus- u. Einfahrt A103 und Neuchateller Straße",
+     "total_lanes": 4,
+     "closed_lanes": 2,
+     "content": "Bauarbeiten, Fahrbahn auf einen Fahrstreifen verengt",
+     "validity": {
+      "from": "2025-07-23T07:00",
+      "to": "2026-09-01T17:00"
+     }
+    },
+    "geometry": {
+     "type": "GeometryCollection",
+     "geometries": [
+      {
+       "type": "Point",
+       "coordinates": [
+        13.318904591788835,
+        52.45210087026612
+       ]
+      },
+      {
+       "type": "LineString",
+       "coordinates": [
+        [
+         13.31892604156763,
+         52.45407498328484
+        ],
+        [
+         13.319247788249806,
+         52.45355204805477
+        ],
+        [
+         13.319548085153189,
+         52.4532121368253
+        ],
+        [
+         13.319633884268443,
+         52.45288529663044
+        ],
+        [
+         13.319548085153189,
+         52.45255845400994
+        ],
+        [
+         13.319226338471012,
+         52.45221853511149
+        ],
+        [
+         13.318883142010003,
+         52.45208779637499
+        ],
+        [
+         13.316352068110094,
+         52.450884981789244
+        ],
+        [
+         13.315901622754998,
+         52.450715016209784
+        ],
+        [
+         13.315622775630446,
+         52.450531975621445
+        ]
+       ]
+      }
+     ]
+    }
+   },
+   {
+    "type": "Feature",
+    "properties": {
+     "id": "571/2026",
+     "lms_id": "LMS-BR/r_LMS-BR/411397_LMS-BR/72",
+     "tstore": "2026-06-11T13:32:07.898797Z",
+     "objectState": "modified",
+     "subtype": "Baustelle",
+     "icon": "baustelle",
+     "severity": "keine Sperrung",
+     "direction": "Beidseitig",
+     "street": "Neue Filandastraße (Steglitz)",
+     "section": "in beiden Richtungen zwischen Albrechtstraße und Südendstraße ",
+     "total_lanes": 4,
+     "closed_lanes": 2,
+     "content": "Baustelle, Fahrbahn auf einen Fahrstreifen je Richtung verengt und verschwenkt",
+     "validity": {
+      "from": "2026-06-10T07:00",
+      "to": "2026-10-31T17:00"
+     }
+    },
+    "geometry": {
+     "type": "GeometryCollection",
+     "geometries": [
+      {
+       "type": "Point",
+       "coordinates": [
+        13.331748247146608,
+        52.453838777987215
+       ]
+      },
+      {
+       "type": "LineString",
+       "coordinates": [
+        [
+         13.332595825195314,
+         52.45585248432574
+        ],
+        [
+         13.332499265670778,
+         52.45527714905384
+        ],
+        [
+         13.33245635032654,
+         52.454943712671565
+        ],
+        [
+         13.332349061965944,
+         52.45470180626494
+        ],
+        [
+         13.331887722015383,
+         52.454008769743176
+        ],
+        [
+         13.331233263015749,
+         52.45319803393221
+        ]
+       ]
+      }
+     ]
+    }
+   },
+   {
+    "type": "Feature",
+    "properties": {
+     "id": "515/2025",
+     "lms_id": "LMS-BR/r_LMS-BR/390463_LMS-BR/72",
+     "tstore": "2026-04-13T17:37:43.469898Z",
+     "objectState": "modified",
+     "subtype": "Baustelle",
+     "icon": "baustelle",
+     "severity": "keine Sperrung",
+     "direction": "Beidseitig",
+     "street": "Hindenburgdamm (Lichterfelde)",
+     "section": "in beiden Richtungen zwischen Moltkestraße und Augustastraße",
+     "content": "Fernwärmearbeiten, Fahrbahn jeweils auf einen Fahrstreifen verengt und verschwenkt",
+     "validity": {
+      "from": "2025-11-18T07:00",
+      "to": "2026-09-26T17:00"
+     }
+    },
+    "geometry": {
+     "type": "GeometryCollection",
+     "geometries": [
+      {
+       "type": "Point",
+       "coordinates": [
+        13.315837383270265,
+        52.441490949878975
+       ]
+      },
+      {
+       "type": "LineString",
+       "coordinates": [
+        [
+         13.315794467926027,
+         52.44299467637065
+        ],
+        [
+         13.315837383270265,
+         52.44162171074183
+        ],
+        [
+         13.316287994384767,
+         52.44048407823587
+        ]
+       ]
+      }
+     ]
+    }
+   },
+   {
+    "type": "Feature",
+    "properties": {
+     "id": "205/2025",
+     "lms_id": "LMS-BR/r_LMS-BR/382708_LMS-BR/72",
+     "tstore": "2026-05-04T10:31:55.673618Z",
+     "objectState": "modified",
+     "subtype": "Baustelle",
+     "icon": "baustelle",
+     "severity": "keine Sperrung",
+     "direction": "Beidseitig",
+     "street": "Hindenburgdamm (Lichterfelde)",
+     "section": "in beiden Richtungen zwischen Bäkestraße/Karwendelstraße und Moltkestraße",
+     "content": "Arbeiten am Fernwärmenetz, Fahrbahn auf einen Fahrstreifen je Richtung verengt und verschwenkt. Die Karwendelstraße ist vom Hindenburgdamm für den Kfz-Verkehr abgehängt (Sackgasse)",
+     "validity": {
+      "from": "2025-09-08T07:00",
+      "to": "2026-11-26T17:00"
+     }
+    },
+    "geometry": {
+     "type": "GeometryCollection",
+     "geometries": [
+      {
+       "type": "Point",
+       "coordinates": [
+        13.31514226558905,
+        52.437024111556006
+       ]
+      },
+      {
+       "type": "LineString",
+       "coordinates": [
+        [
+         13.313356994305286,
+         52.43542038322549
+        ],
+        [
+         13.3141894076473,
+         52.43631861519789
+        ],
+        [
+         13.314494825541676,
+         52.436698350014005
+        ],
+        [
+         13.315381136082117,
+         52.438001837878076
+        ],
+        [
+         13.316056270451806,
+         52.43895625438485
+        ],
+        [
+         13.316223950479268,
+         52.43917531945302
+        ]
+       ]
+      }
+     ]
+    }
+   },
+   {
+    "type": "Feature",
+    "properties": {
+     "id": "789/2026",
+     "lms_id": null,
+     "tstore": "2026-08-04T10:55:56.643647Z",
+     "objectState": "new",
+     "subtype": "Baustelle",
+     "icon": "baustelle",
+     "severity": "keine Sperrung",
+     "direction": "Einseitig",
+     "street": "Breite Straße (Schmargendorf)",
+     "section": "Richtung Berkaer Straße zwischen Oeynhauser Straße und Cunostraße",
+     "total_lanes": 3,
+     "closed_lanes": 2,
+     "content": "Baustelleneinrichtung, Fahrbahn auf einen Fahrstreifen verengt",
+     "validity": {
+      "from": "2026-08-06T07:00",
+      "to": "2027-09-30T17:00"
+     }
+    },
+    "geometry": {
+     "type": "GeometryCollection",
+     "geometries": [
+      {
+       "type": "Point",
+       "coordinates": [
+        13.297464251518251,
+        52.47357631845498
+       ]
+      },
+      {
+       "type": "LineString",
+       "coordinates": [
+        [
+         13.29800069332123,
+         52.47347502233026
+        ],
+        [
+         13.297120928764345,
+         52.47366781152849
+        ],
+        [
+         13.29645574092865,
+         52.47380831837819
+        ]
+       ]
+      }
+     ]
+    }
+   },
+   {
+    "type": "Feature",
+    "properties": {
+     "id": "332/2025",
+     "lms_id": null,
+     "tstore": "2026-05-22T09:09:55.964056Z",
+     "objectState": "modified",
+     "subtype": "Baustelle",
+     "icon": "baustelle",
+     "severity": "keine Sperrung",
+     "direction": "Einseitig",
+     "street": "A100 (Stadtring)",
+     "section": "Richtung Dreieck Funkturm Höhe Detmolder Straße (Brücke über die Mecklenburgische Straße)",
+     "content": "Brückenschäden, rechter und mittlerer Fahrstreifen gesperrt",
+     "validity": {
+      "from": "2025-11-04T11:00",
+      "to": null
+     }
+    },
+    "geometry": {
+     "type": "GeometryCollection",
+     "geometries": [
+      {
+       "type": "Point",
+       "coordinates": [
+        13.320016957805374,
+        52.47807719073066
+       ]
+      },
+      {
+       "type": "LineString",
+       "coordinates": [
+        [
+         13.32076482799491,
+         52.47796465480861
+        ],
+        [
+         13.318126469969336,
+         52.478291569866116
+        ],
+        [
+         13.315745512726691,
+         52.478853858083134
+        ],
+        [
+         13.313686306462829,
+         52.479625358128814
+        ],
+        [
+         13.311841600851444,
+         52.480619134861065
+        ],
+        [
+         13.310082695501036,
+         52.481730569088214
+        ]
+       ]
+      }
+     ]
+    }
+   },
+   {
+    "type": "Feature",
+    "properties": {
+     "id": "346/2025",
+     "tstore": "2026-03-25T09:53:08.403900Z",
+     "objectState": "modified",
+     "subtype": "Sperrung",
+     "icon": "sperrung",
+     "severity": "Fahrtrichtungssperrung",
+     "direction": "Einseitig",
+     "street": "A100 (Stadtring)",
+     "section": "Richtung Wedding Auffahrt Detmolder Straße",
+     "content": "Straßenschäden, Auffahrt gesperrt",
+     "validity": {
+      "from": "2025-10-10T10:00",
+      "to": "2030-12-01T17:00"
+     }
+    },
+    "geometry": {
+     "type": "GeometryCollection",
+     "geometries": [
+      {
+       "type": "Point",
+       "coordinates": [
+        13.3156263829369,
+        52.47908833944678
+       ]
+      },
+      {
+       "type": "LineString",
+       "coordinates": [
+        [
+         13.317487209969842,
+         52.47870907764355
+        ],
+        [
+         13.317325472635277,
+         52.478687197220005
+        ],
+        [
+         13.317007989062407,
+         52.47872001805058
+        ],
+        [
+         13.316636592171562,
+         52.47880024668881
+        ],
+        [
+         13.315330713921867,
+         52.47917586087576
+        ],
+        [
+         13.31436029089673,
+         52.47952959175178
+        ],
+        [
+         13.3141626122233,
+         52.47955511855567
+        ]
+       ]
+      }
+     ]
+    }
+   },
+   {
+    "type": "Feature",
+    "properties": {
+     "id": "722/2026",
+     "lms_id": "LMS-BR/r_LMS-BR/416160_LMS-BR/72",
+     "tstore": "2026-07-20T07:45:01.318719Z",
+     "objectState": "modified",
+     "subtype": "Sperrung",
+     "icon": "sperrung",
+     "severity": "Vollsperrung",
+     "direction": "Beidseitig",
+     "street": "Karwendelstraße (Lichterfelde)",
+     "section": "in beiden Richtungen zwischen Drakestraße und Ringstraße",
+     "total_lanes": 2,
+     "closed_lanes": 2,
+     "content": "Leitungsarbeiten, Vollsperrung für den Kfz- und Radverkehr",
+     "validity": {
+      "from": "2026-07-15T07:00",
+      "to": "2026-09-04T17:00"
+     }
+    },
+    "geometry": {
+     "type": "GeometryCollection",
+     "geometries": [
+      {
+       "type": "Point",
+       "coordinates": [
+        13.310510516166689,
+        52.4345044739548
+       ]
+      },
+      {
+       "type": "LineString",
+       "coordinates": [
+        [
+         13.31248998641968,
+         52.43526976749203
+        ],
+        [
+         13.309383988380434,
+         52.4340858462257
+        ]
+       ]
+      }
+     ]
+    }
+   }
+  ]
+ }
+}

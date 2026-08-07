@@ -315,12 +315,16 @@ async def load(
     started = time.perf_counter()
     if not in_bayern(lat, lon):
         # Bundesweite Hochwassergefahrenkarten (BfG/LAWA); Bebauungsplan
-        # und Milieuschutz bleiben Stadtdienste und fehlen hier ehrlich.
-        warnungen = [
+        # und Milieuschutz bleiben Stadtdienste — eingebunden für München
+        # und Hamburg, sonst ehrlich benannt.
+        from . import hamburg as hamburg_mod
+
+        in_hh = hamburg_mod.in_hamburg(lat, lon)
+        warnungen = [] if in_hh else [
             "Bebauungspläne und Erhaltungssatzungen sind kommunale Dienste "
-            "und hier nur für München eingebunden — außerhalb sagt der "
-            "Block dazu nichts. Die Hochwassergefahren kommen bundesweit "
-            "von BfG/LAWA."
+            "und hier nur für München und Hamburg eingebunden — außerhalb "
+            "sagt der Block dazu nichts. Die Hochwassergefahren kommen "
+            "bundesweit von BfG/LAWA."
         ]
         data: dict[str, Any] = {
             "portale": [PORTALE[-1]], "hinweise": HINWEISE,
@@ -339,6 +343,22 @@ async def load(
         except SourceError as err:
             return SourceResult.failed(
                 "planung", err, int((time.perf_counter() - started) * 1000)
+            )
+        if in_hh:
+            # Soziale Erhaltungsverordnungen der Hansestadt (§ 172 BauGB) —
+            # gleiche Blockform wie die Münchner Erhaltungssatzungen.
+            try:
+                data["erhaltungssatzung"] = await hamburg_mod.milieuschutz(
+                    out, lat, lon)
+            except SourceError as err:
+                warnungen.append(
+                    "Soziale Erhaltungsverordnungen Hamburgs nicht "
+                    f"abrufbar: {err.message}"
+                )
+            warnungen.append(
+                "Bebauungsplan-Umgriffe sind hier nicht eingebunden "
+                "(Stadtdienst); Erhaltungsverordnungen kommen aus der "
+                "Urban Data Platform Hamburg."
             )
         return _SR(
             name="planung",

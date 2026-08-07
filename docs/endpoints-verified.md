@@ -653,3 +653,98 @@ Alle Phase-0-Prüfungen mit echten Abrufen am 07.08.2026.
 | Foursquare OS Places als dritte Wettbewerbsquelle | Verworfen: FSQ OS Places ist **bereits Bestandteil des Overture-Places-Imports** (Overture-Attribution nennt Foursquare ausdrücklich — steht seit dem Import in unserer Lizenzzeile von Block 4f). Ein eigener Import müsste das globale Parquet (106 Mio. POIs, viele GB, keine Regionalpartitionierung über einfaches HTTP) laden — für ein Localhost-Werkzeug unverhältnismäßig und inhaltlich doppelt |
 | Bundesweiter Messe-Kalender | Kein offener Datensatz: die AUMA-Messedatenbank ist kein Open Data, andere Messegesellschaften veröffentlichen keine vergleichbare CSV mit Besucherzahlen. Bleibt ein München-Bonus wie Märkte/Baustellen |
 | Erhaltungssatzungen bundesweit | Kein bundesweiter Datensatz — Milieuschutz ist kommunales Satzungsrecht, jede Stadt führt (wenn überhaupt) eigene Dienste. Eingebaut für München; anderswo sagt der Block das ehrlich |
+
+---
+
+## Nachtrag 2026-08-07 (4. Runde): Deutschland-Ausbau (W-Runde)
+
+Alle Prüfungen mit echten Abrufen am 07.08.2026; Fixtures im Repo.
+
+### Regionaldatenbank — drei Gemeindetabellen über das bestehende Opt-in
+
+| Tabelle | Prüfung | Ergebnis |
+|---|---|---|
+| `13111-01-03-5` SV-Beschäftigte am **Arbeitsort**, Gemeinden, Stichtag 30.06. | öffentlicher Werteabruf (einmalig manuell), ffcsv | Zeitcode STAG (`2025-06-30`), Wertcode ERW032; München 976 230 (30.06.2025, 687 000 in 2008), Garching b.München 32 823. **Befund:** kreisfreie Städte führen im Merkmal GEMEIN keinen eigenen Knoten (Wildcard `09162*` liefert nur den Kreisknoten) — sie kommen als KREISE-Zeilen zurück; der Abruf nutzt für AGS auf `000` direkt KREISE, sonst GEMEIN mit Rückfall |
+| `45412-01-03-5` Tourismus-Jahressumme, Gemeinden | ebenso | GAST01/02/04/05; München 2024: 19 712 703 Übernachtungen, 9 279 239 Ankünfte, 470 Betriebe; „-“ (2008 Schlafgelegenheiten) → None |
+| `13211-01-03-5` Arbeitslose, Jahresdurchschnitt, Gemeinden | ebenso | ERWP06; Garching 2025: 347; 2001 „-“ → None; Personengruppen-Zeilen (2_variable) werden übersprungen |
+
+### Lärm bundesweit — UBA „VeLa/LK" (datahub.uba.de)
+
+`…/server/services/VeLa/LK/MapServer/WMSServer` · WMS 1.3.0 · „Lärmkartierung
+nach der EU-Umgebungslärmrichtlinie", Stand der Daten 12/2023, Runde 2022,
+Urheber UBA, AccessConstraints leer.
+
+- Layer **35** (`LK_BLR_Abfrage`): in Ballungsräumen beantwortet **eine**
+  Klickabfrage alle Quellen (`road_den`, `road_night`, `rail_*`, `air_*` als
+  Pegelklassen `Lden6569` …, plus Gemeindename). Sendlinger Tor München:
+  road Lden6569/Lnight5559, ein Polygon zusätzlich mit Schiene — der
+  Bundesdienst deckt auch Bayern ab (Gegenprobe).
+- Außerhalb der Ballungsräume: Layer **30/29** (`LK_HLQ_road_Den/Night`).
+  Berlin Hermannplatz: LdenGreaterThan75 + Lden7074 bzw. Lnight6569;
+  Hamburg Reeperbahn Lden7074; Köln Nord-Süd-Fahrt Lden5559; der Kölner
+  Ring-Punkt traf neben das Lärmband (leer) — Punkttreffer, kein Datenloch.
+- Antworten sind 5-dB-Klassen; Bayern behält deshalb den präziseren
+  LfU-Rasterdienst. GetMap `layers=27,30` liefert Karteninhalt (173 kB
+  Berlin) → neue Bundes-Kartenebene. Einzelne Antworten brauchten ~30 s.
+
+### Hochwasser bundesweit — BfG INSPIRE „Natural Risk Zones DE"
+
+`geoportal.bafg.de/arcgis1/services/INSPIRE/NZ/MapServer/WMSServer` ·
+Layer `NZ.HazardArea` · GetFeatureInfo `text/xml` (ESRI-`FIELDS`) ·
+„Es gelten keine Zugriffsbeschränkungen".
+
+- Passau Rathausplatz: **drei** Treffer in einer Abfrage —
+  LikelihoodOfOccurrence high/medium/low-extrem = HQhäufig/HQ100/HQextrem.
+- Kölner Rheinufer: nur low/extrem (hinter der Schutzlinie plausibel);
+  Kölner Ring: leer. GetMap mit Inhalt (15 kB Passau) → Bundes-Kartenebene.
+- Bayern behält die LfU-Abfrage (Gewässername, Jährlichkeit, Amt — das
+  führt der Bundesdienst nicht).
+
+### Kfz-Verkehr bundesweit — BASt-Dauerzählstellen
+
+`bast.de …/verkehrszaehlung/Daten/2024_1/Jawe2024.csv?view=renderTcDataExportCSV`
+· HTTP 200 · 1,84 MB · Latin-1 · 255 Spalten · **2 127 Zählstellen** (nur
+Autobahnen und Bundesstraßen) · Nutzungsbedingungen der Seite: **CC BY 4.0**.
+
+- Felder: `DZ_Name`, `Str_Kl`/`Str_Nr`, `DTV_Kfz_MobisSo_Q`,
+  `DTV_SV_MobisSo_Q`, `Koor_WGS84_N/E`; deutsches Zahlenformat; leere
+  Jahreswerte („Netzmodernisierung in 2024") → None.
+- Belege: Berlin Hermannplatz → Britz (A 100) 3,0 km, 128 167 Kfz/Tag,
+  SV 3,5 %; Kölner Ring → nächste Zählstelle 5,8 km (Rheinbrücke
+  Rodenkirchen) — außerhalb des 5-km-Radius bleibt der Block bewusst leer.
+- In Bayern bleibt BAYSIS (9 441 Zählstellen im ganzen klassifizierten Netz).
+
+### Stadt-Adapter Hamburg — Urban Data Platform (OGC API Features)
+
+`api.hamburg.de/datasets/v1` · je Datensatz dl-de/by-2-0 · bbox-Abfragen
+Ende-zu-Ende verifiziert:
+
+| Thema | Weg | Beleg |
+|---|---|---|
+| Wochenmärkte | `einzelhandel` → `wochenmarkt` | 80 stadtweit, St. Pauli: 4 im Umkreis (Spielbudenplatz, Hopfenmarkt …); **keine Öffnungszeiten** im Datensatz |
+| Baustellen | `baustellen` → `baustelle` | „Bauweiser“-Steckbriefe, 130 stadtweit; St. Pauli Hafenstraße/Abwasser 26.01.2026–26.01.2029; `iststoerung` heißt „verursacht Verkehrsstörung“, nicht Subtyp |
+| Rad-Dauerzählstellen | `dauerzaehlstellen_rad` | Felder als „Label\|Wert“: Gurlittinsel `2025\|1926930` (5 279/Tag), Vortag `06.08.2026\|8277`, Tageslinie stündlich |
+| Milieuschutz | `soz_erh_vo` → `sozerhvo_inkraft` | 16 Gebiete in Kraft; St. Georg seit 15.02.2012 mit Verordnungs-PDF (luewu.de) |
+
+### Stadt-Adapter Berlin — VIZ-Baustellen
+
+`api.viz.berlin.de/daten/baustellen_sperrungen_viz.json` (Ressource laut
+Datenregister Berlin, `dl-de-by-2.0`) · 0,5 MB · 231 Features (144
+Baustellen, 83 Sperrungen) · GeometryCollection-Geometrien ·
+`validity.from/to` ISO. Beleg: Wolfensteindamm Steglitz, Baustelle in 338 m.
+
+**Geprüft und nicht aufgenommen (Berlin/Köln):** `gdi.berlin.de` und
+`fbinter.stadt-berlin.de` sind aus dieser Prüfumgebung weiterhin nicht
+erreichbar (TLS-Verbindungsabbruch, nachgeprüft 07.08.2026) — Wochenmärkte,
+Milieuschutz und Rad-Zählstellen Berlins bleiben deshalb draußen statt
+ungeprüft verdrahtet. Für Köln fand die Prüfung keinen belegbaren offenen
+Dienst zu den vier Themen (CKAN-API-Pfad `offenedaten-koeln.de/api/3/…`
+antwortet 404).
+
+### Erneut geprüft (W7)
+
+| Dienst | Befund 07.08.2026 |
+|---|---|
+| INKAR (inkar.de) | **wieder erreichbar** — die frühere TLS-Störung ist behoben. Maschineller Datenweg: nur das Gesamtpaket `inkar_2025.zip` (**434 MB**, Stand 13.08.2025) — als Live-Quelle unverhältnismäßig; Kreis-/Gemeindewerte kommen aus Regionalatlas/Regionaldatenbank. Bleibt Link, Warnung aktualisiert |
+| Berlin Bodenrichtwerte (gdi/fbinter) | weiterhin TLS-Abbruch aus dieser Umgebung — bleibt Portallink |
+| Sachsen (geodienste.sachsen.de) | weiterhin 403/404 auf Prüfabrufe — bleibt Portallink |

@@ -30,6 +30,7 @@ hinter Login bzw. Lizenz.
 | Wohnen | Nettokaltmiete, Leerstandsquote, Eigentümerquote, Baualter, Neubauhinweis |
 | Verfügbares Einkommen (3b) | VGRdL-Kreiswert mit Land/Bund und Verlauf — die ehrliche Kaufkraft-Näherung |
 | Kreisprofil (3c) | Übernachtungen je EW, **Erwerbstätige am Arbeitsort je 1.000 EW** (Tagesbevölkerung), Beschäftigten-/Arbeitslosenquote, Bevölkerungsbewegung, **Wirtschaftskraft (BIP je Einwohner/Erwerbstätigen mit Vorjahresveränderung)** — Regionalatlas, je eigenes Datenjahr |
+| **Gemeindewerte (3e, bundesweit)** | über das Regionaldatenbank-Opt-in: **SV-Beschäftigte am Arbeitsort der Gemeinde** (der Mittagsgeschäft-Indikator, Stichtag 30.06., mit 5-Jahres-Trend), Gästeübernachtungen und Arbeitslose der Gemeinde — endlich feiner als der Kreis, gerade im Umland |
 | Pendler (3d) | Ein-/Auspendler, Saldo, Quoten, Binnenpendler der Gemeinde + Top-Herkünfte/-Ziele mit km (Pendlerrechnung der Länder) |
 | Gastronomie | Betriebe nach Typ, Küche, Kette/Einzelbetrieb, Wettbewerbsdichte nach Entfernung (150/300/600/900 m), nächster Betrieb, **Branchenprofil** (was zählt als direkter Wettbewerb), **Öffnungszeiten-Lücken** (sonntags/nach 22 Uhr — konservativ gezählte Mindestzahlen), **Snack-Verkauf** als eigene Kategorie (Bäckerei/Confiserie/Kaffeeausschank), Nachtclubs und Saftbars |
 | Erreichbarkeit zu Fuß | echtes Wegenetz statt Luftlinie: erreichbare Fläche, Erschließungsgrad, Umwegfaktor, Gehstrecke je Betrieb |
@@ -39,16 +40,16 @@ hinter Login bzw. Lizenz.
 | Systemgastronomie & Marken | Ketten je Marke mit Anzahl und Entfernung, Kettenanteil, **Gebietsschutz-Check für die eigene Marke (5/10/20 km)** |
 | Umfeld | Frequenzbringer in 9 Kategorien (Einkauf, Bildung, Gesundheit, Büro, …) |
 | Klima (5b) | DWD-Normalwerte 1991–2020 der nächsten Station: Sommertage (mit Monatsbalken), Heiße Tage, Sonne, Niederschlag, Temperatur — für Außengastronomie |
-| **Städtische Märkte (5c)** | 54 Münchner Märkte mit Rubrik und Öffnungszeiten aus dem Stadtdatensatz; Reichweite 2 km, Karten-Pins, springbare Liste |
+| **Städtische Märkte (5c)** | 54 Münchner Märkte mit Rubrik und Öffnungszeiten; **80 Hamburger Wochenmärkte** (ohne Öffnungszeiten — der Datensatz führt keine, das steht dabei); Reichweite 2 km, Karten-Pins |
 | **Kurzzeitvermietung (5d)** | Inside Airbnb (CC BY 4.0): Inserate im Umkreis mit Zimmertyp, Median-Preis und Bewertungs-Aktivität der letzten 12 Monate — das kleinräumige Touristen-Signal, das die amtliche Kreis-Übernachtungszahl nicht liefert; Positionsversatz (~150 m) ehrlich benannt (München, Berlin) |
 | **Amtliche Gastro-Anker (3e)** | Regionaldatenbank (Opt-in, kostenlose Kennung): Umsatz je USt-Pflichtigem im Gastgewerbe des Kreises (Zeitreihe ab 2009, Prüfstein für die eigene Umsatzschätzung) und Gewerbean-/-abmeldungen mit Saldo — inkl. Unternehmenssitz-Warnung |
 | **Tourismus-Saisonalität (3f)** | Monatszahlen des Statistischen Amts München seit 2006: letzte 12 Monate mit Vorjahresvergleich, Auslandsanteil, Aufenthaltsdauer und Saisonkurve (Juli 130, Januar 59 — indexiert auf den Jahresdurchschnitt); bundesweit gibt es Monatswerte je Kreis nicht offen, der Block sagt das |
 | **Messe-Kalender (5e)** | Veranstaltungen der Messe München seit 2018 mit Besucherzahlen (bauma 2025: 605.974): laufende/kommende Termine, Jahresbilanz, größte Veranstaltungen, Entfernung zum nächsten Gelände — planbare Frequenzspitzen, die über Hotels und die U2 ankommen |
 | Verkehr/ÖPNV | Haltestellen, Linien, GTFS-Abfahrten je Stunde eines konkreten Tages, Mittagsfenster 11–14, Abendfenster 17–22, Nachtfenster 22–1 Uhr |
-| Gemessene Frequenz | Radzählstellen München (Jahressumme + **Jahresgang aus Tages-Rohdaten**: Monatsmittel, Messtage, Spitzentag), Kfz-Verkehrsstärke DTV (BAYSIS, ganz Bayern) |
-| Planungsrecht | Hochwassergefahrenflächen HQhäufig/HQ100/HQextrem (Bayern), Bebauungsplan-Umgriffe und **Erhaltungssatzungen/Milieuschutz § 172 BauGB mit Satzungs-PDFs** (München) |
-| Straßenlärm (6f) | LDEN/LNight in dB(A) am Punkt aus der EU-Umgebungslärmkartierung (LfU Bayern) — mit Kartierungsjahr und ehrlicher „nicht kartiert ≠ leise“-Grenze |
-| **Baustellen (6g)** | Servicekarte der Stadt München: laufende und geplante Maßnahmen im Umkreis mit Umriss auf der Karte, Zeitraum und Beeinträchtigung — Gehwegsperrungen eigens gezählt (der kurzfristige Umsatzkiller); Vier-Wochen-Horizont ehrlich benannt |
+| Gemessene Frequenz | Radzählstellen München (Jahressumme + **Jahresgang aus Tages-Rohdaten**) und **Hamburg** (Zählsäulen mit Jahressumme und Vortageswert), Kfz-Verkehrsstärke DTV: BAYSIS in Bayern (9.441 Zählstellen), **BASt-Dauerzählstellen im Rest Deutschlands** (Autobahnen/Bundesstraßen) |
+| Planungsrecht | Hochwassergefahrenflächen HQhäufig/HQ100/HQextrem **bundesweit** (Bayern: LfU mit Gewässer/Jährlichkeit, sonst BfG/LAWA), Bebauungsplan-Umgriffe (München) und **Erhaltungssatzungen/Milieuschutz § 172 BauGB mit Satzungs-PDFs** (München und Hamburg) |
+| Straßenlärm (6f) | **bundesweit**: LDEN/LNight am Punkt aus der EU-Umgebungslärmkartierung — in Bayern Rasterwerte (LfU), sonst UBA-Pegelklassen samt Schiene/Flug im Ballungsraum; mit Kartierungsjahr und ehrlicher „nicht kartiert ≠ leise“-Grenze |
+| **Baustellen (6g)** | München (Servicekarte, Vier-Wochen-Vorschau mit Umrissen, Gehwegsperrungen eigens gezählt), **Hamburg** („Bauweiser“-Steckbriefe der Groß-Maßnahmen) und **Berlin** (VIZ: Baustellen und Sperrungen von verkehrlichem Interesse) |
 | Bodenrichtwerte | Kartenebene + Klickabfrage in 7 Bundesländern, Portallinks für alle |
 | Leerstände | OSM-Leerstand als Untergrenze mit Adresse; Klick springt in der Karte zum Objekt |
 

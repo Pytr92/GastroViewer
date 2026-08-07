@@ -86,9 +86,13 @@ def build(
             "url": "https://www.inkar.de/",
             "beschreibung": "Indikatoren für Raumbeobachtung, Kreis- und Gemeindeebene.",
             "warnung": (
-                "Geprüft 08/2026: Der Server liefert eine unvollständige "
-                "TLS-Zertifikatskette — je nach Browser/Werkzeug schlägt der "
-                "Abruf fehl. Deshalb kein Datenblock, nur dieser Link."
+                "Nachgeprüft 07.08.2026: Server wieder erreichbar (die "
+                "frühere TLS-Störung ist behoben). Einen Datenblock gibt "
+                "es trotzdem nicht: INKAR liefert maschinell nur das "
+                "Gesamtpaket aller Indikatoren (inkar_2025.zip, 434 MB) — "
+                "für ein Localhost-Werkzeug unverhältnismäßig, und die "
+                "Kreis-/Gemeindewerte kommen inzwischen aus Regionalatlas "
+                "und Regionaldatenbank."
             ),
         },
         {

@@ -214,6 +214,11 @@ Antworten unter `fixtures/`.
 | [Hochwassergefahrenflächen LfU](https://www.lfu.bayern.de/wasser/hw_ue_gebiete/index.htm) | HQhäufig, HQ100, HQextrem am Punkt | CC BY 4.0, © Bayerisches Landesamt für Umwelt | 14 Tage |
 | [Bebauungsplan-Umgriffe München](https://geoportal.muenchen.de/portal/plan) | gilt für die Fläche ein Plan, und welcher | dl-de/by-2-0, © LH München | 14 Tage |
 | [Lärmkartierung LfU Bayern](https://www.lfu.bayern.de/) | Kartenebene Verkehrslärm | CC BY 4.0, © Bayerisches Landesamt für Umwelt | kein Cache |
+| [Lärmkartierung Deutschland (UBA)](https://www.umweltbundesamt.de/themen/verkehr/laermwirkung/laermkartierung) | Straßen-/Schienen-/Fluglärm-Klassen am Punkt + Kartenebene, bundesweit | keine Zugriffsbeschränkungen, © Umweltbundesamt/Länder | 14 Tage |
+| [Hochwassergefahrenkarten BfG/LAWA](https://geoportal.bafg.de/) | HQhäufig/HQ100/HQextrem am Punkt + Kartenebene, bundesweit | keine Zugriffsbeschränkungen, © BfG/LAWA | 14 Tage |
+| [BASt Straßenverkehrszählung](https://www.bast.de/DE/Themen/Digitales/HF_1/Massnahmen/verkehrszaehlung/zaehl_node.html) | DTV der Dauerzählstellen (Autobahnen/Bundesstraßen), bundesweit außerhalb Bayerns | CC BY 4.0, © BASt | Jahresdatei, lange TTL |
+| [Urban Data Platform Hamburg](https://api.hamburg.de/datasets/v1) | Wochenmärkte, Baustellen, Rad-Zählsäulen, Soziale Erhaltungsverordnungen (Hamburg) | dl-de/by-2-0, © FHH | 24 h |
+| [VIZ Berlin](https://viz.berlin.de/) | Baustellen und Sperrungen (Berlin) | dl-de/by-2-0, © VIZ Berlin | 24 h |
 | OSM-Kacheln | Kartenhintergrund (Vorgabe) | ODbL 1.0 | Browser |
 | [basemap.de](https://basemap.de/) (BKG) | amtlicher Kartenhintergrund, umschaltbar | dl-de/by-2-0, © GeoBasis-DE / BKG | Browser |
 
@@ -552,7 +557,7 @@ Zulauf von Büros, Passanten und Touristen fehlt. Eine dunkle Wohnlage ist ein S
 keine Standortentscheidung; die Innenstadt ist hier hell *und* trotzdem voller
 funktionierender Betriebe.
 
-## Planungsrecht und Hochwasser (Bayern, Bebauungspläne und Milieuschutz München)
+## Planungsrecht und Hochwasser (bundesweit; Bebauungspläne München, Milieuschutz München/Hamburg)
 
 Drei Fragen, die eine Standortentscheidung kippen können und die keine der übrigen Quellen
 beantwortet. Block **6e** fragt sie am Punkt ab.
@@ -687,7 +692,7 @@ Mitternachtsüberhang bleibt beim genannten Tag: Samstagnacht bis 4 Uhr ist nich
 „sonntags geöffnet". Ob eine Lücke Chance (niemand versorgt den Sonntag) oder
 Warnzeichen (der Sonntag lohnt für niemanden) ist, entscheidet der Blick vor Ort.
 
-## Straßenlärm (Block 6f) — Umgebungslärmkartierung, Bayern
+## Straßenlärm (Block 6f) — EU-Umgebungslärmkartierung, bundesweit
 
 Für Außengastronomie ist Straßenlärm eine Standorteigenschaft wie Sonne. Das
 Lärm-WMS des LfU Bayern liefert per Rasterabfrage die berechneten Pegel der
@@ -698,7 +703,12 @@ kartierte Hauptverkehrsstraße am Punkt", nicht „leise" (Nebenstraßen-, Schie
 Flug- und Gewerbelärm fehlen). Es sind berechnete Pegel, keine Messwerte. Und
 innerhalb der Ballungsräume (etwa München) ist die jüngste LfU-Fläche die Kartierung
 **2017** — die 2022er-Runde deckt nur Gebiete außerhalb ab; das Kartierungsjahr steht
-deshalb an jedem Wert. Außerhalb Bayerns bleibt der Block mit Begründung leer.
+deshalb an jedem Wert. Außerhalb Bayerns übernimmt seit der W-Runde der
+bundesweite UBA-Dienst (VeLa/LK, Runde 2022): in Ballungsräumen beantwortet
+eine Klickabfrage alle Quellen (Straße/Schiene/Flug als 5-dB-Klassen samt
+Gemeindename), außerhalb liefern die Hauptverkehrsstraßen-Layer. Klassen
+werden als Spanne angezeigt — der LfU-Rasterdienst bleibt in Bayern erste
+Wahl, weil er Nachkommawerte liefert.
 
 ## Zweite Wettbewerbsquelle: Overture Places (Block 4f)
 

@@ -1141,7 +1141,7 @@ function baueGeruest() {
     block('overture', '4f · Wettbewerbs-Abgleich (Overture)'),
     block('umfeld', '5 · Umfeld'),
     block('klima', '5b · Klima für Außengastronomie (DWD)'),
-    block('maerkte', '5c · Städtische Märkte (München)'),
+    block('maerkte', '5c · Städtische Märkte (München/Hamburg)'),
     block('airbnb', '5d · Kurzzeitvermietung (Inside Airbnb)'),
     block('messe', '5e · Messe-Kalender (Messe München)'),
     block('verkehr', '6 · Verkehr'),
@@ -1150,7 +1150,7 @@ function baueGeruest() {
     block('verkehrsmenge', '6d · Verkehrsmenge (DTV)'),
     block('planung', '6e · Planungsrecht und Hochwasser'),
     block('laerm', '6f · Straßenlärm (EU-Umgebungslärmkartierung)'),
-    block('baustellen', '6g · Baustellen (Stadt München)'),
+    block('baustellen', '6g · Baustellen (München/Hamburg/Berlin)'),
     block('leerstand', '7 · Leerstände'),
     block('quellen', '8 · Weiterführende Quellen'),
     block('grenzen', 'Bekannte Grenzen dieser Daten'),
@@ -4734,8 +4734,9 @@ function zeigeRadzaehlung(d) {
     setStatus(id, 'leer', 'keine Zählstelle');
     setInhalt(id, ...warnungen(d.warnings),
       el('div', { class: 'notiz' },
-        'Gemessene Frequenzdaten gibt es in München nur an sechs Querschnitten. '
-        + 'Für diesen Punkt liegt keine vor.'));
+        'Gemessene Radfrequenz gibt es nur an den städtischen '
+        + 'Zählquerschnitten (München, Hamburg). Für diesen Punkt liegt '
+        + 'keine vor.'));
     setQuelle(id, d.provenance);
     return;
   }

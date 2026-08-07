@@ -1,0 +1,636 @@
+{
+ "kommentar": "Echte OGC-API-Features-Antworten der Urban Data Platform Hamburg (api.hamburg.de/datasets/v1, dl-de/by-2-0), bbox-Abfragen um die Reeperbahn (53.5497, 9.9631) bzw. St. Georg, 2026-08-07. maerkte: 4 Wochenmaerkte St. Pauli; baustellen: 3 Bauweiser-Steckbriefe; rad: Zaehlsaeule Gurlittinsel mit Jahressumme und Tageslinie; milieuschutz: SozErhVo St.Georg (in Kraft, PDF).",
+ "maerkte": {
+  "type": "FeatureCollection",
+  "numberReturned": 4,
+  "numberMatched": 4,
+  "timeStamp": "2026-08-07T19:21:02Z",
+  "features": [
+   {
+    "type": "Feature",
+    "id": 1126,
+    "geometry": {
+     "type": "Point",
+     "coordinates": [
+      9.965526588100701,
+      53.547699129643135
+     ]
+    },
+    "properties": {
+     "wochenmarkt": "St. Pauli Hopfenmarkt",
+     "bezirk": "Mitte"
+    }
+   },
+   {
+    "type": "Feature",
+    "id": 1131,
+    "geometry": {
+     "type": "Point",
+     "coordinates": [
+      9.980085216043168,
+      53.55055585461088
+     ]
+    },
+    "properties": {
+     "wochenmarkt": "Neustadt Großneumarkt",
+     "bezirk": "Mitte"
+    }
+   },
+   {
+    "type": "Feature",
+    "id": 1134,
+    "geometry": {
+     "type": "Point",
+     "coordinates": [
+      9.965613033949586,
+      53.54965040741923
+     ]
+    },
+    "properties": {
+     "wochenmarkt": "St. Pauli Spielbudenplatz",
+     "bezirk": "Mitte"
+    }
+   },
+   {
+    "type": "Feature",
+    "id": 1138,
+    "geometry": {
+     "type": "Point",
+     "coordinates": [
+      9.952508788574782,
+      53.54558039962734
+     ]
+    },
+    "properties": {
+     "wochenmarkt": "Altonaer Fischmarkt",
+     "bezirk": "Altona"
+    }
+   }
+  ],
+  "links": [
+   {
+    "href": "https://api.hamburg.de/datasets/v1/einzelhandel/collections/wochenmarkt/items?bbox=9.94%2C53.54%2C9.99%2C53.56&limit=50&f=json",
+    "rel": "self",
+    "type": "application/geo+json",
+    "title": "Dieses Dokument"
+   },
+   {
+    "href": "https://api.hamburg.de/datasets/v1/einzelhandel/collections/wochenmarkt/items?bbox=9.94%2C53.54%2C9.99%2C53.56&limit=50&f=html",
+    "rel": "alternate",
+    "type": "text/html",
+    "title": "Dieses Dokument als HTML"
+   }
+  ]
+ },
+ "baustellen": {
+  "type": "FeatureCollection",
+  "numberReturned": 3,
+  "numberMatched": 3,
+  "timeStamp": "2026-08-07T19:21:04Z",
+  "features": [
+   {
+    "type": "Feature",
+    "id": 2011013,
+    "geometry": {
+     "type": "Point",
+     "coordinates": [
+      9.962973201753407,
+      53.54637958844901
+     ]
+    },
+    "properties": {
+     "titel": "St. Pauli Hafenstraße / Abwasser",
+     "organisation": "HAMBURG WASSER",
+     "anlass": "In zentralen Teilen Hamburgs sorgen seit gut 120 Jahren große, gemauerte Stammsiele für eine reibungslose Entwässerung. Rund 250 Kilometer dieser „alten Riesen“ müssen punktuell saniert werden, damit sie auch in Zukunft häusliches Abwasser und Niederschlag sicher ableiten können. Das Programm leistet einen wichtigen Beitrag zur Ertüchtigung der Abwassersysteme und zur Anpassung der städtischen Infrastruktur an die Folgen des Klimawandels.",
+     "umfang": "Einengung der Fahrbahn im Bereich des Pumpwerks. Die Verkehrseinschränkung besteht nicht im kompletten Zeitraum der Baumaßnahme - zunächst stehen bis MItte 2026 nur eine statt zwei Fahrspuren stadteinwärts zur Verfügung.",
+     "baubeginn": "26.01.2026",
+     "bauende": "26.01.2029",
+     "letzteaktualisierung": "2026-01-23 14:19:20",
+     "istzugangeingeschraenkt": false,
+     "iststoerung": true,
+     "isthotspot": false,
+     "istfreigegeben": true,
+     "mehrwert": "Sicherstellung der Abwasserentsorgung und Optimierung des Pumpwerkes Hafenstraße",
+     "istoepnveingeschraenkt": true,
+     "oevnveinschraenkungen": "Die Bushaltestelle „St. Pauli Hafenstraße“ in Richtung stadtauswärts entfällt und die in Richtung stadteinwärts wird um 50 Meter versetzt.",
+     "hatinternetlink": false,
+     "hatumleitungsbeschreibung": false,
+     "istparkraumeingeschraenkt": true,
+     "parkraumeinschraenkung": "Halteverbote"
+    }
+   },
+   {
+    "type": "Feature",
+    "id": 2095366,
+    "geometry": {
+     "type": "Point",
+     "coordinates": [
+      9.98823875217999,
+      53.55680771398849
+     ]
+    },
+    "properties": {
+     "titel": "Dammtorstraße / Abwasser",
+     "organisation": "HAMBURG WASSER",
+     "anlass": "Sielbauarbeiten in offener und geschlossener Bauweise, sowie Inliner mit Hausanschlüssen.",
+     "umfang": "Verschwenkung des Verkehrs während der Bauabschnitte; Befahrung beider Fahrtrichtungen möglich.\nKleine Theaterstraße in KW 16+17 kurzzeitig aufgrund Anlieferung Schlauchliner gesperrt. Ab dem 26.01.2026 wird der Dammtorwall ab der Zufahrt Dammtorstr. bis Höhe Hausnr. 2 voll gesperrt.",
+     "baubeginn": "12.01.2026",
+     "bauende": "31.08.2026",
+     "letzteaktualisierung": "2026-03-27 08:56:57",
+     "istzugangeingeschraenkt": false,
+     "iststoerung": true,
+     "isthotspot": false,
+     "istfreigegeben": true,
+     "mehrwert": "Diese Baustelle ist notwendig zur Sicherstellung der reibungslosen und sicheren Entsorgung von Abwasser im betroffenen Gebiet.",
+     "istoepnveingeschraenkt": false,
+     "hatinternetlink": true,
+     "internetlink": "https://www.hamburgwasser.de/service/aktuell/baustellen",
+     "hatumleitungsbeschreibung": false,
+     "istparkraumeingeschraenkt": true,
+     "parkraumeinschraenkung": "Aufhebung seitliche Parkplätze vor den Geschäften (Warenanlieferungsverkehr) sowie Parkplätze im Dammtorwall teilweise aufgehoben"
+    }
+   },
+   {
+    "type": "Feature",
+    "id": 2695585,
+    "geometry": {
+     "type": "Point",
+     "coordinates": [
+      9.95344198911585,
+      53.545535301677695
+     ]
+    },
+    "properties": {
+     "titel": "Große Elbstraße / Instandsetzung Pumpwerk",
+     "organisation": "HAMBURG WASSER",
+     "anlass": "Instandsetzung Pumpwerk",
+     "umfang": "Der Kfz-Verkehr kann das Baufeld in beide Fahrtrichtungen über eine Spur passieren. Dazu wird der Verkehr hier per Ampelschaltung geregelt. Wer auf St. Pauli Fischmarkt in Richtung stadteinwärts fährt, kann nicht nach rechts in die Große Elbstraße einbiegen. In Fahrtrichtung stadtauswärts kann von St. Pauli Fischmarkt nach links in die Große Elbstraße eingefahren werden.\nEin Ausfahren aus der Großen Elbstraße ist ausschließlich nach rechts in Richtung stadteinwärts möglich. Fußgänger und Radfahrer werden um die Baustelle herumgeleitet.",
+     "baubeginn": "05.05.2026",
+     "bauende": "28.08.2026",
+     "letzteaktualisierung": "2026-04-29 10:03:17",
+     "istzugangeingeschraenkt": true,
+     "einschraenkungsbegruendung": "Beschickung des Fischmarktes nur von Westen möglich.",
+     "iststoerung": true,
+     "isthotspot": false,
+     "istfreigegeben": true,
+     "mehrwert": "Diese Baustelle ist notwendig zur Sicherstellung der reibungslosen und sicheren Entsorgung von Abwasser im betroffenen Gebiet.",
+     "istoepnveingeschraenkt": false,
+     "hatinternetlink": false,
+     "hatumleitungsbeschreibung": true,
+     "umleitungsbeschreibung": "Umleitung ist ausgeschildert.",
+     "istparkraumeingeschraenkt": true,
+     "parkraumeinschraenkung": "Halteverbote"
+    }
+   }
+  ],
+  "links": [
+   {
+    "href": "https://api.hamburg.de/datasets/v1/baustellen/collections/baustelle/items?bbox=9.94%2C53.54%2C9.99%2C53.56&limit=50&f=json",
+    "rel": "self",
+    "type": "application/geo+json",
+    "title": "Dieses Dokument"
+   },
+   {
+    "href": "https://api.hamburg.de/datasets/v1/baustellen/collections/baustelle/items?bbox=9.94%2C53.54%2C9.99%2C53.56&limit=50&f=html",
+    "rel": "alternate",
+    "type": "text/html",
+    "title": "Dieses Dokument als HTML"
+   }
+  ]
+ },
+ "rad": {
+  "type": "FeatureCollection",
+  "numberReturned": 1,
+  "numberMatched": 1,
+  "timeStamp": "2026-08-07T19:21:28Z",
+  "features": [
+   {
+    "type": "Feature",
+    "id": 2133,
+    "geometry": {
+     "type": "Point",
+     "coordinates": [
+      10.008480000000489,
+      53.559240000018
+     ]
+    },
+    "properties": {
+     "link_download": "http://daten-hamburg.de/transport_verkehr/dauerzaehlstellen_rad/export_radverkehr.csv",
+     "in_betrieb_seit": "07.10.2014 ",
+     "name": "Gurlittinsel",
+     "typ": "Zählsäule",
+     "tageslinie": "06.08.2026,0:00:00,33|06.08.2026,1:00:00,18|06.08.2026,2:00:00,13|06.08.2026,3:00:00,8|06.08.2026,4:00:00,21|06.08.2026,5:00:00,84|06.08.2026,6:00:00,249|06.08.2026,7:00:00,639|06.08.2026,8:00:00,1128|06.08.2026,9:00:00,652|06.08.2026,10:00:00,336|06.08.2026,11:00:00,361|06.08.2026,12:00:00,329|06.08.2026,13:00:00,322|06.08.2026,14:00:00,372|06.08.2026,15:00:00,431|06.08.2026,16:00:00,538|06.08.2026,17:00:00,681|06.08.2026,18:00:00,753|06.08.2026,19:00:00,446|06.08.2026,20:00:00,353|06.08.2026,21:00:00,270|06.08.2026,22:00:00,155|06.08.2026,23:00:00,85",
+     "wochenlinie": "31,31.07.2026,6400|31,01.08.2026,5710|31,02.08.2026,6230|32,03.08.2026,8304|32,04.08.2026,6954|32,05.08.2026,8778|32,06.08.2026,8277",
+     "jahrgangslinie": "2026,1,823|2026,2,2062|2026,3,11288|2026,4,20353|2026,5,8515|2026,6,9798|2026,7,13956|2026,8,10715|2026,9,35337|2026,10,38983|2026,11,31333|2026,12,52362|2026,13,36045|2026,14,30103|2026,15,41934|2026,16,42935|2026,17,44628|2026,18,52066|2026,19,45467|2026,20,26521|2026,21,47628|2026,22,61356|2026,23,48009|2026,24,41303|2026,25,52153|2026,26,58013|2026,27,46935|2026,28,51236|2026,29,50512|2026,30,41625|2026,31,48865|2026,32,32313",
+     "radfahrende_seit_jahresbeginn": "01.01.2026|1135172",
+     "radfahrende_vorjahr": "2025|1926930",
+     "radfahrende_vortag": "06.08.2026|8277",
+     "radfahrende_insgesamt": "08.10.2014|24637447",
+     "max_radfahrende_tag_jahr": "19.03.2026|11874",
+     "max_radfahrende_woche_jahr": "22|61356",
+     "max_radfahrende_monat_jahr": "06|215424"
+    }
+   }
+  ],
+  "links": [
+   {
+    "href": "https://api.hamburg.de/datasets/v1/dauerzaehlstellen_rad/collections/dauerzaehlstellen_rad/items?bbox=9.9%2C53.53%2C10.1%2C53.58&limit=100&f=json",
+    "rel": "self",
+    "type": "application/geo+json",
+    "title": "Dieses Dokument"
+   },
+   {
+    "href": "https://api.hamburg.de/datasets/v1/dauerzaehlstellen_rad/collections/dauerzaehlstellen_rad/items?bbox=9.9%2C53.53%2C10.1%2C53.58&limit=100&f=html",
+    "rel": "alternate",
+    "type": "text/html",
+    "title": "Dieses Dokument als HTML"
+   }
+  ]
+ },
+ "milieuschutz": {
+  "type": "FeatureCollection",
+  "numberReturned": 1,
+  "numberMatched": 1,
+  "timeStamp": "2026-08-07T19:21:27Z",
+  "features": [
+   {
+    "type": "Feature",
+    "id": 99,
+    "geometry": {
+     "type": "MultiPolygon",
+     "coordinates": [
+      [
+       [
+        [
+         10.01121555591665,
+         53.554722329602754
+        ],
+        [
+         10.00970787515991,
+         53.55425037791017
+        ],
+        [
+         10.009849158323803,
+         53.553774965889126
+        ],
+        [
+         10.009901869298202,
+         53.55357830441608
+        ],
+        [
+         10.009680540592027,
+         53.55278661783916
+        ],
+        [
+         10.00973490168254,
+         53.552755400330874
+        ],
+        [
+         10.010020403737558,
+         53.55279279017754
+        ],
+        [
+         10.010239926028715,
+         53.55284925762887
+        ],
+        [
+         10.012998179841603,
+         53.55408062644409
+        ],
+        [
+         10.013636660852292,
+         53.553829381128125
+        ],
+        [
+         10.013516629487064,
+         53.55375583907894
+        ],
+        [
+         10.013451941390285,
+         53.5536322814727
+        ],
+        [
+         10.013399289455203,
+         53.55362895493474
+        ],
+        [
+         10.013563720186923,
+         53.5527241702508
+        ],
+        [
+         10.01753864309511,
+         53.55292289232419
+        ],
+        [
+         10.017846322402864,
+         53.55296356975737
+        ],
+        [
+         10.019042882704158,
+         53.553024208388976
+        ],
+        [
+         10.018996523079357,
+         53.553212077251004
+        ],
+        [
+         10.01895136283735,
+         53.55327735546233
+        ],
+        [
+         10.018827571654649,
+         53.55338838608731
+        ],
+        [
+         10.018439392914935,
+         53.5537286982151
+        ],
+        [
+         10.018635633588632,
+         53.55381101037583
+        ],
+        [
+         10.020501189280331,
+         53.55437886914249
+        ],
+        [
+         10.020538537456313,
+         53.554447189624106
+        ],
+        [
+         10.020112846725132,
+         53.55474977855191
+        ],
+        [
+         10.020242857690766,
+         53.554815437222366
+        ],
+        [
+         10.02159156183758,
+         53.55542449783723
+        ],
+        [
+         10.021040765461644,
+         53.555951513778375
+        ],
+        [
+         10.020950273646944,
+         53.55603047983521
+        ],
+        [
+         10.021033091074994,
+         53.556066899251064
+        ],
+        [
+         10.0206178586218,
+         53.55639840718623
+        ],
+        [
+         10.019011565048652,
+         53.555665087631475
+        ],
+        [
+         10.018836205259841,
+         53.55560434350425
+        ],
+        [
+         10.018710568784432,
+         53.55568849545539
+        ],
+        [
+         10.018261666290377,
+         53.55599088521473
+        ],
+        [
+         10.017839928324037,
+         53.55625719932728
+        ],
+        [
+         10.017844420300268,
+         53.55628402743156
+        ],
+        [
+         10.01756755064944,
+         53.55647082597848
+        ],
+        [
+         10.017683032163212,
+         53.556529667927144
+        ],
+        [
+         10.01896944156075,
+         53.557134271287055
+        ],
+        [
+         10.019208801993983,
+         53.5572576220997
+        ],
+        [
+         10.018838522598736,
+         53.55746822416871
+        ],
+        [
+         10.018663577043645,
+         53.557377892545425
+        ],
+        [
+         10.018520399480211,
+         53.55747213278551
+        ],
+        [
+         10.017534523887125,
+         53.558057529940626
+        ],
+        [
+         10.017165176791679,
+         53.558145006371966
+        ],
+        [
+         10.014569901096802,
+         53.559608318997455
+        ],
+        [
+         10.014280026600554,
+         53.55989634080361
+        ],
+        [
+         10.014373431932215,
+         53.55998771284533
+        ],
+        [
+         10.014410496951452,
+         53.5601639827998
+        ],
+        [
+         10.014426695928394,
+         53.56033167802644
+        ],
+        [
+         10.014266373430326,
+         53.56042293838295
+        ],
+        [
+         10.014206019225849,
+         53.56042226451797
+        ],
+        [
+         10.014092854920849,
+         53.56035279616335
+        ],
+        [
+         10.01393389183844,
+         53.560475619283864
+        ],
+        [
+         10.01376245398533,
+         53.560571035308286
+        ],
+        [
+         10.013647105690277,
+         53.5605092850173
+        ],
+        [
+         10.012521847823944,
+         53.560021250061865
+        ],
+        [
+         10.01193675706912,
+         53.559698992409466
+        ],
+        [
+         10.011716532288542,
+         53.55956430632273
+        ],
+        [
+         10.01156764538886,
+         53.559477519327544
+        ],
+        [
+         10.011407686303505,
+         53.5593233094487
+        ],
+        [
+         10.010009161085101,
+         53.558427168078076
+        ],
+        [
+         10.010560536543155,
+         53.558160891440586
+        ],
+        [
+         10.010218596051214,
+         53.55790502196894
+        ],
+        [
+         10.009812556813472,
+         53.557599868524775
+        ],
+        [
+         10.00951306455582,
+         53.55776402245042
+        ],
+        [
+         10.00921732087641,
+         53.55757248995172
+        ],
+        [
+         10.00880445233789,
+         53.557342554903656
+        ],
+        [
+         10.008126985648747,
+         53.55772706685924
+        ],
+        [
+         10.007392335106156,
+         53.557369311410454
+        ],
+        [
+         10.006506156903026,
+         53.556920799217764
+        ],
+        [
+         10.006770524969998,
+         53.556730046228076
+        ],
+        [
+         10.005918682949543,
+         53.55625802210847
+        ],
+        [
+         10.00582911349546,
+         53.55622140635537
+        ],
+        [
+         10.005894148947919,
+         53.55611891792943
+        ],
+        [
+         10.006285525081426,
+         53.55558440041693
+        ],
+        [
+         10.006873650607185,
+         53.55566129101113
+        ],
+        [
+         10.006991337629866,
+         53.55533369494827
+        ],
+        [
+         10.007598560925,
+         53.55540539902428
+        ],
+        [
+         10.008691962473865,
+         53.555564627344836
+        ],
+        [
+         10.009011143680006,
+         53.5555992285756
+        ],
+        [
+         10.009787272088792,
+         53.555232555703
+        ],
+        [
+         10.010054513109766,
+         53.55517292322956
+        ],
+        [
+         10.011312144448882,
+         53.554895469835365
+        ],
+        [
+         10.01121555591665,
+         53.554722329602754
+        ]
+       ]
+      ]
+     ]
+    },
+    "properties": {
+     "gebietsname": "St.Georg",
+     "bezirk": 1,
+     "datum": "2012-02-15 00:00:00",
+     "fundstelle": "https://www.luewu.de/docs/gvbl/2012/07.pdf",
+     "internet": "https://www.hamburg.de/soziale-erhaltungsverordnungen/"
+    }
+   }
+  ],
+  "links": [
+   {
+    "href": "https://api.hamburg.de/datasets/v1/soz_erh_vo/collections/sozerhvo_inkraft/items?bbox=9.99%2C53.55%2C10.02%2C53.56&limit=20&f=json",
+    "rel": "self",
+    "type": "application/geo+json",
+    "title": "Dieses Dokument"
+   },
+   {
+    "href": "https://api.hamburg.de/datasets/v1/soz_erh_vo/collections/sozerhvo_inkraft/items?bbox=9.99%2C53.55%2C10.02%2C53.56&limit=20&f=html",
+    "rel": "alternate",
+    "type": "text/html",
+    "title": "Dieses Dokument als HTML"
+   }
+  ]
+ }
+}

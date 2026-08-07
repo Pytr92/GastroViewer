@@ -149,6 +149,16 @@ def bast_jawe():
 
 
 @pytest.fixture(scope="session")
+def hamburg_stadt():
+    return load_fixture("raw_hamburg_stadt.json")
+
+
+@pytest.fixture(scope="session")
+def berlin_baustellen():
+    return load_fixture("raw_berlin_baustellen.json")
+
+
+@pytest.fixture(scope="session")
 def overture_mira():
     return load_fixture("raw_overture_mira.geojson")
 

@@ -20,8 +20,10 @@ from .config import Settings
 from .http import Outbound
 from .sources import (airbnb as airbnb_mod,
                       bast as bast_mod,
-                      baustellen as baustellen_mod, bayern, boris,
+                      baustellen as baustellen_mod, bayern,
+                      berlin as berlin_mod, boris,
                       dynamik as dynamik_mod,
+                      hamburg as hamburg_mod,
                       einkommen as einkommen_mod, gehweg,
                       genesis as genesis_mod,
                       indikatoren as indikatoren_mod,
@@ -290,8 +292,17 @@ class PointService:
         )
 
     async def radzaehlung(self, lat: float, lon: float, radius: int, refresh: bool = False):
-        # Die sechs Zählstellen ändern sich nicht stündlich; der Cache-Schlüssel
+        # Zählstellen ändern sich nicht stündlich; der Cache-Schlüssel
         # rundet ohnehin auf 4 Nachkommastellen. TTL wie OSM: 24 h.
+        if hamburg_mod.in_hamburg(lat, lon):
+            key = cache_key("hamburg_rad", lat, lon, radius)
+            return await self._cached(
+                "hamburg_rad",
+                key,
+                lambda: hamburg_mod.rad_load(
+                    self.outbound, self.settings, lat, lon, radius),
+                refresh=refresh,
+            )
         key = cache_key("muenchen_rad", lat, lon, radius)
         return await self._cached(
             "muenchen_rad",
@@ -304,8 +315,18 @@ class PointService:
         )
 
     async def maerkte(self, lat: float, lon: float, radius: int, refresh: bool = False):
-        """Städtische Märkte München. Außerhalb des Stadtgebiets entscheidet
-        die Quelle selbst — dann geht keine Anfrage hinaus."""
+        """Städtische Märkte (München oder Hamburg). Außerhalb der
+        Stadtgebiete entscheidet die Quelle selbst — dann geht keine
+        Anfrage hinaus."""
+        if hamburg_mod.in_hamburg(lat, lon):
+            key = cache_key("hamburg_maerkte", lat, lon, radius)
+            return await self._cached(
+                "hamburg_maerkte",
+                key,
+                lambda: hamburg_mod.maerkte_load(
+                    self.outbound, self.settings, lat, lon, radius),
+                refresh=refresh,
+            )
         key = cache_key("muenchen_maerkte", lat, lon, radius)
         return await self._cached(
             "muenchen_maerkte",
@@ -315,8 +336,27 @@ class PointService:
         )
 
     async def baustellen(self, lat: float, lon: float, radius: int, refresh: bool = False):
-        """Baustellen-Vorschau der Stadt München. Außerhalb des Stadtgebiets
-        entscheidet die Quelle selbst — dann geht keine Anfrage hinaus."""
+        """Baustellen: München (Vier-Wochen-Vorschau), Hamburg
+        („Bauweiser"-Steckbriefe) oder Berlin (VIZ). Außerhalb entscheidet
+        die Münchner Quelle selbst — dann geht keine Anfrage hinaus."""
+        if hamburg_mod.in_hamburg(lat, lon):
+            key = cache_key("hamburg_baustellen", lat, lon, radius)
+            return await self._cached(
+                "hamburg_baustellen",
+                key,
+                lambda: hamburg_mod.baustellen_load(
+                    self.outbound, self.settings, lat, lon, radius),
+                refresh=refresh,
+            )
+        if berlin_mod.in_berlin(lat, lon):
+            key = cache_key("berlin_baustellen", lat, lon, radius)
+            return await self._cached(
+                "berlin_baustellen",
+                key,
+                lambda: berlin_mod.baustellen_load(
+                    self.outbound, self.settings, lat, lon, radius),
+                refresh=refresh,
+            )
         key = cache_key("muenchen_baustellen", lat, lon, radius)
         return await self._cached(
             "muenchen_baustellen",
