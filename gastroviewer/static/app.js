@@ -1438,6 +1438,8 @@ function zeigeZensus(d) {
 
   setInhalt('wohnen', kzw, bau, ...warnungen(d.warnings));
   setQuelle('wohnen', d.provenance);
+  // Falls der Gastronomie-Block schon steht: Versorgungsgrad nachfüllen.
+  fuelleVersorgungsgrad(null);
 }
 
 /* Snack-Verkauf: Ladengeschäfte (Bäckerei, Confiserie, Kaffeeausschank …),
@@ -1589,6 +1591,44 @@ function brancheBereich(o) {
     inhalt);
 }
 
+/* Versorgungsgrad: Betriebe je 1.000 Einwohner im Umkreis — berechnet aus
+   zwei schon geladenen Blöcken (OSM-Betriebe, Zensus-Einwohner). Anker ist
+   die amtlich zitierte DEHOGA-Schwelle: weniger als ein Betrieb je 1.000
+   Einwohner gilt als „gastronomische Unterversorgung". Lädt der Zensus
+   nach der Gastronomie, füllt zeigeZensus den Platzhalter nach. */
+function versorgungsgrad() {
+  const wrap = el('div', { id: 'gastro-versorgung' });
+  fuelleVersorgungsgrad(wrap);
+  return wrap;
+}
+
+function fuelleVersorgungsgrad(ziel) {
+  const wrap = ziel || document.getElementById('gastro-versorgung');
+  if (!wrap) return;
+  const betriebe = state.daten.osm?.data?.zusammenfassung?.gastronomie?.gesamt;
+  // Zensuswerte kommen als {wert, zellen, …} — es zählt der Wert.
+  const einwohner = state.daten.zensus?.data?.bevoelkerung?.einwohner?.wert;
+  if (betriebe === undefined || !einwohner) {
+    wrap.replaceChildren();
+    return;
+  }
+  const je1000 = betriebe / einwohner * 1000;
+  const unterversorgt = je1000 < 1;
+  wrap.replaceChildren(el('div', { class: unterversorgt ? 'notiz' : 'hinweis-klein' },
+    el('b', {}, `Versorgungsgrad: ${NF1.format(je1000)} Betriebe je 1.000 Einwohner `),
+    `im Umkreis (berechnet: ${NF.format(betriebe)} OSM-Betriebe ÷ `
+    + `${NF.format(einwohner)} Zensus-Einwohner). `
+    + (unterversorgt
+      ? 'Unter der Schwelle von 1 je 1.000 — nach der in der amtlichen '
+        + 'Statistik zitierten DEHOGA-Definition eine „gastronomische '
+        + 'Unterversorgung": wenig Wettbewerb, aber auch wenig gelernte '
+        + 'Gastro-Lauflage.'
+      : 'Über der Schwelle von 1 je 1.000, unterhalb derer die amtliche '
+        + 'Statistik von „gastronomischer Unterversorgung" spricht. '
+        + 'Wohnbevölkerung ohne Büros und Touristen — in Innenstadtlagen '
+        + 'sagt die Zahl wenig, im Wohnviertel viel.')));
+}
+
 function zeigeOsm(d) {
   const ids = ['gastronomie', 'franchise', 'umfeld', 'verkehr', 'leerstand'];
   for (const id of ids) setStatus(id, d.ok ? 'ok' : 'fehler', d.ok ? 'geladen' : 'nicht erreichbar');
@@ -1670,6 +1710,7 @@ function zeigeOsm(d) {
           }, `${t}: ${p.tags[t]}`))))));
 
   setInhalt('gastronomie', kzg,
+    versorgungsgrad(),
     brancheBereich(o),
     el('h3', { class: 'hinweis-klein' }, 'Nach Typ'), typTab,
     el('h3', { class: 'hinweis-klein' }, 'Wettbewerbsdichte nach Entfernung'), entfTab,

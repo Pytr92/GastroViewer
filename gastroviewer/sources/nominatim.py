@@ -1,4 +1,4 @@
-"""Nominatim — Geocoding und Reverse-Geocoding.
+"""Nominatim — Geocoding und Reverse-Geocoding, mit Photon-Rückfall.
 
 Nutzungsbedingung: höchstens 1 Anfrage pro Sekunde, identifizierender User-Agent
 mit Kontaktadresse. In Phase 0 geprüft: **ohne User-Agent antwortet der Dienst mit
@@ -12,6 +12,15 @@ Phase-0-Befunde:
 * Nominatim liefert **keinen** Gemeindeschlüssel. Der AGS kommt aus dem
   Zensus-Block. ``ISO3166-2-lvl4`` liefert aber das Bundesland als Gegenprobe.
 * ``licence`` steht in jeder Antwort und wird durchgereicht statt hartkodiert.
+
+Rückfall (Phase-0 am 2026-08-07): Scheitert Nominatim (Timeout, 403, 5xx),
+übernimmt **Photon** (Komoot, ``photon.komoot.io`` — OSM-Daten, ODbL).
+Verifiziert: die Suche findet „Sendlinger Str 10 München" hausnummerngenau
+(GeoJSON, Felder ``street``/``housenumber``/``city``/``state``/``postcode``),
+``/reverse`` liefert die Adresse am Sendlinger Tor. Photon führt kein
+Bundesland-ISO und keine ``licence`` in der Antwort — dafür stehen
+Konstanten; die Herkunft (Photon statt Nominatim) steht in Quelle und
+Warnung, damit der Rückfall nie stillschweigend passiert.
 """
 
 from __future__ import annotations
@@ -61,6 +70,52 @@ def shape(raw: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+PHOTON_BASE = "https://photon.komoot.io"
+
+
+def photon_shape(feature: dict[str, Any]) -> dict[str, Any]:
+    """Photon-GeoJSON-Feature → dieselbe Form wie :func:`shape`."""
+    p = feature.get("properties") or {}
+    coords = (feature.get("geometry") or {}).get("coordinates") or []
+    strasse = p.get("street") or (p.get("name") if p.get("housenumber") else None)
+    teile = [" ".join(x for x in (strasse, p.get("housenumber")) if x),
+             " ".join(x for x in (p.get("postcode"), p.get("city")) if x)]
+    display = ", ".join(t for t in teile if t) or p.get("name")
+    return {
+        "display_name": display,
+        "name": p.get("name"),
+        "lat": float(coords[1]) if len(coords) >= 2 else None,
+        "lon": float(coords[0]) if len(coords) >= 2 else None,
+        "strasse": strasse,
+        "hausnummer": p.get("housenumber"),
+        "plz": p.get("postcode"),
+        "gemeinde": p.get("city") or p.get("county"),
+        "ortsteil": p.get("district") or p.get("locality"),
+        "bundesland": p.get("state"),
+        "bundesland_iso": None,  # führt Photon nicht
+        "land": p.get("country"),
+        "osm_type": p.get("osm_type"),
+        "osm_id": p.get("osm_id"),
+        "adresse_roh": p,
+        "licence": FALLBACK_LICENSE,
+    }
+
+
+def _photon_provenance(endpoint: str) -> Provenance:
+    return Provenance(
+        source="Photon (Komoot) — Rückfall, OpenStreetMap-Daten",
+        license=FALLBACK_LICENSE,
+        endpoint=endpoint,
+        stand="laufend aktualisiert",
+        retrieved_at=now_iso(),
+        note=(
+            "Nominatim war nicht erreichbar; die Adresse kommt vom "
+            "Photon-Geocoder (gleiche OSM-Datenbasis). Photon führt kein "
+            "Bundesland-ISO — die Gegenprobe entfällt für diesen Abruf."
+        ),
+    )
+
+
 def _provenance(settings: Settings, endpoint: str, licence: str) -> Provenance:
     return Provenance(
         source="Nominatim (OpenStreetMap)",
@@ -98,9 +153,7 @@ async def reverse(
             min_interval=settings.nominatim_min_interval,
         )
     except SourceError as err:
-        return SourceResult.failed(
-            "adresse", err, int((time.perf_counter() - started) * 1000)
-        )
+        return await _photon_reverse(out, settings, lat, lon, err, started)
 
     if isinstance(raw, dict) and raw.get("error"):
         return SourceResult(
@@ -148,9 +201,7 @@ async def search(
             min_interval=settings.nominatim_min_interval,
         )
     except SourceError as err:
-        return SourceResult.failed(
-            "suche", err, int((time.perf_counter() - started) * 1000)
-        )
+        return await _photon_search(out, settings, query, limit, err, started)
 
     items = [shape(r) for r in raw] if isinstance(raw, list) else []
     licence = items[0]["licence"] if items else FALLBACK_LICENSE
@@ -161,4 +212,79 @@ async def search(
         duration_ms=int((time.perf_counter() - started) * 1000),
         warnings=[] if items else [f"Keine Treffer für „{query}“ in Deutschland."],
         provenance=_provenance(settings, url, licence),
+    )
+
+
+# ------------------------------------------------- Photon-Rückfall
+
+async def _photon_reverse(
+    out: Outbound, settings: Settings, lat: float, lon: float,
+    nominatim_fehler: SourceError, started: float,
+) -> SourceResult:
+    url = f"{PHOTON_BASE}/reverse"
+    try:
+        raw = await out.get_json(
+            "photon", url,
+            params={"lat": f"{lat}", "lon": f"{lon}", "lang": "de"},
+            timeout=settings.nominatim_timeout,
+            limiter="photon",
+            min_interval=1.0,
+        )
+    except SourceError:
+        # Beide Geocoder tot: der ursprüngliche Nominatim-Fehler zählt.
+        return SourceResult.failed(
+            "adresse", nominatim_fehler,
+            int((time.perf_counter() - started) * 1000))
+    features = (raw or {}).get("features") or []
+    if not features:
+        return SourceResult.failed(
+            "adresse", nominatim_fehler,
+            int((time.perf_counter() - started) * 1000))
+    return SourceResult(
+        name="adresse",
+        ok=True,
+        data=photon_shape(features[0]),
+        duration_ms=int((time.perf_counter() - started) * 1000),
+        warnings=[
+            "Nominatim war nicht erreichbar "
+            f"({nominatim_fehler.message}) — die Adresse kommt vom "
+            "Photon-Rückfall (gleiche OSM-Datenbasis)."
+        ],
+        provenance=_photon_provenance(url),
+    )
+
+
+async def _photon_search(
+    out: Outbound, settings: Settings, query: str, limit: int,
+    nominatim_fehler: SourceError, started: float,
+) -> SourceResult:
+    url = f"{PHOTON_BASE}/api"
+    try:
+        raw = await out.get_json(
+            "photon", url,
+            params={"q": query, "limit": str(limit), "lang": "de"},
+            timeout=settings.nominatim_timeout,
+            limiter="photon",
+            min_interval=1.0,
+        )
+    except SourceError:
+        return SourceResult.failed(
+            "suche", nominatim_fehler,
+            int((time.perf_counter() - started) * 1000))
+    features = (raw or {}).get("features") or []
+    # Photon kennt keinen countrycodes-Filter — Deutschland-Filter im Code.
+    items = [photon_shape(f) for f in features
+             if ((f.get("properties") or {}).get("countrycode") or "").upper()
+             in ("DE", "")]
+    return SourceResult(
+        name="suche",
+        ok=True,
+        data=items,
+        duration_ms=int((time.perf_counter() - started) * 1000),
+        warnings=[
+            "Nominatim war nicht erreichbar "
+            f"({nominatim_fehler.message}) — die Treffer kommen vom "
+            "Photon-Rückfall (gleiche OSM-Datenbasis)."
+        ] + ([] if items else [f"Keine Treffer für „{query}“ in Deutschland."]),
+        provenance=_photon_provenance(url),
     )

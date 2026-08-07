@@ -240,6 +240,30 @@ def build(
             "titel": "Leerstandsmelder",
             "url": "https://www.leerstandsmelder.de/",
             "beschreibung": "Bürgerschaftlich gemeldete Leerstände.",
+            "warnung": (
+                "Geprüft 08/2026: Die API ist offen erreichbar, liefert "
+                "aber nur den ungefilterten Weltbestand (9 318 Meldungen, "
+                "kein Regionalfilter) und die Seite nennt maschinell "
+                "keine Datenlizenz — deshalb Link statt Datenblock. Der "
+                "OSM-Leerstand im Block darüber bleibt die belegbare "
+                "Untergrenze."
+            ),
+        },
+        {
+            "titel": "Handelsregister-Daten: OffeneRegister.de",
+            "url": "https://offeneregister.de/",
+            "beschreibung": (
+                "Betreiberketten, Gründungsdaten und Verflechtungen aus "
+                "dem Handelsregister — als offener Gesamtdownload."
+            ),
+            "warnung": (
+                "Geprüft 08/2026: eingefrorene Datenspende (Gesamtbestand "
+                "~250 MB, nicht fortgeschrieben; Datensatz von 2019), die "
+                "Abfrage-API (db.offeneregister.de) antwortete mit "
+                "HTTP 502. Aktuelle Register-APIs (OpenRegister, "
+                "handelsregister.ai) sind kommerziell. Deshalb Link, kein "
+                "Datenblock."
+            ),
         },
     ]
     if ort:
@@ -268,6 +292,22 @@ def build(
             "titel": "DEHOGA „Die Gastgeber\"",
             "url": "https://www.die-gastgeber.info/",
             "beschreibung": "Objektbörse des Branchenverbands.",
+        },
+        {
+            "titel": "DEHOGA-Zahlenspiegel (Quartalsbericht)",
+            "url": (
+                "https://www.dehoga-bundesverband.de/zahlen-fakten/"
+            ),
+            "beschreibung": (
+                "Quartalsweise Umsatz-, Beschäftigungs-, Insolvenz- und "
+                "Preisentwicklung des Gastgewerbes als freie PDFs — der "
+                "Branchenkontext zur eigenen Risikobewertung "
+                "(Bundeszahlen, nicht kleinräumig)."
+            ),
+            "warnung": (
+                "Als PDF ohne stabilen Datenendpunkt bewusst nicht "
+                "eingelesen — Zahlen bitte direkt im Bericht nachschlagen."
+            ),
         },
         {
             "titel": "ahgz immo",

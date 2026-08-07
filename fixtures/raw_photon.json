@@ -1,0 +1,65 @@
+{
+ "kommentar": "Echte Photon-Antworten (photon.komoot.io, OSM/ODbL), 2026-08-07: search 'Sendlinger Str 10 Muenchen' (hausnummerngenau), reverse am Sendlinger Tor (48.1334, 11.5674).",
+ "search": {
+  "type": "FeatureCollection",
+  "features": [
+   {
+    "type": "Feature",
+    "properties": {
+     "osm_type": "N",
+     "osm_id": 2643777223,
+     "osm_key": "place",
+     "osm_value": "house",
+     "type": "house",
+     "housenumber": "10",
+     "street": "Sendlinger Straße",
+     "locality": "Hackenviertel",
+     "district": "Altstadt",
+     "city": "München",
+     "state": "Bayern",
+     "country": "Deutschland",
+     "postcode": "80331",
+     "countrycode": "DE"
+    },
+    "geometry": {
+     "type": "Point",
+     "coordinates": [
+      11.5715379,
+      48.1359469
+     ]
+    }
+   }
+  ]
+ },
+ "reverse": {
+  "type": "FeatureCollection",
+  "features": [
+   {
+    "type": "Feature",
+    "properties": {
+     "osm_type": "N",
+     "osm_id": 83102025,
+     "osm_key": "amenity",
+     "osm_value": "bank",
+     "type": "house",
+     "name": "Kreissparkasse München",
+     "street": "Sendlinger-Tor-Platz",
+     "locality": "Hackenviertel",
+     "district": "Altstadt",
+     "city": "München",
+     "state": "Bayern",
+     "country": "Deutschland",
+     "postcode": "80336",
+     "countrycode": "DE"
+    },
+    "geometry": {
+     "type": "Point",
+     "coordinates": [
+      11.5672569,
+      48.1333679
+     ]
+    }
+   }
+  ]
+ }
+}

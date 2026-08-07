@@ -748,3 +748,17 @@ antwortet 404).
 | INKAR (inkar.de) | **wieder erreichbar** — die frühere TLS-Störung ist behoben. Maschineller Datenweg: nur das Gesamtpaket `inkar_2025.zip` (**434 MB**, Stand 13.08.2025) — als Live-Quelle unverhältnismäßig; Kreis-/Gemeindewerte kommen aus Regionalatlas/Regionaldatenbank. Bleibt Link, Warnung aktualisiert |
 | Berlin Bodenrichtwerte (gdi/fbinter) | weiterhin TLS-Abbruch aus dieser Umgebung — bleibt Portallink |
 | Sachsen (geodienste.sachsen.de) | weiterhin 403/404 auf Prüfabrufe — bleibt Portallink |
+
+---
+
+## Nachtrag 2026-08-07 (5. Runde): Versorgungsgrad, Photon, Verwerfungen (X-Runde)
+
+| Prüfung | Ergebnis |
+|---|---|
+| **Photon** (`photon.komoot.io`) | `api?q=Sendlinger+Str+10+München` → hausnummerngenau (street/housenumber/city/state/postcode), `/reverse` am Sendlinger Tor → Adresse; kein Bundesland-ISO, keine licence im JSON (ODbL-Konstante). Eingebaut als **Rückfall**, wenn Nominatim scheitert — nie stillschweigend (Warnung + eigene Quellenangabe) |
+| **Versorgungsgrad** | Betriebe je 1.000 Einwohner im Umkreis, berechnet aus zwei vorhandenen Blöcken (OSM ÷ Zensus); Anker: die in der amtlichen Statistik (Statistisches Landesamt BW / DEHOGA) zitierte Schwelle „< 1 Betrieb je 1.000 EW = gastronomische Unterversorgung“. Reine Rechnung, als „berechnet“ beschriftet |
+| Freischankflächen / Sperrzeiten München | CKAN-Suche `freischank`, `sperrzeit`, `sondernutzung gastronomie` → je **0 Treffer** auf opendata.muenchen.de. Kein Einbau, kein Raten |
+| Gewerbeanzeigen quartalsweise / nach WZ 56 je Kreis | Katalog-Nachprüfung: es existiert nur `52311-01-04-4` (Jahressumme, ohne Branchentrennung) — der Befund der T-Runde bleibt bestehen; eine offene Quartals-/WZ-Tabelle auf Kreisebene gibt es nicht |
+| Leerstandsmelder-API | `api.leerstandsmelder.de/api/v1/places` antwortet offen, liefert aber den **ungefilterten Weltbestand** (9 318 Meldungen, lat/lon-Parameter ohne Wirkung) und die Seite (SPA) nennt maschinell keine Datenlizenz → bleibt Link mit Befund |
+| OffeneRegister.de | Gesamtdownload ~250 MB (eingefrorene Datenspende), Abfrage-API `db.offeneregister.de` → HTTP 502 → bleibt Link mit Befund; aktuelle Alternativen sind kommerziell |
+| DEHOGA-Zahlenspiegel | Quartals-PDFs, kein stabiler Datenendpunkt → als beschriebener Link aufgenommen, bewusst kein PDF-Parser |

@@ -159,6 +159,11 @@ def berlin_baustellen():
 
 
 @pytest.fixture(scope="session")
+def photon():
+    return load_fixture("raw_photon.json")
+
+
+@pytest.fixture(scope="session")
 def overture_mira():
     return load_fixture("raw_overture_mira.geojson")
 
