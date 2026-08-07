@@ -104,8 +104,11 @@ def t_point_gesamt():
     assert not fehlend, f"Blöcke fehlen: {fehlend}"
     kaputt = [n for n, b in bl.items() if not b.get("ok")]
     assert not kaputt, f"Blöcke gescheitert: {kaputt}"
+    # Begründet leere Blöcke (data None mit warnings) tragen keine Quelle —
+    # z. B. Genesis ohne hinterlegte Kennung (Opt-in).
     ohne_quelle = [n for n, b in bl.items()
-                   if not ((b.get("provenance") or {}).get("source"))]
+                   if not ((b.get("provenance") or {}).get("source"))
+                   and not (b.get("data") is None and b.get("warnings"))]
     assert not ohne_quelle, f"ohne Quellenangabe: {ohne_quelle}"
     return f"7 Blöcke ok, alle mit Quelle · {dauer:.1f} s · {groesse/1024:.0f} kB"
 
@@ -428,6 +431,41 @@ def t_indikatoren():
             f"— {dauer:.1f} s")
 
 
+def t_airbnb():
+    d, dauer, _ = hole("/api/point/airbnb", P)
+    assert d["ok"], d.get("error")
+    a = d["data"]
+    # Münchner Innenstadt ohne ein einziges Airbnb-Inserat wäre ein
+    # Parse-Fehler, kein leerer Markt.
+    assert a and a["im_radius"] > 20, a
+    assert a["stadtweit"] > 1000, a
+    assert a["stichtag"] and a["nach_typ"], a
+    assert any("150 m" in h for h in a["hinweise"]), "Versatz-Hinweis fehlt"
+    # Außerhalb der Datenstädte: leer mit Begründung, ohne Abruf.
+    k, _, _ = hole("/api/point/airbnb",
+                   {"lat": KOELN[0], "lon": KOELN[1], "r": 600})
+    assert k["ok"] and k["data"] is None
+    return (f"{a['im_radius']} Inserate im Radius "
+            f"({a['stadtweit']} stadtweit, Stand {a['stichtag']}) — {dauer:.1f} s")
+
+
+def t_genesis_opt_in():
+    # Ohne hinterlegte Kennung: Block leer mit Opt-in-Erklärung, kein
+    # Abruf. (Der Datenpfad selbst ist mit den aufgezeichneten echten
+    # ffcsv-Antworten in tests/test_genesis.py abgedeckt.)
+    z, _, _ = hole("/api/genesis/zugang", {})
+    d, dauer, _ = hole("/api/genesis", {"ags": "09162000"})
+    if z["konfiguriert"]:
+        assert d["ok"] and d["data"], d
+        u = d["data"]["umsatz"]["aktuell"]
+        return (f"Kennung hinterlegt: Umsatz je Pflichtigem "
+                f"{u['je_pflichtigem_eur']} € ({u['jahr']}) — {dauer:.1f} s")
+    assert d["ok"] and d["data"] is None, d
+    assert any("Opt-in" in w for w in d["warnings"]), d["warnings"]
+    assert "regionalstatistik.de" in z["registrierung"]
+    return f"ohne Kennung leer mit Opt-in-Erklärung — {dauer:.1f} s"
+
+
 def t_validierung():
     hole("/api/point", {"lat": 35.0, "lon": 11.5, "r": 600}, erwartet=422)
     hole("/api/point", {**P, "r": 20}, erwartet=422)
@@ -712,6 +750,8 @@ ALLE = [
     ("GET /api/point/baustellen — Stadt München live", t_baustellen),
     ("GET /api/point/maerkte — Stadtliste live", t_maerkte),
     ("GET /api/point/indikatoren — Viertel-Steckbrief live", t_indikatoren),
+    ("GET /api/point/airbnb — Inside Airbnb live", t_airbnb),
+    ("GET /api/genesis — Opt-in-Verhalten ohne Kennung", t_genesis_opt_in),
     ("Validierung (422-Pfade)", t_validierung),
     ("Cache-Nachweis", t_cache_wirkt),
 ]

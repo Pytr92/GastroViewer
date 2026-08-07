@@ -202,9 +202,11 @@ for name, d in daten.items():
         # Blöcke, die begründet leer bleiben dürfen, tragen dann keine Quelle:
         # GTFS ohne importierten Fahrplan, Lärm außerhalb Bayerns, Overture
         # ohne lokalen Import, die München-Quellen (Baustellen, Märkte,
-        # Indikatorenatlas) außerhalb des Stadtgebiets. Alle nennen den
-        # Grund in ihren warnings.
-        if (block in ("gtfs", "laerm", "baustellen", "maerkte", "indikatoren")
+        # Indikatorenatlas) außerhalb des Stadtgebiets, Inside Airbnb
+        # außerhalb der Datenstädte, Genesis ohne hinterlegte Kennung
+        # (Opt-in). Alle nennen den Grund in ihren warnings.
+        if (block in ("gtfs", "laerm", "baustellen", "maerkte", "indikatoren",
+                      "airbnb", "genesis")
                 and inhalt.get("data") is None):
             continue
         if block == "overture" and not (inhalt.get("data") or {}).get("importiert"):

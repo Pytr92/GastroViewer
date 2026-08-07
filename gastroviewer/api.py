@@ -26,7 +26,7 @@ from .config import Settings, get_settings
 from .http import Outbound
 from .schaetzung import Eingaben, rechne, vorgaben_aus_punkt
 from .service import GRENZEN, PointService
-from .sources import boris, gtfs, links, muenchen, wms
+from .sources import boris, genesis as genesis_mod, gtfs, links, muenchen, wms
 
 STATIC_DIR = __import__("pathlib").Path(__file__).parent / "static"
 
@@ -71,6 +71,14 @@ class SchaetzEingaben(BaseModel):
     # Lage-Anker aus dem Zensus-Gitter (Wohnungsmiete, vorbefüllt und sichtbar).
     # Geht in keine Umsatzrechnung ein — nur in die Einordnung der Mietprobe.
     zensus_wohnmiete_qm: float | None = Field(None, gt=0, le=100)
+
+
+class GenesisZugang(BaseModel):
+    """Kennung für die Regionaldatenbank (Opt-in). Wird nur lokal abgelegt
+    und vor dem Speichern live beim Dienst geprüft."""
+
+    kennung: str = Field(..., min_length=1, max_length=120)
+    passwort: str = Field(..., min_length=1, max_length=200)
 
 
 class PunktNotiz(BaseModel):
@@ -328,6 +336,80 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         """Städtische Märkte München (Wochen-/Bauernmärkte …) in Reichweite."""
         _validate(lat, lon, r)
         return (await svc(request).maerkte(lat, lon, r, refresh)).to_dict()
+
+    @app.get("/api/point/airbnb")
+    async def point_airbnb(
+        request: Request, lat: float, lon: float, r: int = 600,
+        refresh: bool = False,
+    ):
+        """Kurzzeitvermietung im Umkreis (Inside Airbnb, CC BY 4.0):
+        Inserate, Zimmertypen, Bewertungs-Aktivität, Median-Preis.
+        Nur für Städte mit Inside-Airbnb-Datensatz (München, Berlin)."""
+        _validate(lat, lon, r)
+        s = svc(request)
+        adresse = await s.adresse(lat, lon)
+        return (
+            await s.airbnb(lat, lon, r, adresse.data if adresse.ok else None,
+                           refresh)
+        ).to_dict()
+
+    @app.get("/api/genesis")
+    async def genesis(
+        request: Request,
+        ags: str = Query(..., min_length=5, max_length=8),
+    ):
+        """Amtliche Gastro-Anker aus der Regionaldatenbank (Opt-in mit
+        kostenloser Kennung): Umsatz je Umsatzsteuerpflichtigem im
+        Gastgewerbe und Gewerbean-/-abmeldungen, jeweils Kreiswerte."""
+        if not ags.isdigit():
+            raise HTTPException(422, "Der Gemeindeschlüssel besteht aus Ziffern.")
+        return (await svc(request).genesis(ags)).to_dict()
+
+    @app.get("/api/genesis/zugang")
+    async def genesis_zugang(request: Request):
+        """Nur der Status — Kennung maskiert, das Passwort verlässt den
+        Server in keiner Antwort."""
+        zugang = genesis_mod.lade_zugang(cfg(request))
+        if zugang is None:
+            return {"konfiguriert": False,
+                    "registrierung": genesis_mod.REGISTRIERUNG}
+        k = zugang["kennung"]
+        return {
+            "konfiguriert": True,
+            "quelle": zugang["quelle"],
+            "kennung_maskiert": k[:2] + "…" if len(k) > 2 else "…",
+            "registrierung": genesis_mod.REGISTRIERUNG,
+        }
+
+    @app.post("/api/genesis/zugang")
+    async def genesis_zugang_setzen(request: Request, body: GenesisZugang):
+        """Prüft die Kennung live beim Dienst (logincheck) und legt sie nur
+        bei Erfolg lokal ab — Datei im Datenverzeichnis, Rechte 0600."""
+        out: Outbound = request.app.state.outbound
+        zugang = {"kennung": body.kennung, "passwort": body.passwort}
+        try:
+            ok, meldung = await genesis_mod.logincheck(out, zugang)
+        except Exception as exc:  # noqa: BLE001 — Netzfehler klar benennen
+            raise HTTPException(
+                502, f"Der Anmelde-Check war nicht erreichbar: {exc}"
+            ) from exc
+        if not ok:
+            raise HTTPException(
+                422, f"Die Regionaldatenbank lehnt die Kennung ab: {meldung}"
+            )
+        genesis_mod.speichere_zugang(cfg(request), body.kennung, body.passwort)
+        return {"gespeichert": True, "meldung": meldung}
+
+    @app.delete("/api/genesis/zugang")
+    async def genesis_zugang_loeschen(request: Request):
+        zugang = genesis_mod.lade_zugang(cfg(request))
+        if zugang and zugang["quelle"] == "umgebung":
+            raise HTTPException(
+                409,
+                "Die Kennung kommt aus Umgebungsvariablen "
+                "(GASTROVIEWER_GENESIS_KENNUNG) — dort entfernen.",
+            )
+        return {"geloescht": genesis_mod.loesche_zugang(cfg(request))}
 
     @app.get("/api/point/indikatoren")
     async def point_indikatoren(request: Request, lat: float, lon: float):
@@ -994,6 +1076,15 @@ VERGLEICH_SPALTEN = [
      "gruppe": "detail"},
     {"key": "einpersonenhaushalte", "titel": "Einpersonenhaushalte % (Bezirk M)",
      "stellen": 1, "gruppe": "detail"},
+
+    # --- Kurzzeitvermietung (Inside Airbnb) — nur für Städte mit Datensatz.
+    {"key": "airbnb_im_radius", "titel": "Airbnb-Inserate im Radius",
+     "gruppe": "detail"},
+
+    # --- Amtlicher Gastro-Anker (Regionaldatenbank, Opt-in) — leer ohne
+    # hinterlegte Kennung.
+    {"key": "ust_je_pflichtigem", "titel": "Umsatz je USt-Pflichtigem Gastgewerbe € (Kreis)",
+     "gruppe": "detail"},
 ]
 
 
@@ -1069,6 +1160,14 @@ def _row_for(saved: dict[str, Any]) -> dict[str, Any]:
         "maerkte_reichweite": (
             len(((bl.get("maerkte") or {}).get("data")).get("in_reichweite") or [])
             if (bl.get("maerkte") or {}).get("data") else None
+        ),
+        "airbnb_im_radius": (
+            ((bl.get("airbnb") or {}).get("data") or {}).get("im_radius")
+            if (bl.get("airbnb") or {}).get("data") else None
+        ),
+        "ust_je_pflichtigem": (
+            ((((bl.get("genesis") or {}).get("data") or {}).get("umsatz") or {})
+             .get("aktuell") or {}).get("je_pflichtigem_eur")
         ),
         "einpersonenhaushalte": next(
             (

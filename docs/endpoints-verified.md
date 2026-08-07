@@ -604,3 +604,33 @@ Alle Phase-0-Prüfungen mit echten Abrufen am 07.08.2026.
 | BASt-Straßenverkehrszählung (Stundenwerte) | Download frei (`2023_A_S.zip` → 200), aber nur Autobahnen/Bundesstraßen — für Innenstadtlagen deckt die Lärmkartierung den Kfz-Verkehr besser ab |
 | Parkhäuser München (CKAN-JSON) | 72 Standorte mit Koordinaten, aber **ohne Kapazitäten** — gegenüber dem OSM-Bestand kein Mehrwert |
 | `gis-service.destatis.de` | über den Sitzungs-Proxy nicht erreichbar (502) — nicht benötigt, der Regionalatlas läuft über `gis-idmz.nrw.de` |
+
+## Nachtrag 2026-08-07 (2. Runde): Inside Airbnb und Regionaldatenbank (GENESIS)
+
+Alle Phase-0-Prüfungen mit echten Abrufen am 07.08.2026.
+
+| Endpunkt | Prüfung | Ergebnis |
+|---|---|---|
+| `insideairbnb.com/get-the-data/` | HTML-Abruf, Link-Extraktion | Deutschland: genau zwei Städte — `germany/bv/munich/2026-06-29` und `germany/be/berlin/2026-06-26`; Lizenzangabe der Seite: CC BY 4.0 |
+| `data.insideairbnb.com/germany/bv/munich/2026-06-29/visualisations/listings.csv` | CSV-Download (1,2 MB) | 6.890 Inserate; Spalten u. a. latitude/longitude, room_type (4 Werte), price (nackte Zahl, Landeswährung; 4.465 von 6.890 gefüllt), number_of_reviews_ltm (durchgängig), availability_365. Marienplatz 600 m: 127 Inserate (86 ganze Unterkünfte, 41 Privatzimmer), Median-Preis 336 € (92 mit Preis), 1.135 Bewertungen/12 M. Achtung: Positionen plattformseitig um bis zu ~150 m versetzt |
+| `regionalstatistik.de/genesisws/rest/2020/helloworld/whoami` | GET | 200 — REST-2020-Schnittstelle (GENESIS V5.0.4) erreichbar |
+| `…/helloworld/logincheck` | POST (Kennung als Header) | unterscheidet live: gültige Kennung → „…erfolgreich an- und abgemeldet…“, falsche → Fehlermeldung, jeweils HTTP 200. GAST/GAST besteht den logincheck, hat aber keinerlei Datenrechte |
+| `…/data/table` und `…/catalogue/tables` | POST ohne/mit GAST | HTTP 401, Code 15 „Sie sind nicht berechtigt…“ — **Daten- und Katalogabruf nur mit registrierter (kostenloser) Kennung** |
+| Tabelle `73311-01-02-4` (Umsatzsteuerstatistik) | öffentlicher Werteabruf der Website, einmalig manuell (Struktur + ffcsv-Format aufgezeichnet) | Zeitraum 2009–2023; Merkmale KREISE (490), WZ08RS (20 Abschnitte), Werte STR007 (Umsatzsteuerpflichtige), UMS031 (steuerbarer Umsatz, Tsd. €). München 09162, Gastgewerbe WZ08-I, 2023: 4.019 Pflichtige, 6.584.298 Tsd. € → 1.638.293 € je Pflichtigem (1,3 % des Kreisumsatzes) |
+| Tabelle `52311-01-04-4` (Gewerbeanzeigen) | ebenso | Jahressumme, aktuell 2025, keine WZ-Trennung auf Kreisebene; München 2025: 15.350 Anmeldungen (13.853 Neuerrichtungen, 3.713 Betriebsgründungen), 10.245 Abmeldungen (8.671 Aufgaben, 1.777 Betriebsaufgaben), Saldo +5.105 |
+| ffcsv-Format (GENESIS V5) | aus dem echten Download | englisches Langformat, eine Zeile je Wert (`statistics_code;…;time;1_variable_code;…;value;value_unit;value_variable_code;…`), ISO-8859-1; Qualitätszeichen `-`/`.`/`x` als Fehlwerte |
+
+**Entscheidung zum Abrufweg:** Die `robots.txt` von regionalstatistik.de untersagt
+automatisierte Zugriffe auf die Weboberfläche komplett (`Disallow: /`). Der anonyme
+Browser-Werteabruf diente deshalb nur der einmaligen manuellen Phase-0-Verifikation
+(Format, Sollwerte, Fixtures); die Anwendung selbst spricht ausschließlich die
+REST-Schnittstelle an — und die verlangt eine kostenlose Kennung → **Opt-in**
+(Block 3e). Der Datenpfad mit echter Kennung nutzt exakt das aufgezeichnete
+ffcsv-Format desselben Software-Stands (V5.0.4); der erste echte Abruf zeigt
+etwaige Abweichungen als klare Fehlermeldung im Block.
+
+**Korrektur eigener Annahmen:** Der zunächst vermutete Tabellencode
+`73111-…` ist die **Lohn- und Einkommensteuer**, nicht die Umsatzsteuer —
+der öffentliche Katalog wies `73311-01-02-4` als richtige Tabelle aus.
+Merkmalscode der Regionalebene (`KREISE`) aus dem öffentlich einsehbaren
+Tabellenaufbau übernommen, nicht geraten.

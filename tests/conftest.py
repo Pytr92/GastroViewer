@@ -119,6 +119,16 @@ def muenchen_maerkte():
 
 
 @pytest.fixture(scope="session")
+def airbnb_muenchen():
+    return load_fixture("raw_airbnb_muenchen.json")
+
+
+@pytest.fixture(scope="session")
+def genesis_ffcsv():
+    return load_fixture("raw_genesis_ffcsv.json")
+
+
+@pytest.fixture(scope="session")
 def overture_mira():
     return load_fixture("raw_overture_mira.geojson")
 

@@ -25,7 +25,8 @@ class FakeOutbound:
     def __init__(self, zensus, overpass, nominatim, einkommen=None,
                  kreisprofil=None, dwd=None, pendler=None, ohsome=None,
                  laerm=None, fehler: set[str] | None = None,
-                 baustellen=None, maerkte=None, indikatoren=None):
+                 baustellen=None, maerkte=None, indikatoren=None,
+                 airbnb=None):
         self.zensus = zensus
         self.overpass = overpass
         self.nominatim = nominatim
@@ -47,6 +48,8 @@ class FakeOutbound:
         self.baustellen = baustellen
         self.maerkte = maerkte
         self.indikatoren = indikatoren
+        # Inside Airbnb: {"index": HTML der Datenseite, "csv": listings.csv}.
+        self.airbnb = airbnb
         self.indikatoren_csv_urls: dict[str, str] = {}
         if indikatoren:
             from gastroviewer.sources import indikatoren as ind_mod
@@ -173,7 +176,24 @@ class FakeOutbound:
                 raise SourceError("timeout",
                                   "Zeitüberschreitung — Dienst antwortet nicht.")
             return self.indikatoren["csv"][self.indikatoren_csv_urls[url]]
+        if "insideairbnb.com/get-the-data" in url:
+            self.calls.append("airbnb")
+            if "airbnb" in self.fehler or self.airbnb is None:
+                raise SourceError("timeout",
+                                  "Zeitüberschreitung — Dienst antwortet nicht.")
+            return self.airbnb["index"]
+        if "data.insideairbnb.com" in url:
+            self.calls.append("airbnb")
+            if "airbnb" in self.fehler or self.airbnb is None:
+                raise SourceError("timeout",
+                                  "Zeitüberschreitung — Dienst antwortet nicht.")
+            return self.airbnb["csv"]
         raise AssertionError(f"unerwartete Text-URL: {url}")
+
+    async def post_text(self, source, url, **kw):
+        # GENESIS (Opt-in): ohne hinterlegte Kennung geht nie etwas hinaus —
+        # taucht hier trotzdem ein Aufruf auf, ist das ein Fehler im Code.
+        raise AssertionError(f"unerwartete POST-Text-URL: {url}")
 
     class _Lim:
         @staticmethod
@@ -187,8 +207,14 @@ class FakeOutbound:
 def client(tmp_path, monkeypatch, zensus_600, overpass_combined, nominatim_reverse,
            einkommen_muenchen, kreisprofil_muenchen, dwd_klima, pendler_muenchen,
            ohsome_dynamik, laerm_bayern, muenchen_baustellen, muenchen_maerkte,
-           muenchen_indikatoren):
+           muenchen_indikatoren, airbnb_muenchen):
     from gastroviewer.config import Settings
+
+    # Der Genesis-Block ist ein Opt-in — die Testumgebung darf keine echte
+    # Kennung aus der Umgebung erben, sonst hinge der Outbound-Zählwert an
+    # der Maschine, auf der die Tests laufen.
+    monkeypatch.delenv("GASTROVIEWER_GENESIS_KENNUNG", raising=False)
+    monkeypatch.delenv("GASTROVIEWER_GENESIS_PASSWORT", raising=False)
 
     settings = Settings()
     settings.data_dir = tmp_path
@@ -198,7 +224,7 @@ def client(tmp_path, monkeypatch, zensus_600, overpass_combined, nominatim_rever
                         einkommen_muenchen, kreisprofil_muenchen, dwd_klima,
                         pendler_muenchen, ohsome_dynamik, laerm_bayern,
                         baustellen=muenchen_baustellen, maerkte=muenchen_maerkte,
-                        indikatoren=muenchen_indikatoren)
+                        indikatoren=muenchen_indikatoren, airbnb=airbnb_muenchen)
     app = create_app(settings)
 
     original_lifespan_state = {}
@@ -258,8 +284,10 @@ def test_zweiter_aufruf_erzeugt_keinen_outbound_traffic(client):
     # Verflechtungen) — ohsome (2 Zeitreihen: Gastro gesamt, fast_food) —
     # das Lärm-WMS (LDEN und LNight je 2022 mit NoData plus 2017 = 4) —
     # Baustellen-WFS (1) — Märkte-WFS (1) — Indikatorenatlas (CKAN-Suche
-    # plus 6 CSVs = 7, stadtweit nur einmal).
-    assert vorher == 45
+    # plus 6 CSVs = 7, stadtweit nur einmal) — Inside Airbnb (Datenseite plus
+    # listings.csv = 2, stadtweit nur einmal). Genesis: 0 — Opt-in ohne
+    # Kennung, es geht nichts hinaus.
+    assert vorher == 47
 
     d = client.get("/api/point", params={"lat": LAT, "lon": LON, "r": R}).json()
     assert len(client.fake.calls) == vorher, "Cache hat nicht gegriffen"
@@ -1447,3 +1475,49 @@ def test_point_overture_block_ohne_import(client):
     e = client.get("/api/point/overture",
                    params={"lat": LAT, "lon": LON, "r": R}).json()
     assert e["data"] == {"importiert": False}
+
+
+def test_point_airbnb_block_und_stadtcache(client):
+    """Block 5d: echte Zählwerte am Marienplatz; der stadtweite Datensatz
+    wird nur einmal geladen (Datenseite + CSV = 2 Aufrufe)."""
+    d = client.get("/api/point", params={"lat": LAT, "lon": LON, "r": R}).json()
+    a = d["bloecke"]["airbnb"]
+    assert a["ok"] and a["data"]["im_radius"] == 260
+    assert a["data"]["nach_typ"]["Ganze Unterkunft"] == 172
+    assert a["data"]["stichtag"] == "2026-06-29"
+    assert "CC BY 4.0" in a["provenance"]["license"]
+
+    vorher = client.fake.calls.count("airbnb")
+    assert vorher == 2, "Datenseite + listings.csv, mehr nicht"
+    e = client.get("/api/point/airbnb",
+                   params={"lat": LAT, "lon": LON, "r": R}).json()
+    assert e["data"]["im_radius"] == 260
+    assert client.fake.calls.count("airbnb") == vorher, "Stadt-Cache griff nicht"
+
+
+def test_genesis_opt_in_ohne_kennung(client):
+    """Ohne Kennung: Block leer mit Opt-in-Erklärung, kein Abruf; der
+    Zugangs-Status nennt den Registrierungslink."""
+    d = client.get("/api/point", params={"lat": LAT, "lon": LON, "r": R}).json()
+    g = d["bloecke"]["genesis"]
+    assert g["ok"] and g["data"] is None
+    assert any("Opt-in" in w for w in g["warnings"])
+
+    z = client.get("/api/genesis/zugang").json()
+    assert z["konfiguriert"] is False
+    assert "regionalstatistik.de" in z["registrierung"]
+
+    r = client.get("/api/genesis", params={"ags": "09162000"}).json()
+    assert r["ok"] and r["data"] is None
+
+
+def test_genesis_zugang_loeschen_ohne_datei(client):
+    r = client.delete("/api/genesis/zugang")
+    assert r.status_code == 200
+    assert r.json()["geloescht"] is False
+
+
+def test_vergleich_hat_airbnb_und_genesis_spalten(client):
+    d = client.get("/api/points/vergleich").json()
+    keys = {c["key"] for c in d["spalten"]}
+    assert {"airbnb_im_radius", "ust_je_pflichtigem"} <= keys

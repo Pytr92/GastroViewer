@@ -16,10 +16,10 @@ Abnahmeprüfung gegen http://127.0.0.1:8011
 ========================================================================
 
 Vier Lagetypen laden …
-  Großstadt-Innenstadt       0.3s (aus dem Cache)
-  Großstadt-Wohnviertel      0.1s (aus dem Cache)
+  Großstadt-Innenstadt       1.0s (aus dem Cache)
+  Großstadt-Wohnviertel      0.2s (aus dem Cache)
   Kleinstadt                 0.1s (aus dem Cache)
-  ländlich                   0.0s (aus dem Cache)
+  ländlich                   0.1s (aus dem Cache)
 [OK   ] §7.1 Jede Zahl ist auf eine reale API-Antwort zurückführbar
          Zensus direkt abgefragt: 118 Zellen, Summe Einwohner 16370
            Anwendung zeigt: 118 Zellen, 16370 Einwohner
@@ -32,13 +32,13 @@ Vier Lagetypen laden …
 [OK   ] §7.3 Attribution OSM/ODbL und Zensus-Copyright sichtbar
          in der Fußzeile von index.html: OSM/ODbL=ja, Zensus=ja
 [OK   ] §7.4 Nominatim ≤ 1 req/s gedrosselt, User-Agent gesetzt
-         3 echte Suchen nacheinander (refresh=true): 2.06s (Untergrenze 2,0s)
-           Limiter: {'min_interval_s': 1.0, 'acquisitions': 14, 'throttled': 6}
-           User-Agent: gastroviewer/0.1.0 (alesim222@gmail.com)
+         3 echte Suchen nacheinander (refresh=true): 2.07s (Untergrenze 2,0s)
+           Limiter: {'min_interval_s': 1.0, 'acquisitions': 12, 'throttled': 4}
+           User-Agent: gastroviewer/0.1.0 (https://github.com/Pytr92/GastroViewer)
 [OK   ] §7.5 Cache greift: zweiter Aufruf ohne Outbound-Traffic
-         erzwungener Abruf: Zähler 663 → 664 (+1)
-           danach derselbe Aufruf: Zähler bleibt bei 664
-           ganzer Punkt aus dem Cache: 253 ms, outbound_requests=0
+         erzwungener Abruf: Zähler 778 → 779 (+1)
+           danach derselbe Aufruf: Zähler bleibt bei 779
+           ganzer Punkt aus dem Cache: 406 ms, outbound_requests=0
            nachprüfbar unter http://127.0.0.1:8011/api/outbound
 [OK   ] §7.6 Ausfall einer Quelle bricht die Seite nicht
          Overpass auf toten Endpunkt gezwungen: osm.ok=False

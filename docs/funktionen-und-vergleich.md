@@ -19,7 +19,7 @@ hinter Login bzw. Lizenz.
 | Grundkarten: OpenStreetMap, amtliche basemap.de (farbig/grau), in Bayern Luftbild und Flurstücke (ALKIS) | BKG, LDBV |
 | Deckkraftregler für alle aufgesetzten Ebenen | — |
 
-### Punktanalyse — WIE ist es hier? (ein Klick, 23 Blöcke)
+### Punktanalyse — WIE ist es hier? (ein Klick, 25 Blöcke)
 
 | Block | Inhalt |
 |---|---|
@@ -40,6 +40,8 @@ hinter Login bzw. Lizenz.
 | Umfeld | Frequenzbringer in 9 Kategorien (Einkauf, Bildung, Gesundheit, Büro, …) |
 | Klima (5b) | DWD-Normalwerte 1991–2020 der nächsten Station: Sommertage (mit Monatsbalken), Heiße Tage, Sonne, Niederschlag, Temperatur — für Außengastronomie |
 | **Städtische Märkte (5c)** | 54 Münchner Märkte mit Rubrik und Öffnungszeiten aus dem Stadtdatensatz; Reichweite 2 km, Karten-Pins, springbare Liste |
+| **Kurzzeitvermietung (5d)** | Inside Airbnb (CC BY 4.0): Inserate im Umkreis mit Zimmertyp, Median-Preis und Bewertungs-Aktivität der letzten 12 Monate — das kleinräumige Touristen-Signal, das die amtliche Kreis-Übernachtungszahl nicht liefert; Positionsversatz (~150 m) ehrlich benannt (München, Berlin) |
+| **Amtliche Gastro-Anker (3e)** | Regionaldatenbank (Opt-in, kostenlose Kennung): Umsatz je USt-Pflichtigem im Gastgewerbe des Kreises (Zeitreihe ab 2009, Prüfstein für die eigene Umsatzschätzung) und Gewerbean-/-abmeldungen mit Saldo — inkl. Unternehmenssitz-Warnung |
 | Verkehr/ÖPNV | Haltestellen, Linien, GTFS-Abfahrten je Stunde eines konkreten Tages, Mittagsfenster 11–14, Abendfenster 17–22, Nachtfenster 22–1 Uhr |
 | Gemessene Frequenz | Radzählstellen München (Jahressumme + **Jahresgang aus Tages-Rohdaten**: Monatsmittel, Messtage, Spitzentag), Kfz-Verkehrsstärke DTV (BAYSIS, ganz Bayern) |
 | Planungsrecht | Hochwassergefahrenflächen HQhäufig/HQ100/HQextrem (Bayern), Bebauungsplan-Umgriffe (München) |
@@ -52,7 +54,7 @@ hinter Login bzw. Lizenz.
 
 | Funktion | Besonderheit |
 |---|---|
-| Vergleichstabelle: 58 Kennzahlen in 6 schaltbaren Gruppen | jede berechnete Spalte ist als „berechnet" beschriftet |
+| Vergleichstabelle: 60 Kennzahlen in 6 schaltbaren Gruppen | jede berechnete Spalte ist als „berechnet" beschriftet |
 | Gesamt-Score im Punkt und im Bericht | Anker offen, Gewichte eigene Setzung, Rechnung nachvollziehbar bis zur Teilnote |
 | Gewichtetes Ranking | Punktzahl allein aus eigenen Gewichten, jeder Beitrag offen |
 | Eigene Note (1–5) und Notiz je Punkt | einzige Wertung im Werkzeug — und sie kommt vom Nutzer |
@@ -66,9 +68,10 @@ hinter Login bzw. Lizenz.
 
 ### Betrieb
 
-Läuft komplett lokal (localhost, SQLite), kein Konto, keine Cloud. Cache mit
+Läuft komplett lokal (localhost, SQLite), kein Konto (einzige Ausnahme: das
+freiwillige Regionaldatenbank-Opt-in für Block 3e), keine Cloud. Cache mit
 Kachel-Logik schont die freien Dienste; jeder echte Abruf steht im Protokoll.
-Geprüft durch 410 automatische Tests, 56 Live-Routenprüfungen, 40 Browser-Checks
+Geprüft durch 434 automatische Tests, 58 Live-Routenprüfungen, 42 Browser-Checks
 und 9 Abnahmekriterien.
 
 ---

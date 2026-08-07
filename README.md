@@ -180,6 +180,8 @@ Antworten unter `fixtures/`.
 | [Baustellen-Servicekarte München](https://opendata.muenchen.de/dataset/baustellen_4_weeks_opendata) | Baustellen/Haltverbote im Umkreis, Vier-Wochen-Vorschau | dl-de/by-2-0, © LH München, Mobilitätsreferat | 24 h |
 | [Märkte der LH München](https://opendata.muenchen.de/dataset/maerkte) | Wochen-/Bauernmärkte mit Öffnungszeiten | dl-de/by-2-0, © LH München, GeodatenService | 30 Tage |
 | [Indikatorenatlas München](https://opendata.muenchen.de/dataset?q=indikatorenatlas) | Stadtbezirks-Jahresreihen (Viertel-Steckbrief) | dl-de/by-2-0, © LH München, Statistisches Amt | 30 Tage |
+| [Inside Airbnb](https://insideairbnb.com/get-the-data/) | Kurzzeitvermietung im Umkreis (München, Berlin) — Touristen-Nachfrage-Signal | CC BY 4.0, © Inside Airbnb | 30 Tage |
+| [Regionaldatenbank Deutschland](https://www.regionalstatistik.de/) (GENESIS) | amtliche Gastro-Anker: Umsatz je USt-Pflichtigem Gastgewerbe, Gewerbean-/-abmeldungen (Kreis) — **Opt-in mit kostenloser Kennung** | dl-de/by-2-0, © Statistische Ämter des Bundes und der Länder | 30 Tage |
 | [Luftbild und ALKIS Bayern](https://geodaten.bayern.de/opengeodata/) | Kartenebenen | CC BY 4.0, © Bayerische Vermessungsverwaltung | kein Cache |
 | [BAYSIS Straßenverkehrszählung](https://www.baysis.bayern.de/internet/verdat/svz/index.html) | Verkehrsmenge (DTV) je Zählstelle | CC BY 4.0, © Bayerische Straßenbauverwaltung | 24 h |
 | [Hochwassergefahrenflächen LfU](https://www.lfu.bayern.de/wasser/hw_ue_gebiete/index.htm) | HQhäufig, HQ100, HQextrem am Punkt | CC BY 4.0, © Bayerisches Landesamt für Umwelt | 14 Tage |
@@ -189,10 +191,20 @@ Antworten unter `fixtures/`.
 | [basemap.de](https://basemap.de/) (BKG) | amtlicher Kartenhintergrund, umschaltbar | dl-de/by-2-0, © GeoBasis-DE / BKG | Browser |
 
 Verlinkt, aber **nicht abgerufen**: BORIS-D und die Landesportale für Bodenrichtwerte,
-hystreet, Pendleratlas, INKAR, Regionalstatistik, Zensusatlas, Leerstandsmelder,
+hystreet, Pendleratlas, INKAR, Zensusatlas, Leerstandsmelder,
 nexxt-change, DEHOGA, ahgz immo, Brauerei-Pachtbörsen, ECE, MEC, DB InfraGO —
 sowie als reine Absprunglinks für die Handkontrolle: Google Maps (Gastro-Suche am
 Punkt) und Mapillary (Straßenfotos, „virtuelle Begehung").
+
+> **Konto-Prinzip:** Das Werkzeug braucht grundsätzlich **keine Konten**. Die einzige
+> Ausnahme ist ein Opt-in: die Regionaldatenbank (regionalstatistik.de) verlangt für
+> ihre Schnittstelle eine kostenlose Kennung. Ohne Eintrag bleibt der Block 3e leer
+> und erklärt den Weg — alles andere läuft unverändert ohne Konto. Die Kennung wird
+> nur lokal gespeichert (Datei `genesis-zugang.json` im Datenverzeichnis, alternativ
+> `GASTROVIEWER_GENESIS_KENNUNG`/`…_PASSWORT`) und nur an regionalstatistik.de
+> gesendet; das Outbound-Protokoll enthält nur URLs, nie Zugangsdaten. Der anonyme
+> Werteabruf der Website wird bewusst **nicht** automatisiert — deren robots.txt
+> untersagt das (`Disallow: /`), der sanktionierte Maschinenweg ist die API.
 
 > **hystreet:** Im kostenfreien Modell ist die **gewerbliche Nutzung untersagt**. Für eine
 > Standortentscheidung vorher den Tarif klären. hystreet ist Datenbankhersteller nach
@@ -746,6 +758,40 @@ Lärmkartierung den Kfz-Verkehr besser ab) und die städtische Parkhaus-Liste
 Mehrwert). Google Places bleibt draußen, weil die API eine Kreditkarte
 voraussetzt; Google gibt es weiterhin nur als Handkontroll-Link.
 
+## Kurzzeitvermietung (Block 5d) — wo die Gäste wirklich schlafen
+
+Übernachtungszahlen gibt es amtlich nur je Kreis. **Inside Airbnb** (CC BY 4.0)
+zeigt kleinräumig, wo Touristen unterkommen: alle Airbnb-Inserate einer Stadt
+mit Zimmertyp, Preis und Bewertungszahl. Am Marienplatz sind es 127 Inserate im
+600-m-Umkreis (86 ganze Unterkünfte) — Frühstücks- und Abendpublikum, das in
+keiner Einwohnerzahl steckt. Der Block zählt Inserate und Zimmertypen, summiert
+die Bewertungen der letzten zwölf Monate (Aktivitätsindiz, keine Buchungszahl)
+und nennt den Median-Preis je Nacht samt Preisbasis. Ehrlich dazu: Airbnb
+versetzt die Positionen plattformseitig um bis zu ~150 m — Zählwerte sind
+Näherungen, die Pins zeigen nicht das richtige Haus. Datenstädte in
+Deutschland: München und Berlin (Stand der Datenseite); überall sonst bleibt
+der Block mit Begründung leer. Der stadtweite Datensatz wird einmal je 30 Tage
+geladen (zwei Abrufe), danach rechnet jeder Punkt lokal.
+
+## Amtliche Gastro-Anker (Block 3e) — Opt-in mit Regionaldatenbank-Kennung
+
+Zwei Zahlen, die es nur in der Regionaldatenbank der Statistischen Ämter gibt
+(beide Kreisebene, Tabellenstruktur und Sollwerte am 2026-08-07 verifiziert):
+
+- **Umsatzsteuerstatistik 73311-01-02-4:** steuerbarer Umsatz und Zahl der
+  Umsatzsteuerpflichtigen im Gastgewerbe (WZ-Abschnitt I), Zeitreihe ab 2009.
+  Daraus der amtliche Anker „Umsatz je Steuerpflichtigem" — für München 2023:
+  4.019 Pflichtige, im Schnitt 1.638.293 € (Vorsicht: Unternehmenssitz-Prinzip,
+  Ketten und Hotels heben den Schnitt; nur Umsätze über 22.000 €/Jahr).
+- **Gewerbeanzeigen 52311-01-04-4:** An-/Abmeldungen mit Neuerrichtungen und
+  Betriebsaufgaben (alle Wirtschaftszweige — ein Branchen-Split existiert auf
+  Kreisebene nicht). München 2025: 15.350 an, 10.245 ab, Saldo +5.105.
+
+Der maschinelle Abruf verlangt eine **kostenlose Kennung** — das einzige
+Konto-Opt-in des Werkzeugs (siehe Konto-Prinzip oben). Der Block bietet das
+Eintragen direkt an, prüft die Kennung live beim Dienst (logincheck) und
+speichert sie nur lokal.
+
 ## Rad-Liefergebiet (Block 4d) — erreichbare Einwohner in Lieferzeit
 
 Für Lieferkonzepte zählt nicht der Umkreis, sondern: wie viele Menschen erreicht ein
@@ -1028,6 +1074,9 @@ Alles über Umgebungsvariablen, alles optional:
 | `GET /api/point/baustellen?lat=&lon=&r=` | Baustellen und Haltverbote im Umkreis (Stadt München, Vier-Wochen-Vorschau) |
 | `GET /api/point/maerkte?lat=&lon=&r=` | städtische Märkte in Reichweite (München, mit Öffnungszeiten) |
 | `GET /api/point/indikatoren?lat=&lon=` | Viertel-Steckbrief: Stadtbezirks-Jahresreihen (Indikatorenatlas München) |
+| `GET /api/point/airbnb?lat=&lon=&r=` | Kurzzeitvermietung im Umkreis (Inside Airbnb, München/Berlin) |
+| `GET /api/genesis?ags=` | amtliche Gastro-Anker (Regionaldatenbank, Opt-in mit Kennung) |
+| `GET/POST/DELETE /api/genesis/zugang` | Kennungs-Status ansehen, eintragen (mit Live-Prüfung), entfernen |
 | `GET /api/point/liefergebiet?lat=&lon=&minuten=` | Rad-Liefergebiet: erreichbare Einwohner in 5–15 min — **nur auf Anforderung** |
 | `GET /api/point/marke?lat=&lon=&marke=&r=` | Gebietsschutz-Check: Betriebe der eigenen Marke bis 20 km |
 | `GET /api/geocode?q=` | Adresssuche |
@@ -1089,7 +1138,7 @@ Das letzte Protokoll steht in [`docs/abnahme.md`](docs/abnahme.md).
 
 ### Vollprüfung aller Endpunkte
 
-Die dritte Ebene: alle API-Routen (56 Prüfungen) live gegen einen laufenden Server, mit erzwungenen
+Die dritte Ebene: alle API-Routen (58 Prüfungen) live gegen einen laufenden Server, mit erzwungenen
 Frischabrufen bei Zensus, Overpass und „Neu prüfen" und unabhängigen Erwartungswerten
 (A9: 111.624 Kfz/Tag; Isarauen: HQ 100; Köln: Bodenrichtwert; Innenstadt-Scan: über
 100 Betriebe). Braucht Netz und einen GTFS-Import.
@@ -1108,7 +1157,7 @@ pip install playwright && playwright install chromium
 python scripts/uitest.py http://127.0.0.1:8011
 ```
 
-39 Prüfungen (dazu die Prüfung auf JavaScript-Fehler), darunter: jeder Block nennt
+41 Prüfungen (dazu die Prüfung auf JavaScript-Fehler), darunter: jeder Block nennt
 Quelle und Lizenz, im Datenreiter steht keine geschätzte Zahl, der Deckkraftregler wirkt
 auf die Ebenen und **nicht** auf die Grundkarte, der Gehwegblock lädt nur auf Anforderung
 und räumt seine Kartenebene beim Punktwechsel auf, der Flächen-Scan scannt nach dem

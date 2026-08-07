@@ -224,6 +224,14 @@ class Settings:
         # TTL, damit „Neu laden" nicht der einzige Weg zu frischen Daten ist.
         if source.startswith("muenchen_baustellen"):
             return self.ttl_osm
+        # Inside Airbnb sammelt etwa quartalsweise; ein stadtweiter Datensatz
+        # je Stadt.
+        if source.startswith("airbnb"):
+            return self.ttl_zensus
+        # Regionaldatenbank (Umsatzsteuer, Gewerbeanzeigen): jährliche
+        # Fortschreibung, Kreiswerte.
+        if source.startswith("genesis"):
+            return self.ttl_zensus
         return self.ttl_osm
 
     def ensure_dirs(self) -> None:

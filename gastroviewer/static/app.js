@@ -183,7 +183,7 @@ const basemapGrau = new BasemapDe('', {
 osmKarte.addTo(karte);
 
 for (const name of ['zensus', 'gastronomie', 'frequenzbringer', 'oepnv', 'leerstand',
-  'overture', 'maerkte', 'baustellen']) {
+  'overture', 'maerkte', 'baustellen', 'airbnb']) {
   state.ebenen[name] = L.layerGroup();
 }
 /* Die zu Fuß erreichbare Fläche. Canvas statt SVG, weil es je nach Lage einige
@@ -229,6 +229,7 @@ const ebenenSchalter = L.control.layers({
   'Leerstände (OSM)': state.ebenen.leerstand,
   'Städtische Märkte (M)': state.ebenen.maerkte,
   'Baustellen (M)': state.ebenen.baustellen,
+  'Airbnb-Inserate': state.ebenen.airbnb,
 }, { collapsed: false }).addTo(karte);
 ebenenSchalter.getContainer().classList.add('ebenen-schalter');
 
@@ -252,7 +253,7 @@ state.rasterEbenen = new Set();
 function wendeDeckkraftAn() {
   const f = state.deckkraft;
   for (const name of ['zensus', 'gastronomie', 'frequenzbringer', 'oepnv', 'leerstand',
-    'overture', 'maerkte', 'baustellen', 'uebersicht', 'scan', 'marke',
+    'overture', 'maerkte', 'baustellen', 'airbnb', 'uebersicht', 'scan', 'marke',
     'gehflaeche', 'liefergebiet']) {
     state.ebenen[name]?.eachLayer((l) => {
       const basis = l.options?._basisDeckkraft;
@@ -871,6 +872,7 @@ const POI_STIL = {
   overture: { color: '#4a2b8a', fill: '#8a6fd1' },
   maerkte: { color: '#0e6e6d', fill: '#2fa39d' },
   baustellen: { color: '#b34700', fill: '#e07b39' },
+  airbnb: { color: '#8a1c52', fill: '#c2185b' },
 };
 
 /* Klick in einer Objektliste: Karte springt zum Objekt, blendet die passende
@@ -986,6 +988,7 @@ function lade(refresh = false) {
   state.ebenen.overture?.clearLayers();
   state.ebenen.maerkte?.clearLayers();
   state.ebenen.baustellen?.clearLayers();
+  state.ebenen.airbnb?.clearLayers();
   // Der Schätzungsreiter hängt an den Punktdaten. Ist er gerade offen, muss er
   // mitwandern statt die Werte des vorigen Punktes stehen zu lassen.
   if (!document.getElementById('panel-schaetzung').hidden) {
@@ -1012,6 +1015,7 @@ function lade(refresh = false) {
         ladeKreisprofil(d.data?.ags, lauf);
         ladePendler(d.data?.ags, lauf);
         ladeLaerm(d.data?.bundesland_code, lauf);
+        ladeGenesis(d.data?.ags, lauf);
       }
     })
     .catch((e) => {
@@ -1080,6 +1084,10 @@ function lade(refresh = false) {
     .then((d) => { if (aktuell()) { state.daten.indikatoren = d; zeigeIndikatoren(d); } })
     .catch((e) => aktuell() && zeigeBlockFehler('indikatoren', e));
 
+  hole('/api/point/airbnb', p)
+    .then((d) => { if (aktuell()) { state.daten.airbnb = d; zeigeAirbnb(d); } })
+    .catch((e) => aktuell() && zeigeBlockFehler('airbnb', e));
+
   aktualisiereFuss();
 }
 
@@ -1115,6 +1123,7 @@ function baueGeruest() {
     block('einkommen', '3b · Verfügbares Einkommen (Kreis)'),
     block('kreisprofil', '3c · Kreisprofil (Tourismus, Arbeit, Bevölkerung)'),
     block('pendler', '3d · Pendler (Gemeinde)'),
+    block('genesis', '3e · Amtliche Gastro-Anker (Regionaldatenbank, Opt-in)'),
     block('gastronomie', '4 · Gastronomie'),
     block('gehweg', '4b · Erreichbarkeit zu Fuß'),
     block('liefergebiet', '4d · Rad-Liefergebiet'),
@@ -1124,6 +1133,7 @@ function baueGeruest() {
     block('umfeld', '5 · Umfeld'),
     block('klima', '5b · Klima für Außengastronomie (DWD)'),
     block('maerkte', '5c · Städtische Märkte (München)'),
+    block('airbnb', '5d · Kurzzeitvermietung (Inside Airbnb)'),
     block('verkehr', '6 · Verkehr'),
     block('gtfs', '6b · Abfahrten (GTFS)'),
     block('radzaehlung', '6c · Gemessene Radverkehrsfrequenz'),
@@ -2473,6 +2483,249 @@ function zeigeMaerkte(d) {
   setInhalt(id, kz, liste,
     ...(m.hinweise || []).map((h) => el('div', { class: 'hinweis-klein' }, h)),
     ...warnungen(d.warnings || []));
+  setQuelle(id, d.provenance);
+}
+
+/* Block 5d — Kurzzeitvermietung (Inside Airbnb). Wo Gäste schlafen, zeigt
+   kleinräumig nur dieser Datensatz — die amtliche Übernachtungszahl gibt es
+   erst auf Kreisebene. Positionen plattformseitig um bis zu ~150 m versetzt;
+   der Block sagt das dazu. */
+function zeigeAirbnb(d) {
+  const id = 'airbnb';
+  state.ebenen.airbnb?.clearLayers();
+  if (!d.ok) {
+    setStatus(id, 'fehler', 'nicht erreichbar');
+    setInhalt(id, fehlerbox(d.error));
+    setQuelle(id, d.provenance);
+    return;
+  }
+  const a = d.data;
+  if (!a) {
+    setStatus(id, 'leer', 'keine Datenstadt');
+    setInhalt(id, ...warnungen(d.warnings || []));
+    setQuelle(id, d.provenance);
+    return;
+  }
+  setStatus(id, 'ok', `${NF.format(a.im_radius)} Inserate`);
+  zeichnePois('airbnb', a.marker || []);
+
+  const kz = el('div', { class: 'kennzahlen' },
+    kennzahl(`Inserate im Umkreis (${NF.format(a.radius_m)} m)`, a.im_radius),
+    kennzahl('davon ganze Unterkünfte', a.ganze_unterkuenfte),
+    kennzahl('Bewertungen 12 Monate (Summe)', a.bewertungen_12m),
+    el('div', { class: 'kennzahl' },
+      el('div', { class: 'titel' }, 'Median-Preis je Nacht'),
+      el('div', { class: `wert${a.preis_median_eur === null ? ' fehlt' : ''}` },
+        a.preis_median_eur === null ? 'keine Angabe' : `${NF.format(a.preis_median_eur)} €`),
+      el('div', { class: 'basis' },
+        `${NF.format(a.preis_basis)} von ${NF.format(a.im_radius)} Inseraten mit Preis`)),
+    kennzahl(`Stadtweit (${a.stadt})`, a.stadtweit));
+
+  const typen = Object.entries(a.nach_typ || {});
+  const typZeile = typen.length
+    ? el('div', { class: 'notiz' },
+      'Zimmertypen: ' + typen.map(([k, v]) => `${k}: ${NF.format(v)}`).join(' · '))
+    : null;
+
+  const liste = (a.liste || []).length
+    ? el('ul', { class: 'liste' },
+      a.liste.map((x) => el('li', {},
+        el('span', { class: 'haupt' },
+          el('a', {
+            href: '#', title: 'Auf der Karte zeigen (Position ~150 m ungenau)',
+            onclick: (ev) => { ev.preventDefault(); springeZuPoi(x, 'airbnb'); },
+          }, x.name),
+          x.tags && x.tags['Preis je Nacht'] ? ` — ${x.tags['Preis je Nacht']}` : ''),
+        el('span', { class: 'neben' },
+          `${NF.format((x.tags || {})['Bewertungen 12 Monate'] || 0)} Bew./12 M. · `
+          + `${NF.format(x.distanz_m)} m ${x.richtung}`))))
+    : null;
+
+  setInhalt(id,
+    el('div', { class: 'notiz' },
+      `${a.stadt}, Sammellauf vom ${a.stichtag || 'unbekannt'} — die `
+      + `${NF.format(a.liste?.length || 0)} nächsten in der Liste.`),
+    kz, typZeile, liste,
+    ...(a.hinweise || []).map((h) => el('div', { class: 'hinweis-klein' }, h)),
+    ...warnungen(d.warnings || []));
+  setQuelle(id, d.provenance);
+}
+
+/* Block 3e — Amtliche Gastro-Anker aus der Regionaldatenbank. Das einzige
+   Opt-in des Werkzeugs: der maschinelle Abruf verlangt eine (kostenlose)
+   Kennung bei regionalstatistik.de. Ohne Kennung erklärt der Block den Weg
+   und bietet das Eintragen direkt an; gespeichert wird nur lokal. */
+async function ladeGenesis(ags, lauf) {
+  const id = 'genesis';
+  if (!ags) {
+    setStatus(id, 'leer', 'kein Gemeindeschlüssel');
+    setInhalt(id, el('p', { class: 'hinweis-klein' },
+      'Ohne Gemeindeschlüssel (aus dem Zensusblock) lässt sich kein '
+      + 'Kreiswert abrufen.'));
+    return;
+  }
+  try {
+    const d = await hole('/api/genesis', { ags });
+    if (lauf !== state.ladeLauf) return;
+    state.daten.genesis = d;
+    if (d.ok && d.data === null) {
+      const zugang = await hole('/api/genesis/zugang', {});
+      if (lauf !== state.ladeLauf) return;
+      zeigeGenesisOptIn(d, zugang, ags);
+    } else {
+      zeigeGenesis(d, ags);
+    }
+  } catch (e) {
+    if (lauf === state.ladeLauf) zeigeBlockFehler(id, e);
+  }
+}
+
+function zeigeGenesisOptIn(d, zugang, ags) {
+  const id = 'genesis';
+  if (zugang && zugang.konfiguriert) {
+    // Kennung da, aber trotzdem keine Daten (z. B. kein Kreisschlüssel).
+    setStatus(id, 'leer', 'keine Kreisdaten');
+    setInhalt(id, ...warnungen(d.warnings || []));
+    setQuelle(id, d.provenance);
+    return;
+  }
+  setStatus(id, 'leer', 'Opt-in');
+  setInhalt(id,
+    el('p', { class: 'hinweis-klein' },
+      'Zwei amtliche Anker gibt es nur über die Regionaldatenbank der '
+      + 'Statistischen Ämter (regionalstatistik.de): den steuerbaren '
+      + 'Umsatz je Umsatzsteuerpflichtigem im Gastgewerbe des Kreises '
+      + '(Prüfstein für die eigene Umsatzschätzung) und die '
+      + 'Gewerbean-/-abmeldungen (Gründungsdynamik).'),
+    el('p', { class: 'hinweis-klein' },
+      'Der maschinelle Abruf verlangt eine kostenlose Kennung — das '
+      + 'einzige Konto, das dieses Werkzeug überhaupt kennt, und nur als '
+      + 'Opt-in: Ohne Eintrag bleibt der Block leer, alles andere läuft '
+      + 'ohne Konto weiter. Kennung und Passwort werden ausschließlich '
+      + 'lokal gespeichert (Datenverzeichnis) und nur an '
+      + 'regionalstatistik.de gesendet.'),
+    el('p', { class: 'hinweis-klein' },
+      el('a', { href: (zugang && zugang.registrierung) || '#', target: '_blank', rel: 'noopener' },
+        'Kostenlose Registrierung bei regionalstatistik.de'),
+      ' — danach Kennung (Nutzername) und Passwort hier eintragen.'),
+    el('div', { class: 'pflegeleiste' },
+      el('label', { for: 'genesis-kennung' }, 'Kennung'),
+      el('input', { id: 'genesis-kennung', type: 'text', autocomplete: 'off' }),
+      el('label', { for: 'genesis-passwort' }, 'Passwort'),
+      el('input', { id: 'genesis-passwort', type: 'password', autocomplete: 'off' }),
+      el('button', {
+        id: 'btn-genesis-speichern',
+        onclick: () => speichereGenesisZugang(ags),
+      }, 'Speichern & prüfen')),
+    el('div', { class: 'hinweis-klein', id: 'genesis-meldung' }, ''));
+}
+
+async function speichereGenesisZugang(ags) {
+  const kennung = document.getElementById('genesis-kennung')?.value.trim();
+  const passwort = document.getElementById('genesis-passwort')?.value || '';
+  const meldung = document.getElementById('genesis-meldung');
+  if (!kennung || !passwort) {
+    if (meldung) meldung.textContent = 'Bitte Kennung und Passwort eintragen.';
+    return;
+  }
+  if (meldung) meldung.textContent = 'Kennung wird beim Dienst geprüft …';
+  try {
+    const r = await fetch('/api/genesis/zugang', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ kennung, passwort }),
+    });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok) {
+      if (meldung) meldung.textContent = j.detail || j.fehler || `HTTP ${r.status}`;
+      return;
+    }
+    if (meldung) {
+      meldung.textContent = 'Kennung geprüft und lokal gespeichert — '
+        + 'Kreisdaten werden geladen …';
+    }
+    ladeGenesis(ags, state.ladeLauf);
+  } catch (e) {
+    if (meldung) meldung.textContent = String(e);
+  }
+}
+
+async function entferneGenesisZugang(ags) {
+  if (!window.confirm('Gespeicherte Kennung wirklich entfernen? Der Block '
+    + 'zeigt danach wieder das Eintrag-Formular.')) return;
+  try {
+    await fetch('/api/genesis/zugang', { method: 'DELETE' });
+  } catch { /* Der Neuaufbau unten zeigt den echten Zustand. */ }
+  ladeGenesis(ags, state.ladeLauf);
+}
+
+function zeigeGenesis(d, ags) {
+  const id = 'genesis';
+  if (!d.ok) {
+    setStatus(id, 'fehler', 'nicht erreichbar');
+    setInhalt(id, fehlerbox(d.error),
+      el('p', { class: 'hinweis-klein' },
+        'Falls die Kennung nicht mehr stimmt: unten entfernen und neu '
+        + 'eintragen.'),
+      el('button', { onclick: () => entferneGenesisZugang(ags) },
+        'Gespeicherte Kennung entfernen'));
+    setQuelle(id, d.provenance);
+    return;
+  }
+  const g = d.data || {};
+  const u = (g.umsatz || {}).aktuell;
+  const w = (g.gewerbe || {}).aktuell;
+  setStatus(id, 'ok', g.kreis || 'Kreiswerte');
+
+  const kz = el('div', { class: 'kennzahlen' },
+    el('div', { class: 'kennzahl' },
+      el('div', { class: 'titel' }, 'Umsatz je USt-Pflichtigem Gastgewerbe'),
+      el('div', { class: `wert${u ? '' : ' fehlt'}` },
+        u ? `${NF.format(u.je_pflichtigem_eur)} €` : 'keine Angabe'),
+      el('div', { class: 'basis' },
+        u ? `Jahr ${u.jahr} · berechnet aus Umsatz ÷ Pflichtige` : '')),
+    kennzahl(u ? `USt-Pflichtige Gastgewerbe (${u.jahr})` : 'USt-Pflichtige Gastgewerbe',
+      u ? u.pflichtige : null),
+    kennzahl('Anteil Gastgewerbe am Kreisumsatz',
+      (g.umsatz || {}).anteil_am_gesamtumsatz_prozent, '%', 1),
+    kennzahl(w ? `Gewerbeanmeldungen (${w.jahr})` : 'Gewerbeanmeldungen',
+      w ? w.anmeldungen : null),
+    kennzahl(w ? `Gewerbeabmeldungen (${w.jahr})` : 'Gewerbeabmeldungen',
+      w ? w.abmeldungen : null),
+    el('div', { class: 'kennzahl' },
+      el('div', { class: 'titel' }, 'Saldo An-/Abmeldungen'),
+      el('div', { class: `wert${w && w.saldo !== null ? '' : ' fehlt'}` },
+        w && w.saldo !== null
+          ? (w.saldo > 0 ? `+${NF.format(w.saldo)}` : NF.format(w.saldo))
+          : 'keine Angabe'),
+      el('div', { class: 'basis' },
+        w ? `darunter Neuerrichtungen ${NF.format(w.neuerrichtungen ?? 0)}, `
+          + `Betriebsaufgaben ${NF.format(w.betriebsaufgaben ?? 0)}` : '')));
+
+  const reihe = (g.umsatz || {}).reihe || [];
+  let tab = null;
+  if (reihe.length > 1) {
+    tab = el('table', { class: 'daten' },
+      el('tr', {},
+        el('th', {}, 'Jahr'),
+        el('th', { class: 'num' }, 'USt-Pflichtige Gastgewerbe'),
+        el('th', { class: 'num' }, 'Umsatz je Pflichtigem (€)')));
+    for (const z of reihe.slice(-8)) {
+      tab.append(el('tr', {},
+        el('td', {}, String(z.jahr)),
+        el('td', { class: 'num' },
+          z.pflichtige === null ? '—' : NF.format(z.pflichtige)),
+        el('td', { class: 'num' },
+          z.je_pflichtigem_eur === null ? '—' : NF.format(z.je_pflichtigem_eur))));
+    }
+  }
+
+  setInhalt(id, kz, tab,
+    ...(g.hinweise || []).map((h) => el('div', { class: 'hinweis-klein' }, h)),
+    ...warnungen(d.warnings || []),
+    el('div', { class: 'pflegeleiste' },
+      el('button', { onclick: () => entferneGenesisZugang(ags) },
+        'Gespeicherte Kennung entfernen')));
   setQuelle(id, d.provenance);
 }
 

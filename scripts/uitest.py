@@ -92,8 +92,8 @@ def pruefe_grundgeruest(page) -> str:
         ".block", "e=>e.map(x=>x.id.replace('block-',''))")
     for pflicht in ("kopf", "score", "bevoelkerung", "indikatoren", "wohnen",
                     "gastronomie", "gehweg", "dynamik", "laerm", "overture",
-                    "umfeld", "maerkte", "verkehr", "gtfs", "baustellen",
-                    "leerstand", "quellen", "grenzen"):
+                    "umfeld", "maerkte", "airbnb", "verkehr", "gtfs",
+                    "baustellen", "genesis", "leerstand", "quellen", "grenzen"):
         fordere(pflicht in bloecke, f"Block fehlt: {pflicht}")
 
     for block in ("kopf", "bevoelkerung", "wohnen", "gastronomie"):
@@ -113,8 +113,9 @@ def pruefe_quellenangaben(page) -> str:
         """e => e.filter(b => {
             const id = b.id.replace('block-', '');
             // 'score' ist abgeleitet: seine Quellen stehen je Kennzahl in den
-            // Zeilen, ein einzelner Quellen-Fuß wäre irreführend.
-            if (['grenzen', 'gehweg', 'liefergebiet', 'bodenrichtwert', 'score'].includes(id)) return false;
+            // Zeilen, ein einzelner Quellen-Fuß wäre irreführend. 'genesis'
+            // bleibt ohne Kennung begründet leer — und dann ohne Quelle.
+            if (['grenzen', 'gehweg', 'liefergebiet', 'bodenrichtwert', 'score', 'genesis'].includes(id)) return false;
             return !b.querySelector('.quelle');
         }).map(b => b.id)""")
     fordere(not ohne, f"Blöcke ohne Quellenangabe: {ohne}")
@@ -714,6 +715,46 @@ def pruefe_indikatoren(page) -> str:
     return st
 
 
+def pruefe_airbnb(page) -> str:
+    """Airbnb-Block (Inside Airbnb): Zählwerte, Versatz-Hinweis, Liste."""
+    setze_punkt(page, *MARIENPLATZ)
+    st = status(page, "airbnb")
+    fordere("Inserate" in st, f"Airbnb-Status: {st!r}")
+    t = text(page, "#inhalt-airbnb")
+    fordere("ganze Unterkünfte" in t, "der Zimmertyp-Zählwert fehlt")
+    fordere("150 m" in t, "der Versatz-Hinweis fehlt")
+    fordere("Sammellauf" in t, "der Stichtag des Sammellaufs fehlt")
+    n = page.eval_on_selector_all("#inhalt-airbnb a", "e=>e.length")
+    fordere(n >= 1, "keine springbaren Einträge in der Liste")
+    q = text(page, "#block-airbnb .quelle")
+    fordere("CC BY 4.0" in q, "die CC-BY-Lizenz fehlt")
+    return st
+
+
+def pruefe_genesis_opt_in(page) -> str:
+    """Genesis-Block: ohne Kennung das Opt-in-Formular mit Prüfknopf und
+    Registrierungslink — mit Kennung echte Kreiswerte."""
+    setze_punkt(page, *MARIENPLATZ)
+    st = status(page, "genesis")
+    t = text(page, "#inhalt-genesis")
+    if st == "Opt-in":
+        fordere(page.eval_on_selector_all("#genesis-kennung", "e=>e.length") == 1,
+                "das Kennung-Feld fehlt")
+        fordere(page.eval_on_selector_all("#genesis-passwort", "e=>e.length") == 1,
+                "das Passwort-Feld fehlt")
+        fordere("Speichern & prüfen" in t
+                or page.eval_on_selector_all("#btn-genesis-speichern",
+                                             "e=>e.length") == 1,
+                "der Prüfknopf fehlt")
+        href = page.eval_on_selector_all(
+            "#inhalt-genesis a", "e=>e.map(x=>x.href).join(' ')")
+        fordere("regionalstatistik.de" in href, "der Registrierungslink fehlt")
+        fordere("lokal" in t, "der Hinweis zur lokalen Ablage fehlt")
+    else:
+        fordere("Umsatz je USt-Pflichtigem" in t, f"Kreiswerte fehlen: {st!r}")
+    return st
+
+
 def pruefe_verkehrszaehler(page) -> str:
     """Overpass und Nominatim sind Spendenprojekte — die Last muss sichtbar sein."""
     t = text(page, "#fuss-stats")
@@ -1002,6 +1043,8 @@ PRUEFUNGEN = [
     ("Baustellen (Stadt München)", pruefe_baustellen),
     ("Städtische Märkte (München)", pruefe_maerkte),
     ("Viertel-Steckbrief (Indikatorenatlas)", pruefe_indikatoren),
+    ("Kurzzeitvermietung (Inside Airbnb)", pruefe_airbnb),
+    ("Amtliche Gastro-Anker (Genesis, Opt-in)", pruefe_genesis_opt_in),
     ("München-Erweiterungen", pruefe_muenchen_erweiterungen),
     ("Verkehrszähler in der Fußzeile", pruefe_verkehrszaehler),
     ("Erreichbarkeit zu Fuß", pruefe_gehweg),

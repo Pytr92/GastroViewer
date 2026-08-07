@@ -137,6 +137,14 @@ class Outbound:
             resp.encoding = encoding
         return resp.text
 
+    async def post_text(self, source: str, url: str, **kwargs: Any) -> str:
+        """POST mit Text-Antwort — für GENESIS (regionalstatistik.de): die
+        Schnittstelle verlangt POST, und die Zugangsdaten gehören in Header
+        bzw. Body, nie in die URL. Das Outbound-Protokoll speichert nur die
+        URL — so landet die Kennung in keinem Log."""
+        resp = await self.request(source, "POST", url, **kwargs)
+        return resp.text
+
 
 def _json_or_raise(resp: httpx.Response) -> Any:
     try:

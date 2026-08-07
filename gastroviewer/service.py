@@ -18,9 +18,11 @@ from typing import Any, Awaitable, Callable
 from .cache import AsyncCache, cache_key
 from .config import Settings
 from .http import Outbound
-from .sources import (baustellen as baustellen_mod, bayern, boris,
+from .sources import (airbnb as airbnb_mod,
+                      baustellen as baustellen_mod, bayern, boris,
                       dynamik as dynamik_mod,
                       einkommen as einkommen_mod, gehweg,
+                      genesis as genesis_mod,
                       indikatoren as indikatoren_mod,
                       klima as klima_mod, kreisprofil as kreisprofil_mod,
                       laerm as laerm_mod, links,
@@ -201,6 +203,75 @@ class PointService:
                 (res.error or {}).get("message", "unbekannter Fehler"),
             )
         return res.data
+
+    async def _airbnb_stadt(self, slug: str, refresh: bool = False) -> dict[str, Any]:
+        """Stadtweiter Inside-Airbnb-Datensatz, reduziert — **einmal** je
+        Stadt gecacht (30 Tage): Datenseite nach der aktuellen Snapshot-URL
+        fragen, CSV laden, auf fünf Felder je Inserat eindampfen. Jeder
+        Punkt in der Stadt rechnet danach nur noch lokal."""
+
+        async def laden() -> SourceResult:
+            index_html = await self.outbound.get_text(
+                "airbnb", airbnb_mod.INDEX_URL, timeout=60.0,
+                limiter="airbnb", min_interval=1.0,
+            )
+            urls = airbnb_mod.finde_stadt_urls(index_html)
+            fund = urls.get(slug)
+            if fund is None:
+                raise SourceError(
+                    "api_error",
+                    f"Die Datenseite von Inside Airbnb führt „{slug}“ nicht "
+                    "(mehr) — Stadtliste geändert?",
+                )
+            csv_text = await self.outbound.get_text(
+                "airbnb", fund["url"], timeout=120.0,
+                limiter="airbnb", min_interval=1.0,
+            )
+            listings = airbnb_mod.reduzieren(csv_text)
+            if not listings:
+                raise SourceError(
+                    "parse", "Die listings.csv ließ sich nicht lesen."
+                )
+            return SourceResult(
+                name="airbnb", ok=True,
+                data={"listings": listings, "stichtag": fund["datum"],
+                      "quelle_url": fund["url"]},
+            )
+
+        res = await self._cached("airbnb", f"airbnb|{slug}", laden, refresh=refresh)
+        if not res.ok:
+            raise SourceError(
+                (res.error or {}).get("kind", "unknown"),
+                (res.error or {}).get("message", "unbekannter Fehler"),
+            )
+        return res.data
+
+    async def airbnb(
+        self, lat: float, lon: float, radius: int,
+        adresse: dict[str, Any] | None, refresh: bool = False,
+    ):
+        """Kurzzeitvermietung im Umkreis. Braucht die Gemeinde aus der schon
+        geladenen Adresse — außerhalb der abgedeckten Städte geht keine
+        Anfrage hinaus."""
+        a = adresse or {}
+        return await airbnb_mod.load(
+            self.settings, a.get("gemeinde"), lat, lon, radius,
+            lambda slug: self._airbnb_stadt(slug, refresh),
+        )
+
+    async def genesis(self, ags: str):
+        """Amtliche Gastro-Anker (Regionaldatenbank, Opt-in mit Kennung) —
+        je Kreis gecacht. Ohne Kennung wird **nichts** gecacht: sobald die
+        Kennung hinterlegt ist, soll der erste Abruf sofort laufen, statt
+        30 Tage auf einen leeren Cache-Eintrag zu warten."""
+        if genesis_mod.lade_zugang(self.settings) is None:
+            return await genesis_mod.load(self.outbound, self.settings, ags)
+        kreis = einkommen_mod.kreis_aus_ags(ags) or "unbekannt"
+        return await self._cached(
+            "genesis",
+            f"genesis|{kreis}",
+            lambda: genesis_mod.load(self.outbound, self.settings, ags),
+        )
 
     async def indikatoren(self, adresse: dict[str, Any] | None):
         """Viertel-Steckbrief. Braucht Gemeinde und Ortsteil aus der schon
@@ -671,14 +742,25 @@ class PointService:
                 "indikatoren", SourceError("unknown", f"{type(exc).__name__}: {exc}")
             ).to_dict()
 
+        # Kurzzeitvermietung: braucht die Gemeinde aus der Adresse.
+        try:
+            blocks["airbnb"] = (
+                await self.airbnb(lat, lon, radius, adresse, refresh)
+            ).to_dict()
+        except Exception as exc:  # noqa: BLE001
+            blocks["airbnb"] = SourceResult.failed(
+                "airbnb", SourceError("unknown", f"{type(exc).__name__}: {exc}")
+            ).to_dict()
+
         bl_code = zensus_data.get("bundesland_code")
         if ags:
             kreis_results = await asyncio.gather(
                 self.einkommen(ags), self.kreisprofil(ags), self.pendler(ags),
-                self.laerm(lat, lon, bl_code),
+                self.laerm(lat, lon, bl_code), self.genesis(ags),
                 return_exceptions=True,
             )
-            for name, res in zip(("einkommen", "kreisprofil", "pendler", "laerm"),
+            for name, res in zip(("einkommen", "kreisprofil", "pendler", "laerm",
+                                  "genesis"),
                                  kreis_results):
                 if isinstance(res, BaseException):
                     blocks[name] = SourceResult.failed(
@@ -687,7 +769,7 @@ class PointService:
                 else:
                     blocks[name] = res.to_dict()
         else:
-            for name in ("einkommen", "kreisprofil", "pendler"):
+            for name in ("einkommen", "kreisprofil", "pendler", "genesis"):
                 blocks[name] = SourceResult(
                     name=name, ok=True, data=None,
                     warnings=["Ohne Gemeindeschlüssel lässt sich kein Kreiswert zuordnen."],
