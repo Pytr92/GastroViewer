@@ -376,6 +376,58 @@ def t_punkt_loeschen():
     hole(f"/api/points/{MERK_ID['id']}", methode="DELETE", erwartet=404)
     return "gelöscht, zweites Löschen sauber 404"
 
+def t_baustellen():
+    d, dauer, _ = hole("/api/point/baustellen", P)
+    assert d["ok"], d.get("error")
+    b = d["data"]
+    # Münchner Innenstadt ohne eine einzige Baustelle im 600-m-Radius wäre
+    # ein Parse-Fehler, kein Idyll.
+    assert b and b["gesamt"] > 0, b
+    assert b["laufend"] + b["geplant"] == b["gesamt"], b
+    erste = b["liste"][0]
+    assert erste["umriss"] and erste["beginn"], erste
+    # Außerhalb Münchens: leer mit Begründung, ohne Abruf.
+    k, _, _ = hole("/api/point/baustellen",
+                   {"lat": KOELN[0], "lon": KOELN[1], "r": 600})
+    assert k["ok"] and k["data"] is None
+    return (f"{b['gesamt']} im Radius ({b['laufend']} laufend, "
+            f"{b['gehweg_betroffen']} mit Gehweg-Eingriff) — {dauer:.1f} s")
+
+
+def t_maerkte():
+    d, dauer, _ = hole("/api/point/maerkte", P)
+    assert d["ok"], d.get("error")
+    m = d["data"]
+    assert m and m["stadtweit"] >= 50, m
+    naechster = m["naechster"]
+    assert naechster and naechster["name"] == "Viktualienmarkt", naechster
+    k, _, _ = hole("/api/point/maerkte",
+                   {"lat": KOELN[0], "lon": KOELN[1], "r": 600})
+    assert k["ok"] and k["data"] is None
+    return (f"{m['stadtweit']} stadtweit, nächster {naechster['name']} "
+            f"({naechster['distanz_m']} m) — {dauer:.1f} s")
+
+
+def t_indikatoren():
+    d, dauer, _ = hole("/api/point/indikatoren", {"lat": M[0], "lon": M[1]})
+    assert d["ok"], d.get("error")
+    i = d["data"]
+    assert i and i["bezirk"], i
+    je = {z["schluessel"]: z for z in i["indikatoren"]}
+    einp = je["einpersonenhaushalte"]
+    assert einp["bezirk"] and einp["stadt"], einp
+    # Stadtweit sind über die Hälfte der Haushalte Einpersonenhaushalte —
+    # ein Wert unter 40 % wäre ein Parse-Fehler.
+    assert einp["stadt"]["wert"] > 40, einp
+    assert len(i["indikatoren"]) >= 6, len(i["indikatoren"])
+    k, _, _ = hole("/api/point/indikatoren",
+                   {"lat": KOELN[0], "lon": KOELN[1]})
+    assert k["ok"] and k["data"] is None
+    return (f"Bezirk {i['bezirk']}: Einpersonenhaushalte "
+            f"{einp['bezirk']['wert']} % (Stadt {einp['stadt']['wert']} %) "
+            f"— {dauer:.1f} s")
+
+
 def t_validierung():
     hole("/api/point", {"lat": 35.0, "lon": 11.5, "r": 600}, erwartet=422)
     hole("/api/point", {**P, "r": 20}, erwartet=422)
@@ -392,8 +444,12 @@ def t_kreisprofil():
     ue = werte["uebernachtungen_je_ew"]
     assert ue["kreis"] > ue["bund"], "München hat mehr Übernachtungen je EW als der Bund"
     assert werte["arbeitslosenquote"]["kreis"] > 0
+    # Wirtschaftskraft (ai017_1): München liegt deutlich über dem Bund.
+    bip = werte["bip_je_ew"]
+    assert bip["kreis"] > bip["land"] > 0 and bip["kreis"] > bip["bund"], bip
     return (f"ET {et['kreis']}/1000 ({et['jahr']}), Übern. {ue['kreis']}/EW, "
-            f"ALQ {werte['arbeitslosenquote']['kreis']} % — {dauer:.1f} s")
+            f"ALQ {werte['arbeitslosenquote']['kreis']} %, "
+            f"BIP {bip['kreis']} €/EW — {dauer:.1f} s")
 
 
 def t_pendler():
@@ -653,6 +709,9 @@ ALLE = [
     ("Wohnmiete als Lage-Anker", t_wohnmiete_anker),
     ("GET /api/point/overture — Wettbewerbs-Abgleich", t_overture),
     ("Snack-Verkauf und Google-Handkontrolle", t_snack_und_google_link),
+    ("GET /api/point/baustellen — Stadt München live", t_baustellen),
+    ("GET /api/point/maerkte — Stadtliste live", t_maerkte),
+    ("GET /api/point/indikatoren — Viertel-Steckbrief live", t_indikatoren),
     ("Validierung (422-Pfade)", t_validierung),
     ("Cache-Nachweis", t_cache_wirkt),
 ]

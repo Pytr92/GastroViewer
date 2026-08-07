@@ -90,9 +90,10 @@ def pruefe_grundgeruest(page) -> str:
     setze_punkt(page, *MARIENPLATZ)
     bloecke = page.eval_on_selector_all(
         ".block", "e=>e.map(x=>x.id.replace('block-',''))")
-    for pflicht in ("kopf", "bevoelkerung", "wohnen", "gastronomie", "gehweg",
-                    "dynamik", "laerm", "overture",
-                    "umfeld", "verkehr", "gtfs", "leerstand", "quellen", "grenzen"):
+    for pflicht in ("kopf", "score", "bevoelkerung", "indikatoren", "wohnen",
+                    "gastronomie", "gehweg", "dynamik", "laerm", "overture",
+                    "umfeld", "maerkte", "verkehr", "gtfs", "baustellen",
+                    "leerstand", "quellen", "grenzen"):
         fordere(pflicht in bloecke, f"Block fehlt: {pflicht}")
 
     for block in ("kopf", "bevoelkerung", "wohnen", "gastronomie"):
@@ -111,7 +112,9 @@ def pruefe_quellenangaben(page) -> str:
         ".block",
         """e => e.filter(b => {
             const id = b.id.replace('block-', '');
-            if (['grenzen', 'gehweg', 'liefergebiet', 'bodenrichtwert'].includes(id)) return false;
+            // 'score' ist abgeleitet: seine Quellen stehen je Kennzahl in den
+            // Zeilen, ein einzelner Quellen-Fuß wäre irreführend.
+            if (['grenzen', 'gehweg', 'liefergebiet', 'bodenrichtwert', 'score'].includes(id)) return false;
             return !b.querySelector('.quelle');
         }).map(b => b.id)""")
     fordere(not ohne, f"Blöcke ohne Quellenangabe: {ohne}")
@@ -645,6 +648,72 @@ def pruefe_muenchen_erweiterungen(page) -> str:
     return f"Radzählung {rad}, Verkehrsmenge {vm}"
 
 
+def pruefe_score(page) -> str:
+    """Gesamt-Score: Anker offen, Gewichte regelbar, Reaktion aufs Gewicht."""
+    setze_punkt(page, *MARIENPLATZ)
+    st = status(page, "score")
+    fordere("/ 100" in st, f"Score ohne Punktzahl: {st!r}")
+    t = text(page, "#inhalt-score")
+    fordere("Anker (gewählt)" in t, "die gewählten Anker fehlen am Score")
+    fordere("Zensus 2022" in t, "die Quelle je Kennzahl fehlt")
+    fordere("keine Prognose" in t, "der Einordnungs-Hinweis fehlt")
+    regler = page.eval_on_selector_all(
+        "#inhalt-score input[type=range]", "e=>e.length")
+    fordere(regler >= 6, f"zu wenige Gewichtsregler: {regler}")
+    # Ein Gewicht auf 0 ziehen muss den Score neu rechnen (andere Anzeige
+    # oder andere Gewichtssumme) — und zurück.
+    vorher = text(page, "#inhalt-score")
+    page.eval_on_selector(
+        "#inhalt-score input[type=range]",
+        "e=>{e.value='0';e.dispatchEvent(new Event('input'))}")
+    page.wait_for_timeout(300)
+    nachher = text(page, "#inhalt-score")
+    fordere(vorher != nachher, "Gewichtsänderung ändert die Anzeige nicht")
+    page.evaluate("() => localStorage.removeItem('gastroviewer.score.gewichte')")
+    page.evaluate("() => zeigeScore()")
+    return f"{st}, {regler} Regler, Anker ausgewiesen"
+
+
+def pruefe_baustellen(page) -> str:
+    """Baustellen-Block (München): Zählwerte, Liste, Kartensprung."""
+    setze_punkt(page, *MARIENPLATZ)
+    st = status(page, "baustellen")
+    fordere("im Radius" in st or "keine" in st, f"Baustellen-Status: {st!r}")
+    t = text(page, "#inhalt-baustellen")
+    if "im Radius" in st:
+        fordere("Laufend" in t, "Zählwert „laufend“ fehlt")
+        fordere("Gehweg betroffen" in t, "Gehweg-Zählwert fehlt")
+        fordere("Vier-Wochen" in t or "vier Wochen" in t,
+                "der Vorschau-Hinweis fehlt")
+        n = page.eval_on_selector_all("#inhalt-baustellen a", "e=>e.length")
+        fordere(n >= 1, "keine springbaren Einträge in der Liste")
+    return st
+
+
+def pruefe_maerkte(page) -> str:
+    """Märkte-Block (München): Viktualienmarkt in Reichweite des Marienplatzes."""
+    setze_punkt(page, *MARIENPLATZ)
+    st = status(page, "maerkte")
+    fordere("Reichweite" in st, f"Märkte-Status: {st!r}")
+    t = text(page, "#inhalt-maerkte")
+    fordere("Viktualienmarkt" in t, "der Viktualienmarkt fehlt am Marienplatz")
+    fordere("Markttagen" in t, "der Markttage-Hinweis fehlt")
+    return st
+
+
+def pruefe_indikatoren(page) -> str:
+    """Viertel-Steckbrief: Bezirk erkannt, Trendspalte, Stadtvergleich."""
+    setze_punkt(page, *MARIENPLATZ)
+    st = status(page, "indikatoren")
+    fordere("Altstadt" in st, f"Stadtbezirk nicht erkannt: {st!r}")
+    t = text(page, "#inhalt-indikatoren")
+    fordere("Einpersonenhaushalte" in t, "Einpersonenhaushalte fehlen")
+    fordere("Stadt München" in t, "die Stadt-Vergleichsspalte fehlt")
+    fordere("seit 20" in t, "die Trendspalte fehlt")
+    fordere("gewählter Wert" in t, "der Trendfenster-Hinweis fehlt")
+    return st
+
+
 def pruefe_verkehrszaehler(page) -> str:
     """Overpass und Nominatim sind Spendenprojekte — die Last muss sichtbar sein."""
     t = text(page, "#fuss-stats")
@@ -828,6 +897,8 @@ def pruefe_bericht(page) -> str:
         fordere("Quellen, Stände, Lizenzen" in t, "die Quellentabelle fehlt")
         fordere("Bekannte Grenzen" in t, "die Grenzen der Daten fehlen im Bericht")
         fordere("ODbL" in t, "die OSM-Lizenz fehlt im Bericht")
+        fordere("Gesamt-Score" in t, "der Gesamt-Score fehlt im Bericht")
+        fordere("Anker" in t, "die Score-Anker fehlen im Bericht")
         fordere(bericht.query_selector("#bericht button") is not None,
                 "der Druckknopf fehlt")
         fordere(bericht.query_selector("#bericht-karte.leaflet-container") is not None,
@@ -927,6 +998,10 @@ PRUEFUNGEN = [
     ("Schätzung im eigenen Reiter", pruefe_schaetzung_getrennt),
     ("Deckkraftregler", pruefe_deckkraftregler),
     ("Vergleichstabelle", pruefe_vergleich),
+    ("Gesamt-Score mit Gewichten", pruefe_score),
+    ("Baustellen (Stadt München)", pruefe_baustellen),
+    ("Städtische Märkte (München)", pruefe_maerkte),
+    ("Viertel-Steckbrief (Indikatorenatlas)", pruefe_indikatoren),
     ("München-Erweiterungen", pruefe_muenchen_erweiterungen),
     ("Verkehrszähler in der Fußzeile", pruefe_verkehrszaehler),
     ("Erreichbarkeit zu Fuß", pruefe_gehweg),

@@ -177,6 +177,9 @@ Antworten unter `fixtures/`.
 | ↳ Fußwegenetz | Gehstrecke statt Luftlinie (nur auf Anforderung) | ODbL 1.0 | 14 Tage |
 | Bodenrichtwert-WMS von 7 Ländern | Kartenebene und Wert am Punkt | je Land, siehe unten | kein Cache |
 | [Raddauerzählstellen München](https://opendata.muenchen.de/dataset/daten-der-raddauerzaehlstellen-muenchen-jahreszahlen) | gemessene Radverkehrsfrequenz | dl-de/by-2-0, © LH München | 24 h |
+| [Baustellen-Servicekarte München](https://opendata.muenchen.de/dataset/baustellen_4_weeks_opendata) | Baustellen/Haltverbote im Umkreis, Vier-Wochen-Vorschau | dl-de/by-2-0, © LH München, Mobilitätsreferat | 24 h |
+| [Märkte der LH München](https://opendata.muenchen.de/dataset/maerkte) | Wochen-/Bauernmärkte mit Öffnungszeiten | dl-de/by-2-0, © LH München, GeodatenService | 30 Tage |
+| [Indikatorenatlas München](https://opendata.muenchen.de/dataset?q=indikatorenatlas) | Stadtbezirks-Jahresreihen (Viertel-Steckbrief) | dl-de/by-2-0, © LH München, Statistisches Amt | 30 Tage |
 | [Luftbild und ALKIS Bayern](https://geodaten.bayern.de/opengeodata/) | Kartenebenen | CC BY 4.0, © Bayerische Vermessungsverwaltung | kein Cache |
 | [BAYSIS Straßenverkehrszählung](https://www.baysis.bayern.de/internet/verdat/svz/index.html) | Verkehrsmenge (DTV) je Zählstelle | CC BY 4.0, © Bayerische Straßenbauverwaltung | 24 h |
 | [Hochwassergefahrenflächen LfU](https://www.lfu.bayern.de/wasser/hw_ue_gebiete/index.htm) | HQhäufig, HQ100, HQextrem am Punkt | CC BY 4.0, © Bayerisches Landesamt für Umwelt | 14 Tage |
@@ -187,7 +190,9 @@ Antworten unter `fixtures/`.
 
 Verlinkt, aber **nicht abgerufen**: BORIS-D und die Landesportale für Bodenrichtwerte,
 hystreet, Pendleratlas, INKAR, Regionalstatistik, Zensusatlas, Leerstandsmelder,
-nexxt-change, DEHOGA, ahgz immo, Brauerei-Pachtbörsen, ECE, MEC, DB InfraGO.
+nexxt-change, DEHOGA, ahgz immo, Brauerei-Pachtbörsen, ECE, MEC, DB InfraGO —
+sowie als reine Absprunglinks für die Handkontrolle: Google Maps (Gastro-Suche am
+Punkt) und Mapillary (Straßenfotos, „virtuelle Begehung").
 
 > **hystreet:** Im kostenfreien Modell ist die **gewerbliche Nutzung untersagt**. Für eine
 > Standortentscheidung vorher den Tarif klären. hystreet ist Datenbankhersteller nach
@@ -676,6 +681,71 @@ Daten mit Ausreißern (auch Firmensitze ohne Ladentür), der Namensabgleich ist 
 Heuristik, und Schließungen hinken in beiden Quellen hinterher — die kombinierte Zahl
 ist die bessere Näherung, die Begehung bleibt die Wahrheit.
 
+## Gesamt-Score (Block 1b) — ein Punktwert, nichts versteckt
+
+Ein Score ist immer eine Setzung — deshalb ist hier nichts verborgen: **acht
+Kennzahlen** (Einwohner, Einkommen, ÖPNV-Abfahrten, Frequenzbringer, Marktsättigung,
+Wohnmiete, Straßenlärm, Baustellen mit Gehweg-Eingriff), jede mit Quelle, jedem
+Anker („ab wann 0, ab wann 100 Punkte" — gewählte Werte, an jeder Zeile sichtbar)
+und einem eigenen **Gewichtsregler** (0–3, lokal gespeichert, Gewicht 0 nimmt die
+Kennzahl heraus). Punkteformel: linear zwischen den Ankern, gekappt; bei Miete,
+Lärm und Baustellen dreht die Ankerreihenfolge die Richtung um. Fehlende Kennzahlen
+verkleinern die Gewichtssumme und werden benannt, statt still als 0 zu zählen.
+Derselbe Score steht mit denselben Gewichten im druckbaren Standortbericht.
+Vergleichbar sind nur Punkte mit gleichem Radius — auch das steht im Block.
+
+## Viertel-Steckbrief (Block 2b) — die Entwicklung des Stadtbezirks
+
+Der Zensus zeichnet das Umfeld räumlich fein (100 m), aber als Momentaufnahme 2022.
+Der **Indikatorenatlas München** (Statistisches Amt, 68 offene Datensätze) ergänzt
+die Entwicklung: Jahresreihen je Stadtbezirk bis 2025. Das Werkzeug zeigt sieben
+Kennzahlen mit ~5-Jahres-Trend gegen den Stadtwert: **Einpersonenhaushalte**
+(stadtweit 54,4 %, Altstadt-Lehel 63,7 % — Singles essen häufiger auswärts),
+davon **unter 30**, Durchschnittsalter, 65+, Bevölkerungsdichte, **Wohndauer an
+der Adresse** (Fluktuation: neue Kundschaft vs. Stammgäste) und Arbeitslosen-Anteil.
+Die Bedeutung jeder Kennzahl ist aus den Basiswert-Spalten der Original-CSVs
+belegt, nicht interpretiert. Der Stadtbezirk kommt aus der ohnehin geladenen
+Nominatim-Adresse — null zusätzliche Anfragen; die CSVs werden stadtweit einmal
+gecacht. Nur München; anderswo bleibt der Block mit Begründung leer.
+
+## Baustellen (Block 6g) — der kurzfristige Ernstfall
+
+Eine monatelange **Gehwegsperrung vor der Tür** ist einer der häufigsten
+kurzfristigen Umsatzkiller im Gastgewerbe. Die Stadt München veröffentlicht ihre
+Baustellen-Servicekarte als offenen WFS: alles, was läuft oder in den nächsten
+vier Wochen beginnt, mit Umriss-Polygon, Zeitraum und exakter Beeinträchtigung.
+Der Block zählt laufend/geplant, **Gehweg betroffen** und Sperrungen, zeichnet
+die Umrisse auf die Karte (rot, wenn der Gehweg betroffen ist) und macht die
+Liste springbar. Live am Marienplatz (600 m, 07.08.2026): 314 Maßnahmen, 248
+laufend, 107 mit Gehweg-Eingriff. Ehrliche Grenzen im Block: Vier-Wochen-Vorschau
+(eine Baustelle in drei Monaten kennt der Dienst noch nicht — vor der
+Vertragsunterschrift neu prüfen), nur Stadtgebiet München, Haltverbote sind meist
+Umzüge von wenigen Tagen.
+
+## Städtische Märkte (Block 5c) — Frequenzbringer mit Terminen
+
+54 Münchner Märkte (34 Wochenmärkte, 10 Bauernmärkte, 5 ständige, 5 Großmärkte)
+aus dem Stadtdatensatz — mit **Öffnungszeiten** direkt aus der Quelle, denn ein
+Wochenmarkt bringt Frequenz an seinen Markttagen, nicht täglich. Reichweite
+2 km (gewählter Wert), eigene Karten-Pins, springbare Liste; Großmärkte sind an
+der Rubrik erkennbar (Handelsplätze, keine Laufkundschaft).
+
+**Dazu im Kreisprofil (3c):** die Wirtschaftskraft aus dem Regionalatlas —
+BIP je Einwohner (München 97.406 € gegen Bayern 57.725 € und Bund 49.525 €),
+BIP je Erwerbstätigen und die Vorjahresveränderung, Feldbedeutungen amtlich
+belegt. Und in den weiterführenden Quellen: der **Mapillary-Link** — freie
+Straßenfotos am Punkt, die „Begehung vom Schreibtisch aus", bevor man hinfährt
+(Bildstand kann Monate bis Jahre alt sein, steht dabei).
+
+**Geprüfte Irrwege dieser Runde, dokumentiert statt gebaut:** Bodenrichtwerte
+über BORIS Bayern (Einsicht im Viewer frei, die Daten selbst in Bayern
+**gebührenpflichtig** — es bleibt beim Link), die BASt-Straßenverkehrszählung
+(frei, aber nur Autobahnen/Bundesstraßen — für Innenstadtlagen deckt die
+Lärmkartierung den Kfz-Verkehr besser ab) und die städtische Parkhaus-Liste
+(72 Standorte, aber ohne Kapazitäten — gegenüber dem OSM-Bestand kein
+Mehrwert). Google Places bleibt draußen, weil die API eine Kreditkarte
+voraussetzt; Google gibt es weiterhin nur als Handkontroll-Link.
+
 ## Rad-Liefergebiet (Block 4d) — erreichbare Einwohner in Lieferzeit
 
 Für Lieferkonzepte zählt nicht der Umkreis, sondern: wie viele Menschen erreicht ein
@@ -955,6 +1025,9 @@ Alles über Umgebungsvariablen, alles optional:
 | `GET /api/point/dynamik?lat=&lon=&r=` | Gastro-Dynamik: Jahresreihe der OSM-Objekte (ohsome) |
 | `GET /api/point/overture?lat=&lon=&r=` | Wettbewerbs-Abgleich OSM ↔ Overture Places (lokaler Import) |
 | `GET /api/point/laerm?lat=&lon=&bundesland_code=` | Straßenlärm am Punkt (LfU Bayern, LDEN/LNight) |
+| `GET /api/point/baustellen?lat=&lon=&r=` | Baustellen und Haltverbote im Umkreis (Stadt München, Vier-Wochen-Vorschau) |
+| `GET /api/point/maerkte?lat=&lon=&r=` | städtische Märkte in Reichweite (München, mit Öffnungszeiten) |
+| `GET /api/point/indikatoren?lat=&lon=` | Viertel-Steckbrief: Stadtbezirks-Jahresreihen (Indikatorenatlas München) |
 | `GET /api/point/liefergebiet?lat=&lon=&minuten=` | Rad-Liefergebiet: erreichbare Einwohner in 5–15 min — **nur auf Anforderung** |
 | `GET /api/point/marke?lat=&lon=&marke=&r=` | Gebietsschutz-Check: Betriebe der eigenen Marke bis 20 km |
 | `GET /api/geocode?q=` | Adresssuche |
@@ -1016,7 +1089,7 @@ Das letzte Protokoll steht in [`docs/abnahme.md`](docs/abnahme.md).
 
 ### Vollprüfung aller Endpunkte
 
-Die dritte Ebene: alle API-Routen (53 Prüfungen) live gegen einen laufenden Server, mit erzwungenen
+Die dritte Ebene: alle API-Routen (56 Prüfungen) live gegen einen laufenden Server, mit erzwungenen
 Frischabrufen bei Zensus, Overpass und „Neu prüfen" und unabhängigen Erwartungswerten
 (A9: 111.624 Kfz/Tag; Isarauen: HQ 100; Köln: Bodenrichtwert; Innenstadt-Scan: über
 100 Betriebe). Braucht Netz und einen GTFS-Import.
@@ -1035,7 +1108,7 @@ pip install playwright && playwright install chromium
 python scripts/uitest.py http://127.0.0.1:8011
 ```
 
-35 Prüfungen (dazu die Prüfung auf JavaScript-Fehler), darunter: jeder Block nennt
+39 Prüfungen (dazu die Prüfung auf JavaScript-Fehler), darunter: jeder Block nennt
 Quelle und Lizenz, im Datenreiter steht keine geschätzte Zahl, der Deckkraftregler wirkt
 auf die Ebenen und **nicht** auf die Grundkarte, der Gehwegblock lädt nur auf Anforderung
 und räumt seine Kartenebene beim Punktwechsel auf, der Flächen-Scan scannt nach dem

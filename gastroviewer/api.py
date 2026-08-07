@@ -309,6 +309,38 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         _validate(lat, lon, r)
         return (await svc(request).dynamik(lat, lon, r)).to_dict()
 
+    @app.get("/api/point/baustellen")
+    async def point_baustellen(
+        request: Request, lat: float, lon: float, r: int = 600,
+        refresh: bool = False,
+    ):
+        """Baustellen-Vorschau der Stadt München im Umkreis — mit Umriss,
+        Zeitraum und Gehweg-/Sperrungs-Erkennung. Außerhalb Münchens leer,
+        mit Begründung."""
+        _validate(lat, lon, r)
+        return (await svc(request).baustellen(lat, lon, r, refresh)).to_dict()
+
+    @app.get("/api/point/maerkte")
+    async def point_maerkte(
+        request: Request, lat: float, lon: float, r: int = 600,
+        refresh: bool = False,
+    ):
+        """Städtische Märkte München (Wochen-/Bauernmärkte …) in Reichweite."""
+        _validate(lat, lon, r)
+        return (await svc(request).maerkte(lat, lon, r, refresh)).to_dict()
+
+    @app.get("/api/point/indikatoren")
+    async def point_indikatoren(request: Request, lat: float, lon: float):
+        """Viertel-Steckbrief (Indikatorenatlas München): Jahresreihen des
+        Stadtbezirks gegen die Stadt. Die Adresse kommt aus dem ohnehin
+        gecachten Nominatim-Ergebnis."""
+        _validate(lat, lon, 600)
+        s = svc(request)
+        adresse = await s.adresse(lat, lon)
+        return (
+            await s.indikatoren(adresse.data if adresse.ok else None)
+        ).to_dict()
+
     @app.get("/api/point/liefergebiet")
     async def point_liefergebiet(
         request: Request, lat: float, lon: float,

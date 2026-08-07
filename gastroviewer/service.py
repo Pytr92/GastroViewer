@@ -366,12 +366,14 @@ class PointService:
         )
 
     async def kreisprofil(self, ags: str):
-        """Kreisprofil (Tourismus, Arbeitsort, Arbeitsmarkt, Bevölkerung) —
-        wie das Einkommen je Kreis gecacht, gleicher Dienst, gleiche TTL."""
+        """Kreisprofil (Tourismus, Arbeitsort, Arbeitsmarkt, Bevölkerung,
+        Wirtschaftskraft) — wie das Einkommen je Kreis gecacht, gleicher
+        Dienst, gleiche TTL. Schlüssel „v2": seit der BIP-Erweiterung wäre
+        ein alter Cache-Eintrag unvollständig — er läuft einfach aus."""
         kreis = einkommen_mod.kreis_aus_ags(ags) or "unbekannt"
         return await self._cached(
             "kreisprofil",
-            f"kreisprofil|{kreis}",
+            f"kreisprofil|v2|{kreis}",
             lambda: kreisprofil_mod.load(self.outbound, self.settings, ags),
         )
 

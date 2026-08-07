@@ -581,3 +581,26 @@ Kein Ausfall führt zu Absturz oder Hänger; jeder benennt seine Ursache.
    `null`-Behandlung bei Zensuswerten, `center`-Fallback bei Overpass-Ways/Relations,
    `addressdetails=1`, AGS-Übernahme aus dem Zensus-Block.
 4. Der Nominatim-Rate-Limiter ist Funktionsvoraussetzung (403 ohne `User-Agent`).
+
+---
+
+## Nachtrag 2026-08-07: Stufe-3-Quellen (Baustellen, Märkte, Indikatorenatlas, BIP)
+
+Alle Phase-0-Prüfungen mit echten Abrufen am 07.08.2026.
+
+| Endpunkt | Prüfung | Ergebnis |
+|---|---|---|
+| `geoportal.muenchen.de/geoserver/mor_wfs/ows` · `typeName=mor_wfs:baustellen_opendata` | WFS 1.1.0 GetFeature, GeoJSON, `srsName=EPSG:4326` | 5.533 Features stadtweit; bbox-Filter funktioniert nur in **lon,lat**-Reihenfolge (lat,lon → 0 Treffer); native CRS EPSG:25832; Felder: strasse_hausnr, art (Baumaßnahme/Vorübergehendes Haltverbot), beginn/ende (TT.MM.JJJJ), beeintraechtigung, betroffene_bereiche, weitere_info (HTML-Link) |
+| `geoportal.muenchen.de/geoserver/gsm_wfs/ows` · `typeName=gsm_wfs:maerkte` | WFS GetFeature GeoJSON | 54 Punkte (34 Wochen-, 10 Bauern-, 5 ständige, 5 Großmärkte); Name und Öffnungszeiten gemeinsam im Feld `inhalt`, Rubrik separat; Lizenz laut CKAN `dl-by-de/2.0` |
+| `opendata.muenchen.de/api/3/action/package_search?q=indikatorenatlas` | CKAN-Suche + 6 CSV-Downloads | 68 Datensätze; CSV-Spalten `Indikator, Ausprägung, Jahr, Raumbezug, Indikatorwert, Basiswert 1/2, Name Basiswert 1/2`; Raumbezug „Stadt München" + 25 Bezirke („01 Altstadt - Lehel"); Dezimalpunkt; Reihen bis 2025 (Arbeitslosen-Anteil bis 2024); Kennzahl-Bedeutungen aus den Basiswert-Spalten belegt (z. B. Einpersonenhaushalte = Privathaushalte (Einpersonen) / Privathaushalte insgesamt: Stadt 54,4 %, Bezirk 01 63,7 %) |
+| Regionalatlas `regionalatlas.ai017_1` (dynamicLayer, gleicher Dienst wie Einkommen) | POST mit `ags2 IN ('09162','09','DG')` | 72 Zeilen; Feldbedeutungen amtlich belegt (Katalog AI017-1 / bundesAPI-Doku): ai1701 = BIP je Erwerbstätigen (München 122.227 €), ai1702 = Veränderung zum Vorjahr (4,8 %), ai1703 = BIP je Einwohner (97.406 € vs. Bayern 57.725 € vs. Bund 49.525 €, Jahr 2023) |
+| `www.mapillary.com/app/?lat=…&lng=…&z=17` | HTTP-Erreichbarkeit ohne Konto | 200 — als reiner Absprunglink aufgenommen |
+
+**Geprüft und verworfen:**
+
+| Kandidat | Befund |
+|---|---|
+| BORIS Bayern (Bodenrichtwerte) | Viewer-Einsicht frei, Datenabgabe in Bayern **gebührenpflichtig** (Portalseite nennt Gebühren mehrfach) → bleibt Link, kein Abruf |
+| BASt-Straßenverkehrszählung (Stundenwerte) | Download frei (`2023_A_S.zip` → 200), aber nur Autobahnen/Bundesstraßen — für Innenstadtlagen deckt die Lärmkartierung den Kfz-Verkehr besser ab |
+| Parkhäuser München (CKAN-JSON) | 72 Standorte mit Koordinaten, aber **ohne Kapazitäten** — gegenüber dem OSM-Bestand kein Mehrwert |
+| `gis-service.destatis.de` | über den Sitzungs-Proxy nicht erreichbar (502) — nicht benötigt, der Regionalatlas läuft über `gis-idmz.nrw.de` |

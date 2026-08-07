@@ -159,6 +159,47 @@ async function start() {
       p.notiz ? el('div', {}, el('strong', {}, 'Notiz: '), p.notiz) : null));
   }
 
+  /* --- Gesamt-Score: dieselbe Logik wie in der Anwendung (score.js) auf dem
+     GESPEICHERTEN Datenstand. Anker sind gewählte Werte und stehen an jeder
+     Zeile; die Gewichte kommen aus der lokalen Einstellung des Nutzers. --- */
+  if (typeof berechneScore === 'function' && payload.bloecke) {
+    const gewichte = ladeScoreGewichte();
+    const s = berechneScore(payload.bloecke, gewichte);
+    if (s.teile.length) {
+      teile.push(el('h2', {}, 'Gesamt-Score'));
+      teile.push(el('p', { class: 'hinweis' },
+        `Gesamt: ${s.gesamt === null ? '—' : `${s.gesamt} von 100 Punkten`} `
+        + `(${s.teile.length} Kennzahlen, Gewichtssumme `
+        + `${nfFest(1).format(s.gewichtSumme)}). Der Score ist eine Einordnung, `
+        + 'keine Prognose: Punkte entstehen linear zwischen den gewählten '
+        + 'Ankern, die Gewichte sind die eigene Einstellung aus der Anwendung.'));
+      const st = el('table', {},
+        el('tr', {},
+          el('th', {}, 'Kennzahl'),
+          el('th', { class: 'num' }, 'Wert'),
+          el('th', { class: 'num' }, 'Punkte'),
+          el('th', { class: 'num' }, 'Gewicht'),
+          el('th', {}, 'Anker (0 → 100 P., gewählt)'),
+          el('th', {}, 'Quelle')));
+      for (const t of s.teile) {
+        st.append(el('tr', {},
+          el('td', {}, t.label),
+          el('td', { class: 'num' },
+            t.text || `${NF.format(Math.round(t.wert))}${t.einheit ? ' ' + t.einheit : ''}`),
+          el('td', { class: 'num' }, String(t.punkte)),
+          el('td', { class: 'num' }, nfFest(1).format(t.gewicht)),
+          el('td', {}, `${NF.format(t.anker[0])} → ${NF.format(t.anker[1])}`),
+          el('td', { class: 'quelle' }, t.quelle)));
+      }
+      teile.push(st);
+      if (s.fehlend.length) {
+        teile.push(el('p', { class: 'hinweis' },
+          'Nicht eingeflossen (lag zum gespeicherten Stand nicht vor): '
+          + s.fehlend.join(', ') + '.'));
+      }
+    }
+  }
+
   /* --- Karte: Umkreis und Wettbewerber. Bewusst im Bericht, denn ein
      Kennzahlenblatt ohne Lagebild ist für Bank und Vermieter nur die halbe
      Aussage. Gezeichnet wird aus dem GESPEICHERTEN Datenstand — die Karte

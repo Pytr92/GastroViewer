@@ -125,6 +125,10 @@ function setInhalt(id, ...kinder) {
   const c = document.getElementById(`inhalt-${id}`);
   if (!c) return;
   c.replaceChildren(...kinder.flat().filter(Boolean));
+  // Der Gesamt-Score speist sich aus den Blockdaten — sobald irgendein Block
+  // neu rendert, rechnet er (entprellt) nach. Der Score selbst ist
+  // ausgenommen, sonst riefe er sich endlos selbst auf.
+  if (id !== 'score') planeScoreUpdate();
 }
 
 function setQuelle(id, prov) {
@@ -179,7 +183,7 @@ const basemapGrau = new BasemapDe('', {
 osmKarte.addTo(karte);
 
 for (const name of ['zensus', 'gastronomie', 'frequenzbringer', 'oepnv', 'leerstand',
-  'overture']) {
+  'overture', 'maerkte', 'baustellen']) {
   state.ebenen[name] = L.layerGroup();
 }
 /* Die zu Fuß erreichbare Fläche. Canvas statt SVG, weil es je nach Lage einige
@@ -223,6 +227,8 @@ const ebenenSchalter = L.control.layers({
   'Frequenzbringer': state.ebenen.frequenzbringer,
   'ÖPNV': state.ebenen.oepnv,
   'Leerstände (OSM)': state.ebenen.leerstand,
+  'Städtische Märkte (M)': state.ebenen.maerkte,
+  'Baustellen (M)': state.ebenen.baustellen,
 }, { collapsed: false }).addTo(karte);
 ebenenSchalter.getContainer().classList.add('ebenen-schalter');
 
@@ -246,7 +252,8 @@ state.rasterEbenen = new Set();
 function wendeDeckkraftAn() {
   const f = state.deckkraft;
   for (const name of ['zensus', 'gastronomie', 'frequenzbringer', 'oepnv', 'leerstand',
-    'overture', 'uebersicht', 'scan', 'marke', 'gehflaeche', 'liefergebiet']) {
+    'overture', 'maerkte', 'baustellen', 'uebersicht', 'scan', 'marke',
+    'gehflaeche', 'liefergebiet']) {
     state.ebenen[name]?.eachLayer((l) => {
       const basis = l.options?._basisDeckkraft;
       if (basis === undefined || !l.setStyle) return;
@@ -862,6 +869,8 @@ const POI_STIL = {
   oepnv: { color: '#2b6a3f', fill: '#4f9c68' },
   leerstand: { color: '#8a5a00', fill: '#c9922a' },
   overture: { color: '#4a2b8a', fill: '#8a6fd1' },
+  maerkte: { color: '#0e6e6d', fill: '#2fa39d' },
+  baustellen: { color: '#b34700', fill: '#e07b39' },
 };
 
 /* Klick in einer Objektliste: Karte springt zum Objekt, blendet die passende
@@ -975,6 +984,8 @@ function lade(refresh = false) {
   // Overture-Pins ebenso: sonst behaupten alte Pins etwas über den neuen Punkt.
   state.ebenen.marke?.clearLayers();
   state.ebenen.overture?.clearLayers();
+  state.ebenen.maerkte?.clearLayers();
+  state.ebenen.baustellen?.clearLayers();
   // Der Schätzungsreiter hängt an den Punktdaten. Ist er gerade offen, muss er
   // mitwandern statt die Werte des vorigen Punktes stehen zu lassen.
   if (!document.getElementById('panel-schaetzung').hidden) {
@@ -1057,6 +1068,18 @@ function lade(refresh = false) {
     .then((d) => { if (aktuell()) { state.daten.dynamik = d; zeigeDynamik(d); } })
     .catch((e) => aktuell() && zeigeBlockFehler('dynamik', e));
 
+  hole('/api/point/baustellen', p)
+    .then((d) => { if (aktuell()) { state.daten.baustellen = d; zeigeBaustellen(d); } })
+    .catch((e) => aktuell() && zeigeBlockFehler('baustellen', e));
+
+  hole('/api/point/maerkte', p)
+    .then((d) => { if (aktuell()) { state.daten.maerkte = d; zeigeMaerkte(d); } })
+    .catch((e) => aktuell() && zeigeBlockFehler('maerkte', e));
+
+  hole('/api/point/indikatoren', { lat, lon })
+    .then((d) => { if (aktuell()) { state.daten.indikatoren = d; zeigeIndikatoren(d); } })
+    .catch((e) => aktuell() && zeigeBlockFehler('indikatoren', e));
+
   aktualisiereFuss();
 }
 
@@ -1085,7 +1108,9 @@ function baueGeruest() {
   const panel = document.getElementById('panel');
   panel.replaceChildren(
     block('kopf', '1 · Standort'),
+    block('score', '1b · Gesamt-Score (gewählte Anker, eigene Gewichte)'),
     block('bevoelkerung', '2 · Bevölkerung'),
+    block('indikatoren', '2b · Viertel-Steckbrief (Stadtbezirk München)'),
     block('wohnen', '3 · Wohnen'),
     block('einkommen', '3b · Verfügbares Einkommen (Kreis)'),
     block('kreisprofil', '3c · Kreisprofil (Tourismus, Arbeit, Bevölkerung)'),
@@ -1098,12 +1123,14 @@ function baueGeruest() {
     block('overture', '4f · Wettbewerbs-Abgleich (Overture)'),
     block('umfeld', '5 · Umfeld'),
     block('klima', '5b · Klima für Außengastronomie (DWD)'),
+    block('maerkte', '5c · Städtische Märkte (München)'),
     block('verkehr', '6 · Verkehr'),
     block('gtfs', '6b · Abfahrten (GTFS)'),
     block('radzaehlung', '6c · Gemessene Radverkehrsfrequenz'),
     block('verkehrsmenge', '6d · Verkehrsmenge (DTV, Bayern)'),
     block('planung', '6e · Planungsrecht und Hochwasser'),
     block('laerm', '6f · Straßenlärm (Umgebungslärmkartierung, Bayern)'),
+    block('baustellen', '6g · Baustellen (Stadt München)'),
     block('leerstand', '7 · Leerstände'),
     block('quellen', '8 · Weiterführende Quellen'),
     block('grenzen', 'Bekannte Grenzen dieser Daten'),
@@ -2198,6 +2225,340 @@ function zeigeLaerm(d) {
       zelle(l.lden, 'LDEN (Tag-Abend-Nacht-Pegel)'),
       zelle(l.lnight, 'LNight (Nachtpegel 22–6 Uhr)')),
     ...(l.hinweise || []).map((h) => el('div', { class: 'hinweis-klein' }, h)),
+    ...warnungen(d.warnings || []));
+  setQuelle(id, d.provenance);
+}
+
+/* Block 1b — Gesamt-Score. Die Logik (Kennzahlen, Anker, Formel) liegt in
+   score.js und wird auch vom Bericht genutzt. Hier nur die Anzeige: eine
+   Gesamtzahl, je Kennzahl ein Balken mit Wert, Ankern und Gewichtsregler.
+   Der Score rechnet nach, sobald irgendein Block neue Daten rendert
+   (entprellt über setInhalt). */
+let scoreTimer = null;
+function planeScoreUpdate() {
+  if (typeof berechneScore !== 'function') return;
+  clearTimeout(scoreTimer);
+  scoreTimer = setTimeout(zeigeScore, 400);
+}
+
+function zeigeScore() {
+  if (!document.getElementById('inhalt-score')) return;
+  const gewichte = ladeScoreGewichte();
+  const s = berechneScore(state.daten || {}, gewichte);
+
+  if (!s.teile.length) {
+    setStatus('score', 'laedt', 'wartet auf Blöcke');
+    setInhalt('score', el('p', { class: 'hinweis-klein' },
+      'Der Score rechnet, sobald die ersten Blöcke geladen sind.'));
+    return;
+  }
+  setStatus('score', 'ok',
+    s.gesamt === null ? 'alle Gewichte 0' : `${s.gesamt} / 100`);
+
+  const kopf = el('div', { class: 'kennzahlen' },
+    el('div', { class: 'kennzahl' },
+      el('div', { class: 'titel' }, 'Gesamt-Score'),
+      el('div', { class: 'wert' },
+        s.gesamt === null ? '—' : `${NF.format(s.gesamt)} / 100`),
+      el('div', { class: 'basis' },
+        `${s.teile.length} Kennzahlen · Gewichtssumme ${NF1.format(s.gewichtSumme)}`)));
+
+  const zeilen = s.teile.map((t) => {
+    const regler = el('input', {
+      type: 'range', min: '0', max: '3', step: '0.5',
+      value: String(t.gewicht), title: 'Gewicht dieser Kennzahl (0 = zählt nicht)',
+    });
+    regler.addEventListener('input', () => {
+      const g = ladeScoreGewichte();
+      g[t.key] = Number(regler.value);
+      speichereScoreGewichte(g);
+      zeigeScore();
+    });
+    const wertText = t.text
+      || `${NF.format(Math.round(t.wert))}${t.einheit ? ' ' + t.einheit : ''}`;
+    const [schlecht, gut] = t.anker;
+    return el('div', { class: 'score-zeile', title: t.begruendung || '' },
+      el('div', { class: 'score-kopf' },
+        el('span', { class: 'haupt' }, t.label),
+        el('span', { class: 'neben' },
+          ` ${wertText} → ${NF.format(t.punkte)} P. · ${t.quelle}`)),
+      el('div', { class: 'score-balken', style: 'height:8px;background:#e8ecef;border-radius:4px;overflow:hidden;' },
+        el('div', {
+          style: `width:${t.punkte}%;height:100%;background:var(--akzent);opacity:.8;`,
+        })),
+      el('div', { class: 'score-fuss', style: 'display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:11px;color:#5b6570;' },
+        el('span', {},
+          `Anker (gewählt): ${NF.format(schlecht)} → 0 P. · ${NF.format(gut)} → 100 P.`),
+        el('label', { style: 'display:flex;align-items:center;gap:4px;' },
+          `Gewicht ${NF1.format(t.gewicht)}`, regler)));
+  });
+
+  setInhalt('score',
+    kopf,
+    el('div', { class: 'score-liste', style: 'display:flex;flex-direction:column;gap:10px;margin-top:6px;' }, zeilen),
+    s.fehlend.length
+      ? el('div', { class: 'warnung' },
+        'Nicht eingeflossen (liegt für diesen Punkt nicht vor): '
+        + s.fehlend.join(', ') + '. Fehlende Kennzahlen verkleinern die '
+        + 'Gewichtssumme, statt still als 0 zu zählen.')
+      : null,
+    el('div', { class: 'hinweis-klein' },
+      'Der Score ist eine Einordnung, keine Prognose: Anker sind gewählte '
+      + 'Werte (an jeder Zeile ausgewiesen), Gewichte deine eigene Setzung — '
+      + 'lokal gespeichert, gleich auch im Bericht. Vergleichbar sind nur '
+      + 'Punkte mit gleichem Radius.'));
+}
+
+/* Block 6g — Baustellen (Stadt München). Vier-Wochen-Vorschau der
+   Servicekarte: was jetzt läuft oder demnächst beginnt, mit Umriss auf der
+   Karte. Eine Gehwegsperrung vor der Tür ist für Laufkundschaft der
+   kurzfristige Ernstfall — deshalb wird sie eigens gezählt. */
+function zeigeBaustellen(d) {
+  const id = 'baustellen';
+  state.ebenen.baustellen?.clearLayers();
+  if (!d.ok) {
+    setStatus(id, 'fehler', 'nicht erreichbar');
+    setInhalt(id, fehlerbox(d.error));
+    setQuelle(id, d.provenance);
+    return;
+  }
+  const b = d.data;
+  if (!b) {
+    setStatus(id, 'leer', 'nur München');
+    setInhalt(id, ...warnungen(d.warnings || []));
+    setQuelle(id, d.provenance);
+    return;
+  }
+  if (!b.gesamt) {
+    setStatus(id, 'ok', 'keine im Radius');
+    setInhalt(id,
+      el('div', { class: 'notiz' },
+        `Im Umkreis von ${NF.format(b.radius_m)} m ist aktuell keine Baustelle `
+        + 'und kein Haltverbot gemeldet (Stichtag '
+        + `${b.stichtag}, Vorschau vier Wochen).`),
+      ...(b.hinweise || []).map((h) => el('div', { class: 'hinweis-klein' }, h)),
+      ...warnungen(d.warnings || []));
+    setQuelle(id, d.provenance);
+    return;
+  }
+  setStatus(id, 'ok', `${b.gesamt} im Radius`);
+
+  // Karte: Umriss plus Mittelpunkt-Pin (der Pin trägt das Popup und macht
+  // die Liste springbar).
+  const stil = POI_STIL.baustellen;
+  for (const e of b.liste || []) {
+    if (e.umriss && e.umriss.length >= 3) {
+      state.ebenen.baustellen.addLayer(L.polygon(e.umriss, {
+        color: e.gehweg_betroffen ? '#c62828' : stil.color,
+        weight: 2, fillColor: stil.fill,
+        fillOpacity: 0.25 * state.deckkraft, opacity: state.deckkraft,
+        _basisDeckkraft: 0.25, _basisRand: 1,
+      }));
+    }
+    if (e.lat !== null && e.lon !== null) {
+      const m = L.circleMarker([e.lat, e.lon], {
+        radius: 5, color: stil.color, weight: 1.5, fillColor: stil.fill,
+        fillOpacity: 0.85 * state.deckkraft, opacity: state.deckkraft,
+        _basisDeckkraft: 0.85, _basisRand: 1,
+      });
+      m.bindPopup(() => `<h4>${esc(e.ort)}</h4><table>
+        <tr><td>Art</td><td><b>${esc(e.art)}</b></td></tr>
+        <tr><td>Status</td><td><b>${esc(e.status)}</b></td></tr>
+        <tr><td>Zeitraum</td><td><b>${esc(e.beginn || '?')} – ${esc(e.ende || '?')}</b></td></tr>
+        ${e.beeintraechtigung ? `<tr><td>Beeinträchtigung</td><td><b>${esc(e.beeintraechtigung)}</b></td></tr>` : ''}
+        </table>${e.beschreibung ? `<p class="hinweis-klein">${esc(e.beschreibung)}</p>` : ''}
+        ${e.link ? `<p class="hinweis-klein"><a href="${esc(e.link)}" target="_blank" rel="noopener">Baustellen-Info der Stadt</a></p>` : ''}`,
+      { maxWidth: 320 });
+      state.ebenen.baustellen.addLayer(m);
+    }
+  }
+
+  const kz = el('div', { class: 'kennzahlen' },
+    kennzahl('Laufend', b.laufend),
+    kennzahl('Geplant (Vorschau)', b.geplant),
+    el('div', { class: 'kennzahl' + (b.gehweg_betroffen ? ' warn' : '') },
+      el('div', { class: 'titel' }, 'Gehweg betroffen'),
+      el('div', { class: 'wert' }, NF.format(b.gehweg_betroffen)),
+      el('div', { class: 'basis' }, 'Sperrung/Einengung laut Stadt')),
+    el('div', { class: 'kennzahl' },
+      el('div', { class: 'titel' }, 'Baumaßnahmen / Haltverbote'),
+      el('div', { class: 'wert' }, `${NF.format(b.baumassnahmen)} / ${NF.format(b.haltverbote)}`),
+      el('div', { class: 'basis' }, 'Haltverbote meist nur wenige Tage')));
+
+  const liste = el('ul', { class: 'liste' },
+    (b.liste || []).map((e) => {
+      const teile = [
+        `${e.status === 'geplant' ? 'ab ' + (e.beginn || '?') : 'bis ' + (e.ende || '?')}`,
+        e.beeintraechtigung || null,
+        `${NF.format(e.distanz_m)} m${e.richtung ? ' ' + e.richtung : ''}`,
+      ].filter(Boolean).join(' · ');
+      return el('li', {},
+        el('span', { class: 'haupt' },
+          (e.lat !== null
+            ? el('a', {
+              href: '#', title: 'Auf der Karte zeigen',
+              onclick: (ev) => { ev.preventDefault(); springeZuPoi(e, 'baustellen'); },
+            }, e.ort)
+            : e.ort),
+          ` — ${e.art}${e.gehweg_betroffen ? ' · Gehweg!' : ''}`),
+        el('span', { class: 'neben' }, teile));
+    }));
+
+  setInhalt(id, kz, liste,
+    ...(b.hinweise || []).map((h) => el('div', { class: 'hinweis-klein' }, h)),
+    ...warnungen(d.warnings || []));
+  setQuelle(id, d.provenance);
+}
+
+/* Block 5c — Städtische Märkte München. Wochen- und Bauernmärkte bringen an
+   ihren Markttagen Laufkundschaft; die Öffnungszeiten stehen direkt im
+   städtischen Datensatz. */
+function zeigeMaerkte(d) {
+  const id = 'maerkte';
+  state.ebenen.maerkte?.clearLayers();
+  if (!d.ok) {
+    setStatus(id, 'fehler', 'nicht erreichbar');
+    setInhalt(id, fehlerbox(d.error));
+    setQuelle(id, d.provenance);
+    return;
+  }
+  const m = d.data;
+  if (!m) {
+    setStatus(id, 'leer', 'nur München');
+    setInhalt(id, ...warnungen(d.warnings || []));
+    setQuelle(id, d.provenance);
+    return;
+  }
+  const nah = m.in_reichweite || [];
+  if (!nah.length) {
+    setStatus(id, 'ok', 'keiner in Reichweite');
+    setInhalt(id,
+      el('div', { class: 'notiz' },
+        `Kein städtischer Markt innerhalb von ${NF.format(m.max_distanz_m)} m `
+        + `(gewählter Wert) — stadtweit sind es ${NF.format(m.stadtweit)}.`),
+      ...warnungen(d.warnings || []));
+    setQuelle(id, d.provenance);
+    return;
+  }
+  setStatus(id, 'ok', `${nah.length} in Reichweite`);
+
+  zeichnePois('maerkte', nah.map((x) => ({
+    ...x, typ_label: x.rubrik,
+    tags: x.oeffnungszeiten ? { Öffnungszeiten: x.oeffnungszeiten } : {},
+  })));
+
+  const naechster = m.naechster;
+  const kz = el('div', { class: 'kennzahlen' },
+    kennzahl('Im Umkreis', m.im_radius),
+    kennzahl(`In Reichweite (${NF.format(m.max_distanz_m)} m)`, nah.length),
+    el('div', { class: 'kennzahl' },
+      el('div', { class: 'titel' }, 'Nächster'),
+      el('div', { class: 'wert' }, naechster ? naechster.name : '—'),
+      el('div', { class: 'basis' },
+        naechster ? `${naechster.rubrik} · ${NF.format(naechster.distanz_m)} m ${naechster.richtung}` : '')));
+
+  const liste = el('ul', { class: 'liste' },
+    nah.map((x) => el('li', {},
+      el('span', { class: 'haupt' },
+        el('a', {
+          href: '#', title: 'Auf der Karte zeigen',
+          onclick: (ev) => { ev.preventDefault(); springeZuPoi(x, 'maerkte'); },
+        }, x.name),
+        ` — ${x.rubrik}`),
+      el('span', { class: 'neben' },
+        [x.oeffnungszeiten, x.adresse,
+          `${NF.format(x.distanz_m)} m ${x.richtung}`]
+          .filter(Boolean).join(' · ')))));
+
+  setInhalt(id, kz, liste,
+    ...(m.hinweise || []).map((h) => el('div', { class: 'hinweis-klein' }, h)),
+    ...warnungen(d.warnings || []));
+  setQuelle(id, d.provenance);
+}
+
+/* Block 2b — Viertel-Steckbrief (Indikatorenatlas München). Der Zensus zeigt
+   das Umfeld fein, aber als Momentaufnahme 2022 — hier steht die Entwicklung
+   des Stadtbezirks über die Jahre, jeweils gegen den Stadtwert. */
+function zeigeIndikatoren(d) {
+  const id = 'indikatoren';
+  if (!d.ok) {
+    setStatus(id, 'fehler', 'nicht erreichbar');
+    setInhalt(id, fehlerbox(d.error));
+    setQuelle(id, d.provenance);
+    return;
+  }
+  const dat = d.data;
+  if (!dat) {
+    setStatus(id, 'leer', 'nur München');
+    setInhalt(id, ...warnungen(d.warnings || []));
+    setQuelle(id, d.provenance);
+    return;
+  }
+  const zeilen = dat.indikatoren || [];
+  if (!zeilen.length) {
+    setStatus(id, 'leer', 'keine Reihen');
+    setInhalt(id, ...warnungen(d.warnings || []));
+    setQuelle(id, d.provenance);
+    return;
+  }
+  setStatus(id, 'ok', dat.bezirk || 'Stadtwerte');
+
+  const vorz = (x, f) => (x > 0 ? `+${f.format(x)}` : f.format(x));
+  const fmtWert = (z, t) => {
+    if (!t) return '—';
+    const f = z.einheit === 'Ew. je km²' ? NF : NF1;
+    return `${f.format(t.wert)}`;
+  };
+  const fmtTrend = (z, t) => {
+    if (!t || t.delta === null || t.delta === undefined) return '—';
+    const f = z.einheit === 'Ew. je km²' ? NF : NF1;
+    return `${vorz(t.delta, f)} seit ${t.von_jahr}`;
+  };
+
+  const tab = el('table', { class: 'daten' },
+    el('tr', {},
+      el('th', {}, 'Kennzahl'),
+      el('th', { class: 'num' }, dat.bezirk || 'Bezirk'),
+      el('th', { class: 'num' }, 'Trend (~5 J.)'),
+      el('th', { class: 'num' }, 'Stadt München'),
+      el('th', { class: 'num' }, 'Jahr')));
+  for (const z of zeilen) {
+    const t = z.bezirk;
+    tab.append(el('tr', { title: z.deutung || '' },
+      el('td', {},
+        el('span', { class: 'haupt' }, `${z.label}`),
+        el('span', { class: 'neben' }, ` (${z.einheit})`)),
+      el('td', { class: 'num' }, fmtWert(z, t)),
+      el('td', { class: 'num' }, fmtTrend(z, t)),
+      el('td', { class: 'num' }, fmtWert(z, z.stadt)),
+      el('td', { class: 'num' },
+        t ? String(t.jahr) : (z.stadt ? String(z.stadt.jahr) : '—'))));
+  }
+
+  // Die Gastro-Übersetzung der auffälligsten Zeile: Einpersonenhaushalte.
+  const einp = zeilen.find((z) => z.schluessel === 'einpersonenhaushalte');
+  const deutung = [];
+  if (einp && einp.bezirk && einp.stadt) {
+    const diff = einp.bezirk.wert - einp.stadt.wert;
+    deutung.push(el('div', { class: 'notiz' },
+      `${NF1.format(einp.bezirk.wert)} % der Haushalte im Bezirk sind `
+      + 'Einpersonenhaushalte'
+      + (Math.abs(diff) >= 1
+        ? ` — ${NF1.format(Math.abs(diff))} Punkte ${diff > 0 ? 'über' : 'unter'} dem Stadtwert. `
+        : ' — nahe am Stadtwert. ')
+      + (diff > 0
+        ? 'Singles essen häufiger auswärts: tendenziell mehr Ausgeh-Publikum.'
+        : 'Eher Familien-Viertel: Mittagsgeschäft und Familientauglichkeit zählen mehr.')));
+  }
+
+  setInhalt(id,
+    dat.bezirk
+      ? el('div', { class: 'notiz' },
+        `Stadtbezirk ${dat.bezirk} — Werte im Zeitverlauf, Spalte „Trend" `
+        + 'gegen den Stand vor ~5 Jahren (gewählter Wert).')
+      : null,
+    tab, ...deutung,
+    ...(dat.hinweise || []).map((h) => el('div', { class: 'hinweis-klein' }, h)),
     ...warnungen(d.warnings || []));
   setQuelle(id, d.provenance);
 }

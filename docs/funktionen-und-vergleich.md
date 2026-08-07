@@ -19,15 +19,17 @@ hinter Login bzw. Lizenz.
 | Grundkarten: OpenStreetMap, amtliche basemap.de (farbig/grau), in Bayern Luftbild und Flurstücke (ALKIS) | BKG, LDBV |
 | Deckkraftregler für alle aufgesetzten Ebenen | — |
 
-### Punktanalyse — WIE ist es hier? (ein Klick, 19 Blöcke)
+### Punktanalyse — WIE ist es hier? (ein Klick, 23 Blöcke)
 
 | Block | Inhalt |
 |---|---|
 | Standort | Adresse, Gemeinde, AGS, Bundesland |
+| **Gesamt-Score (1b)** | ein Punktwert 0–100 aus 8 Kennzahlen — Anker als gewählte Werte an jeder Zeile ausgewiesen, Gewichte per Schieberegler (lokal gespeichert), fehlende Kennzahlen fallen sichtbar heraus statt still als 0 zu zählen |
 | Bevölkerung | Einwohner, Altersgruppen, Haushaltsgröße, Ausländeranteil — 100-m-genau |
+| **Viertel-Steckbrief (2b)** | Indikatorenatlas München: Jahresreihen des Stadtbezirks bis 2025 gegen den Stadtwert — Einpersonenhaushalte (54,4 % stadtweit!), junge Single-Haushalte, Durchschnittsalter, 65+, Dichte, Wohndauer, Arbeitslosen-Anteil, je mit ~5-Jahres-Trend |
 | Wohnen | Nettokaltmiete, Leerstandsquote, Eigentümerquote, Baualter, Neubauhinweis |
 | Verfügbares Einkommen (3b) | VGRdL-Kreiswert mit Land/Bund und Verlauf — die ehrliche Kaufkraft-Näherung |
-| Kreisprofil (3c) | Übernachtungen je EW, **Erwerbstätige am Arbeitsort je 1.000 EW** (Tagesbevölkerung), Beschäftigten-/Arbeitslosenquote, Bevölkerungsbewegung — Regionalatlas, je eigenes Datenjahr |
+| Kreisprofil (3c) | Übernachtungen je EW, **Erwerbstätige am Arbeitsort je 1.000 EW** (Tagesbevölkerung), Beschäftigten-/Arbeitslosenquote, Bevölkerungsbewegung, **Wirtschaftskraft (BIP je Einwohner/Erwerbstätigen mit Vorjahresveränderung)** — Regionalatlas, je eigenes Datenjahr |
 | Pendler (3d) | Ein-/Auspendler, Saldo, Quoten, Binnenpendler der Gemeinde + Top-Herkünfte/-Ziele mit km (Pendlerrechnung der Länder) |
 | Gastronomie | Betriebe nach Typ, Küche, Kette/Einzelbetrieb, Wettbewerbsdichte nach Entfernung (150/300/600/900 m), nächster Betrieb, **Branchenprofil** (was zählt als direkter Wettbewerb), **Öffnungszeiten-Lücken** (sonntags/nach 22 Uhr — konservativ gezählte Mindestzahlen), **Snack-Verkauf** als eigene Kategorie (Bäckerei/Confiserie/Kaffeeausschank), Nachtclubs und Saftbars |
 | Erreichbarkeit zu Fuß | echtes Wegenetz statt Luftlinie: erreichbare Fläche, Erschließungsgrad, Umwegfaktor, Gehstrecke je Betrieb |
@@ -37,10 +39,12 @@ hinter Login bzw. Lizenz.
 | Systemgastronomie & Marken | Ketten je Marke mit Anzahl und Entfernung, Kettenanteil, **Gebietsschutz-Check für die eigene Marke (5/10/20 km)** |
 | Umfeld | Frequenzbringer in 9 Kategorien (Einkauf, Bildung, Gesundheit, Büro, …) |
 | Klima (5b) | DWD-Normalwerte 1991–2020 der nächsten Station: Sommertage (mit Monatsbalken), Heiße Tage, Sonne, Niederschlag, Temperatur — für Außengastronomie |
+| **Städtische Märkte (5c)** | 54 Münchner Märkte mit Rubrik und Öffnungszeiten aus dem Stadtdatensatz; Reichweite 2 km, Karten-Pins, springbare Liste |
 | Verkehr/ÖPNV | Haltestellen, Linien, GTFS-Abfahrten je Stunde eines konkreten Tages, Mittagsfenster 11–14, Abendfenster 17–22, Nachtfenster 22–1 Uhr |
 | Gemessene Frequenz | Radzählstellen München (Jahressumme + **Jahresgang aus Tages-Rohdaten**: Monatsmittel, Messtage, Spitzentag), Kfz-Verkehrsstärke DTV (BAYSIS, ganz Bayern) |
 | Planungsrecht | Hochwassergefahrenflächen HQhäufig/HQ100/HQextrem (Bayern), Bebauungsplan-Umgriffe (München) |
 | Straßenlärm (6f) | LDEN/LNight in dB(A) am Punkt aus der EU-Umgebungslärmkartierung (LfU Bayern) — mit Kartierungsjahr und ehrlicher „nicht kartiert ≠ leise“-Grenze |
+| **Baustellen (6g)** | Servicekarte der Stadt München: laufende und geplante Maßnahmen im Umkreis mit Umriss auf der Karte, Zeitraum und Beeinträchtigung — Gehwegsperrungen eigens gezählt (der kurzfristige Umsatzkiller); Vier-Wochen-Horizont ehrlich benannt |
 | Bodenrichtwerte | Kartenebene + Klickabfrage in 7 Bundesländern, Portallinks für alle |
 | Leerstände | OSM-Leerstand als Untergrenze mit Adresse; Klick springt in der Karte zum Objekt |
 
@@ -48,7 +52,8 @@ hinter Login bzw. Lizenz.
 
 | Funktion | Besonderheit |
 |---|---|
-| Vergleichstabelle: 54 Kennzahlen in 6 schaltbaren Gruppen | jede berechnete Spalte ist als „berechnet" beschriftet |
+| Vergleichstabelle: 58 Kennzahlen in 6 schaltbaren Gruppen | jede berechnete Spalte ist als „berechnet" beschriftet |
+| Gesamt-Score im Punkt und im Bericht | Anker offen, Gewichte eigene Setzung, Rechnung nachvollziehbar bis zur Teilnote |
 | Gewichtetes Ranking | Punktzahl allein aus eigenen Gewichten, jeder Beitrag offen |
 | Eigene Note (1–5) und Notiz je Punkt | einzige Wertung im Werkzeug — und sie kommt vom Nutzer |
 | Verlauf & „Neu prüfen" | Quellen erneut abfragen; eröffnete/verschwundene Betriebe namentlich; ab drei Ständen Verlaufslinien im Bericht |
@@ -63,7 +68,7 @@ hinter Login bzw. Lizenz.
 
 Läuft komplett lokal (localhost, SQLite), kein Konto, keine Cloud. Cache mit
 Kachel-Logik schont die freien Dienste; jeder echte Abruf steht im Protokoll.
-Geprüft durch 389 automatische Tests, 53 Live-Routenprüfungen, 36 Browser-Checks
+Geprüft durch 410 automatische Tests, 56 Live-Routenprüfungen, 40 Browser-Checks
 und 9 Abnahmekriterien.
 
 ---

@@ -201,8 +201,11 @@ for name, d in daten.items():
         p = inhalt.get("provenance")
         # Blöcke, die begründet leer bleiben dürfen, tragen dann keine Quelle:
         # GTFS ohne importierten Fahrplan, Lärm außerhalb Bayerns, Overture
-        # ohne lokalen Import. Alle nennen den Grund in ihren warnings.
-        if block in ("gtfs", "laerm") and inhalt.get("data") is None:
+        # ohne lokalen Import, die München-Quellen (Baustellen, Märkte,
+        # Indikatorenatlas) außerhalb des Stadtgebiets. Alle nennen den
+        # Grund in ihren warnings.
+        if (block in ("gtfs", "laerm", "baustellen", "maerkte", "indikatoren")
+                and inhalt.get("data") is None):
             continue
         if block == "overture" and not (inhalt.get("data") or {}).get("importiert"):
             continue
