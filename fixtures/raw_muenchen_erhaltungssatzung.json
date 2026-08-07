@@ -1,0 +1,46 @@
+{
+ "kommentar": "Echte GetFeatureInfo-Antwort vom 2026-08-07 (geoserver/plan/wms, Layer satz_erhalt_poly, Punkt Wörthstraße/Haidhausen 48.1289,11.5967). Nur die Polygon-Koordinaten sind entfernt (mehrere tausend Stützpunkte) — Properties und Struktur unverändert.",
+ "antwort": {
+  "type": "FeatureCollection",
+  "features": [
+   {
+    "type": "Feature",
+    "id": "satz_erhalt_poly.8",
+    "geometry": {
+     "type": "Polygon",
+     "coordinates": []
+    },
+    "geometry_name": "shape",
+    "properties": {
+     "gebietname": "Haidhausen",
+     "gueltig_ab": "11.03.2021",
+     "gueltig_bis": null,
+     "p_url": "https://www.muenchen.info/plan/erhaltungssatzungen/p_Haidhausen.pdf",
+     "t_url": "https://www.muenchen.info/plan/erhaltungssatzungen/t_Haidhausen.pdf",
+     "d_url": "https://www.muenchen.info/plan/erhaltungssatzungen/d_Haidhausen.pdf"
+    },
+    "bbox": [
+     11.59064166,
+     48.1240298,
+     11.61303693,
+     48.13885763
+    ]
+   }
+  ],
+  "totalFeatures": "unknown",
+  "numberReturned": 1,
+  "timeStamp": "2026-08-07T13:35:12.173Z",
+  "crs": {
+   "type": "name",
+   "properties": {
+    "name": "urn:ogc:def:crs:CRS::84"
+   }
+  },
+  "bbox": [
+   11.59064166,
+   48.1240298,
+   11.61303693,
+   48.13885763
+  ]
+ }
+}

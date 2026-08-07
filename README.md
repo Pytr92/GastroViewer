@@ -182,6 +182,9 @@ Antworten unter `fixtures/`.
 | [Indikatorenatlas München](https://opendata.muenchen.de/dataset?q=indikatorenatlas) | Stadtbezirks-Jahresreihen (Viertel-Steckbrief) | dl-de/by-2-0, © LH München, Statistisches Amt | 30 Tage |
 | [Inside Airbnb](https://insideairbnb.com/get-the-data/) | Kurzzeitvermietung im Umkreis (München, Berlin) — Touristen-Nachfrage-Signal | CC BY 4.0, © Inside Airbnb | 30 Tage |
 | [Regionaldatenbank Deutschland](https://www.regionalstatistik.de/) (GENESIS) | amtliche Gastro-Anker: Umsatz je USt-Pflichtigem Gastgewerbe, Gewerbean-/-abmeldungen (Kreis) — **Opt-in mit kostenloser Kennung** | dl-de/by-2-0, © Statistische Ämter des Bundes und der Länder | 30 Tage |
+| [Veranstaltungen der Messe München](https://opendata.muenchen.de/dataset/veranstaltungen-der-messe-muenchen) | Messe-Kalender mit Besucherzahlen seit 2018 — planbare Frequenzspitzen | dl-de/by-2-0, © Messe München GmbH | 24 h |
+| [Monatszahlen Tourismus München](https://opendata.muenchen.de/dataset/monatszahlen-tourismus) | Saisonkurve der Gäste und Übernachtungen seit 2006 (stadtweit) | dl-de/by-2-0, © Statistisches Amt München | 24 h |
+| [Erhaltungssatzungen München](https://stadt.muenchen.de/infos/erhaltungssatzung.html) | liegt der Punkt im Milieuschutzgebiet (§ 172 BauGB), mit Satzungs-PDFs | Geoportal LH München (WMS-GetFeatureInfo) | 14 Tage |
 | [Luftbild und ALKIS Bayern](https://geodaten.bayern.de/opengeodata/) | Kartenebenen | CC BY 4.0, © Bayerische Vermessungsverwaltung | kein Cache |
 | [BAYSIS Straßenverkehrszählung](https://www.baysis.bayern.de/internet/verdat/svz/index.html) | Verkehrsmenge (DTV) je Zählstelle | CC BY 4.0, © Bayerische Straßenbauverwaltung | 24 h |
 | [Hochwassergefahrenflächen LfU](https://www.lfu.bayern.de/wasser/hw_ue_gebiete/index.htm) | HQhäufig, HQ100, HQextrem am Punkt | CC BY 4.0, © Bayerisches Landesamt für Umwelt | 14 Tage |
@@ -525,15 +528,16 @@ Zulauf von Büros, Passanten und Touristen fehlt. Eine dunkle Wohnlage ist ein S
 keine Standortentscheidung; die Innenstadt ist hier hell *und* trotzdem voller
 funktionierender Betriebe.
 
-## Planungsrecht und Hochwasser (Bayern, Bebauungspläne München)
+## Planungsrecht und Hochwasser (Bayern, Bebauungspläne und Milieuschutz München)
 
-Zwei Fragen, die eine Standortentscheidung kippen können und die keine der übrigen Quellen
-beantwortet. Block **6e** fragt beide am Punkt ab.
+Drei Fragen, die eine Standortentscheidung kippen können und die keine der übrigen Quellen
+beantwortet. Block **6e** fragt sie am Punkt ab.
 
-| Quelle | Befund der Prüfung am 01.08.2026 |
+| Quelle | Befund der Prüfung (01.08. / 07.08.2026) |
 |---|---|
 | Hochwassergefahrenflächen, LfU Bayern | **funktioniert** — liefert Gewässer, Jährlichkeit und Ermittlungsdatum. Isarauen Thalkirchen: „Isar, HQ 100, 30.09.2016" |
 | Bebauungsplan-Umgriffe, Geoportal München | **funktioniert** — liefert die Plannummer. Freiham: „A1856" |
+| Erhaltungssatzungen (Milieuschutz), Geoportal München | **funktioniert** — liefert Gebietsname, Gültig-ab-Datum und die PDF-Links zu Plan und Satzungstext. Haidhausen: „Gebiet Haidhausen, gültig ab 11.03.2021"; Marienplatz korrekt: kein Gebiet |
 | Flächennutzungsplan München | nur Kartenebene — `queryable` ist im Dienst nicht gesetzt, eine Punktabfrage gibt es nicht |
 | Lärmwert am Punkt, LfU | **geht nicht.** Der Dienst antwortet, gibt aber über 81 Rasterpunkte quer über die Landshuter Allee durchgehend `NoData` zurück. Bleibt Kartenebene |
 
@@ -544,6 +548,12 @@ beantwortet. Block **6e** fragt beide am Punkt ab.
 Was der Block **nicht** sagt: ein Bebauungsplan-Umgriff bedeutet nur, dass es einen Plan
 gibt — nicht, was er erlaubt. Und wo keiner ausgewiesen ist, heißt das nicht „alles
 erlaubt": im unbeplanten Innenbereich gilt § 34 BauGB. Beide Hinweise stehen im Block.
+
+Der Milieuschutz-Befund ist für Gastronomen konkret: in einem Erhaltungssatzungsgebiet
+ist die **Umwandlung von Wohnraum in einen Gastraum praktisch ausgeschlossen** und jeder
+Umbau genehmigungspflichtig — eine bestehende Gewerbefläche zu übernehmen bleibt möglich.
+Was genau gilt, steht im direkt verlinkten Satzungstext. Ob ein Punkt betroffen ist, steht
+zusätzlich als Ja/Nein-Spalte in der Vergleichstabelle.
 
 ## Eigene Notiz und Note je Standort
 
@@ -791,6 +801,38 @@ Der maschinelle Abruf verlangt eine **kostenlose Kennung** — das einzige
 Konto-Opt-in des Werkzeugs (siehe Konto-Prinzip oben). Der Block bietet das
 Eintragen direkt an, prüft die Kennung live beim Dienst (logincheck) und
 speichert sie nur lokal.
+
+## Messe-Kalender (Block 5e) — planbare Frequenzspitzen
+
+Messetage sind vorhersagbare Nachfragespitzen: eine bauma bringt 605.974 Besucher
+in die Stadt (2025, größte aufgezeichnete Veranstaltung). Die **Messe München
+veröffentlicht ihre Veranstaltungen seit 2018 als offene CSV** — mit Terminen,
+Turnus, Gelände und (für vergangene Veranstaltungen) Besucher- und
+Ausstellerzahlen. Der Block filtert auf die Münchner Gelände (die Messe München
+veranstaltet auch in Delhi und Shanghai), zeigt laufende und kommende Termine,
+die Jahresbilanz und die größten Veranstaltungen, dazu die Entfernung zum
+nächsten Gelände (Messe Riem, ICM, MOC — Koordinaten fest hinterlegt, als
+gewählte Werte markiert). Ehrlich dazu: Der Datensatz wird als „bisherige
+Veranstaltungen" nachlaufend gepflegt — kommende Termine können fehlen. Und die
+Wirkung kommt über **Hotels und die U2** beim Standort an, nicht über
+Laufkundschaft am Gelände. Jenseits von 20 km um die Gelände bleibt der Block
+mit Begründung leer; einen vergleichbaren offenen Messe-Datensatz mit
+Besucherzahlen gibt es für andere Messestädte nicht.
+
+## Tourismus-Saisonalität (Block 3f) — wie tief ist der Januar
+
+Das Kreisprofil (3c) trägt die Jahressumme der Übernachtungen für jeden Kreis in
+Deutschland — was fehlt, ist der Jahresverlauf. Das **Statistische Amt München**
+veröffentlicht Gäste und Übernachtungen als Monatsreihe seit 2006 (offene CSV,
+stadtweit). Der Block zeigt die letzten zwölf gefüllten Monate mit Vergleich zum
+Vorjahreszeitraum, den Auslandsanteil, die abgeleitete Aufenthaltsdauer und eine
+**Saisonkurve** (Mittel der letzten fünf vollständigen Jahre, indexiert auf den
+Jahresdurchschnitt — München: Juli 130, Januar 59). Für einen Standort, der vom
+Tourismus lebt, ist das die Antwort auf die Frage, wie tief der Winter wird.
+Bundesweit gibt es Monatswerte je Kreis **nicht** als offene Quelle — die
+Regionaldatenbank führt nur Jahressummen, Destatis verlangt für den Abruf eine
+Kennung; außerhalb Münchens verweist der Block deshalb ehrlich auf den
+Jahreswert im Kreisprofil.
 
 ## Rad-Liefergebiet (Block 4d) — erreichbare Einwohner in Lieferzeit
 
@@ -1075,6 +1117,8 @@ Alles über Umgebungsvariablen, alles optional:
 | `GET /api/point/maerkte?lat=&lon=&r=` | städtische Märkte in Reichweite (München, mit Öffnungszeiten) |
 | `GET /api/point/indikatoren?lat=&lon=` | Viertel-Steckbrief: Stadtbezirks-Jahresreihen (Indikatorenatlas München) |
 | `GET /api/point/airbnb?lat=&lon=&r=` | Kurzzeitvermietung im Umkreis (Inside Airbnb, München/Berlin) |
+| `GET /api/point/messe?lat=&lon=` | Messe-Kalender München (Termine, Besucher-Jahresbilanz, Gelände-Entfernung) |
+| `GET /api/point/tourismus?lat=&lon=` | Tourismus-Saisonalität München (Monatszahlen, Saisonkurve) |
 | `GET /api/genesis?ags=` | amtliche Gastro-Anker (Regionaldatenbank, Opt-in mit Kennung) |
 | `GET/POST/DELETE /api/genesis/zugang` | Kennungs-Status ansehen, eintragen (mit Live-Prüfung), entfernen |
 | `GET /api/point/liefergebiet?lat=&lon=&minuten=` | Rad-Liefergebiet: erreichbare Einwohner in 5–15 min — **nur auf Anforderung** |
@@ -1138,7 +1182,7 @@ Das letzte Protokoll steht in [`docs/abnahme.md`](docs/abnahme.md).
 
 ### Vollprüfung aller Endpunkte
 
-Die dritte Ebene: alle API-Routen (58 Prüfungen) live gegen einen laufenden Server, mit erzwungenen
+Die dritte Ebene: alle API-Routen (61 Prüfungen) live gegen einen laufenden Server, mit erzwungenen
 Frischabrufen bei Zensus, Overpass und „Neu prüfen" und unabhängigen Erwartungswerten
 (A9: 111.624 Kfz/Tag; Isarauen: HQ 100; Köln: Bodenrichtwert; Innenstadt-Scan: über
 100 Betriebe). Braucht Netz und einen GTFS-Import.
@@ -1157,7 +1201,7 @@ pip install playwright && playwright install chromium
 python scripts/uitest.py http://127.0.0.1:8011
 ```
 
-41 Prüfungen (dazu die Prüfung auf JavaScript-Fehler), darunter: jeder Block nennt
+43 Prüfungen (dazu die Prüfung auf JavaScript-Fehler), darunter: jeder Block nennt
 Quelle und Lizenz, im Datenreiter steht keine geschätzte Zahl, der Deckkraftregler wirkt
 auf die Ebenen und **nicht** auf die Grundkarte, der Gehwegblock lädt nur auf Anforderung
 und räumt seine Kartenebene beim Punktwechsel auf, der Flächen-Scan scannt nach dem
@@ -1192,7 +1236,9 @@ gastroviewer/
     wms.py           verifizierte Landes-Kartendienste, Klickabfrage
     muenchen.py      Raddauerzählstellen der Landeshauptstadt München
     bayern.py        Verkehrsmengen der Straßenverkehrszählung (BAYSIS)
-    planung.py       Hochwassergefahr und Bebauungsplan am Punkt
+    planung.py       Hochwassergefahr, Bebauungsplan und Erhaltungssatzung am Punkt
+    messe.py         Messe-Kalender München (Termine, Besucher-Jahresbilanz)
+    tourismus.py     Tourismus-Monatszahlen München (Saisonkurve)
     links.py         Deep-Links aus Spec §4.6 und den Notizen
   static/            Oberfläche (Leaflet lokal, kein CDN)
 scripts/

@@ -92,7 +92,8 @@ def pruefe_grundgeruest(page) -> str:
         ".block", "e=>e.map(x=>x.id.replace('block-',''))")
     for pflicht in ("kopf", "score", "bevoelkerung", "indikatoren", "wohnen",
                     "gastronomie", "gehweg", "dynamik", "laerm", "overture",
-                    "umfeld", "maerkte", "airbnb", "verkehr", "gtfs",
+                    "umfeld", "maerkte", "airbnb", "messe", "tourismus",
+                    "verkehr", "gtfs",
                     "baustellen", "genesis", "leerstand", "quellen", "grenzen"):
         fordere(pflicht in bloecke, f"Block fehlt: {pflicht}")
 
@@ -755,6 +756,38 @@ def pruefe_genesis_opt_in(page) -> str:
     return st
 
 
+def pruefe_messe(page) -> str:
+    """Messe-Block: Gelände-Entfernung als gewählter Wert markiert,
+    Jahresbilanz mit Besucherzahlen, Hotel/U2-Wirkungs-Hinweis."""
+    setze_punkt(page, *MARIENPLATZ)
+    st = status(page, "messe")
+    t = text(page, "#inhalt-messe")
+    fordere("gewählter Wert" in t, "die Gelände-Koordinate ist nicht als gewählter Wert markiert")
+    fordere("Besucher" in t, "Besucherzahlen fehlen")
+    fordere("Hotels" in t and "U2" in t, "der Wirkungs-Hinweis (Hotels/U2) fehlt")
+    q = text(page, "#block-messe .quelle")
+    fordere("Messe München" in q, "die Quellenangabe fehlt")
+    return st
+
+
+def pruefe_tourismus(page) -> str:
+    """Tourismus-Block: 12-Monats-Summe, Saisonkurve mit Jahresangabe,
+    Stadtweit-Hinweis (der Wert hängt nicht am Punkt)."""
+    setze_punkt(page, *MARIENPLATZ)
+    st = status(page, "tourismus")
+    fordere("Übern" in st, f"Tourismus-Status: {st!r}")
+    t = text(page, "#inhalt-tourismus")
+    fordere("Übernachtungen 12 Monate" in t, "die 12-Monats-Summe fehlt")
+    fordere("Saisonkurve" in t and "Jahresdurchschnitt" in t,
+            "die Saisonkurve fehlt oder ist nicht erklärt")
+    fordere("stärkster Monat" in t.lower() or "stärkster" in t,
+            "stärkster/schwächster Monat fehlen")
+    fordere("hängt nicht vom" in t, "der Stadtweit-Hinweis fehlt")
+    q = text(page, "#block-tourismus .quelle")
+    fordere("Statistisches Amt" in q, "die Quellenangabe fehlt")
+    return st
+
+
 def pruefe_verkehrszaehler(page) -> str:
     """Overpass und Nominatim sind Spendenprojekte — die Last muss sichtbar sein."""
     t = text(page, "#fuss-stats")
@@ -781,13 +814,28 @@ def pruefe_planung_und_hochwasser(page) -> str:
     fordere("§ 34 BauGB" in t,
             "der Hinweis fehlt, dass „kein Plan“ nicht „alles erlaubt“ heißt")
 
+    fordere("Erhaltungssatzung" in t,
+            "der Erhaltungssatzungs-Abschnitt fehlt im Planungsblock")
+
     setze_punkt(page, *FREIHAM)
     if status(page, "planung") == "geladen":
         f = text(page, "#inhalt-planung")
         fordere("A1856" in f, f"Bebauungsplan-Nummer fehlt in Freiham: {f[:90]}")
         fordere("Kein Hochwassergefahrengebiet" in f,
                 "Freiham liegt nicht im Hochwassergebiet — das muss dastehen")
-    return "Hochwasser HQ 100 in den Isarauen, B-Plan A1856 in Freiham"
+
+    # Haidhausen: positiver Erhaltungssatzungs-Befund mit § 172 und PDF-Link.
+    setze_punkt(page, 48.1289, 11.5967)
+    if status(page, "planung") == "geladen":
+        h = text(page, "#inhalt-planung")
+        fordere("Erhaltungssatzungsgebiet" in h,
+                f"Haidhausen ohne Erhaltungssatzungs-Befund: {h[:90]}")
+        fordere("§ 172 BauGB" in h, "der § 172-Hinweis fehlt")
+        pdfs = page.eval_on_selector_all(
+            "#inhalt-planung a", "e=>e.map(x=>x.href).join(' ')")
+        fordere(".pdf" in pdfs, "der Satzungstext-Link (PDF) fehlt")
+    return ("Hochwasser HQ 100 in den Isarauen, B-Plan A1856 in Freiham, "
+            "Erhaltungssatzung in Haidhausen")
 
 
 def pruefe_eigene_notiz(page) -> str:
@@ -1045,6 +1093,8 @@ PRUEFUNGEN = [
     ("Viertel-Steckbrief (Indikatorenatlas)", pruefe_indikatoren),
     ("Kurzzeitvermietung (Inside Airbnb)", pruefe_airbnb),
     ("Amtliche Gastro-Anker (Genesis, Opt-in)", pruefe_genesis_opt_in),
+    ("Messe-Kalender (Messe München)", pruefe_messe),
+    ("Tourismus-Saisonalität (München)", pruefe_tourismus),
     ("München-Erweiterungen", pruefe_muenchen_erweiterungen),
     ("Verkehrszähler in der Fußzeile", pruefe_verkehrszaehler),
     ("Erreichbarkeit zu Fuß", pruefe_gehweg),

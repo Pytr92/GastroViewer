@@ -466,6 +466,61 @@ def t_genesis_opt_in():
     return f"ohne Kennung leer mit Opt-in-Erklärung — {dauer:.1f} s"
 
 
+def t_messe():
+    d, dauer, _ = hole("/api/point/messe", {"lat": M[0], "lon": M[1]})
+    assert d["ok"], d.get("error")
+    m = d["data"]
+    assert m, d
+    # Die Jahresbilanz muss mindestens ein Jahr mit echter Besuchersumme
+    # tragen — sonst wäre der Parser leer durchgelaufen.
+    mit_zahl = [j for j in m["jahresreihe"] if j["besucher"]]
+    assert mit_zahl, m["jahresreihe"]
+    assert m["groesste"] and m["groesste"][0]["besucher"] > 100_000, m["groesste"]
+    assert m["naechstes_gelaende"]["name"] in ("M,O,C,", "Messe München",
+                                               "ICM Internationales Congress Center")
+    k, _, _ = hole("/api/point/messe", {"lat": KOELN[0], "lon": KOELN[1]})
+    assert k["ok"] and k["data"] is None
+    top = m["groesste"][0]
+    return (f"{len(m['jahresreihe'])} Jahre Bilanz, größte: {top['titel']} "
+            f"({top['besucher']} Besucher) — {dauer:.1f} s")
+
+
+def t_tourismus():
+    d, dauer, _ = hole("/api/point/tourismus", {"lat": M[0], "lon": M[1]})
+    assert d["ok"], d.get("error")
+    t = d["data"]
+    assert t, d
+    # München unter 10 Mio. Übernachtungen/Jahr wäre ein Parse-Fehler.
+    assert t["uebernachtungen_12m"] > 10_000_000, t["uebernachtungen_12m"]
+    s = t["saison"]
+    assert s and len(s["index"]) == 12, s
+    assert s["staerkster"]["index"] > 100 > s["schwaechster"]["index"], s
+    k, _, _ = hole("/api/point/tourismus", {"lat": KOELN[0], "lon": KOELN[1]})
+    assert k["ok"] and k["data"] is None
+    assert "Kreisprofil" in k["warnings"][0]
+    return (f"{t['uebernachtungen_12m']} Übernachtungen/12 M., stärkster "
+            f"Monat {s['staerkster']['monat']} ({s['staerkster']['index']}), "
+            f"schwächster {s['schwaechster']['monat']} "
+            f"({s['schwaechster']['index']}) — {dauer:.1f} s")
+
+
+def t_erhaltungssatzung():
+    # Haidhausen liegt im Erhaltungssatzungsgebiet, der Marienplatz nicht —
+    # beides live gegen das Geoportal geprüft (Positiv- UND Negativprobe).
+    h, dauer, _ = hole("/api/point/planung",
+                       {"lat": 48.1289, "lon": 11.5967, "r": 600})
+    assert h["ok"], h.get("error")
+    es = h["data"].get("erhaltungssatzung")
+    assert es and es["betroffen"], es
+    assert es["gebiete"][0]["name"], es
+    m, _, _ = hole("/api/point/planung", P)
+    es_m = m["data"].get("erhaltungssatzung")
+    assert es_m is not None and es_m["betroffen"] is False, es_m
+    return (f"Haidhausen: Gebiet „{es['gebiete'][0]['name']}“ "
+            f"(gültig ab {es['gebiete'][0]['gueltig_ab']}), "
+            f"Marienplatz: nicht betroffen — {dauer:.1f} s")
+
+
 def t_validierung():
     hole("/api/point", {"lat": 35.0, "lon": 11.5, "r": 600}, erwartet=422)
     hole("/api/point", {**P, "r": 20}, erwartet=422)
@@ -752,6 +807,9 @@ ALLE = [
     ("GET /api/point/indikatoren — Viertel-Steckbrief live", t_indikatoren),
     ("GET /api/point/airbnb — Inside Airbnb live", t_airbnb),
     ("GET /api/genesis — Opt-in-Verhalten ohne Kennung", t_genesis_opt_in),
+    ("GET /api/point/messe — Messe-Kalender live", t_messe),
+    ("GET /api/point/tourismus — Monatszahlen live", t_tourismus),
+    ("Erhaltungssatzung — Positiv- und Negativprobe live", t_erhaltungssatzung),
     ("Validierung (422-Pfade)", t_validierung),
     ("Cache-Nachweis", t_cache_wirkt),
 ]

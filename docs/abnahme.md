@@ -33,12 +33,12 @@ Vier Lagetypen laden …
          in der Fußzeile von index.html: OSM/ODbL=ja, Zensus=ja
 [OK   ] §7.4 Nominatim ≤ 1 req/s gedrosselt, User-Agent gesetzt
          3 echte Suchen nacheinander (refresh=true): 2.07s (Untergrenze 2,0s)
-           Limiter: {'min_interval_s': 1.0, 'acquisitions': 12, 'throttled': 4}
+           Limiter: {'min_interval_s': 1.0, 'acquisitions': 8, 'throttled': 4}
            User-Agent: gastroviewer/0.1.0 (https://github.com/Pytr92/GastroViewer)
 [OK   ] §7.5 Cache greift: zweiter Aufruf ohne Outbound-Traffic
-         erzwungener Abruf: Zähler 778 → 779 (+1)
-           danach derselbe Aufruf: Zähler bleibt bei 779
-           ganzer Punkt aus dem Cache: 406 ms, outbound_requests=0
+         erzwungener Abruf: Zähler 837 → 838 (+1)
+           danach derselbe Aufruf: Zähler bleibt bei 838
+           ganzer Punkt aus dem Cache: 640 ms, outbound_requests=0
            nachprüfbar unter http://127.0.0.1:8011/api/outbound
 [OK   ] §7.6 Ausfall einer Quelle bricht die Seite nicht
          Overpass auf toten Endpunkt gezwungen: osm.ok=False

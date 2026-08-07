@@ -1088,6 +1088,14 @@ function lade(refresh = false) {
     .then((d) => { if (aktuell()) { state.daten.airbnb = d; zeigeAirbnb(d); } })
     .catch((e) => aktuell() && zeigeBlockFehler('airbnb', e));
 
+  hole('/api/point/messe', { lat, lon, ...(refresh ? { refresh: 'true' } : {}) })
+    .then((d) => { if (aktuell()) { state.daten.messe = d; zeigeMesse(d); } })
+    .catch((e) => aktuell() && zeigeBlockFehler('messe', e));
+
+  hole('/api/point/tourismus', { lat, lon, ...(refresh ? { refresh: 'true' } : {}) })
+    .then((d) => { if (aktuell()) { state.daten.tourismus = d; zeigeTourismus(d); } })
+    .catch((e) => aktuell() && zeigeBlockFehler('tourismus', e));
+
   aktualisiereFuss();
 }
 
@@ -1124,6 +1132,7 @@ function baueGeruest() {
     block('kreisprofil', '3c · Kreisprofil (Tourismus, Arbeit, Bevölkerung)'),
     block('pendler', '3d · Pendler (Gemeinde)'),
     block('genesis', '3e · Amtliche Gastro-Anker (Regionaldatenbank, Opt-in)'),
+    block('tourismus', '3f · Tourismus-Saisonalität (München)'),
     block('gastronomie', '4 · Gastronomie'),
     block('gehweg', '4b · Erreichbarkeit zu Fuß'),
     block('liefergebiet', '4d · Rad-Liefergebiet'),
@@ -1134,6 +1143,7 @@ function baueGeruest() {
     block('klima', '5b · Klima für Außengastronomie (DWD)'),
     block('maerkte', '5c · Städtische Märkte (München)'),
     block('airbnb', '5d · Kurzzeitvermietung (Inside Airbnb)'),
+    block('messe', '5e · Messe-Kalender (Messe München)'),
     block('verkehr', '6 · Verkehr'),
     block('gtfs', '6b · Abfahrten (GTFS)'),
     block('radzaehlung', '6c · Gemessene Radverkehrsfrequenz'),
@@ -2547,6 +2557,175 @@ function zeigeAirbnb(d) {
       + `${NF.format(a.liste?.length || 0)} nächsten in der Liste.`),
     kz, typZeile, liste,
     ...(a.hinweise || []).map((h) => el('div', { class: 'hinweis-klein' }, h)),
+    ...warnungen(d.warnings || []));
+  setQuelle(id, d.provenance);
+}
+
+/* Block 5e — Messe-Kalender München. Messetage sind planbare Frequenzspitzen;
+   sie wirken über Hotels und die U2, nicht über Laufkundschaft am Gelände. */
+function fmtIsoDatum(iso) {
+  if (!iso || iso.length !== 10) return iso || '?';
+  return `${iso.slice(8, 10)}.${iso.slice(5, 7)}.${iso.slice(0, 4)}`;
+}
+
+function zeigeMesse(d) {
+  const id = 'messe';
+  if (!d.ok) {
+    setStatus(id, 'fehler', 'nicht erreichbar');
+    setInhalt(id, fehlerbox(d.error));
+    setQuelle(id, d.provenance);
+    return;
+  }
+  const m = d.data;
+  if (!m) {
+    setStatus(id, 'leer', 'zu weit vom Gelände');
+    setInhalt(id, ...warnungen(d.warnings || []));
+    setQuelle(id, d.provenance);
+    return;
+  }
+  const kommend = m.kommend || [];
+  const laufend = m.laufend || [];
+  setStatus(id, 'ok',
+    laufend.length ? `${laufend.length} laufend` : `${kommend.length} kommend`);
+
+  const g = m.naechstes_gelaende || {};
+  const jahr = (m.jahresreihe || []).filter((j) => j.besucher !== null).slice(-1)[0];
+  const kz = el('div', { class: 'kennzahlen' },
+    el('div', { class: 'kennzahl' },
+      el('div', { class: 'titel' }, 'Nächstes Gelände'),
+      el('div', { class: 'wert' }, g.name || '—'),
+      el('div', { class: 'basis' },
+        g.distanz_m !== undefined
+          ? `${NF.format(g.distanz_m)} m ${g.richtung} (Gelände-Koordinate: gewählter Wert)` : '')),
+    kennzahl('Laufende Veranstaltungen', laufend.length),
+    kennzahl('Kommende Termine im Datensatz', kommend.length),
+    jahr
+      ? el('div', { class: 'kennzahl' },
+        el('div', { class: 'titel' }, `Besucher ${jahr.jahr}`),
+        el('div', { class: 'wert' }, NF.format(jahr.besucher)),
+        el('div', { class: 'basis' },
+          `Summe aus ${NF.format(jahr.mit_besucherzahl)} von `
+          + `${NF.format(jahr.veranstaltungen)} Veranstaltungen mit Zahl`))
+      : null);
+
+  const termin = (e) => el('li', {},
+    el('span', { class: 'haupt' }, e.titel,
+      e.besucher !== null ? ` — ${NF.format(e.besucher)} Besucher` : ''),
+    el('span', { class: 'neben' },
+      [`${fmtIsoDatum(e.start)}–${fmtIsoDatum(e.ende)}`, e.gelaende,
+        e.turnus, e.messetyp].filter(Boolean).join(' · ')));
+
+  const listeLaufend = laufend.length
+    ? el('div', {},
+      el('div', { class: 'notiz' }, 'Gerade laufend:'),
+      el('ul', { class: 'liste' }, laufend.map(termin)))
+    : null;
+  const listeKommend = kommend.length
+    ? el('div', {},
+      el('div', { class: 'notiz' }, `Kommende Termine (Stand ${fmtIsoDatum(m.stand_heute)}):`),
+      el('ul', { class: 'liste' }, kommend.map(termin)))
+    : null;
+
+  const groesste = (m.groesste || []).length
+    ? el('div', {},
+      el('div', { class: 'notiz' }, 'Größte aufgezeichnete Veranstaltungen (seit 2018):'),
+      el('ul', { class: 'liste' }, m.groesste.map((e) => el('li', {},
+        el('span', { class: 'haupt' }, e.titel, ` — ${NF.format(e.besucher)} Besucher`),
+        el('span', { class: 'neben' },
+          [e.start.slice(0, 4), e.gelaende, e.turnus].filter(Boolean).join(' · '))))))
+    : null;
+
+  const reihe = (m.jahresreihe || []).length
+    ? el('table', { class: 'mini-tabelle' },
+      el('tr', {}, el('th', {}, 'Jahr'), el('th', {}, 'Veranstaltungen'),
+        el('th', {}, 'Besucher (Summe)')),
+      m.jahresreihe.map((j) => el('tr', {},
+        el('td', {}, String(j.jahr)),
+        el('td', {}, NF.format(j.veranstaltungen)),
+        el('td', {}, j.besucher === null ? '—'
+          : `${NF.format(j.besucher)} (${NF.format(j.mit_besucherzahl)} mit Zahl)`))))
+    : null;
+
+  setInhalt(id, kz, listeLaufend, listeKommend, groesste, reihe,
+    ...(m.hinweise || []).map((h) => el('div', { class: 'hinweis-klein' }, h)),
+    ...warnungen(d.warnings || []));
+  setQuelle(id, d.provenance);
+}
+
+/* Block 3f — Tourismus-Saisonalität München. Stadtweite Monatszahlen des
+   Statistischen Amts: wie tief ist der Januar, wie hoch der Oktober. Die
+   Jahressumme je Kreis steht bundesweit im Kreisprofil (3c). */
+function zeigeTourismus(d) {
+  const id = 'tourismus';
+  if (!d.ok) {
+    setStatus(id, 'fehler', 'nicht erreichbar');
+    setInhalt(id, fehlerbox(d.error));
+    setQuelle(id, d.provenance);
+    return;
+  }
+  const t = d.data;
+  if (!t) {
+    setStatus(id, 'leer', 'nur München');
+    setInhalt(id, ...warnungen(d.warnings || []));
+    setQuelle(id, d.provenance);
+    return;
+  }
+  setStatus(id, 'ok', `${NF.format(t.uebernachtungen_12m)} Übern./12 M.`);
+
+  const s = t.saison;
+  const kz = el('div', { class: 'kennzahlen' },
+    kennzahl('Übernachtungen 12 Monate', t.uebernachtungen_12m),
+    el('div', { class: 'kennzahl' },
+      el('div', { class: 'titel' }, 'Zum Vorjahreszeitraum'),
+      el('div', { class: `wert${t.veraenderung_vorjahr_prozent === null ? ' fehlt' : ''}` },
+        t.veraenderung_vorjahr_prozent === null ? 'keine Angabe'
+          : `${t.veraenderung_vorjahr_prozent > 0 ? '+' : ''}${NF1.format(t.veraenderung_vorjahr_prozent)} %`),
+      el('div', { class: 'basis' }, 'gleiche 12 Monate, ein Jahr früher')),
+    t.ausland_anteil_prozent !== null
+      ? el('div', { class: 'kennzahl' },
+        el('div', { class: 'titel' }, 'Auslandsanteil'),
+        el('div', { class: 'wert' }, `${NF1.format(t.ausland_anteil_prozent)} %`),
+        el('div', { class: 'basis' }, 'an den Übernachtungen, letzte 12 Monate'))
+      : null,
+    t.aufenthaltsdauer_naechte !== null
+      ? el('div', { class: 'kennzahl' },
+        el('div', { class: 'titel' }, 'Aufenthaltsdauer'),
+        el('div', { class: 'wert' }, `${NF1.format(t.aufenthaltsdauer_naechte)} Nächte`),
+        el('div', { class: 'basis' }, 'abgeleitet: Übernachtungen ÷ Gäste'))
+      : null);
+
+  let saisonTeil = null;
+  if (s && (s.index || []).length === 12) {
+    const max = Math.max(1, ...s.index.map((x) => x.index));
+    saisonTeil = el('div', {},
+      el('div', { class: 'notiz' },
+        `Saisonkurve (Mittel der Jahre ${s.jahre.join(', ')}; 100 = Jahresdurchschnitt): `
+        + `stärkster Monat ${s.staerkster.monat} (${NF.format(s.staerkster.index)}), `
+        + `schwächster ${s.schwaechster.monat} (${NF.format(s.schwaechster.index)}).`),
+      el('div', { style: 'display:flex;align-items:flex-end;gap:2px;height:60px;margin:6px 0 2px;' },
+        s.index.map((x) => el('div', {
+          title: `${x.monat}: Index ${NF.format(x.index)} (100 = Jahresdurchschnitt)`,
+          style: 'flex:1;border-radius:2px 2px 0 0;'
+            + `background:var(--akzent);opacity:.75;height:${Math.max(3, (x.index / max) * 100)}%;`,
+        }))),
+      el('div', { style: 'display:flex;justify-content:space-between;font-size:11px;color:#5b6570;' },
+        el('span', {}, 'Jan'), el('span', {}, 'Jun'), el('span', {}, 'Dez')));
+  }
+
+  const reihe = (t.jahresreihe || []).length
+    ? el('table', { class: 'mini-tabelle' },
+      el('tr', {}, el('th', {}, 'Jahr'), el('th', {}, 'Übernachtungen (Jahressumme)')),
+      t.jahresreihe.map((j) => el('tr', {},
+        el('td', {}, String(j.jahr)),
+        el('td', {}, NF.format(j.uebernachtungen)))))
+    : null;
+
+  setInhalt(id,
+    el('div', { class: 'notiz' },
+      'Stadtweite amtliche Beherbergungszahlen — der Wert hängt nicht vom '
+      + 'gewählten Punkt ab.'),
+    kz, saisonTeil, reihe,
+    ...(t.hinweise || []).map((h) => el('div', { class: 'hinweis-klein' }, h)),
     ...warnungen(d.warnings || []));
   setQuelle(id, d.provenance);
 }
@@ -4735,6 +4914,31 @@ function zeigePlanung(d) {
   } else {
     teile.push(el('div', { class: 'notiz' },
       'Für diese Fläche ist kein Bebauungsplan-Umgriff ausgewiesen.'));
+  }
+
+  /* Erhaltungssatzung (Milieuschutz, § 172 BauGB) — nur im Stadtgebiet
+     München abgefragt; ein Treffer ist für Umnutzung/Umbau entscheidend. */
+  const es = p.erhaltungssatzung;
+  teile.push(el('h3', { class: 'hinweis-klein' }, 'Erhaltungssatzung (Milieuschutz)'));
+  if (es === undefined || es === null) {
+    teile.push(el('div', { class: 'notiz' },
+      'Für diesen Punkt nicht abgefragt — die Gebiete stammen aus dem '
+      + 'Geoportal der Landeshauptstadt München.'));
+  } else if (es.betroffen) {
+    teile.push(el('div', { class: 'warnung' },
+      el('strong', {}, 'Der Punkt liegt in einem Erhaltungssatzungsgebiet. '),
+      'Nutzungsänderungen (etwa Wohnung → Gastraum) und Umbauten sind hier '
+      + 'genehmigungspflichtig nach § 172 BauGB.'));
+    teile.push(el('ul', { class: 'liste' }, es.gebiete.map((g) => el('li', {},
+      el('span', { class: 'haupt' }, `Gebiet „${g.name || 'ohne Namen'}“`,
+        g.gueltig_ab ? ` — gültig ab ${g.gueltig_ab}` : ''),
+      el('span', { class: 'neben' },
+        [g.text_pdf ? el('a', { href: g.text_pdf, target: '_blank', rel: 'noopener' }, 'Satzungstext (PDF)') : null,
+          g.plan_pdf ? el('a', { href: g.plan_pdf, target: '_blank', rel: 'noopener' }, 'Gebietsplan (PDF)') : null]
+          .filter(Boolean).flatMap((a, i) => (i ? [' · ', a] : [a])))))));
+  } else {
+    teile.push(el('div', { class: 'notiz' },
+      'Der Punkt liegt in keinem Gebiet mit Erhaltungssatzung.'));
   }
 
   teile.push(...(p.hinweise || []).map((h) => {

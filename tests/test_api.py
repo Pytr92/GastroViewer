@@ -26,7 +26,7 @@ class FakeOutbound:
                  kreisprofil=None, dwd=None, pendler=None, ohsome=None,
                  laerm=None, fehler: set[str] | None = None,
                  baustellen=None, maerkte=None, indikatoren=None,
-                 airbnb=None):
+                 airbnb=None, messe=None, tourismus=None):
         self.zensus = zensus
         self.overpass = overpass
         self.nominatim = nominatim
@@ -50,6 +50,9 @@ class FakeOutbound:
         self.indikatoren = indikatoren
         # Inside Airbnb: {"index": HTML der Datenseite, "csv": listings.csv}.
         self.airbnb = airbnb
+        # Messe-Kalender und Tourismus-Monatszahlen: je eine CSV.
+        self.messe = messe
+        self.tourismus = tourismus
         self.indikatoren_csv_urls: dict[str, str] = {}
         if indikatoren:
             from gastroviewer.sources import indikatoren as ind_mod
@@ -176,6 +179,18 @@ class FakeOutbound:
                 raise SourceError("timeout",
                                   "Zeitüberschreitung — Dienst antwortet nicht.")
             return self.indikatoren["csv"][self.indikatoren_csv_urls[url]]
+        if url.endswith("veranstaltungsdaten.csv"):
+            self.calls.append("messe")
+            if "messe" in self.fehler or self.messe is None:
+                raise SourceError("timeout",
+                                  "Zeitüberschreitung — Dienst antwortet nicht.")
+            return self.messe["csv"]
+        if url.endswith("tourismus.csv"):
+            self.calls.append("tourismus")
+            if "tourismus" in self.fehler or self.tourismus is None:
+                raise SourceError("timeout",
+                                  "Zeitüberschreitung — Dienst antwortet nicht.")
+            return self.tourismus["csv"]
         if "insideairbnb.com/get-the-data" in url:
             self.calls.append("airbnb")
             if "airbnb" in self.fehler or self.airbnb is None:
@@ -207,7 +222,8 @@ class FakeOutbound:
 def client(tmp_path, monkeypatch, zensus_600, overpass_combined, nominatim_reverse,
            einkommen_muenchen, kreisprofil_muenchen, dwd_klima, pendler_muenchen,
            ohsome_dynamik, laerm_bayern, muenchen_baustellen, muenchen_maerkte,
-           muenchen_indikatoren, airbnb_muenchen):
+           muenchen_indikatoren, airbnb_muenchen, messe_muenchen,
+           tourismus_muenchen):
     from gastroviewer.config import Settings
 
     # Der Genesis-Block ist ein Opt-in — die Testumgebung darf keine echte
@@ -224,7 +240,8 @@ def client(tmp_path, monkeypatch, zensus_600, overpass_combined, nominatim_rever
                         einkommen_muenchen, kreisprofil_muenchen, dwd_klima,
                         pendler_muenchen, ohsome_dynamik, laerm_bayern,
                         baustellen=muenchen_baustellen, maerkte=muenchen_maerkte,
-                        indikatoren=muenchen_indikatoren, airbnb=airbnb_muenchen)
+                        indikatoren=muenchen_indikatoren, airbnb=airbnb_muenchen,
+                        messe=messe_muenchen, tourismus=tourismus_muenchen)
     app = create_app(settings)
 
     original_lifespan_state = {}
@@ -285,9 +302,10 @@ def test_zweiter_aufruf_erzeugt_keinen_outbound_traffic(client):
     # das Lärm-WMS (LDEN und LNight je 2022 mit NoData plus 2017 = 4) —
     # Baustellen-WFS (1) — Märkte-WFS (1) — Indikatorenatlas (CKAN-Suche
     # plus 6 CSVs = 7, stadtweit nur einmal) — Inside Airbnb (Datenseite plus
-    # listings.csv = 2, stadtweit nur einmal). Genesis: 0 — Opt-in ohne
-    # Kennung, es geht nichts hinaus.
-    assert vorher == 47
+    # listings.csv = 2, stadtweit nur einmal) — Messe-Kalender (1 CSV) —
+    # Tourismus-Monatszahlen (1 CSV). Genesis: 0 — Opt-in ohne Kennung,
+    # es geht nichts hinaus.
+    assert vorher == 49
 
     d = client.get("/api/point", params={"lat": LAT, "lon": LON, "r": R}).json()
     assert len(client.fake.calls) == vorher, "Cache hat nicht gegriffen"
@@ -1520,4 +1538,38 @@ def test_genesis_zugang_loeschen_ohne_datei(client):
 def test_vergleich_hat_airbnb_und_genesis_spalten(client):
     d = client.get("/api/points/vergleich").json()
     keys = {c["key"] for c in d["spalten"]}
-    assert {"airbnb_im_radius", "ust_je_pflichtigem"} <= keys
+    assert {"airbnb_im_radius", "ust_je_pflichtigem",
+            "messe_distanz_m", "erhaltungssatzung"} <= keys
+
+
+def test_point_messe_block(client):
+    """Messe-Kalender gegen die echte CSV vom 2026-08-07: 94 verwertbare
+    Münchner Veranstaltungen, bauma 2025 mit 605.974 Besuchern vorn."""
+    d = client.get("/api/point/messe",
+                   params={"lat": LAT, "lon": LON}).json()
+    assert d["ok"] and d["data"]
+    assert d["data"]["groesste"][0]["titel"] == "bauma"
+    assert d["data"]["groesste"][0]["besucher"] == 605_974
+    assert d["data"]["naechstes_gelaende"]["name"] in (
+        "M,O,C,", "Messe München", "ICM Internationales Congress Center"
+    )
+    assert "dl-de/by-2-0" in d["provenance"]["license"]
+    # Außerhalb der 20-km-Reichweite (Nürnberg): leer mit Begründung.
+    d2 = client.get("/api/point/messe",
+                    params={"lat": 49.4521, "lon": 11.0767}).json()
+    assert d2["ok"] and d2["data"] is None
+
+
+def test_point_tourismus_block(client):
+    """Tourismus-Monatszahlen gegen die echte CSV: Kalenderjahr 2025 als
+    jüngstes 12-Monats-Fenster mit 19.631.581 Übernachtungen."""
+    d = client.get("/api/point/tourismus",
+                   params={"lat": LAT, "lon": LON}).json()
+    assert d["ok"] and d["data"]
+    assert d["data"]["uebernachtungen_12m"] == 19_631_581
+    assert d["data"]["saison"]["staerkster"]["monat"] == "Jul"
+    assert "Statistisches Amt" in d["provenance"]["source"]
+    d2 = client.get("/api/point/tourismus",
+                    params={"lat": 49.4521, "lon": 11.0767}).json()
+    assert d2["ok"] and d2["data"] is None
+    assert "Kreisprofil" in d2["warnings"][0]

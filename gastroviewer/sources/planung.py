@@ -9,6 +9,14 @@ bisherigen Quellen beantwortet:
   Wohngebiet ist ein Genehmigungsproblem, kein Standortproblem — aber es kippt
   die Entscheidung. Wo ein Plan gilt, muss man ihn lesen.
 
+Seit 2026-08-07 zusätzlich: **Liegt die Fläche in einem Gebiet mit
+Erhaltungssatzung (Milieuschutz, § 172 BauGB)?** Dort ist jede
+Nutzungsänderung — etwa Wohnung zu Gastraum — genehmigungspflichtig und
+regelmäßig aussichtslos; auch Umbauten werden strenger geprüft. Verifiziert
+per GetFeatureInfo auf ``geoserver/plan/wms``, Layer ``satz_erhalt_poly``
+(queryable, führt ``CRS:84``): Haidhausen liefert Gebietsname, Gültig-ab-Datum
+und die PDF-Links zu Plan und Satzungstext, der Marienplatz korrekt nichts.
+
 Am 01.08.2026 geprüft, mit Befund:
 
 ===================================  ==========================================
@@ -57,6 +65,10 @@ BPLAN_LIZENZ = (
     "Landeshauptstadt München, Geoportal"
 )
 
+# --- Erhaltungssatzungen (Milieuschutz), Landeshauptstadt München ---
+ERHALT_URL = "https://geoportal.muenchen.de/geoserver/plan/wms"
+ERHALT_LAYER = "satz_erhalt_poly"
+
 # Bayern grob — außerhalb spart der Check den Netzaufruf.
 BAYERN_BBOX = (47.20, 8.90, 50.60, 13.90)
 # München grob, für den städtischen Bebauungsplandienst.
@@ -94,9 +106,11 @@ def feature_info_params(layers: str, lat: float, lon: float, box: float = BOX) -
         "query_layers": layers,
         "styles": "",
         "format": "image/png",
-        "info_format": "application/json"
-        if layers == BPLAN_LAYER
-        else "application/geojson",
+        # Der LfU-Hochwasserdienst kennt nur „geojson", die Münchner
+        # GeoServer-Dienste nur „json" — beides live nachgemessen.
+        "info_format": "application/geojson"
+        if layers == HOCHWASSER_LAYER
+        else "application/json",
         "width": "101",
         "height": "101",
         "i": "50",
@@ -142,6 +156,22 @@ def hochwasser_aufbereiten(payload: Any) -> dict[str, Any]:
     }
 
 
+def erhalt_aufbereiten(payload: Any) -> dict[str, Any]:
+    """Erhaltungssatzungs-Treffer: Gebietsname, gültig ab, Satzungs-PDFs."""
+    gebiete = [
+        {
+            "name": p.get("gebietname"),
+            "gueltig_ab": p.get("gueltig_ab"),
+            "plan_pdf": p.get("p_url"),
+            "text_pdf": p.get("t_url"),
+            "info_pdf": p.get("d_url"),
+            "rohwerte": p,
+        }
+        for p in _eigenschaften(payload)
+    ]
+    return {"betroffen": bool(gebiete), "gebiete": gebiete}
+
+
 def bplan_aufbereiten(payload: Any) -> dict[str, Any]:
     treffer = _eigenschaften(payload)
     plaene = [
@@ -165,6 +195,10 @@ HINWEISE = [
     "Die Hochwassergefahrenflächen sind Berechnungsergebnisse mit Stichtag, "
     "keine Zusage. Für Versicherung und Ausbau zählt die Auskunft des "
     "zuständigen Wasserwirtschaftsamts.",
+    "In einem Erhaltungssatzungsgebiet (§ 172 BauGB) ist die **Umwandlung "
+    "von Wohnraum in einen Gastraum praktisch ausgeschlossen** und jeder "
+    "Umbau genehmigungspflichtig. Eine bestehende Gewerbefläche zu "
+    "übernehmen bleibt möglich — was gilt, steht im verlinkten Satzungstext.",
 ]
 
 PORTALE = [
@@ -236,10 +270,24 @@ async def load(
             warnungen.append(
                 f"Bebauungsplan-Umgriffe der Stadt München nicht abrufbar: {err.message}"
             )
+        try:
+            payload = await out.get_json(
+                "muenchen_erhaltungssatzung",
+                ERHALT_URL,
+                params=feature_info_params(ERHALT_LAYER, lat, lon),
+                timeout=60.0,
+                limiter="muenchen",
+                min_interval=1.0,
+            )
+            data["erhaltungssatzung"] = erhalt_aufbereiten(payload)
+        except SourceError as err:
+            warnungen.append(
+                f"Erhaltungssatzungs-Gebiete der Stadt München nicht abrufbar: {err.message}"
+            )
     else:
         warnungen.append(
-            "Bebauungspläne kommen aus dem Geoportal der Landeshauptstadt München "
-            "und liegen deshalb nur für das Stadtgebiet vor."
+            "Bebauungspläne und Erhaltungssatzungen kommen aus dem Geoportal der "
+            "Landeshauptstadt München und liegen deshalb nur für das Stadtgebiet vor."
         )
 
     return _SR(
@@ -251,7 +299,8 @@ async def load(
         provenance=Provenance(
             source=(
                 "Hochwassergefahrenflächen: Bayerisches Landesamt für Umwelt · "
-                "Bebauungsplan-Umgriffe: Landeshauptstadt München"
+                "Bebauungsplan-Umgriffe und Erhaltungssatzungen: "
+                "Landeshauptstadt München"
             ),
             license=f"{HOCHWASSER_LIZENZ} · {BPLAN_LIZENZ}",
             endpoint=HOCHWASSER_URL,

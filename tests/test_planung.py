@@ -117,6 +117,28 @@ def test_hinweise_widersprechen_dem_fehlschluss():
     )
     assert "nicht, was er" in text, "die Nummer allein sagt nichts über den Inhalt"
     assert "keine Zusage" in text
+    assert "§ 172 BauGB" in text, "Milieuschutz kippt Umnutzungen — muss dastehen"
+
+
+# ----------------------------------------------- Erhaltungssatzung
+
+
+def test_erhaltungssatzung_liefert_gebiet_und_pdfs(erhaltungssatzung_haidhausen):
+    """Echte GetFeatureInfo-Antwort (Haidhausen, 2026-08-07)."""
+    d = planung.erhalt_aufbereiten(erhaltungssatzung_haidhausen["antwort"])
+    assert d["betroffen"] is True
+    g = d["gebiete"][0]
+    assert g["name"] == "Haidhausen"
+    assert g["gueltig_ab"] == "11.03.2021"
+    assert g["text_pdf"].endswith("t_Haidhausen.pdf")
+    assert g["plan_pdf"].endswith("p_Haidhausen.pdf")
+    assert g["rohwerte"]["gebietname"] == "Haidhausen"
+
+
+def test_erhaltungssatzung_ohne_treffer():
+    # Der Marienplatz lieferte am Prüftag korrekt eine leere Trefferliste.
+    d = planung.erhalt_aufbereiten(LEER)
+    assert d["betroffen"] is False and d["gebiete"] == []
 
 
 # ------------------------------------------------------------- Ablauf
@@ -147,15 +169,28 @@ async def test_ausserhalb_muenchens_nur_hochwasser(settings):
     assert any("München" in w for w in res.warnings)
 
 
-async def test_in_muenchen_werden_beide_dienste_gefragt(settings):
+async def test_in_muenchen_werden_alle_drei_dienste_gefragt(
+    settings, erhaltungssatzung_haidhausen
+):
+    gesehen = []
+
     class FakeOut:
         async def get_json(self, source, url, **kw):
-            return ECHTE_HOCHWASSER if source == "lfu_hochwasser" else ECHTE_BPLAN
+            gesehen.append(source)
+            if source == "lfu_hochwasser":
+                return ECHTE_HOCHWASSER
+            if source == "muenchen_bplan":
+                return ECHTE_BPLAN
+            assert source == "muenchen_erhaltungssatzung"
+            return erhaltungssatzung_haidhausen["antwort"]
 
     res = await planung.load(FakeOut(), settings, 48.1450, 11.4200, 600)
     assert res.ok
+    assert gesehen == ["lfu_hochwasser", "muenchen_bplan",
+                       "muenchen_erhaltungssatzung"]
     assert res.data["hochwasser"]["hq_100"] is True
     assert res.data["bebauungsplan"]["plaene"][0]["nummer"] == "A1856"
+    assert res.data["erhaltungssatzung"]["gebiete"][0]["name"] == "Haidhausen"
     assert "CC BY 4.0" in res.provenance.license
     assert "dl-de/by-2-0" in res.provenance.license
 
@@ -166,15 +201,18 @@ async def test_ausfall_des_staedtischen_dienstes_reisst_den_block_nicht(settings
 
     class FakeOut:
         async def get_json(self, source, url, **kw):
-            if source == "muenchen_bplan":
-                raise SourceError("timeout", "Zeitüberschreitung nach 60 s.")
-            return ECHTE_HOCHWASSER
+            if source == "lfu_hochwasser":
+                return ECHTE_HOCHWASSER
+            raise SourceError("timeout", "Zeitüberschreitung nach 60 s.")
 
     res = await planung.load(FakeOut(), settings, 48.1450, 11.4200, 600)
     assert res.ok is True
     assert res.data["hochwasser"]["betroffen"] is True
     assert "bebauungsplan" not in res.data
-    assert any("Zeitüberschreitung" in w for w in res.warnings)
+    assert "erhaltungssatzung" not in res.data
+    assert sum("Zeitüberschreitung" in w for w in res.warnings) == 2, (
+        "beide städtischen Teilabfragen müssen ihren Ausfall benennen"
+    )
 
 
 async def test_ausfall_des_hochwasserdienstes_wird_benannt(settings):

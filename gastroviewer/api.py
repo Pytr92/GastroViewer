@@ -337,6 +337,25 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         _validate(lat, lon, r)
         return (await svc(request).maerkte(lat, lon, r, refresh)).to_dict()
 
+    @app.get("/api/point/messe")
+    async def point_messe(
+        request: Request, lat: float, lon: float, refresh: bool = False,
+    ):
+        """Messe-Kalender München: laufende und kommende Veranstaltungen mit
+        Besucher-Jahresbilanz. Jenseits von 20 km um die Gelände leer, mit
+        Begründung."""
+        _validate(lat, lon, 600)
+        return (await svc(request).messe(lat, lon, refresh)).to_dict()
+
+    @app.get("/api/point/tourismus")
+    async def point_tourismus(
+        request: Request, lat: float, lon: float, refresh: bool = False,
+    ):
+        """Tourismus-Saisonalität München: stadtweite Monatszahlen zu Gästen
+        und Übernachtungen. Außerhalb Münchens leer, mit Begründung."""
+        _validate(lat, lon, 600)
+        return (await svc(request).tourismus(lat, lon, refresh)).to_dict()
+
     @app.get("/api/point/airbnb")
     async def point_airbnb(
         request: Request, lat: float, lon: float, r: int = 600,
@@ -1074,6 +1093,10 @@ VERGLEICH_SPALTEN = [
      "gruppe": "detail"},
     {"key": "maerkte_reichweite", "titel": "Städt. Märkte bis 2 km (M)",
      "gruppe": "detail"},
+    {"key": "messe_distanz_m", "titel": "Nächstes Messegelände m (M)",
+     "gruppe": "detail"},
+    {"key": "erhaltungssatzung", "titel": "Erhaltungssatzung § 172 BauGB (M)",
+     "gruppe": "detail"},
     {"key": "einpersonenhaushalte", "titel": "Einpersonenhaushalte % (Bezirk M)",
      "stellen": 1, "gruppe": "detail"},
 
@@ -1160,6 +1183,18 @@ def _row_for(saved: dict[str, Any]) -> dict[str, Any]:
         "maerkte_reichweite": (
             len(((bl.get("maerkte") or {}).get("data")).get("in_reichweite") or [])
             if (bl.get("maerkte") or {}).get("data") else None
+        ),
+        "messe_distanz_m": (
+            (((bl.get("messe") or {}).get("data") or {})
+             .get("naechstes_gelaende") or {}).get("distanz_m")
+        ),
+        "erhaltungssatzung": (
+            ("Ja" if (((bl.get("planung") or {}).get("data") or {})
+                      .get("erhaltungssatzung") or {}).get("betroffen")
+             else "Nein")
+            if ((bl.get("planung") or {}).get("data") or {}).get("erhaltungssatzung")
+            is not None
+            else None
         ),
         "airbnb_im_radius": (
             ((bl.get("airbnb") or {}).get("data") or {}).get("im_radius")

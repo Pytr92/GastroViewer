@@ -206,7 +206,7 @@ for name, d in daten.items():
         # außerhalb der Datenstädte, Genesis ohne hinterlegte Kennung
         # (Opt-in). Alle nennen den Grund in ihren warnings.
         if (block in ("gtfs", "laerm", "baustellen", "maerkte", "indikatoren",
-                      "airbnb", "genesis")
+                      "airbnb", "genesis", "messe", "tourismus")
                 and inhalt.get("data") is None):
             continue
         if block == "overture" and not (inhalt.get("data") or {}).get("importiert"):

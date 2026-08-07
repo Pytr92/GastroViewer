@@ -136,3 +136,18 @@ def overture_mira():
 @pytest.fixture(scope="session")
 def overture_marienplatz():
     return load_fixture("raw_overture_marienplatz.geojson")
+
+
+@pytest.fixture(scope="session")
+def messe_muenchen():
+    return load_fixture("raw_muenchen_messe.json")
+
+
+@pytest.fixture(scope="session")
+def tourismus_muenchen():
+    return load_fixture("raw_muenchen_tourismus.json")
+
+
+@pytest.fixture(scope="session")
+def erhaltungssatzung_haidhausen():
+    return load_fixture("raw_muenchen_erhaltungssatzung.json")

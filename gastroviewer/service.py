@@ -27,9 +27,11 @@ from .sources import (airbnb as airbnb_mod,
                       klima as klima_mod, kreisprofil as kreisprofil_mod,
                       laerm as laerm_mod, links,
                       maerkte as maerkte_mod,
-                      marke as marke_mod, muenchen, nominatim, overpass,
+                      marke as marke_mod, messe as messe_mod,
+                      muenchen, nominatim, overpass,
                       overture as overture_mod,
-                      pendler as pendler_mod, planung, scan as scan_mod, zensus)
+                      pendler as pendler_mod, planung, scan as scan_mod,
+                      tourismus as tourismus_mod, zensus)
 from .sources.base import Provenance, SourceError, SourceResult
 
 Loader = Callable[[], Awaitable[SourceResult]]
@@ -319,6 +321,29 @@ class PointService:
             lambda: baustellen_mod.load(
                 self.outbound, self.settings, lat, lon, radius
             ),
+            refresh=refresh,
+        )
+
+    async def messe(self, lat: float, lon: float, refresh: bool = False):
+        """Messe-Kalender München. Jenseits von 20 km um die Gelände
+        entscheidet die Quelle selbst — dann geht keine Anfrage hinaus.
+        Standard-TTL 24 h: der Kalender lebt vom aktuellen „heute"."""
+        key = cache_key("muenchen_messe", lat, lon, 0)
+        return await self._cached(
+            "muenchen_messe",
+            key,
+            lambda: messe_mod.load(self.outbound, self.settings, lat, lon),
+            refresh=refresh,
+        )
+
+    async def tourismus(self, lat: float, lon: float, refresh: bool = False):
+        """Tourismus-Saisonalität München (stadtweite Monatszahlen).
+        Außerhalb des Stadtgebiets entscheidet die Quelle selbst."""
+        key = cache_key("muenchen_tourismus", lat, lon, 0)
+        return await self._cached(
+            "muenchen_tourismus",
+            key,
+            lambda: tourismus_mod.load(self.outbound, self.settings, lat, lon),
             refresh=refresh,
         )
 
@@ -705,10 +730,13 @@ class PointService:
             self.dynamik(lat, lon, radius, refresh),
             self.baustellen(lat, lon, radius, refresh),
             self.maerkte(lat, lon, radius, refresh),
+            self.messe(lat, lon, refresh),
+            self.tourismus(lat, lon, refresh),
             return_exceptions=True,
         )
         names = ["adresse", "zensus", "osm", "gtfs", "radzaehlung", "verkehrsmenge",
-                 "planung", "klima", "dynamik", "baustellen", "maerkte"]
+                 "planung", "klima", "dynamik", "baustellen", "maerkte",
+                 "messe", "tourismus"]
         blocks: dict[str, Any] = {}
         for name, res in zip(names, results):
             if isinstance(res, BaseException):

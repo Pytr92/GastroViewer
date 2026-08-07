@@ -634,3 +634,22 @@ etwaige Abweichungen als klare Fehlermeldung im Block.
 der öffentliche Katalog wies `73311-01-02-4` als richtige Tabelle aus.
 Merkmalscode der Regionalebene (`KREISE`) aus dem öffentlich einsehbaren
 Tabellenaufbau übernommen, nicht geraten.
+
+## Nachtrag 2026-08-07 (3. Runde): Messe, Tourismus-Monatszahlen, Erhaltungssatzungen
+
+Alle Phase-0-Prüfungen mit echten Abrufen am 07.08.2026.
+
+| Endpunkt | Prüfung | Ergebnis |
+|---|---|---|
+| CKAN `veranstaltungen-der-messe-muenchen` → `veranstaltungsdaten.csv` | Download (119 kB), Struktur | Semikolon-CSV, 307 Veranstaltungen ab 2018 **weltweit** (auch Delhi, Shanghai …) → Filter `stadt = München` nötig (95 Zeilen, davon 1 mit unlesbarem Termin „Mai 2.2026“). Besucher-/Ausstellerzahlen nur für vergangene Veranstaltungen (52 von 95). Lizenz laut CKAN `dl-by-de/2.0`, Herausgeber Messe München GmbH; Ressource am Prüftag zuletzt aktualisiert. Größte Veranstaltung: bauma 2025, 605.974 Besucher |
+| CKAN `monatszahlen-tourismus` → `tourismus.csv` | Download (115 kB), Struktur | Komma-CSV, `MONATSZAHL` ∈ {Gäste, Übernachtungen} × `AUSPRAEGUNG` ∈ {Ausland, Inland, insgesamt}, Monate als `JJJJMM` plus `Summe`-Jahreszeilen, Fehlwerte `NA`; Reihen ab 2006, jüngster gefüllter Monat Dez 2025 (die 2026er-Zeilen existieren schon, sind aber `NA`). Kalenderjahr 2025: 19.631.581 Übernachtungen, 9.289.657 Gäste, Auslandsanteil 44,5 % |
+| `geoserver/plan/wms` · `satz_erhalt_poly` | WMS GetFeatureInfo (`CRS:84`, `info_format=application/json`) | **funktioniert** — Haidhausen (48.1289, 11.5967): `gebietname`, `gueltig_ab` 11.03.2021, PDF-Links zu Plan/Text/Info; Marienplatz korrekt: leere Trefferliste. Layer ist `queryable="1"`. Achtung: WFS ist für den `plan`-Workspace **deaktiviert** („Service WFS is disabled“), und `plan_wfs` (anderer Workspace) führt den Layer nicht — nur der WMS-Weg geht |
+
+**Geprüft und verworfen (Deutschland-Blick):**
+
+| Kandidat | Befund |
+|---|---|
+| Monatswerte Tourismus je Kreis, bundesweit | Regionaldatenbank 45412-…: alle Kreis-Tabellen sind **Jahressummen** (Titel „… - Jahressumme - regionale Tiefe: Kreise …“); die Jahressumme steckt bereits im Kreisprofil (Regionalatlas). Destatis-GENESIS (`genesis.destatis.de/genesisWS/rest/2020`): Katalog-/Datenabruf antwortet HTTP 401 Code 15 — Kennung nötig, ein **zweites** Konto-Opt-in wäre gegen das Konto-Prinzip. Saisonkurve deshalb nur für München (offene CSV) |
+| Foursquare OS Places als dritte Wettbewerbsquelle | Verworfen: FSQ OS Places ist **bereits Bestandteil des Overture-Places-Imports** (Overture-Attribution nennt Foursquare ausdrücklich — steht seit dem Import in unserer Lizenzzeile von Block 4f). Ein eigener Import müsste das globale Parquet (106 Mio. POIs, viele GB, keine Regionalpartitionierung über einfaches HTTP) laden — für ein Localhost-Werkzeug unverhältnismäßig und inhaltlich doppelt |
+| Bundesweiter Messe-Kalender | Kein offener Datensatz: die AUMA-Messedatenbank ist kein Open Data, andere Messegesellschaften veröffentlichen keine vergleichbare CSV mit Besucherzahlen. Bleibt ein München-Bonus wie Märkte/Baustellen |
+| Erhaltungssatzungen bundesweit | Kein bundesweiter Datensatz — Milieuschutz ist kommunales Satzungsrecht, jede Stadt führt (wenn überhaupt) eigene Dienste. Eingebaut für München; anderswo sagt der Block das ehrlich |

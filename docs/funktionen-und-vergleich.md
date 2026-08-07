@@ -19,7 +19,7 @@ hinter Login bzw. Lizenz.
 | Grundkarten: OpenStreetMap, amtliche basemap.de (farbig/grau), in Bayern Luftbild und Flurstücke (ALKIS) | BKG, LDBV |
 | Deckkraftregler für alle aufgesetzten Ebenen | — |
 
-### Punktanalyse — WIE ist es hier? (ein Klick, 25 Blöcke)
+### Punktanalyse — WIE ist es hier? (ein Klick, 27 Blöcke)
 
 | Block | Inhalt |
 |---|---|
@@ -42,9 +42,11 @@ hinter Login bzw. Lizenz.
 | **Städtische Märkte (5c)** | 54 Münchner Märkte mit Rubrik und Öffnungszeiten aus dem Stadtdatensatz; Reichweite 2 km, Karten-Pins, springbare Liste |
 | **Kurzzeitvermietung (5d)** | Inside Airbnb (CC BY 4.0): Inserate im Umkreis mit Zimmertyp, Median-Preis und Bewertungs-Aktivität der letzten 12 Monate — das kleinräumige Touristen-Signal, das die amtliche Kreis-Übernachtungszahl nicht liefert; Positionsversatz (~150 m) ehrlich benannt (München, Berlin) |
 | **Amtliche Gastro-Anker (3e)** | Regionaldatenbank (Opt-in, kostenlose Kennung): Umsatz je USt-Pflichtigem im Gastgewerbe des Kreises (Zeitreihe ab 2009, Prüfstein für die eigene Umsatzschätzung) und Gewerbean-/-abmeldungen mit Saldo — inkl. Unternehmenssitz-Warnung |
+| **Tourismus-Saisonalität (3f)** | Monatszahlen des Statistischen Amts München seit 2006: letzte 12 Monate mit Vorjahresvergleich, Auslandsanteil, Aufenthaltsdauer und Saisonkurve (Juli 130, Januar 59 — indexiert auf den Jahresdurchschnitt); bundesweit gibt es Monatswerte je Kreis nicht offen, der Block sagt das |
+| **Messe-Kalender (5e)** | Veranstaltungen der Messe München seit 2018 mit Besucherzahlen (bauma 2025: 605.974): laufende/kommende Termine, Jahresbilanz, größte Veranstaltungen, Entfernung zum nächsten Gelände — planbare Frequenzspitzen, die über Hotels und die U2 ankommen |
 | Verkehr/ÖPNV | Haltestellen, Linien, GTFS-Abfahrten je Stunde eines konkreten Tages, Mittagsfenster 11–14, Abendfenster 17–22, Nachtfenster 22–1 Uhr |
 | Gemessene Frequenz | Radzählstellen München (Jahressumme + **Jahresgang aus Tages-Rohdaten**: Monatsmittel, Messtage, Spitzentag), Kfz-Verkehrsstärke DTV (BAYSIS, ganz Bayern) |
-| Planungsrecht | Hochwassergefahrenflächen HQhäufig/HQ100/HQextrem (Bayern), Bebauungsplan-Umgriffe (München) |
+| Planungsrecht | Hochwassergefahrenflächen HQhäufig/HQ100/HQextrem (Bayern), Bebauungsplan-Umgriffe und **Erhaltungssatzungen/Milieuschutz § 172 BauGB mit Satzungs-PDFs** (München) |
 | Straßenlärm (6f) | LDEN/LNight in dB(A) am Punkt aus der EU-Umgebungslärmkartierung (LfU Bayern) — mit Kartierungsjahr und ehrlicher „nicht kartiert ≠ leise“-Grenze |
 | **Baustellen (6g)** | Servicekarte der Stadt München: laufende und geplante Maßnahmen im Umkreis mit Umriss auf der Karte, Zeitraum und Beeinträchtigung — Gehwegsperrungen eigens gezählt (der kurzfristige Umsatzkiller); Vier-Wochen-Horizont ehrlich benannt |
 | Bodenrichtwerte | Kartenebene + Klickabfrage in 7 Bundesländern, Portallinks für alle |
@@ -54,7 +56,7 @@ hinter Login bzw. Lizenz.
 
 | Funktion | Besonderheit |
 |---|---|
-| Vergleichstabelle: 60 Kennzahlen in 6 schaltbaren Gruppen | jede berechnete Spalte ist als „berechnet" beschriftet |
+| Vergleichstabelle: 62 Kennzahlen in 6 schaltbaren Gruppen | jede berechnete Spalte ist als „berechnet" beschriftet |
 | Gesamt-Score im Punkt und im Bericht | Anker offen, Gewichte eigene Setzung, Rechnung nachvollziehbar bis zur Teilnote |
 | Gewichtetes Ranking | Punktzahl allein aus eigenen Gewichten, jeder Beitrag offen |
 | Eigene Note (1–5) und Notiz je Punkt | einzige Wertung im Werkzeug — und sie kommt vom Nutzer |
@@ -71,7 +73,7 @@ hinter Login bzw. Lizenz.
 Läuft komplett lokal (localhost, SQLite), kein Konto (einzige Ausnahme: das
 freiwillige Regionaldatenbank-Opt-in für Block 3e), keine Cloud. Cache mit
 Kachel-Logik schont die freien Dienste; jeder echte Abruf steht im Protokoll.
-Geprüft durch 434 automatische Tests, 58 Live-Routenprüfungen, 42 Browser-Checks
+Geprüft durch 456 automatische Tests, 61 Live-Routenprüfungen, 44 Browser-Checks
 und 9 Abnahmekriterien.
 
 ---
