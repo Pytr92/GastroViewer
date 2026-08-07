@@ -1,0 +1,130 @@
+# Doppelklick-Pakete für Windows und macOS (PyInstaller).
+#
+# Läuft auf Knopfdruck (Actions → „Installer bauen" → Run workflow) oder
+# automatisch, wenn ein Versions-Tag (v…) gepusht wird. Beim Tag entsteht
+# zusätzlich ein GitHub-Release mit den fertigen Dateien — der Weg, über den
+# man die Pakete OHNE GitHub-Konto herunterladen kann.
+#
+# Jedes Paket wird nach dem Bau gestartet und die Startseite abgerufen —
+# ein Build, der nicht antwortet, wird nicht veröffentlicht.
+
+name: Installer bauen
+
+on:
+  workflow_dispatch:
+  push:
+    tags: ["v*"]
+
+jobs:
+  bauen:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            artefakt: GastroViewer-Windows
+            binaerdatei: dist/GastroViewer.exe
+          - os: macos-latest
+            artefakt: GastroViewer-macOS-AppleSilicon
+            binaerdatei: dist/GastroViewer
+          - os: macos-13
+            artefakt: GastroViewer-macOS-Intel
+            binaerdatei: dist/GastroViewer
+          - os: ubuntu-latest
+            artefakt: GastroViewer-Linux
+            binaerdatei: dist/GastroViewer
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Abhängigkeiten und PyInstaller installieren
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install . pyinstaller
+
+      - name: Paket bauen
+        run: pyinstaller --clean --noconfirm packaging/gastroviewer.spec
+
+      - name: Rauchprobe — Server starten und Startseite abrufen (Unix)
+        if: runner.os != 'Windows'
+        shell: bash
+        run: |
+          ./${{ matrix.binaerdatei }} serve --port 8017 &
+          for i in $(seq 1 30); do
+            if curl -sf http://127.0.0.1:8017/ -o /dev/null; then
+              echo "Startseite antwortet."
+              curl -sf http://127.0.0.1:8017/static/app.js -o /dev/null
+              echo "Oberfläche wird ausgeliefert."
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "Server hat nicht geantwortet." >&2
+          exit 1
+
+      - name: Rauchprobe — Server starten und Startseite abrufen (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $p = Start-Process -FilePath "${{ matrix.binaerdatei }}" -ArgumentList "serve","--port","8017" -PassThru
+          $ok = $false
+          foreach ($i in 1..30) {
+            try {
+              Invoke-WebRequest -UseBasicParsing http://127.0.0.1:8017/ | Out-Null
+              Invoke-WebRequest -UseBasicParsing http://127.0.0.1:8017/static/app.js | Out-Null
+              $ok = $true; break
+            } catch { Start-Sleep -Seconds 1 }
+          }
+          Stop-Process -Id $p.Id -Force -ErrorAction SilentlyContinue
+          if (-not $ok) { Write-Error "Server hat nicht geantwortet."; exit 1 }
+          Write-Output "Startseite und Oberfläche antworten."
+
+      - name: Artefakt hochladen
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artefakt }}
+          path: ${{ matrix.binaerdatei }}
+          if-no-files-found: error
+
+  release:
+    # Nur bei einem Versions-Tag: Release mit allen vier Paketen anlegen.
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: bauen
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: pakete
+
+      - name: Dateien fürs Release benennen
+        run: |
+          mkdir release
+          cp pakete/GastroViewer-Windows/GastroViewer.exe release/GastroViewer-Windows.exe
+          cp pakete/GastroViewer-macOS-AppleSilicon/GastroViewer release/GastroViewer-macOS-AppleSilicon
+          cp pakete/GastroViewer-macOS-Intel/GastroViewer release/GastroViewer-macOS-Intel
+          cp pakete/GastroViewer-Linux/GastroViewer release/GastroViewer-Linux
+          ls -l release
+
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: release/*
+          body: |
+            Doppelklick-Pakete des Standort-Datenterminals.
+
+            **Windows:** `GastroViewer-Windows.exe` herunterladen und doppelklicken.
+            Beim ersten Start warnt der SmartScreen-Filter („unbekannter Herausgeber",
+            das Paket ist nicht signiert): „Weitere Informationen" → „Trotzdem ausführen".
+
+            **macOS:** Passende Datei laden (Apple Silicon = M1/M2/M3/M4, sonst Intel),
+            im Terminal einmal `chmod +x GastroViewer-…` ausführen, dann per
+            Rechtsklick → „Öffnen" starten (Gatekeeper-Abfrage bestätigen).
+
+            Es öffnet sich ein Konsolenfenster (der Server) und der Browser mit der
+            Karte. Konsolenfenster schließen beendet das Programm. Die Daten liegen
+            im Ordner `.gastroviewer` im Benutzerverzeichnis.

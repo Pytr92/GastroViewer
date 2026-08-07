@@ -27,6 +27,14 @@ def _fmt_bytes(n: float) -> str:
     return f"{n:.1f} TB"
 
 
+def _port_belegt(host: str, port: int) -> bool:
+    import socket
+
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        s.settimeout(0.5)
+        return s.connect_ex((host if host != "0.0.0.0" else "127.0.0.1", port)) == 0
+
+
 def cmd_serve(args: argparse.Namespace, settings: Settings) -> int:
     import uvicorn
 
@@ -34,7 +42,29 @@ def cmd_serve(args: argparse.Namespace, settings: Settings) -> int:
 
     host = args.host or settings.host
     port = args.port or settings.port
-    print(f"Standort-Datenterminal → http://{host}:{port}")
+    adresse = f"http://{'127.0.0.1' if host == '0.0.0.0' else host}:{port}"
+    if getattr(args, "browser", False):
+        # Doppelklick-Komfort: läuft schon ein Terminal auf dem Port, nur das
+        # Browserfenster öffnen statt mit „Adresse belegt" abzubrechen.
+        if _port_belegt(host, port):
+            print(f"Läuft bereits: {adresse} — öffne den Browser.")
+            import webbrowser
+
+            webbrowser.open(adresse)
+            return 0
+        import threading
+        import webbrowser
+
+        # Erst öffnen, wenn der Server antwortet — höchstens 15 s warten.
+        def _oeffnen() -> None:
+            for _ in range(30):
+                if _port_belegt(host, port):
+                    break
+                time.sleep(0.5)
+            webbrowser.open(adresse)
+
+        threading.Thread(target=_oeffnen, daemon=True).start()
+    print(f"Standort-Datenterminal → {adresse}")
     print(f"  Datenverzeichnis : {settings.data_dir}")
     print(f"  User-Agent       : {settings.user_agent}")
     if "github.com/Pytr92" in settings.contact:
@@ -322,6 +352,11 @@ def build_parser() -> argparse.ArgumentParser:
     s.add_argument("--host")
     s.add_argument("--port", type=int)
     s.add_argument("--log-level", default="info")
+    s.add_argument(
+        "--browser", action="store_true",
+        help="Browser automatisch öffnen, sobald der Server antwortet "
+        "(Standard im Doppelklick-Paket)",
+    )
     s.set_defaults(func=cmd_serve)
 
     g = sub.add_parser("import-gtfs", help="GTFS-Fahrplan einmalig importieren")
@@ -371,7 +406,11 @@ def main(argv: list[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
     if not getattr(args, "func", None):
-        args = parser.parse_args((argv or []) + ["serve"])
+        # Ohne Unterbefehl: Server starten. Im Doppelklick-Paket (PyInstaller
+        # setzt sys.frozen) zusätzlich den Browser öffnen — wer die Datei
+        # anklickt, hat kein Terminal-Wissen und erwartet ein Fenster.
+        standard = ["serve", "--browser"] if getattr(sys, "frozen", False) else ["serve"]
+        args = parser.parse_args((argv or []) + standard)
     settings = get_settings()
     settings.ensure_dirs()
     return args.func(args, settings)

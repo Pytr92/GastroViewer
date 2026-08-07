@@ -17,10 +17,34 @@ Endpunktprüfung: [`docs/endpoints-verified.md`](docs/endpoints-verified.md)
 
 ## Start
 
-Das Werkzeug ist **keine HTML-Datei zum Doppelklicken**. Es ist ein kleiner Webserver, der
-auf dem eigenen Rechner läuft; die Oberfläche öffnet man danach im Browser unter
-`127.0.0.1`. Der Server holt die Daten bei den Fachdiensten, hält den Cache und rechnet —
-eine einzelne `index.html` direkt zu öffnen funktioniert nicht.
+Das Werkzeug ist ein kleiner Webserver, der auf dem eigenen Rechner läuft; die Oberfläche
+öffnet man danach im Browser unter `127.0.0.1`. Der Server holt die Daten bei den
+Fachdiensten, hält den Cache und rechnet — eine einzelne `index.html` direkt zu öffnen
+funktioniert nicht.
+
+### Weg 1: Doppelklick-Paket, ohne Python (Windows/macOS/Linux)
+
+Unter **Releases** auf der GitHub-Seite liegt je eine fertige Datei pro System
+(gebaut und rauchgeprüft vom Workflow `.github/workflows/installer.yml`; ein neues
+Release entsteht mit jedem Versions-Tag):
+
+- **Windows:** `GastroViewer-Windows.exe` herunterladen, doppelklicken. Beim ersten
+  Start warnt der SmartScreen-Filter, weil das Paket nicht signiert ist:
+  „Weitere Informationen" → „Trotzdem ausführen".
+- **macOS:** `GastroViewer-macOS-AppleSilicon` (M1–M4) bzw. `…-Intel` laden, im
+  Terminal einmal `chmod +x GastroViewer-…`, dann Rechtsklick → „Öffnen".
+- Es öffnet sich ein Konsolenfenster (der Server, zugleich das Abruf-Protokoll)
+  und automatisch der Browser mit der Karte. **Konsolenfenster schließen = Programm
+  beenden.** Beim ersten Start dauert das Entpacken ein paar Sekunden.
+
+Das Paket kann auch alle Kommandos (in einem Terminal aufrufen):
+`GastroViewer-Windows.exe import-gtfs --region muenchen` importiert z. B. den
+Fahrplan für Block 6b. Zwei ehrliche Grenzen: der **Overture-Import** (Block 4f)
+braucht weiterhin Python (`pip install overturemaps` — das Paket wäre sonst
+hunderte MB groß); und die Dateien sind **nicht signiert** — daher die
+Warnhinweise der Betriebssysteme.
+
+### Weg 2: mit Python (alle Kommandos, alle Importe)
 
 Läuft auf **macOS, Linux und Windows**. Voraussetzung: Python 3.10 oder neuer. Sonst
 nichts — kein Docker, kein `make`, keine Datenbank zum Aufsetzen.
