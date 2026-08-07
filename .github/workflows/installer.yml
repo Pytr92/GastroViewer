@@ -27,7 +27,7 @@ jobs:
           - os: macos-latest
             artefakt: GastroViewer-macOS-AppleSilicon
             binaerdatei: dist/GastroViewer
-          - os: macos-13
+          - os: macos-15-intel
             artefakt: GastroViewer-macOS-Intel
             binaerdatei: dist/GastroViewer
           - os: ubuntu-latest
