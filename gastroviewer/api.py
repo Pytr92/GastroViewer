@@ -529,6 +529,24 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         _validate(lat, lon, 600)
         return (await svc(request).luft(lat, lon, refresh)).to_dict()
 
+    @app.get("/api/kalender")
+    async def kalender(request: Request, ags: str = "",
+                       refresh: bool = False):
+        """Feiertage und Schulferien des Bundeslandes als Kontext — ohne
+        Verrechnung in irgendeine Kennzahl."""
+        return (await svc(request).kalender(ags or None, refresh)).to_dict()
+
+    @app.get("/api/point/ihk-berlin")
+    async def point_ihk_berlin(
+        request: Request, lat: float, lon: float, r: int = 600,
+        refresh: bool = False,
+    ):
+        """Gastronomie-Bestand aus den IHK-Berlin-Gewerbedaten (CC0).
+        Auf Anforderung: Der erste Abruf lädt eine rund 125 MB große
+        Datei, danach liegt sie 30 Tage im Cache."""
+        _validate(lat, lon, r)
+        return (await svc(request).ihk_berlin(lat, lon, r, refresh)).to_dict()
+
     @app.get("/api/point/baurecht")
     async def point_baurecht(
         request: Request, lat: float, lon: float, refresh: bool = False,

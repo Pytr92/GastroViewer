@@ -837,3 +837,50 @@ stünde in keinem Verhältnis zum Nutzen.
 Browser-Selbstprüfung nach den Fixes: kein hängender Block, Punktwechsel
 leert die Marker-Ebenen sofort (281 → 0 → 384), kein „null"-Text mehr,
 keine JS-Fehler. Testsuite: **549 Tests grün** (542 + 7 neue Regressionen).
+
+---
+
+## Nachtrag 2026-08-08 (9. Runde): Kostenfaktor, Besonnung, Frequenz, Baurecht (AA-Runde)
+
+Sechs neue Quellen und eine gerechnete Auswertung. Die Runde ging aus einer
+ergebnisoffenen Recherche über vier Richtungen hervor; die Verwerfungen unten
+sind Teil des Ergebnisses.
+
+| Prüfung | Ergebnis |
+|---|---|
+| **Realsteuervergleich** `71231-01-03-5` (Gemeindeebene) | ffcsv am 2026-08-08 aufgezeichnet. Wertecodes STNW07/08/09 (Hebesätze Grundsteuer A/B, Gewerbesteuer), STNW15 Steuereinnahmekraft. **München 490 % Gewerbesteuer / 535 % Grundsteuer B, Garching 330 % / 310 %** — 160 Prozentpunkte Unterschied. Der erste harte, gemeindescharfe Kostenfaktor des Werkzeugs; läuft über die bestehende Kennung |
+| **Unternehmensregister** `52111-02-01-4` | `WZ08-I` = Gastgewerbe, `WZ08-B-10` = Insgesamt. München 2024: **4 705 Gastgewerbe-Niederlassungen von 94 691** (4,97 %), Zeitreihe ab 2006 (+5,7 %). Der amtliche Nenner zur OSM-Zählung. **Nicht möglich:** eine gastrospezifische Insolvenzquote — die Insolvenzstatistik (52411) führt regional keine Wirtschaftszweige |
+| **Bildungstabellen** `21311-01-01-4`, `21111-01-03-4` | Studierende nach Fächergruppen (München WS 2023/24: **108 490**, davon Recht/Wirtschaft/Sozial 40 264, Ingenieure 25 618) und Schüler nach Schularten (**137 846**, Grundschulen 50 434). Filter: Geschlecht **und** Nationalität „Insgesamt", sonst Mehrfachzählung. Fernstudium-Warnung (Hagen) steht am Block |
+| **Sonnenstand** (keine Quelle nötig) | Verfahren nach Astronomical Almanac, gegen die theoretischen Extremwerte geprüft: München **65,3° zur Sommer-, 18,4° zur Wintersonnenwende**, Tageslängen 16,1 h / 8,3 h. Gebäude aus Overpass (`way[building]`, `out geom`), 150-m-Umkreis, 64 KB je Abfrage |
+| Höhenabdeckung in OSM | Real gemessen: Münchner Innenstadt 77 %, Altstadt 75 %, Garching 51 %, Kassel 56 %, Hamburg 57 %. Gebäude **ohne** Höhenangabe werden nicht geschätzt, sondern gezählt und ausgewiesen — das Ergebnis ist damit eine Obergrenze |
+| Verschattung, Gegenprobe an zwei echten Lagen | Enge Altstadt (48,13745/11,57538): höchstes Hindernis **45,3° im Süden**, Wintersonne **0,7 h**, mittags zur Tagundnachtgleiche eine Lücke von 11:10 bis 13:00. Offener Platz (Sendlinger Tor): **6,2 h** Wintersonne durchgehend, Abendsonne im Sommer 3,3 h statt 1,5 h |
+| **Passantenfrequenz** hystreet.com | API existiert (`api.hystreet.com/v2`, OpenAPI-Spec offen), aber die Datensatzbeschreibung der Stadt Münster hält wörtlich fest: im kostenfreien Modell wird „eine gewerbliche Nutzung untersagt". Für ein Standortanalyse-Werkzeug damit **unbrauchbar** |
+| Passantenfrequenz über Städte | Einzelne Kommunen haben lizenziert und geben unter offener Lizenz weiter. Eingebaut: **Dortmund** (3 Zählstellen, stündlich, quasi Echtzeit, dl-de/**zero**), **Würzburg** (3, stündlich mit Wetter/Richtung/Zonen, dl-de/by, Nachlauf seit Mai 2026 gestoppt), **Augsburg** (1, Stunden-CSV, CC BY 4.0). Tagesgänge real: Dortmund Westenhellweg Ost Spitze 16 Uhr mit 2 939/h, **Abendanteil 24,4 %**; Würzburg Schönbornstraße Spitze 14 Uhr, **Abendanteil 7,4 %** |
+| Bewusst nicht aufgenommen | **Oldenburg** (4 Zählstellen, gleiche Lizenz) veröffentlicht nur **Tagessummen** — ohne Stundenwerte fehlt genau der Tagesgang, um den es geht |
+| **Baurecht: die Kernlücke** | GDI-DE-Katalog abgefragt: `%Bebauungsplan%` → **566 145** Datensätze, `%BP_BaugebietsTeilFlaeche%` → **15**. Die Art der baulichen Nutzung ist bundesweit fast nirgends maschinenlesbar |
+| XPlanSyn-Dienste | Punktgenau geprüft: **Hamburg** (23 159 Teilflächen, dl-de/by-2-0) und **Freiburg** liefern `besondereArtDerBaulNutzungWert`; beide antworten am Testpunkt „Kerngebiet" (MK) |
+| Berlin | B-Plan-Umringe mit PDF (2 844 Pläne), Sanierungsgebiete (§§ 144/145 BauGB) und Denkmalliste (9 578 Objekte), alle **dl-de/zero-2-0**. Das Feld `inhalt` ist planweiter Freitext, **nicht** flächenscharf |
+| Baurecht: Absagen mit Beleg | **München** behält sich sämtliche Rechte an den Bauleitplandaten vor. **Bayerns** Landesdienst führt nur Umringe und antwortet in München, Regensburg, Augsburg, Ingolstadt und Rosenheim leer. **Sperrzeiten** gibt es maschinenlesbar nicht: GovData 0 Treffer, GDI-DE-Katalog 0 Treffer, das Bundes-Rechtsinformationsportal führt nur Bundesrecht — Sperrzeiten sind Landes- und Kommunalrecht |
+| **IHK Berlin** Gewerbedaten | **CC0**, monatlich, 368 000 Zeilen mit Koordinate, PLZ, LOR-Planungsraum, Betriebsalter und Beschäftigtenklasse; 23 456 Betriebe in NACE 55/56. Git LFS: **media**.githubusercontent.com, nicht raw (dort kommt nur der Zeiger). 125 MB → auf Anforderung, danach 30 Tage Cache |
+| **OpenHolidaysAPI** | ODbL, Feiertage **und** Schulferien aller 16 Länder. Gegen die amtlichen KMK-iCal-Dateien gegengeprüft (Baden-Württemberg 2026/27: identische Termine). Bewusst nur Kontextband ohne Verrechnung — Feiertage unterscheiden zwei Standorte derselben Stadt nicht |
+| Kalender: Absagen | **feiertage-api.de** bezieht seine Daten laut eigener Seite aus Wikipedia und nennt keine Lizenz; **ferien-api.de** antwortet mit HTTP 429, sagt „ohne Gewähr" und liefert für 2027 stumm eine leere Liste. Die **KMK** taugt nicht als Live-Quelle (wechselnder TYPO3-Hash in der Adresse, keine Feiertage, keine Lizenzangabe) |
+
+**Drei Implementierungsfallen, alle in Phase 0 belegt und im Code vermerkt:**
+
+1. **WFS-Achsenreihenfolge:** `urn:ogc:def:crs:EPSG::4326` liefert bei deegree stumm **null** Treffer. Richtig ist `urn:ogc:def:crs:OGC:1.3:CRS84` in lon/lat.
+2. **Ausgabeformat je Dienst:** Die XPlanSyn-Instanzen lehnen `application/json` mit **HTTP 400** ab und verlangen `application/geo+json`; Berlin umgekehrt.
+3. **Bbox-Größe und Punktprüfung:** Eine sehr kleine Bbox (0,0002°) liefert bei deegree null Treffer, eine größere (0,0015°) drei. Deshalb holt die Abfrage Kandidaten in einem ~90-m-Fenster, und erst eine **Punkt-in-Polygon-Prüfung** entscheidet, welche Fläche den Standort wirklich enthält. Ohne sie stand im ersten Entwurf die Gebietsart des Nachbargrundstücks im Block — der Fehler fiel erst beim Live-Test auf.
+
+**Nicht gebaut, mit Begründung:**
+
+* **Handelsregister aktuell:** Auf dem OffeneRegister-Server liegt eine undokumentierte Datei `handelsregister.db` (3,72 GB, Stand 21.10.2022) — dreieinhalb Jahre frischer als der eingebaute Dump von 2019, gleiches Schema, mit PLZ. Sie trägt aber **keine Lizenzangabe**. Vor einer Nutzung müsste die Open Knowledge Foundation gefragt und die Antwort hier dokumentiert werden. `handelsregister.de` selbst (seit 2022 kostenfrei) hat keine Schnittstelle, deckelt bei 60 Abrufen je Stunde und droht in der Nutzungsordnung mit §§ 303a/b StGB; `unternehmensregister.de` sperrt die Suchpfade per robots.txt.
+* **Insolvenzbekanntmachungen:** robots.txt erlaubt nur die Startseite, und die FAQ hält wörtlich fest, Sinn sei die Einzelfallprüfung und ausdrücklich **nicht**, „ohne konkreten Bezug sehen zu können, welche Insolvenzverfahren allgemein eröffnet wurden".
+* **OParl** (kommunale Ratsinformationssysteme): 127 Endpunkte geprüft, 3 000 Drucksachen ausgewertet — **eine** mit Ortsangabe, **keine** mit Koordinate. Dazu 119 von 127 Systemen ohne Lizenzangabe und fünf mit ausdrücklichem Genehmigungsvorbehalt. Ohne Ortsbezug für ein Standortwerkzeug wertlos.
+* **Hamburger Gewerbeanzeigen je Bezirk** (Statistikamt Nord D I 2, dl-de/by-2-0, robots erlaubt): Die Gastgewerbe-Zeilen existieren (WZ 56, Zeile 46 der Blätter `T2_1`/`T8_1`), aber die Blätter haben verschachtelte Mehrzeilen-Kopfzeilen, deren Spaltenbedeutung sich in Phase 0 nicht zweifelsfrei zuordnen ließ. Ein falsch zugeordneter Parser liefert plausibel aussehende **falsche** Zahlen — deshalb nicht gebaut. Der Weg bleibt offen, braucht aber eine saubere Kopfzeilen-Analyse.
+* **Zensus-Gitter:** geprüft, ob Merkmale fehlen — das Werkzeug liest bereits alle 29 fachlichen Felder inklusive Altersklassen, Haushaltsgröße, Leerstands- und Eigentümerquote und Baujahr. Keine Lücke.
+* **Gewerbemietspiegel:** Die IHKs veröffentlichen ausschließlich PDFs, kein maschinenlesbares Format — dieselbe Lage wie beim bereits verworfenen DEHOGA-Zahlenspiegel.
+* **Amtliche 3D-Gebäudemodelle** (LoD1-DE): entgegen der Erwartung **nicht** in der BKG-Open-Data-Liste; offen sind nur 3D-Tiles zur Darstellung. LoD2 ist Open Data, aber ein Flickenteppich je Bundesland mit sehr großen Downloads — für die Verschattung reicht OSM mit ausgewiesener Abdeckung.
+
+**Betriebsbefunde:** Die GENESIS-**GET**-Methode wurde am 27.11.2025 abgeschaltet (HTTP 405) — das Werkzeug ist nicht betroffen, es nutzt durchgehend POST. Der Berliner Geodienst `gdi.berlin.de` nutzt ein Wurzelzertifikat, das ältere Zertifikatsspeicher nicht kennen; das Werkzeug übersetzt den TLS-Fehler in eine verständliche Meldung mit dem Hinweis auf `pip install --upgrade certifi`. Die CKAN-Schnittstellen der Portale München, Berlin und Hamburg sind per robots.txt gesperrt (`Disallow: /api/`) — die eigentlichen Download-Adressen nicht; das Werkzeug verdrahtet sie deshalb fest, statt die API abzufragen.
+
+Browser-Selbstprüfung: alle fünf neuen Blöcke rendern, kein hängender Block, kein „null"-Text, keine JS-Fehler. Dabei fiel auf, dass die Markdown-Betonung (`**so**`) der Quellenmodule als sichtbare Sternchen im Text stand — zentral behoben, betrifft jetzt alle 21 Hinweis-Renderings und sämtliche Warnungen. Testsuite: **613 Tests grün** (549 + 64 neue).

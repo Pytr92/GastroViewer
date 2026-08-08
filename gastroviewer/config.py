@@ -261,6 +261,12 @@ class Settings:
         # die TTL betrifft nur den gerechneten PLZ-Auszug.
         if source.startswith("register"):
             return self.ttl_zensus
+        # Feiertage und Ferien eines Jahres stehen fest.
+        if source.startswith("kalender"):
+            return self.ttl_zensus
+        # IHK-Mitgliederbestand: monatlich fortgeschrieben, 125-MB-Datei.
+        if source.startswith("ihk"):
+            return self.ttl_zensus
         # Bebauungspläne werden über Jahre aufgestellt, nicht über Tage.
         if source.startswith("baurecht"):
             return self.ttl_zensus

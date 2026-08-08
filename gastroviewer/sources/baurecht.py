@@ -44,9 +44,13 @@ from .base import Provenance, SourceError, SourceResult, now_iso
 # deegree-Dienste stumm 0 Treffer (lat/lon-Vertauschung). CRS84 ist
 # lon/lat und in Phase 0 als der zuverlässige Weg bestätigt.
 CRS = "urn:ogc:def:crs:OGC:1.3:CRS84"
-# Halber Kantenlänge der Abfrage-Bbox in Grad (~11 m). Klein genug, dass
-# das Ergebnis den Punkt meint, groß genug gegen Rundungsfehler.
-BBOX_GRAD = 0.0001
+# Die XPlanSyn-Instanzen lehnen "application/json" mit HTTP 400 ab.
+XPLAN_FORMAT = "application/geo+json"
+# Halbe Kantenlänge der Abfrage-Bbox in Grad (~90 m). Eine sehr kleine
+# Bbox liefert bei deegree stumm null Treffer (Phase 0: 0,0002° → 0
+# Flächen, 0,0015° → 3). Die Bbox holt deshalb Kandidaten; welche Fläche
+# den Punkt wirklich enthält, entscheidet danach die Geometrieprüfung.
+BBOX_GRAD = 0.0008
 
 # Art der baulichen Nutzung nach BauNVO — und was sie für Gastronomie
 # bedeutet. Die Einordnung ist bewusst knapp und als Orientierung
@@ -144,6 +148,43 @@ def _in_bbox(lat: float, lon: float, box: tuple[float, ...]) -> bool:
     return box[0] <= lat <= box[2] and box[1] <= lon <= box[3]
 
 
+def _im_ring(lat: float, lon: float, ring: list) -> bool:
+    """Strahlverfahren (even-odd): liegt der Punkt innerhalb des Rings?"""
+    drin = False
+    n = len(ring)
+    for i in range(n):
+        x1, y1 = ring[i][0], ring[i][1]
+        x2, y2 = ring[(i + 1) % n][0], ring[(i + 1) % n][1]
+        if (y1 > lat) != (y2 > lat):
+            schnitt = x1 + (lat - y1) * (x2 - x1) / (y2 - y1)
+            if lon < schnitt:
+                drin = not drin
+    return drin
+
+
+def enthaelt_punkt(geometrie: dict[str, Any] | None,
+                   lat: float, lon: float) -> bool:
+    """Punkt-in-Polygon für GeoJSON-Polygone und Multipolygone.
+
+    Nötig, weil die Bbox-Abfrage Nachbarflächen mitliefert — ohne diese
+    Prüfung stünde für den Standort womöglich die Gebietsart des Hauses
+    gegenüber."""
+    if not geometrie:
+        return False
+    typ = geometrie.get("type")
+    koordinaten = geometrie.get("coordinates") or []
+    polygone = ([koordinaten] if typ == "Polygon"
+                else koordinaten if typ == "MultiPolygon" else [])
+    for polygon in polygone:
+        if not polygon or not _im_ring(lat, lon, polygon[0]):
+            continue
+        # Löcher im Polygon zählen nicht als Innenraum.
+        if any(_im_ring(lat, lon, loch) for loch in polygon[1:]):
+            continue
+        return True
+    return False
+
+
 def dienst_fuer(lat: float, lon: float) -> dict[str, Any] | None:
     for d in XPLAN_DIENSTE:
         if _in_bbox(lat, lon, d["bbox"]):
@@ -162,10 +203,17 @@ def deuten(art: str | None) -> dict[str, Any] | None:
     return {"art": art, "kuerzel": treffer[0], "gastronomie": treffer[1]}
 
 
-def parse_baugebiete(antwort: dict[str, Any]) -> list[dict[str, Any]]:
-    """XPlanSyn-GeoJSON → Baugebiets-Teilflächen am Punkt."""
+def parse_baugebiete(antwort: dict[str, Any], lat: float | None = None,
+                     lon: float | None = None) -> list[dict[str, Any]]:
+    """XPlanSyn-GeoJSON → Baugebiets-Teilflächen am Punkt.
+
+    Sind Koordinaten übergeben, bleiben nur Flächen übrig, die den Punkt
+    tatsächlich enthalten — die Bbox-Abfrage liefert auch Nachbarn."""
     flaechen = []
     for f in antwort.get("features") or []:
+        if lat is not None and lon is not None:
+            if not enthaelt_punkt(f.get("geometry"), lat, lon):
+                continue
         p = f.get("properties") or {}
         art = p.get("besondereArtDerBaulNutzungWert")
         flaechen.append({
@@ -235,13 +283,18 @@ def parse_berlin_denkmal(antwort: dict[str, Any]) -> list[dict[str, Any]]:
 
 
 async def _wfs(out: Outbound, quelle: str, url: str, typ: str,
-               lat: float, lon: float) -> dict[str, Any]:
+               lat: float, lon: float,
+               format: str = "application/json") -> dict[str, Any]:
+    """Das Ausgabeformat unterscheidet sich je Dienst: Die
+    XPlanSyn-Instanzen antworten nur auf ``application/geo+json`` und
+    lehnen ``application/json`` mit HTTP 400 ab (Phase 0 2026-08-08),
+    der Berliner Dienst umgekehrt."""
     try:
         return await out.get_json(
             quelle, url,
             params={
                 "SERVICE": "WFS", "VERSION": "2.0.0", "REQUEST": "GetFeature",
-                "TYPENAMES": typ, "outputFormat": "application/json",
+                "TYPENAMES": typ, "outputFormat": format,
                 "count": "20", "bbox": _bbox(lat, lon),
             },
             timeout=60.0, limiter=quelle, min_interval=1.0,
@@ -273,8 +326,9 @@ async def load(out: Outbound, lat: float, lon: float) -> SourceResult:
     dienst = dienst_fuer(lat, lon)
     if dienst is not None:
         antwort = await _wfs(out, "xplan", dienst["url"],
-                             "xplan:BP_BaugebietsTeilFlaeche", lat, lon)
-        daten["baugebiete"] = parse_baugebiete(antwort)
+                             "xplan:BP_BaugebietsTeilFlaeche", lat, lon,
+                             format=XPLAN_FORMAT)
+        daten["baugebiete"] = parse_baugebiete(antwort, lat, lon)
         daten["gebiet"] = dienst["gebiet"]
         lizenz = dienst["lizenz"]
         if daten["baugebiete"]:

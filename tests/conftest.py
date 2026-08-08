@@ -249,3 +249,13 @@ def frequenz_fixture():
 @pytest.fixture(scope="session")
 def baurecht_fixture():
     return load_fixture("raw_baurecht.json")
+
+
+@pytest.fixture(scope="session")
+def ihk_berlin_csv():
+    return load_fixture("raw_ihk_berlin.json")["csv"]
+
+
+@pytest.fixture(scope="session")
+def kalender_fixture():
+    return load_fixture("raw_kalender.json")

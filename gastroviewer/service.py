@@ -28,7 +28,9 @@ from .sources import (airbnb as airbnb_mod,
                       hamburg as hamburg_mod,
                       einkommen as einkommen_mod, gehweg,
                       genesis as genesis_mod,
+                      ihk_berlin as ihk_mod,
                       indikatoren as indikatoren_mod,
+                      kalender as kalender_mod,
                       klima as klima_mod, kreisprofil as kreisprofil_mod,
                       laerm as laerm_mod, links,
                       maerkte as maerkte_mod,
@@ -613,6 +615,51 @@ class PointService:
             lambda: frequenz_mod.load(
                 self.outbound, lat, lon,
                 lambda: self._augsburg_frequenz(refresh)),
+            refresh=refresh,
+        )
+
+    async def _ihk_betriebe(self, refresh: bool = False):
+        """Die IHK-Datei ist ~125 MB — einmal laden, auf Gastronomie
+        reduziert 30 Tage halten."""
+        async def laden() -> SourceResult:
+            text = await self.outbound.get_text(
+                "ihk_berlin", ihk_mod.CSV_URL, timeout=600.0,
+                limiter="ihk_berlin", min_interval=1.0)
+            betriebe = await asyncio.to_thread(ihk_mod.parse_gastro, text)
+            return SourceResult(name="ihk_berlin", ok=True,
+                                data={"betriebe": betriebe})
+
+        res = await self._cached("ihk_berlin", "ihk_berlin|gastro", laden,
+                                 refresh=refresh)
+        if not res.ok or not res.data:
+            raise SourceError(
+                (res.error or {}).get("kind", "unknown"),
+                (res.error or {}).get("message", "IHK-Datei nicht ladbar."))
+        return res.data["betriebe"]
+
+    async def ihk_berlin(self, lat: float, lon: float, radius: int,
+                         refresh: bool = False):
+        """Gastronomie-Bestand aus den IHK-Gewerbedaten (nur Berlin).
+        Auf Anforderung, weil der erste Abruf 125 MB lädt."""
+        if not ihk_mod.ist_berlin(lat, lon):
+            return await ihk_mod.load(self.outbound, lat, lon, radius,
+                                      lambda: None)
+        key = cache_key("ihk_punkt", lat, lon, radius)
+        return await self._cached(
+            "ihk_punkt", key,
+            lambda: ihk_mod.load(self.outbound, lat, lon, radius,
+                                 lambda: self._ihk_betriebe(refresh)),
+            refresh=refresh,
+        )
+
+    async def kalender(self, ags: str | None, refresh: bool = False):
+        """Feiertage und Schulferien des Bundeslandes — Kontextband."""
+        jahr = int(now_iso()[:4])
+        land = kalender_mod.land_aus_ags(ags)
+        key = f"kalender|{land[0] if land else 'ohne'}|{jahr}"
+        return await self._cached(
+            "kalender", key,
+            lambda: kalender_mod.load(self.outbound, ags, jahr),
             refresh=refresh,
         )
 

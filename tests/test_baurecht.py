@@ -41,10 +41,15 @@ def test_baunvo_deutung_trennt_zulaessig_von_unzulaessig():
     assert baurecht.deuten(None) is None
 
 
-def test_hamburg_rathausmarkt_ist_kerngebiet(baurecht_fixture):
-    flaechen = baurecht.parse_baugebiete(
-        baurecht_fixture["hamburg_rathausmarkt"])
-    assert len(flaechen) == 1, "Doppelte Flächen desselben Plans zusammenfassen"
+def test_hamburg_innenstadt_ist_kerngebiet(baurecht_fixture):
+    """Die Bbox liefert sechs Kandidaten — nur einer enthält den Punkt.
+    Ohne die Geometrieprüfung stünde hier womöglich die Gebietsart des
+    Nachbargrundstücks."""
+    p = baurecht_fixture["hamburg_innenstadt_punkt"]
+    roh = baurecht_fixture["hamburg_innenstadt"]
+    assert len(roh["features"]) == 6, "Fixture soll Nachbarflächen enthalten"
+    flaechen = baurecht.parse_baugebiete(roh, p["lat"], p["lon"])
+    assert len(flaechen) == 1
     f = flaechen[0]
     assert f["plan"] == "BSInnenstadt"
     assert f["art"] == "Kerngebiet"
@@ -85,9 +90,10 @@ def test_load_hamburg_meldet_gebietsart(baurecht_fixture):
     class Fake:
         async def get_json(self, source, url, **kw):
             assert kw["params"]["TYPENAMES"] == "xplan:BP_BaugebietsTeilFlaeche"
-            return baurecht_fixture["hamburg_rathausmarkt"]
+            return baurecht_fixture["hamburg_innenstadt"]
 
-    res = asyncio.run(baurecht.load(Fake(), 53.5503, 9.9937))
+    p = baurecht_fixture["hamburg_innenstadt_punkt"]
+    res = asyncio.run(baurecht.load(Fake(), p["lat"], p["lon"]))
     assert res.ok
     assert res.data["stufe"] == "gebietsart"
     assert res.data["gebiet"] == "Hamburg"
@@ -152,3 +158,56 @@ def test_tls_fehler_wird_uebersetzt():
 
 def test_sperrzeiten_werden_als_nicht_vorhanden_benannt():
     assert any("Sperrzeiten" in h for h in baurecht.HINWEISE)
+
+
+def test_xplan_verlangt_geojson_format(baurecht_fixture):
+    """Die XPlanSyn-Dienste antworten nur auf „application/geo+json";
+    mit „application/json" gibt es HTTP 400 (in Phase 0 belegt)."""
+    formate = []
+
+    class Fake:
+        async def get_json(self, source, url, **kw):
+            formate.append(kw["params"]["outputFormat"])
+            return baurecht_fixture["hamburg_innenstadt"]
+
+    p = baurecht_fixture["hamburg_innenstadt_punkt"]
+    asyncio.run(baurecht.load(Fake(), p["lat"], p["lon"]))
+    assert formate == ["application/geo+json"]
+
+
+def test_berlin_bleibt_bei_application_json(baurecht_fixture):
+    formate = []
+
+    class Fake:
+        async def get_json(self, source, url, **kw):
+            formate.append(kw["params"]["outputFormat"])
+            if "sanier" in url:
+                return baurecht_fixture["berlin_sanierung_luisenstadt"]
+            if "denkmale" in url:
+                return baurecht_fixture["berlin_denkmale_alexanderplatz"]
+            return baurecht_fixture["berlin_bplan_alexanderplatz"]
+
+    asyncio.run(baurecht.load(Fake(), 52.5210, 13.4130))
+    assert set(formate) == {"application/json"}
+
+
+def test_punkt_in_polygon():
+    """Strahlverfahren, an einem Quadrat und einem Polygon mit Loch."""
+    quadrat = {"type": "Polygon",
+               "coordinates": [[[0, 0], [0, 2], [2, 2], [2, 0], [0, 0]]]}
+    assert baurecht.enthaelt_punkt(quadrat, 1, 1)
+    assert not baurecht.enthaelt_punkt(quadrat, 3, 1)
+    mit_loch = {"type": "Polygon", "coordinates": [
+        [[0, 0], [0, 4], [4, 4], [4, 0], [0, 0]],
+        [[1, 1], [1, 3], [3, 3], [3, 1], [1, 1]]]}
+    assert baurecht.enthaelt_punkt(mit_loch, 0.5, 0.5)
+    assert not baurecht.enthaelt_punkt(mit_loch, 2, 2), "Loch zählt nicht"
+    assert not baurecht.enthaelt_punkt(None, 1, 1)
+
+
+def test_freiburg_punktpruefung_greift_auch_dort(baurecht_fixture):
+    """Ohne Koordinaten bleiben alle Kandidaten, mit Koordinaten eines
+    fernen Punktes keiner."""
+    roh = baurecht_fixture["freiburg_innenstadt"]
+    assert baurecht.parse_baugebiete(roh)
+    assert baurecht.parse_baugebiete(roh, 48.13, 11.57) == []

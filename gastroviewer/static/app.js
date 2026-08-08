@@ -146,8 +146,22 @@ function fehlerbox(err) {
   return el('div', { class: 'fehlerbox' }, kinder);
 }
 
+/* Die Quellenmodule setzen Betonung in Markdown-Manier (**so**). Ohne
+   Umsetzung standen die Sternchen sichtbar im Text. */
+function mitBetonung(text) {
+  return String(text ?? '').split('**')
+    .map((s, i) => (i % 2 ? el('strong', {}, s) : s));
+}
+
 function warnungen(liste) {
-  return (liste || []).map((w) => el('div', { class: 'warnung' }, w));
+  return (liste || []).map((w) => el('div', { class: 'warnung' },
+    ...mitBetonung(w)));
+}
+
+/* Hinweiszeile mit Betonung — die Kurzform für die vielen
+   `hinweise`-Listen der Quellenmodule. */
+function hinweisZeile(text, klasse = 'hinweis-klein') {
+  return el('div', { class: klasse }, ...mitBetonung(text));
 }
 
 /* --------------------------------------------------------------- Karte */
@@ -1156,6 +1170,7 @@ function lade(refresh = false) {
         ladeGenesis(d.data?.ags, lauf);
         ladePks(d.data?.ags, lauf);
         ladeWahl(d.data?.ags, lauf);
+        ladeKalender(d.data?.ags, lauf);
       }
     })
     .catch((e) => {
@@ -1176,6 +1191,7 @@ function lade(refresh = false) {
       ladeGenesis(null, lauf);
       ladePks(null, lauf);
       ladeWahl(null, lauf);
+      ladeKalender(null, lauf);
       // Der Lärmblock braucht keinen Schlüssel — nur der Bundesland-Hinweis
       // entfällt, die Kartierung selbst lädt trotzdem.
       ladeLaerm(null, lauf);
@@ -1312,8 +1328,10 @@ function baueGeruest() {
     block('franchise', '4c · Systemgastronomie & Marken'),
     block('dynamik', '4e · Gastro-Dynamik (OSM-Historie)'),
     block('overture', '4f · Wettbewerbs-Abgleich (Overture)'),
+    block('ihkberlin', '4g · Gastro-Bestand der IHK (nur Berlin)'),
     block('umfeld', '5 · Umfeld'),
     block('klima', '5b · Klima für Außengastronomie (DWD)'),
+    block('kalender', '5h · Feiertage und Schulferien (Kontext)'),
     block('maerkte', '5c · Städtische Märkte (München/Hamburg)'),
     block('airbnb', '5d · Kurzzeitvermietung (Inside Airbnb)'),
     block('messe', '5e · Messe-Kalender (Messe München)'),
@@ -1341,6 +1359,7 @@ function baueGeruest() {
   zeigeGehwegAngebot();
   zeigeLieferAngebot();
   zeigeOepnvEinzugAngebot();
+  zeigeIhkAngebot();
 }
 
 /* --- 6h ÖPNV-Einzugsgebiet: wie 4b/4d auf Anforderung — die Rechnung über
@@ -1442,7 +1461,7 @@ function zeigeOepnvEinzug(d, minuten) {
     el('div', {},
       el('button', { id: 'btn-oepnv-einzug', onclick: zeigeOepnvEinzugAngebot },
         'neue Rechnung')),
-    ...(z.hinweise || []).map((h) => el('div', { class: 'hinweis-klein' }, h)),
+    ...(z.hinweise || []).map((h) => hinweisZeile(h)),
     ...warnungen(d.warnings || []));
   setQuelle(id, d.provenance);
 }
@@ -2585,7 +2604,173 @@ function zeigeLuft(d) {
       + `${NF.format(l.station?.distanz_m ?? 0)} m ${l.station?.richtung || ''}. `,
       el('a', { href: l.portal, target: '_blank', rel: 'noopener' },
         'Luftdaten-Portal des UBA')),
-    ...(l.hinweise || []).map((h) => el('div', { class: 'hinweis-klein' }, h)),
+    ...(l.hinweise || []).map((h) => hinweisZeile(h)),
+    ...warnungen(d.warnings || []));
+  setQuelle(id, d.provenance);
+}
+
+/* Block 5h — Feiertage und Schulferien. Bewusst ein Kontextband ohne
+   Kennzahl: Für die Standortwahl zählt allein, wie die Ferienlage zum
+   Kundenprofil passt — und das entscheidet der Tourismus- bzw.
+   Studierendenblock, nicht dieser hier. */
+async function ladeKalender(ags, lauf) {
+  const id = 'kalender';
+  if (!ags) {
+    setStatus(id, 'leer', 'kein Gemeindeschlüssel');
+    setInhalt(id, el('div', { class: 'notiz' },
+      'Ohne Gemeindeschlüssel (aus dem Zensusblock) lässt sich kein '
+      + 'Bundesland zuordnen.'));
+    return;
+  }
+  try {
+    const d = await hole('/api/kalender', { ags });
+    if (lauf !== state.ladeLauf) return;
+    state.daten.kalender = d;
+    zeigeKalender(d);
+  } catch (e) {
+    if (lauf === state.ladeLauf) zeigeBlockFehler(id, e);
+  }
+}
+
+function zeigeKalender(d) {
+  const id = 'kalender';
+  if (!d.ok) {
+    setStatus(id, 'fehler', 'nicht erreichbar');
+    setInhalt(id, fehlerbox(d.error));
+    setQuelle(id, d.provenance);
+    return;
+  }
+  const k = d.data;
+  if (!k) {
+    setStatus(id, 'leer', 'kein Bundesland');
+    setInhalt(id, ...warnungen(d.warnings || []));
+    setQuelle(id, d.provenance);
+    return;
+  }
+  setStatus(id, 'ok', k.bundesland);
+  const ftab = el('table', { class: 'daten' },
+    el('tr', {}, el('th', {}, 'Ferien'), el('th', {}, 'Zeitraum'),
+      el('th', { class: 'num' }, 'Tage')));
+  for (const f of k.ferien || []) {
+    ftab.append(el('tr', {},
+      el('td', {}, f.name || '—'),
+      el('td', {}, `${datumKurz(f.von)} – ${datumKurz(f.bis)}`),
+      el('td', { class: 'num' }, f.tage === null ? '—' : NF.format(f.tage))));
+  }
+  const s = k.sommerferien;
+  setInhalt(id,
+    el('div', { class: 'kennzahlen' },
+      el('div', { class: 'kennzahl' },
+        el('div', { class: 'titel' }, 'Sommerferien'),
+        el('div', { class: `wert${s ? '' : ' fehlt'}` },
+          s ? `${NF.format(s.tage)} Tage` : 'keine Angabe'),
+        el('div', { class: 'basis' },
+          s ? `${datumKurz(s.von)} – ${datumKurz(s.bis)}` : '')),
+      kennzahl(`Gesetzliche Feiertage ${k.jahr}`, k.feiertage_gesamt),
+      kennzahl('davon nur in diesem Land', k.feiertage_landesspezifisch)),
+    ftab,
+    ...(k.hinweise || []).map((h) => hinweisZeile(h)),
+    ...warnungen(d.warnings || []));
+  setQuelle(id, d.provenance);
+}
+
+function datumKurz(iso) {
+  if (!iso) return '—';
+  const t = String(iso).split('-');
+  return t.length === 3 ? `${t[2]}.${t[1]}.${t[0]}` : iso;
+}
+
+/* Block 4g — IHK-Gewerbedaten Berlin. Auf Anforderung, weil der erste
+   Abruf eine rund 125 MB große Datei lädt (Git LFS). Danach 30 Tage im
+   Cache — die Datei wird ohnehin nur monatlich fortgeschrieben. */
+function zeigeIhkAngebot() {
+  const inBerlin = state.lat !== null
+    && state.lat >= 52.33 && state.lat <= 52.68
+    && state.lon >= 13.08 && state.lon <= 13.77;
+  if (!inBerlin) {
+    setStatus('ihkberlin', 'leer', 'nur Berlin');
+    setInhalt('ihkberlin', el('p', { class: 'hinweis-klein' },
+      'Die IHK Berlin veröffentlicht ihren Mitgliederbestand als offene '
+      + 'Daten (CC0) — mit Koordinate, Betriebsalter und '
+      + 'Beschäftigtenklasse. Andere Industrie- und Handelskammern tun '
+      + 'das nicht, deshalb gilt dieser Block nur für Berlin.'));
+    return;
+  }
+  setStatus('ihkberlin', 'ok', 'auf Anforderung');
+  setInhalt('ihkberlin',
+    el('p', { class: 'hinweis-klein' },
+      'Der amtliche Gegenwert zur OSM-Zählung: Die IHK kennt jeden '
+      + 'Mitgliedsbetrieb, OpenStreetMap nur den eingetragenen. Dazu '
+      + 'Betriebsalter und Beschäftigtenklasse je Betrieb.'),
+    el('p', { class: 'hinweis-klein' },
+      'Läuft nicht automatisch mit: Der erste Abruf lädt rund 125 MB. '
+      + 'Danach bleibt die Auswertung 30 Tage im Cache.'),
+    el('button', { id: 'btn-ihk', onclick: ladeIhkBerlin },
+      'IHK-Bestand laden (125 MB)'));
+}
+
+async function ladeIhkBerlin() {
+  const id = 'ihkberlin';
+  const lauf = state.ladeLauf;
+  setStatus(id, 'laedt', 'lädt …');
+  setInhalt(id, el('div', { class: 'laden' }),
+    el('p', { class: 'hinweis-klein' },
+      'Die IHK-Datei wird geladen — beim ersten Mal einige Minuten.'));
+  const knopf = document.getElementById('btn-ihk');
+  if (knopf) knopf.disabled = true;
+  try {
+    const d = await hole('/api/point/ihk-berlin',
+      { lat: state.lat, lon: state.lon, r: state.radius });
+    if (lauf !== state.ladeLauf) return;
+    state.daten.ihkberlin = d;
+    zeigeIhkBerlin(d);
+  } catch (e) {
+    if (lauf === state.ladeLauf) zeigeBlockFehler(id, e);
+  } finally {
+    if (knopf) knopf.disabled = false;
+  }
+}
+
+function zeigeIhkBerlin(d) {
+  const id = 'ihkberlin';
+  if (!d.ok) {
+    setStatus(id, 'fehler', 'nicht erreichbar');
+    setInhalt(id, fehlerbox(d.error));
+    setQuelle(id, d.provenance);
+    return;
+  }
+  const k = d.data;
+  if (!k) {
+    setStatus(id, 'leer', 'nur Berlin');
+    setInhalt(id, ...warnungen(d.warnings || []));
+    setQuelle(id, d.provenance);
+    return;
+  }
+  setStatus(id, 'ok', `${NF.format(k.gastronomie)} Betriebe`);
+
+  const btab = el('table', { class: 'daten' },
+    el('tr', {}, el('th', {}, 'Branche'), el('th', { class: 'num' }, 'Betriebe')));
+  for (const b of k.nach_branche || []) {
+    btab.append(el('tr', {},
+      el('td', {}, b.branche),
+      el('td', { class: 'num' }, NF.format(b.anzahl))));
+  }
+
+  setInhalt(id,
+    el('div', { class: 'kennzahlen' },
+      kennzahl(`Gastronomie im ${NF.format(k.radius_m)}-m-Umkreis`, k.gastronomie),
+      kennzahl('Beherbergung', k.beherbergung),
+      kennzahl('Median-Betriebsalter', k.median_alter_jahre, 'Jahre', 1),
+      el('div', { class: 'kennzahl' },
+        el('div', { class: 'titel' }, 'jung / alteingesessen'),
+        el('div', { class: 'wert' },
+          `${NF.format(k.junge_betriebe)} / ${NF.format(k.alte_betriebe)}`),
+        el('div', { class: 'basis' }, 'bis 3 Jahre / ab 20 Jahre'))),
+    k.planungsraum ? el('div', { class: 'notiz' },
+      el('strong', {}, 'Lage: '),
+      `${k.planungsraum} · Bezirk ${k.bezirk || '—'}`) : null,
+    btab,
+    ...(k.hinweise || []).map((h) => hinweisZeile(h)),
     ...warnungen(d.warnings || []));
   setQuelle(id, d.provenance);
 }
@@ -2664,7 +2849,7 @@ function zeigeBaurecht(d) {
   }
 
   setInhalt(id, ...teile.filter(Boolean),
-    ...(b.hinweise || []).map((h) => el('div', { class: 'hinweis-klein' }, h)),
+    ...(b.hinweise || []).map((h) => hinweisZeile(h)),
     ...warnungen(d.warnings || []));
   setQuelle(id, d.provenance);
 }
@@ -2732,7 +2917,7 @@ function zeigeFrequenz(d) {
       el('strong', {}, 'Zählstelle: '),
       `${f.zaehlstelle} in ${f.stadt}, ${NF.format(f.distanz_m)} m entfernt · `
       + `${f.traeger} · Stand: ${f.stand}`),
-    ...(f.hinweise || []).map((h) => el('div', { class: 'hinweis-klein' }, h)),
+    ...(f.hinweise || []).map((h) => hinweisZeile(h)),
     ...warnungen(d.warnings || []));
   setQuelle(id, d.provenance);
 }
@@ -2796,7 +2981,7 @@ function zeigeSonne(d) {
         ? ` (${NF.format(s.hoehen_abdeckung_prozent)} %)` : '')
       + `. Die übrigen ${NF.format(s.gebaeude_ohne_hoehe)} werfen hier keinen `
       + 'Schatten — die Sonnenzeiten sind deshalb eine Obergrenze.'),
-    ...(s.hinweise || []).map((h) => el('div', { class: 'hinweis-klein' }, h)),
+    ...(s.hinweise || []).map((h) => hinweisZeile(h)),
     ...warnungen(d.warnings || []));
   setQuelle(id, d.provenance);
 }
@@ -3022,7 +3207,7 @@ function zeigeOverture(d) {
   }
 
   setInhalt(id, ...teile,
-    ...(o.hinweise || []).map((h) => el('div', { class: 'hinweis-klein' }, h)),
+    ...(o.hinweise || []).map((h) => hinweisZeile(h)),
     ...warnungen(d.warnings || []));
   setQuelle(id, d.provenance);
 }
@@ -3066,7 +3251,7 @@ function zeigeLaerm(d) {
       el('div', { class: 'notiz' },
         'Am Punkt liegt keine kartierte Hauptlärmquelle — für '
         + 'Außengastronomie meist die gute Nachricht.'),
-      ...(l.hinweise || []).map((h) => el('div', { class: 'hinweis-klein' }, h)),
+      ...(l.hinweise || []).map((h) => hinweisZeile(h)),
       ...warnungen(d.warnings || []));
     setQuelle(id, d.provenance);
     return;
@@ -3101,7 +3286,7 @@ function zeigeLaerm(d) {
       zelle(l.lden, 'LDEN (Tag-Abend-Nacht-Pegel)'),
       zelle(l.lnight, 'LNight (Nachtpegel 22–6 Uhr)')),
     ...extra,
-    ...(l.hinweise || []).map((h) => el('div', { class: 'hinweis-klein' }, h)),
+    ...(l.hinweise || []).map((h) => hinweisZeile(h)),
     ...warnungen(d.warnings || []));
   setQuelle(id, d.provenance);
 }
@@ -3213,7 +3398,7 @@ function zeigeBaustellen(d) {
         `Im Umkreis von ${NF.format(b.radius_m)} m ist aktuell keine Baustelle `
         + 'und kein Haltverbot gemeldet (Stichtag '
         + `${b.stichtag}, Vorschau vier Wochen).`),
-      ...(b.hinweise || []).map((h) => el('div', { class: 'hinweis-klein' }, h)),
+      ...(b.hinweise || []).map((h) => hinweisZeile(h)),
       ...warnungen(d.warnings || []));
     setQuelle(id, d.provenance);
     return;
@@ -3282,7 +3467,7 @@ function zeigeBaustellen(d) {
     }));
 
   setInhalt(id, kz, liste,
-    ...(b.hinweise || []).map((h) => el('div', { class: 'hinweis-klein' }, h)),
+    ...(b.hinweise || []).map((h) => hinweisZeile(h)),
     ...warnungen(d.warnings || []));
   setQuelle(id, d.provenance);
 }
@@ -3348,7 +3533,7 @@ function zeigeMaerkte(d) {
           .filter(Boolean).join(' · ')))));
 
   setInhalt(id, kz, liste,
-    ...(m.hinweise || []).map((h) => el('div', { class: 'hinweis-klein' }, h)),
+    ...(m.hinweise || []).map((h) => hinweisZeile(h)),
     ...warnungen(d.warnings || []));
   setQuelle(id, d.provenance);
 }
@@ -3413,7 +3598,7 @@ function zeigeAirbnb(d) {
       `${a.stadt}, Sammellauf vom ${a.stichtag || 'unbekannt'} — die `
       + `${NF.format(a.liste?.length || 0)} nächsten in der Liste.`),
     kz, typZeile, liste,
-    ...(a.hinweise || []).map((h) => el('div', { class: 'hinweis-klein' }, h)),
+    ...(a.hinweise || []).map((h) => hinweisZeile(h)),
     ...warnungen(d.warnings || []));
   setQuelle(id, d.provenance);
 }
@@ -3504,7 +3689,7 @@ function zeigeMesse(d) {
     : null;
 
   setInhalt(id, kz, listeLaufend, listeKommend, groesste, reihe,
-    ...(m.hinweise || []).map((h) => el('div', { class: 'hinweis-klein' }, h)),
+    ...(m.hinweise || []).map((h) => hinweisZeile(h)),
     ...warnungen(d.warnings || []));
   setQuelle(id, d.provenance);
 }
@@ -3582,7 +3767,7 @@ function zeigeTourismus(d) {
       'Stadtweite amtliche Beherbergungszahlen — der Wert hängt nicht vom '
       + 'gewählten Punkt ab.'),
     kz, saisonTeil, reihe,
-    ...(t.hinweise || []).map((h) => el('div', { class: 'hinweis-klein' }, h)),
+    ...(t.hinweise || []).map((h) => hinweisZeile(h)),
     ...warnungen(d.warnings || []));
   setQuelle(id, d.provenance);
 }
@@ -3937,7 +4122,7 @@ function zeigeGenesis(d, ags) {
   }
 
   setInhalt(id, kz, tab, ...kreisTeile, ...gemTeile,
-    ...(g.hinweise || []).map((h) => el('div', { class: 'hinweis-klein' }, h)),
+    ...(g.hinweise || []).map((h) => hinweisZeile(h)),
     ...warnungen(d.warnings || []),
     el('div', { class: 'pflegeleiste' },
       el('button', { onclick: () => entferneGenesisZugang(ags) },
@@ -4027,7 +4212,7 @@ function zeigeIndikatoren(d) {
         + 'gegen den Stand vor ~5 Jahren (gewählter Wert).')
       : null,
     tab, ...deutung,
-    ...(dat.hinweise || []).map((h) => el('div', { class: 'hinweis-klein' }, h)),
+    ...(dat.hinweise || []).map((h) => hinweisZeile(h)),
     ...warnungen(d.warnings || []));
   setQuelle(id, d.provenance);
 }
@@ -4667,7 +4852,7 @@ async function kannibalisierungRechnen(paar, knopf) {
       kennzahl(`Anteil am Umkreis „${d.b.label}"`, d.anteil_an_b_prozent, '%', 1),
       kennzahl(`Einwohner „${d.a.label}" (${NF.format(d.a.radius_m)} m)`, d.einwohner_a),
       kennzahl(`Einwohner „${d.b.label}" (${NF.format(d.b.radius_m)} m)`, d.einwohner_b)),
-    ...(d.hinweise || []).map((h) => el('div', { class: 'hinweis-klein' }, h)),
+    ...(d.hinweise || []).map((h) => hinweisZeile(h)),
     el('button', {
       class: 'kein-druck',
       onclick: (ev) => ev.target.closest('.verlauf-ergebnis').remove(),
@@ -6178,7 +6363,7 @@ function zeigeVerkehrsmenge(d) {
   if (!v || !v.zaehlstellen.length) {
     setStatus(id, 'leer', 'keine Zählstelle');
     setInhalt(id, ...warnungen(d.warnings),
-      ...((v && v.hinweise) || []).map((h) => el('div', { class: 'hinweis-klein' }, h)));
+      ...((v && v.hinweise) || []).map((h) => hinweisZeile(h)));
     setQuelle(id, d.provenance);
     return;
   }
@@ -6209,7 +6394,7 @@ function zeigeVerkehrsmenge(d) {
       'Vorbeifahrender Verkehr ist keine Kundschaft. Ohne Zufahrt, Parkplatz oder '
       + 'Drive-through nutzt eine hohe Verkehrsstärke wenig — und der Außengastronomie '
       + 'schadet sie eher. Der DTV ist ein Jahresmittel über alle Wochentage.'),
-    ...(v.hinweise || []).map((h) => el('div', { class: 'hinweis-klein' }, h)),
+    ...(v.hinweise || []).map((h) => hinweisZeile(h)),
     el('div', { class: 'notiz' },
       v.dienst === 'bast'
         ? 'Gemessen werden bundesweit nur Autobahnen und Bundesstraßen '

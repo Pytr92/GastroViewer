@@ -241,6 +241,12 @@ Antworten unter `fixtures/`.
 | [OffeneRegister.de](https://offeneregister.de/) | Handelsregister-Umfeld je PLZ (Betreibergesellschaften, Registernummern) — nur nach `import-register` | CC BY 4.0, OpenCorporates/OKF DE — **eingefrorene Datenspende, Stand 05.02.2019** | lokaler Einmal-Import |
 | [Urban Data Platform Hamburg](https://api.hamburg.de/datasets/v1) | Wochenmärkte, Baustellen, Rad-Zählsäulen, Soziale Erhaltungsverordnungen (Hamburg) | dl-de/by-2-0, © FHH | 24 h |
 | [VIZ Berlin](https://viz.berlin.de/) | Baustellen und Sperrungen (Berlin) | dl-de/by-2-0, © VIZ Berlin | 24 h |
+| [Open Data Dortmund](https://open-data.dortmund.de/) · [Würzburg](https://opendata.wuerzburg.de/) · [Augsburg](https://www.augsburg.de/) | **gemessene Passantenfrequenz** als Tagesgang, 7 Zählstellen (Block 6i) | dl-de/zero-2-0 (Dortmund), dl-de/by-2-0 + hystreet.com GmbH (Würzburg), CC BY 4.0 (Augsburg) | 30 Tage |
+| [XPlanung Hamburg](https://hh.xplan.diplanung.de/) · [Freiburg](https://xplanung.freiburg.de/) | **Art der baulichen Nutzung** nach BauNVO punktgenau (Block 6j) | dl-de/by-2-0, © FHH bzw. Stadt Freiburg | 30 Tage |
+| [Geoportal Berlin](https://gdi.berlin.de/) | Bebauungsplan-Umringe, Sanierungsgebiete (§§ 144/145 BauGB), Denkmalliste (Block 6j) | dl-de/zero-2-0, © Geoportal Berlin | 30 Tage |
+| [IHK Berlin Gewerbedaten](https://datenregister.berlin.de/dataset/gewerbedaten-ihkberlin) | Gastronomie-Bestand mit Betriebsalter je Planungsraum (Block 4g, auf Anforderung, 125 MB) | **CC0** — ohne lizenzrechtliche Einschränkung | 30 Tage |
+| [OpenHolidaysAPI](https://openholidaysapi.org/) | Feiertage und Schulferien je Bundesland als Kontext (Block 5h) | ODbL; Ferientermine amtlich von der KMK | 30 Tage |
+| eigene Berechnung (keine Quelle) | **Sonne und Verschattung** am Punkt aus Sonnenstand und OSM-Gebäudehöhen (Block 5g) | Gebäude: © OpenStreetMap-Mitwirkende, ODbL | 30 Tage |
 | OSM-Kacheln | Kartenhintergrund (Vorgabe) | ODbL 1.0 | Browser |
 | [basemap.de](https://basemap.de/) (BKG) | amtlicher Kartenhintergrund, umschaltbar | dl-de/by-2-0, © GeoBasis-DE / BKG | Browser |
 
