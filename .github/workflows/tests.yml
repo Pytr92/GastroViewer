@@ -1,0 +1,38 @@
+# Testlauf bei jedem Push und Pull-Request.
+#
+# Führt die komplette pytest-Suite aus (alle Prüfungen laufen offline gegen
+# aufgezeichnete Antworten, kein Netzzugriff nötig) und prüft die Oberfläche
+# auf Syntaxfehler. So fällt jede Regression sofort auf — unabhängig vom
+# Installer-Workflow, der nur beim Paketbau läuft.
+
+name: Tests
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  pruefen:
+    strategy:
+      fail-fast: false
+      matrix:
+        # Älteste unterstützte und eine aktuelle Python-Version.
+        python: ["3.10", "3.12"]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+
+      - name: Abhängigkeiten installieren
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install .[dev]
+
+      - name: Testsuite ausführen
+        run: python -m pytest -q
+
+      - name: Oberfläche auf Syntaxfehler prüfen
+        run: node --check gastroviewer/static/app.js
