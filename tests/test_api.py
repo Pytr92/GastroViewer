@@ -27,7 +27,8 @@ class FakeOutbound:
                  laerm=None, fehler: set[str] | None = None,
                  baustellen=None, maerkte=None, indikatoren=None,
                  airbnb=None, messe=None, tourismus=None,
-                 uba=None, bfg_hochwasser=None):
+                 uba=None, bfg_hochwasser=None,
+                 pks=None, leerstandsmelder=None):
         self.zensus = zensus
         self.overpass = overpass
         self.nominatim = nominatim
@@ -58,6 +59,10 @@ class FakeOutbound:
         # Messe-Kalender und Tourismus-Monatszahlen: je eine CSV.
         self.messe = messe
         self.tourismus = tourismus
+        # BKA-Kreistabelle: die XLSX-Bytes des echten Auszugs.
+        self.pks = pks
+        # Leerstandsmelder: die Meldungsliste (Weltbestand-Auszug).
+        self.leerstandsmelder = leerstandsmelder
         self.indikatoren_csv_urls: dict[str, str] = {}
         if indikatoren:
             from gastroviewer.sources import indikatoren as ind_mod
@@ -144,6 +149,12 @@ class FakeOutbound:
                 raise SourceError("timeout",
                                   "Zeitüberschreitung — Dienst antwortet nicht.")
             return self.indikatoren["suche"]
+        if "api.leerstandsmelder.de" in url:
+            self.calls.append("leerstandsmelder")
+            if "leerstandsmelder" in self.fehler or self.leerstandsmelder is None:
+                raise SourceError("timeout",
+                                  "Zeitüberschreitung — Dienst antwortet nicht.")
+            return self.leerstandsmelder
         if "ohsome" in url:
             self.calls.append("dynamik")
             if "dynamik" in self.fehler:
@@ -225,6 +236,15 @@ class FakeOutbound:
             return self.bfg_hochwasser
         raise AssertionError(f"unerwartete Text-URL: {url}")
 
+    async def get_bytes(self, source, url, **kw):
+        if "bka.de" in url:
+            self.calls.append("pks")
+            if "pks" in self.fehler or self.pks is None:
+                raise SourceError("timeout",
+                                  "Zeitüberschreitung — Dienst antwortet nicht.")
+            return self.pks
+        raise AssertionError(f"unerwartete Bytes-URL: {url}")
+
     async def post_text(self, source, url, **kw):
         # GENESIS (Opt-in): ohne hinterlegte Kennung geht nie etwas hinaus —
         # taucht hier trotzdem ein Aufruf auf, ist das ein Fehler im Code.
@@ -243,7 +263,8 @@ def client(tmp_path, monkeypatch, zensus_600, overpass_combined, nominatim_rever
            einkommen_muenchen, kreisprofil_muenchen, dwd_klima, pendler_muenchen,
            ohsome_dynamik, laerm_bayern, muenchen_baustellen, muenchen_maerkte,
            muenchen_indikatoren, airbnb_muenchen, messe_muenchen,
-           tourismus_muenchen, uba_laerm, bfg_hochwasser):
+           tourismus_muenchen, uba_laerm, bfg_hochwasser,
+           pks_auszug, lsm_places):
     from gastroviewer.config import Settings
 
     # Der Genesis-Block ist ein Opt-in — die Testumgebung darf keine echte
@@ -265,7 +286,9 @@ def client(tmp_path, monkeypatch, zensus_600, overpass_combined, nominatim_rever
                         uba={"35": uba_laerm["leer"],
                              "30": uba_laerm["hlq_den"],
                              "29": uba_laerm["hlq_night"]},
-                        bfg_hochwasser=bfg_hochwasser["koeln_rheinufer"])
+                        bfg_hochwasser=bfg_hochwasser["koeln_rheinufer"],
+                        pks=pks_auszug,
+                        leerstandsmelder=lsm_places["places"])
     app = create_app(settings)
 
     original_lifespan_state = {}
@@ -328,14 +351,29 @@ def test_zweiter_aufruf_erzeugt_keinen_outbound_traffic(client):
     # plus 6 CSVs = 7, stadtweit nur einmal) — Inside Airbnb (Datenseite plus
     # listings.csv = 2, stadtweit nur einmal) — Messe-Kalender (1 CSV) —
     # Tourismus-Monatszahlen (1 CSV). Genesis: 0 — Opt-in ohne Kennung,
-    # es geht nichts hinaus.
-    assert vorher == 49
+    # es geht nichts hinaus. — Leerstandsmelder (1 Weltbestand) und
+    # PKS-Kreistabelle (1 XLSX); das Registerumfeld läuft rein lokal (0).
+    assert vorher == 51
 
     d = client.get("/api/point", params={"lat": LAT, "lon": LON, "r": R}).json()
     assert len(client.fake.calls) == vorher, "Cache hat nicht gegriffen"
     assert d["meta"]["outbound_requests"] == 0
     assert d["meta"]["aus_cache"] is True
     assert d["bloecke"]["zensus"]["provenance"]["cached"] is True
+
+
+def test_point_neue_bloecke_pks_leerstandsmelder_register(client):
+    d = client.get("/api/point", params={"lat": LAT, "lon": LON, "r": R}).json()
+    pks = d["bloecke"]["pks"]
+    assert pks["ok"] and pks["data"]["kreis"] == "München"
+    assert pks["data"]["delikte"][0]["faelle"] == 93854
+    lsm = d["bloecke"]["leerstandsmelder"]
+    assert lsm["ok"]
+    assert lsm["data"]["meldungen"][0]["titel"] == "Leerstand am Sendlinger Tor"
+    assert "Datenlizenz" in lsm["provenance"]["license"]
+    reg = d["bloecke"]["register"]
+    assert reg["ok"] and reg["data"]["importiert"] is False
+    assert "import-register" in reg["data"]["anleitung"]
 
 
 def test_point_dynamik_block_und_endpunkt(client):

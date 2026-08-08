@@ -167,6 +167,43 @@ def cmd_import_gtfs(args: argparse.Namespace, settings: Settings) -> int:
     return 0
 
 
+def cmd_import_register(args: argparse.Namespace, settings: Settings) -> int:
+    """OffeneRegister-Datenspende (Handelsregister, Stand 05.02.2019) einmalig
+    importieren. Wie der GTFS-Import: 260 MB laden, streamen, danach
+    beantwortet eine lokale SQLite jede PLZ-Abfrage ohne Netz."""
+    from .sources import register
+
+    tmpdir: Path | None = None
+    if args.file:
+        dump_pfad = Path(args.file).expanduser()
+        if not dump_pfad.exists():
+            print(f"Datei nicht gefunden: {dump_pfad}", file=sys.stderr)
+            return 2
+        quelle = str(dump_pfad)
+    else:
+        quelle = args.url or register.DUMP_URL
+        tmpdir = Path(tempfile.mkdtemp(prefix="gastroviewer-register-"))
+        dump_pfad = _download(quelle, tmpdir / "register.jsonl.bz2")
+
+    print("Baue lokale Registerdatenbank (Streaming, nichts wird entpackt "
+          "zwischengespeichert) …")
+    try:
+        stats = register.import_dump(settings, dump_pfad, quelle=quelle,
+                                     progress=print)
+    except Exception as exc:  # noqa: BLE001 — CLI soll die Ursache zeigen
+        print(f"Import fehlgeschlagen: {type(exc).__name__}: {exc}", file=sys.stderr)
+        return 1
+    finally:
+        if tmpdir and not args.keep:
+            shutil.rmtree(tmpdir, ignore_errors=True)
+
+    for k, v in stats.items():
+        print(f"  {k}: {v}")
+    print("Hinweis: eingefrorene Datenspende — Stand 05.02.2019, "
+          "nicht fortgeschrieben.")
+    return 0
+
+
 def cmd_import_overture(args: argparse.Namespace, settings: Settings) -> int:
     """Overture-Places-Import (zweite Wettbewerbsquelle neben OSM).
 
@@ -387,6 +424,16 @@ def build_parser() -> argparse.ArgumentParser:
         help="min_lat,min_lon,max_lat,max_lon — überschreibt --region",
     )
     ov.set_defaults(func=cmd_import_overture)
+
+    rg = sub.add_parser(
+        "import-register",
+        help="OffeneRegister-Handelsregisterdaten importieren (Stand 2019)",
+    )
+    rg.add_argument("--url", help="abweichende Dump-URL")
+    rg.add_argument("--file", help="bereits geladenen jsonl.bz2-Dump verwenden")
+    rg.add_argument("--keep", action="store_true",
+                    help="Dump nach dem Import behalten")
+    rg.set_defaults(func=cmd_import_register)
 
     c = sub.add_parser("clear-cache", help="Cache leeren")
     c.add_argument("--quelle", help="nur eine Quelle (zensus, overpass, nominatim)")

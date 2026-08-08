@@ -1000,10 +1000,17 @@ function lade(refresh = false) {
 
   // Jede Quelle einzeln — Ausfall der einen hält die andere nicht auf.
   hole('/api/point/adresse', { lat, lon, ...(refresh ? { refresh: 'true' } : {}) })
-    .then((d) => { if (aktuell()) { state.daten.adresse = d; zeigeKopf(); ladeLinks(); } })
+    .then((d) => {
+      if (aktuell()) {
+        state.daten.adresse = d; zeigeKopf(); ladeLinks();
+        ladeRegister(d.data?.plz, lauf);
+      }
+    })
     .catch((e) => {
       if (!aktuell()) return;
       state.daten.adresse = { ok: false, error: { message: e.message } };
+      // Ohne Adresse gibt es keine PLZ — der Registerblock sagt das selbst.
+      ladeRegister(null, lauf);
       zeigeKopf();
     });
 
@@ -1016,6 +1023,7 @@ function lade(refresh = false) {
         ladePendler(d.data?.ags, lauf);
         ladeLaerm(d.data?.bundesland_code, lauf);
         ladeGenesis(d.data?.ags, lauf);
+        ladePks(d.data?.ags, lauf);
       }
     })
     .catch((e) => {
@@ -1067,6 +1075,10 @@ function lade(refresh = false) {
   hole('/api/point/klima', { lat, lon })
     .then((d) => { if (aktuell()) { state.daten.klima = d; zeigeKlima(d); } })
     .catch((e) => aktuell() && zeigeBlockFehler('klima', e));
+
+  hole('/api/point/leerstandsmelder', p)
+    .then((d) => { if (aktuell()) { state.daten.leerstandsmelder = d; zeigeLeerstandsmelder(d); } })
+    .catch((e) => aktuell() && zeigeBlockFehler('leerstandsmelder', e));
 
   hole('/api/point/dynamik', p)
     .then((d) => { if (aktuell()) { state.daten.dynamik = d; zeigeDynamik(d); } })
@@ -1133,6 +1145,7 @@ function baueGeruest() {
     block('pendler', '3d · Pendler (Gemeinde)'),
     block('genesis', '3e · Amtliche Gastro-Anker (Regionaldatenbank, Opt-in)'),
     block('tourismus', '3f · Tourismus-Saisonalität (München)'),
+    block('pks', '3g · Sicherheitslage (Kriminalstatistik, Kreis)'),
     block('gastronomie', '4 · Gastronomie'),
     block('gehweg', '4b · Erreichbarkeit zu Fuß'),
     block('liefergebiet', '4d · Rad-Liefergebiet'),
@@ -1152,6 +1165,8 @@ function baueGeruest() {
     block('laerm', '6f · Straßenlärm (EU-Umgebungslärmkartierung)'),
     block('baustellen', '6g · Baustellen (München/Hamburg/Berlin)'),
     block('leerstand', '7 · Leerstände'),
+    block('leerstandsmelder', '7b · Leerstandsmelder (bürgerschaftlich gemeldet)'),
+    block('register', '7c · Handelsregister-Umfeld (OffeneRegister, Stand 2019)'),
     block('quellen', '8 · Weiterführende Quellen'),
     block('grenzen', 'Bekannte Grenzen dieser Daten'),
   );
@@ -1801,6 +1816,113 @@ function zeigeOsm(d) {
   setQuelle('leerstand', d.provenance);
 }
 
+/* Block 7b — Leerstandsmelder.de: zweite Untergrenze neben dem OSM-Leerstand,
+   unabhängig erhoben (Bürgermeldungen). Auf ausdrücklichen Wunsch mit
+   Lizenz-Warnung eingebaut — die Plattform weist keine Datenlizenz aus. */
+function zeigeLeerstandsmelder(d) {
+  const id = 'leerstandsmelder';
+  if (!d.ok) {
+    setStatus(id, 'fehler', 'nicht erreichbar');
+    setInhalt(id, fehlerbox(d.error));
+    setQuelle(id, d.provenance);
+    return;
+  }
+  const m = d.data || {};
+  const eintraege = m.meldungen || [];
+  setStatus(id, eintraege.length ? 'ok' : 'leer',
+    eintraege.length
+      ? `${NF.format(m.gesamt_im_umfeld)} Meldungen`
+      : 'keine Meldung');
+
+  const inhalt = [];
+  if (eintraege.length) {
+    inhalt.push(el('div', { class: 'kennzahlen' },
+      kennzahl(`Meldungen im Umfeld (${NF.format(m.max_distanz_m)} m)`, m.gesamt_im_umfeld),
+      kennzahl('davon ohne Ende-Datum', m.offen_im_umfeld),
+      kennzahl('im gewählten Radius', m.im_radius)));
+    inhalt.push(el('ul', { class: 'liste' },
+      eintraege.map((x) => el('li', {},
+        el('span', { class: 'haupt' },
+          el('a', { href: x.url, target: '_blank', rel: 'noopener',
+            title: 'Meldung auf leerstandsmelder.de öffnen' },
+          x.titel || x.strasse || 'Meldung'),
+          x.beendet_am ? ' — beendet ' + fmtIsoDatum(x.beendet_am) : ''),
+        el('span', { class: 'neben' },
+          `gemeldet ${fmtIsoDatum(x.gemeldet_am)} · `
+          + `${NF.format(x.distanz_m)} m ${x.richtung}`)))));
+  }
+  setInhalt(id,
+    ...inhalt,
+    ...(m.hinweise || []).map((h) => el('div', { class: 'warnung' }, h)),
+    ...warnungen(d.warnings || []));
+  setQuelle(id, d.provenance);
+}
+
+/* Block 7c — Handelsregister-Umfeld aus der OffeneRegister-Datenspende.
+   Rein lokal (einmal importiert); der Datenstand 2019 steht an allem dran. */
+async function ladeRegister(plz, lauf) {
+  try {
+    const d = await hole('/api/register', plz ? { plz } : {});
+    if (lauf !== state.ladeLauf) return;
+    state.daten.register = d;
+    zeigeRegister(d);
+  } catch (e) {
+    if (lauf === state.ladeLauf) zeigeBlockFehler('register', e);
+  }
+}
+
+function zeigeRegister(d) {
+  const id = 'register';
+  if (!d.ok) {
+    setStatus(id, 'fehler', 'nicht lesbar');
+    setInhalt(id, fehlerbox(d.error));
+    setQuelle(id, d.provenance);
+    return;
+  }
+  const r = d.data;
+  if (!r) {
+    setStatus(id, 'leer', 'keine Postleitzahl');
+    setInhalt(id, ...warnungen(d.warnings || []));
+    setQuelle(id, d.provenance);
+    return;
+  }
+  if (!r.importiert) {
+    setStatus(id, 'leer', 'nicht importiert');
+    setInhalt(id,
+      el('div', { class: 'notiz' },
+        'Die Handelsregister-Datenspende (OffeneRegister.de, Stand 2019) '
+        + 'liegt noch nicht lokal vor. ' + (r.anleitung || '')),
+      el('div', { class: 'notiz' },
+        el('a', { href: r.portal, target: '_blank', rel: 'noopener' },
+          'Über die Datenspende (offeneregister.de)')));
+    setQuelle(id, d.provenance);
+    return;
+  }
+  setStatus(id, 'ok', `${NF.format(r.firmen_gesamt)} Firmen (2019)`);
+
+  const auszug = (r.gastro_auszug || []).length
+    ? el('ul', { class: 'liste' },
+      r.gastro_auszug.map((x) => el('li', {},
+        el('span', { class: 'haupt' },
+          x.name + (x.aktiv_2019 ? '' : ' — 2019 bereits gelöscht')),
+        el('span', { class: 'neben' },
+          [x.register, x.adresse].filter(Boolean).join(' · ')))))
+    : el('div', { class: 'notiz' },
+      'Kein Firmenname in dieser PLZ passt auf die Gastro-Stichworte — '
+      + 'Betreibergesellschaften heißen oft neutral.');
+
+  setInhalt(id,
+    el('div', { class: 'kennzahlen' },
+      kennzahl(`Firmen mit Sitz in ${r.plz}`, r.firmen_gesamt),
+      kennzahl('davon 2019 eingetragen', r.aktiv_2019),
+      kennzahl('Namens-Treffer Gastronomie', r.gastro_gesamt)),
+    el('h3', { class: 'hinweis-klein' }, 'Gastro-Auszug (Namensheuristik)'),
+    auszug,
+    ...(r.hinweise || []).map((h) => el('div', { class: 'warnung' }, h)),
+    ...warnungen(d.warnings || []));
+  setQuelle(id, d.provenance);
+}
+
 /* ------------------------------------ Franchise: Systemgastronomie & Marke */
 
 /* Für einen Franchisenehmer zählen zwei Fragen, die der Gastronomieblock nur
@@ -1998,6 +2120,82 @@ function zeigeEinkommen(d) {
       'Kreiswert — innerhalb einer Großstadt unterscheidet er keine Viertel. '
       + 'Kleinräumige Anzeiger sind Nettokaltmiete und Eigentümerquote aus dem '
       + 'Zensusblock. Und verfügbares Einkommen ist kein Kaufkraftindex.'),
+    ...warnungen(d.warnings || []));
+  setQuelle(id, d.provenance);
+}
+
+/* Block 3g — Sicherheitslage des Kreises (PKS-Kreistabelle des BKA).
+   Für Nachtgastronomie relevant; die BKA-Interpretationshilfe zur
+   eingeschränkten Vergleichbarkeit steht als Hinweis am Block. */
+async function ladePks(ags, lauf) {
+  if (!ags) {
+    setStatus('pks', 'leer', 'kein Gemeindeschlüssel');
+    setInhalt('pks', el('div', { class: 'notiz' },
+      'Ohne Gemeindeschlüssel (aus dem Zensusblock) lässt sich kein '
+      + 'Kreiswert zuordnen.'));
+    return;
+  }
+  try {
+    const d = await hole('/api/pks', { ags });
+    if (lauf !== state.ladeLauf) return;
+    state.daten.pks = d;
+    zeigePks(d);
+  } catch (e) {
+    if (lauf === state.ladeLauf) zeigeBlockFehler('pks', e);
+  }
+}
+
+function zeigePks(d) {
+  const id = 'pks';
+  if (!d.ok) {
+    setStatus(id, 'fehler', 'nicht erreichbar');
+    setInhalt(id, fehlerbox(d.error));
+    setQuelle(id, d.provenance);
+    return;
+  }
+  const k = d.data;
+  if (!k) {
+    setStatus(id, 'leer', 'Kreis nicht in der Tabelle');
+    setInhalt(id, ...warnungen(d.warnings || []));
+    setQuelle(id, d.provenance);
+    return;
+  }
+  const insgesamt = (k.delikte || []).find((x) => x.schluessel === '------');
+  setStatus(id, 'ok', insgesamt?.vergleich
+    ? `Rang ${insgesamt.vergleich.rang} von ${insgesamt.vergleich.von}`
+    : 'geladen');
+
+  const tab = el('table', { class: 'daten' },
+    el('tr', {},
+      el('th', {}, 'Straftaten(gruppe)'),
+      el('th', { class: 'num' }, 'Fälle'),
+      el('th', { class: 'num' }, 'HZ je 100.000'),
+      el('th', { class: 'num' }, 'Median 400 Kreise'),
+      el('th', { class: 'num' }, 'Rang'),
+      el('th', { class: 'num' }, 'Aufklärung')));
+  for (const x of k.delikte || []) {
+    tab.append(el('tr', {},
+      el('td', {}, x.name),
+      el('td', { class: 'num' }, x.faelle === null ? '–' : NF.format(x.faelle)),
+      el('td', { class: 'num' }, x.hz === null ? '–' : NF.format(x.hz)),
+      el('td', { class: 'num' },
+        x.vergleich ? NF.format(x.vergleich.median_hz) : '–'),
+      el('td', { class: 'num' },
+        x.vergleich ? `${x.vergleich.rang}.` : '–'),
+      el('td', { class: 'num' },
+        x.aufklaerungsquote === null ? '–' : `${NF.format(x.aufklaerungsquote)} %`)));
+  }
+
+  setInhalt(id,
+    el('div', { class: 'notiz' },
+      `${k.kreis} (${k.kreisart}), Berichtsjahr ${k.jahr}. `
+      + 'Rang 1 = höchste Häufigkeitszahl unter den 400 Kreisen; '
+      + 'HZ = Fälle je 100.000 Einwohner.'),
+    tab,
+    el('div', { class: 'notiz' },
+      el('a', { href: k.portal, target: '_blank', rel: 'noopener' },
+        'Alle Kreistabellen beim BKA')),
+    ...(k.hinweise || []).map((h) => el('div', { class: 'warnung' }, h)),
     ...warnungen(d.warnings || []));
   setQuelle(id, d.provenance);
 }

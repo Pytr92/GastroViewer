@@ -45,6 +45,7 @@ hinter Login bzw. Lizenz.
 | **Amtliche Gastro-Anker (3e)** | Regionaldatenbank (Opt-in, kostenlose Kennung): Umsatz je USt-Pflichtigem im Gastgewerbe des Kreises (Zeitreihe ab 2009, Prüfstein für die eigene Umsatzschätzung) und Gewerbean-/-abmeldungen mit Saldo — inkl. Unternehmenssitz-Warnung |
 | **Tourismus-Saisonalität (3f)** | Monatszahlen des Statistischen Amts München seit 2006: letzte 12 Monate mit Vorjahresvergleich, Auslandsanteil, Aufenthaltsdauer und Saisonkurve (Juli 130, Januar 59 — indexiert auf den Jahresdurchschnitt); bundesweit gibt es Monatswerte je Kreis nicht offen, der Block sagt das |
 | **Messe-Kalender (5e)** | Veranstaltungen der Messe München seit 2018 mit Besucherzahlen (bauma 2025: 605.974): laufende/kommende Termine, Jahresbilanz, größte Veranstaltungen, Entfernung zum nächsten Gelände — planbare Frequenzspitzen, die über Hotels und die U2 ankommen |
+| **Sicherheitslage (3g, bundesweit)** | PKS-Kreistabelle des BKA: Straftaten insgesamt, Straßen-/Gewaltkriminalität, Raub gegen Geschäfte, Sachbeschädigung, Rauschgift — je mit Häufigkeitszahl, Median und **Rang unter 400 Kreisen** (München: 148., Köln: weit vorn), Aufklärungsquote; BKA-Vergleichbarkeits-Hinweis und Lizenzgrenze am Block |
 | Verkehr/ÖPNV | Haltestellen, Linien, GTFS-Abfahrten je Stunde eines konkreten Tages, Mittagsfenster 11–14, Abendfenster 17–22, Nachtfenster 22–1 Uhr |
 | Gemessene Frequenz | Radzählstellen München (Jahressumme + **Jahresgang aus Tages-Rohdaten**) und **Hamburg** (Zählsäulen mit Jahressumme und Vortageswert), Kfz-Verkehrsstärke DTV: BAYSIS in Bayern (9.441 Zählstellen), **BASt-Dauerzählstellen im Rest Deutschlands** (Autobahnen/Bundesstraßen) |
 | Planungsrecht | Hochwassergefahrenflächen HQhäufig/HQ100/HQextrem **bundesweit** (Bayern: LfU mit Gewässer/Jährlichkeit, sonst BfG/LAWA), Bebauungsplan-Umgriffe (München) und **Erhaltungssatzungen/Milieuschutz § 172 BauGB mit Satzungs-PDFs** (München und Hamburg) |
@@ -52,6 +53,8 @@ hinter Login bzw. Lizenz.
 | **Baustellen (6g)** | München (Servicekarte, Vier-Wochen-Vorschau mit Umrissen, Gehwegsperrungen eigens gezählt), **Hamburg** („Bauweiser“-Steckbriefe der Groß-Maßnahmen) und **Berlin** (VIZ: Baustellen und Sperrungen von verkehrlichem Interesse) |
 | Bodenrichtwerte | Kartenebene + Klickabfrage in 7 Bundesländern, Portallinks für alle |
 | Leerstände | OSM-Leerstand als Untergrenze mit Adresse; Klick springt in der Karte zum Objekt |
+| **Leerstandsmelder (7b, bundesweit)** | zweite, unabhängige Leerstands-Untergrenze: bürgerschaftliche Meldungen (Weltbestand einmal geladen, lokal nach Entfernung gefiltert) mit Meldedatum und Absprung je Meldung — Lizenz ungeklärt, deshalb ausdrücklich nur Hinweischarakter |
+| **Handelsregister-Umfeld (7c, bundesweit)** | nach freiwilligem Einmal-Import (OffeneRegister-Datenspende, CC BY 4.0, **Stand 2019**): Gesellschaften mit Sitz in der Standort-PLZ, Registernummern, Gastro-Auszug per Namensheuristik — für Ketten- und Betreiberfragen, klar als historischer Stand beschriftet |
 
 ### Entscheidung — WELCHER Kandidat?
 

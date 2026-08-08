@@ -137,6 +137,12 @@ class Outbound:
             resp.encoding = encoding
         return resp.text
 
+    async def get_bytes(self, source: str, url: str, **kwargs: Any) -> bytes:
+        """Für Binärdateien (BKA-Kreistabelle als XLSX, OffeneRegister-Dump).
+        Keine Kodierungs-Raterei — die Aufruferseite kennt das Format."""
+        resp = await self.request(source, "GET", url, **kwargs)
+        return resp.content
+
     async def post_text(self, source: str, url: str, **kwargs: Any) -> str:
         """POST mit Text-Antwort — für GENESIS (regionalstatistik.de): die
         Schnittstelle verlangt POST, und die Zugangsdaten gehören in Header

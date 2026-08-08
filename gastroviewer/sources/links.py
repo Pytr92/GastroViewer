@@ -116,10 +116,10 @@ def build(
                    "StatistikenLagebilder/PolizeilicheKriminalstatistik/"
                    "PKS2024/PKSTabellen/KreisFalltabellen/kreisfalltabellen.html",
             "beschreibung": (
-                "Für Nachtgastronomie relevant. Geprüft 08/2026: nur als "
-                "XLSX, kein CSV — und die Häufigkeitszahlen je Kreis sind "
-                "laut BKA-Interpretationshilfe nur eingeschränkt vergleichbar "
-                "(Anzeigeverhalten, Tatortprinzip). Deshalb Link statt Block."
+                "Seit 08/2026 auch als Datenblock „3g · Sicherheitslage“ im "
+                "Panel (Fälle, Häufigkeitszahl, Rang unter 400 Kreisen). "
+                "Hier die vollständigen BKA-Tabellen mit allen Delikten — "
+                "der Vergleichbarkeits-Hinweis des BKA steht am Block."
             ),
         },
     ]
@@ -241,12 +241,11 @@ def build(
             "url": "https://www.leerstandsmelder.de/",
             "beschreibung": "Bürgerschaftlich gemeldete Leerstände.",
             "warnung": (
-                "Geprüft 08/2026: Die API ist offen erreichbar, liefert "
-                "aber nur den ungefilterten Weltbestand (9 318 Meldungen, "
-                "kein Regionalfilter) und die Seite nennt maschinell "
-                "keine Datenlizenz — deshalb Link statt Datenblock. Der "
-                "OSM-Leerstand im Block darüber bleibt die belegbare "
-                "Untergrenze."
+                "Seit 08/2026 auf Wunsch auch als Datenblock „7b · "
+                "Leerstandsmelder“ (Weltbestand einmal geladen, lokal nach "
+                "Entfernung gefiltert). Die Lizenzlage bleibt ungeklärt — "
+                "die Seite nennt maschinell keine Datenlizenz; Meldungen "
+                "nur als Hinweis nutzen, nicht weiterveröffentlichen."
             ),
         },
         {
@@ -257,12 +256,13 @@ def build(
                 "dem Handelsregister — als offener Gesamtdownload."
             ),
             "warnung": (
-                "Geprüft 08/2026: eingefrorene Datenspende (Gesamtbestand "
-                "~250 MB, nicht fortgeschrieben; Datensatz von 2019), die "
-                "Abfrage-API (db.offeneregister.de) antwortete mit "
-                "HTTP 502. Aktuelle Register-APIs (OpenRegister, "
-                "handelsregister.ai) sind kommerziell. Deshalb Link, kein "
-                "Datenblock."
+                "Eingefrorene Datenspende von 2019 (CC BY 4.0), die "
+                "Abfrage-API des Projekts ist tot (HTTP 502). Seit 08/2026 "
+                "als lokaler Einmal-Import verfügbar: python -m "
+                "gastroviewer import-register lädt die 260 MB und füllt "
+                "Block „7c · Handelsregister-Umfeld“. Aktuelle "
+                "Register-APIs (OpenRegister, handelsregister.ai) bleiben "
+                "kommerziell."
             ),
         },
     ]

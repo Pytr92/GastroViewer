@@ -33,7 +33,9 @@ from .sources import (airbnb as airbnb_mod,
                       marke as marke_mod, messe as messe_mod,
                       muenchen, nominatim, overpass,
                       overture as overture_mod,
-                      pendler as pendler_mod, planung, scan as scan_mod,
+                      leerstandsmelder as lsm_mod,
+                      pendler as pendler_mod, pks as pks_mod, planung,
+                      register as register_mod, scan as scan_mod,
                       tourismus as tourismus_mod, zensus)
 from .sources.base import Provenance, SourceError, SourceResult
 
@@ -438,6 +440,90 @@ class PointService:
             refresh=refresh,
         )
 
+    async def _pks_kreise(self, refresh: bool = False) -> dict[str, Any]:
+        """Bundesweite BKA-Kreistabelle (XLSX), **einmal** geladen und
+        reduziert gecacht (Berichtsjahr — lange TTL). Jeder Punkt schlägt
+        danach nur noch lokal nach."""
+
+        async def laden() -> SourceResult:
+            daten = await self.outbound.get_bytes(
+                "pks", pks_mod.XLSX_URL, timeout=120.0,
+                limiter="pks", min_interval=1.0,
+            )
+            kreise = pks_mod.aufbereiten(pks_mod.zeilen_aus_xlsx(daten))
+            return SourceResult(name="pks", ok=True, data={"kreise": kreise})
+
+        res = await self._cached("pks", f"pks|{pks_mod.JAHR}", laden,
+                                 refresh=refresh)
+        if not res.ok or not res.data:
+            raise SourceError(
+                (res.error or {}).get("kind", "unknown"),
+                (res.error or {}).get("message", "unbekannter Fehler"),
+            )
+        return res.data["kreise"]
+
+    async def pks(self, ags: str, refresh: bool = False):
+        """Sicherheitslage des Kreises aus der PKS-Kreistabelle."""
+        key = f"pks_kreis|{pks_mod.JAHR}|{(ags or '')[:5]}"
+        return await self._cached(
+            "pks_kreis",
+            key,
+            lambda: pks_mod.load(ags, lambda: self._pks_kreise(refresh)),
+            refresh=refresh,
+        )
+
+    async def _lsm_meldungen(self, refresh: bool = False) -> list[dict[str, Any]]:
+        """Leerstandsmelder-Weltbestand (ein 3-MB-Abruf), reduziert
+        gecacht — jeder Punkt filtert danach lokal nach Entfernung."""
+
+        async def laden() -> SourceResult:
+            roh = await self.outbound.get_json(
+                "leerstandsmelder", lsm_mod.API_URL, timeout=120.0,
+                limiter="leerstandsmelder", min_interval=1.0,
+            )
+            meldungen = lsm_mod.parse_meldungen(roh)
+            if not meldungen:
+                raise SourceError(
+                    "parse", "Leerstandsmelder-Bestand ohne verwertbare "
+                    "Meldungen — Format geändert?")
+            return SourceResult(name="leerstandsmelder", ok=True,
+                                data={"meldungen": meldungen})
+
+        res = await self._cached("leerstandsmelder", "leerstandsmelder|welt",
+                                 laden, refresh=refresh)
+        if not res.ok or not res.data:
+            raise SourceError(
+                (res.error or {}).get("kind", "unknown"),
+                (res.error or {}).get("message", "unbekannter Fehler"),
+            )
+        return res.data["meldungen"]
+
+    async def leerstandsmelder(self, lat: float, lon: float, radius: int,
+                               refresh: bool = False):
+        key = cache_key("leerstandsmelder_punkt", lat, lon, radius)
+        return await self._cached(
+            "leerstandsmelder_punkt",
+            key,
+            lambda: lsm_mod.load(
+                lat, lon, radius, lambda: self._lsm_meldungen(refresh)),
+            refresh=refresh,
+        )
+
+    async def register(self, plz: str | None, refresh: bool = False):
+        """Handelsregister-Umfeld (OffeneRegister, Stand 2019) — rein
+        lokal aus der einmal importierten Datenbank."""
+        if not self.settings.register_db_path.exists():
+            # Nicht cachen: direkt nach dem Import soll der Block Zahlen
+            # zeigen, nicht die 30 Tage alte „bitte importieren"-Antwort.
+            return await register_mod.load(self.settings, plz)
+        key = f"register|{plz or 'ohne'}"
+        return await self._cached(
+            "register",
+            key,
+            lambda: register_mod.load(self.settings, plz),
+            refresh=refresh,
+        )
+
     async def gehweg(self, lat: float, lon: float, radius: int, refresh: bool = False):
         """Gehstrecken statt Luftlinie.
 
@@ -814,11 +900,12 @@ class PointService:
             self.maerkte(lat, lon, radius, refresh),
             self.messe(lat, lon, refresh),
             self.tourismus(lat, lon, refresh),
+            self.leerstandsmelder(lat, lon, radius, refresh),
             return_exceptions=True,
         )
         names = ["adresse", "zensus", "osm", "gtfs", "radzaehlung", "verkehrsmenge",
                  "planung", "klima", "dynamik", "baustellen", "maerkte",
-                 "messe", "tourismus"]
+                 "messe", "tourismus", "leerstandsmelder"]
         blocks: dict[str, Any] = {}
         for name, res in zip(names, results):
             if isinstance(res, BaseException):
@@ -862,15 +949,26 @@ class PointService:
                 "airbnb", SourceError("unknown", f"{type(exc).__name__}: {exc}")
             ).to_dict()
 
+        # Registerumfeld: braucht die Postleitzahl aus der Adresse.
+        try:
+            blocks["register"] = (
+                await self.register(adresse.get("plz"), refresh)
+            ).to_dict()
+        except Exception as exc:  # noqa: BLE001
+            blocks["register"] = SourceResult.failed(
+                "register", SourceError("unknown", f"{type(exc).__name__}: {exc}")
+            ).to_dict()
+
         bl_code = zensus_data.get("bundesland_code")
         if ags:
             kreis_results = await asyncio.gather(
                 self.einkommen(ags), self.kreisprofil(ags), self.pendler(ags),
                 self.laerm(lat, lon, bl_code), self.genesis(ags),
+                self.pks(ags),
                 return_exceptions=True,
             )
             for name, res in zip(("einkommen", "kreisprofil", "pendler", "laerm",
-                                  "genesis"),
+                                  "genesis", "pks"),
                                  kreis_results):
                 if isinstance(res, BaseException):
                     blocks[name] = SourceResult.failed(
@@ -879,7 +977,7 @@ class PointService:
                 else:
                     blocks[name] = res.to_dict()
         else:
-            for name in ("einkommen", "kreisprofil", "pendler", "genesis"):
+            for name in ("einkommen", "kreisprofil", "pendler", "genesis", "pks"):
                 blocks[name] = SourceResult(
                     name=name, ok=True, data=None,
                     warnings=["Ohne Gemeindeschlüssel lässt sich kein Kreiswert zuordnen."],

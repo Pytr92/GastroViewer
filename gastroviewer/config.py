@@ -178,6 +178,10 @@ class Settings:
         return self.data_dir / "overture.sqlite"
 
     @property
+    def register_db_path(self) -> Path:
+        return self.data_dir / "register.sqlite"
+
+    @property
     def user_agent(self) -> str:
         return f"gastroviewer/{self.version} ({self.contact})"
 
@@ -235,6 +239,17 @@ class Settings:
         # BASt-Jahresdatei: ein abgeschlossenes Jahr, bundesweit ein
         # Download — wie die Rad-Jahresdatei.
         if source.startswith("bast"):
+            return self.ttl_zensus
+        # BKA-Kreistabelle: ein Berichtsjahr, bundesweit ein Download.
+        if source.startswith("pks"):
+            return self.ttl_zensus
+        # Leerstandsmelder-Weltbestand: laufend gemeldet, aber ein einziger
+        # 3-MB-Abruf für alle Punkte — die kurze TTL hält ihn aktuell genug.
+        if source.startswith("leerstandsmelder"):
+            return self.ttl_osm
+        # Registerumfeld: eingefrorener lokaler Bestand, kein Netzabruf —
+        # die TTL betrifft nur den gerechneten PLZ-Auszug.
+        if source.startswith("register"):
             return self.ttl_zensus
         return self.ttl_osm
 

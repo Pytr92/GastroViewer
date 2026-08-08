@@ -310,6 +310,17 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         _validate(lat, lon, 600)
         return (await svc(request).laerm(lat, lon, bundesland_code)).to_dict()
 
+    @app.get("/api/point/leerstandsmelder")
+    async def point_leerstandsmelder(
+        request: Request, lat: float, lon: float, r: int = 600,
+        refresh: bool = False,
+    ):
+        """Bürgerschaftlich gemeldete Leerstände (Leerstandsmelder.de) im
+        Umfeld — zweite Untergrenze neben dem OSM-Leerstand, mit
+        Lizenz-Warnung."""
+        _validate(lat, lon, r)
+        return (await svc(request).leerstandsmelder(lat, lon, r, refresh)).to_dict()
+
     @app.get("/api/point/dynamik")
     async def point_dynamik(request: Request, lat: float, lon: float, r: int = 600):
         """Gastro-Dynamik aus der OSM-Historie (ohsome): Jahresreihe der
@@ -495,6 +506,29 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         if not ags.isdigit():
             raise HTTPException(422, "Der Gemeindeschlüssel besteht aus Ziffern.")
         return (await svc(request).kreisprofil(ags)).to_dict()
+
+    @app.get("/api/pks")
+    async def pks(
+        request: Request,
+        ags: str = Query(..., min_length=5, max_length=8),
+    ):
+        """Sicherheitslage des Kreises: PKS-Kreistabelle des BKA (Fälle,
+        Häufigkeitszahl, Aufklärungsquote, Rang unter 400 Kreisen) — mit
+        dem BKA-Hinweis zur eingeschränkten Vergleichbarkeit."""
+        if not ags.isdigit():
+            raise HTTPException(422, "Der Gemeindeschlüssel besteht aus Ziffern.")
+        return (await svc(request).pks(ags)).to_dict()
+
+    @app.get("/api/register")
+    async def register(
+        request: Request,
+        plz: str | None = Query(None, min_length=5, max_length=5),
+    ):
+        """Handelsregister-Umfeld der Standort-PLZ aus dem einmal
+        importierten OffeneRegister-Bestand (Stand 2019)."""
+        if plz is not None and not plz.isdigit():
+            raise HTTPException(422, "Die Postleitzahl besteht aus fünf Ziffern.")
+        return (await svc(request).register(plz)).to_dict()
 
     @app.get("/api/pendler")
     async def pendler(

@@ -107,6 +107,7 @@ gastroviewer clear-cache                 # Cache leeren
 gastroviewer clear-cache --quelle zensus # nur eine Quelle
 gastroviewer import-gtfs --region muenchen
 gastroviewer import-overture --region muenchen   # zweite Wettbewerbsquelle (braucht: pip install overturemaps)
+gastroviewer import-register             # Handelsregister-Umfeld (OffeneRegister, Stand 2019; 260 MB einmalig)
 gastroviewer check-wms                   # Bodenrichtwert-Dienste gegenprüfen
 ```
 
@@ -146,6 +147,22 @@ Dienstag im Gültigkeitszeitraum), nicht ein Durchschnitt. Verkehrstage stammen 
 `calendar.txt` einschließlich der Ausnahmen aus `calendar_dates.txt`.
 
 Läuft der Fahrplan ab, meldet der Block das und der Import wird einfach wiederholt.
+
+### Handelsregister-Import (Block 7c, freiwillig)
+
+```bash
+gastroviewer import-register
+```
+
+Lädt einmalig die **eingefrorene Datenspende** von
+[OffeneRegister.de](https://offeneregister.de/) (260 MB, CC BY 4.0,
+Stand **05.02.2019** — nicht fortgeschrieben) und baut daraus eine lokale
+Datenbank mit PLZ-Index. Danach zeigt Block 7c je Standort die
+Handelsregister-Gesellschaften mit Sitz in der Standort-PLZ: Gesamtzahl,
+Registernummern und einen Gastro-Auszug nach Namensstichworten — nützlich
+für Ketten- und Betreiberfragen, klar beschriftet als historischer Stand.
+Ohne den Import zeigt der Block nur diese Anleitung; es wird nichts
+automatisch geladen.
 
 ---
 
@@ -217,13 +234,16 @@ Antworten unter `fixtures/`.
 | [Lärmkartierung Deutschland (UBA)](https://www.umweltbundesamt.de/themen/verkehr/laermwirkung/laermkartierung) | Straßen-/Schienen-/Fluglärm-Klassen am Punkt + Kartenebene, bundesweit | keine Zugriffsbeschränkungen, © Umweltbundesamt/Länder | 14 Tage |
 | [Hochwassergefahrenkarten BfG/LAWA](https://geoportal.bafg.de/) | HQhäufig/HQ100/HQextrem am Punkt + Kartenebene, bundesweit | keine Zugriffsbeschränkungen, © BfG/LAWA | 14 Tage |
 | [BASt Straßenverkehrszählung](https://www.bast.de/DE/Themen/Digitales/HF_1/Massnahmen/verkehrszaehlung/zaehl_node.html) | DTV der Dauerzählstellen (Autobahnen/Bundesstraßen), bundesweit außerhalb Bayerns | CC BY 4.0, © BASt | Jahresdatei, lange TTL |
+| [PKS-Kreistabelle (BKA)](https://www.bka.de/DE/AktuelleInformationen/StatistikenLagebilder/PolizeilicheKriminalstatistik/PKS2024/PKSTabellen/KreisFalltabellen/kreisfalltabellen.html) | Sicherheitslage des Kreises: Fälle, Häufigkeitszahl, Rang unter 400 Kreisen | **keine offene Datenlizenz** — © BKA, Kopien laut Impressum nur für den privaten Bereich; Anzeige lokal mit Quellenangabe | Jahresdatei, lange TTL |
+| [Leerstandsmelder.de](https://www.leerstandsmelder.de/) | bürgerschaftlich gemeldete Leerstände im Umfeld (Zweitquelle neben OSM) | **Lizenz ungeklärt** — keine maschinenlesbare Datenlizenz; nur Hinweischarakter, Warnung am Block | 24 h |
+| [OffeneRegister.de](https://offeneregister.de/) | Handelsregister-Umfeld je PLZ (Betreibergesellschaften, Registernummern) — nur nach `import-register` | CC BY 4.0, OpenCorporates/OKF DE — **eingefrorene Datenspende, Stand 05.02.2019** | lokaler Einmal-Import |
 | [Urban Data Platform Hamburg](https://api.hamburg.de/datasets/v1) | Wochenmärkte, Baustellen, Rad-Zählsäulen, Soziale Erhaltungsverordnungen (Hamburg) | dl-de/by-2-0, © FHH | 24 h |
 | [VIZ Berlin](https://viz.berlin.de/) | Baustellen und Sperrungen (Berlin) | dl-de/by-2-0, © VIZ Berlin | 24 h |
 | OSM-Kacheln | Kartenhintergrund (Vorgabe) | ODbL 1.0 | Browser |
 | [basemap.de](https://basemap.de/) (BKG) | amtlicher Kartenhintergrund, umschaltbar | dl-de/by-2-0, © GeoBasis-DE / BKG | Browser |
 
 Verlinkt, aber **nicht abgerufen**: BORIS-D und die Landesportale für Bodenrichtwerte,
-hystreet, Pendleratlas, INKAR, Zensusatlas, Leerstandsmelder,
+hystreet, Pendleratlas, INKAR, Zensusatlas,
 nexxt-change, DEHOGA, ahgz immo, Brauerei-Pachtbörsen, ECE, MEC, DB InfraGO —
 sowie als reine Absprunglinks für die Handkontrolle: Google Maps (Gastro-Suche am
 Punkt) und Mapillary (Straßenfotos, „virtuelle Begehung").

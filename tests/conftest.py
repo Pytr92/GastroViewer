@@ -164,6 +164,29 @@ def photon():
 
 
 @pytest.fixture(scope="session")
+def pks_auszug():
+    """Echter Auszug der BKA-Kreistabelle 2024 (Download 2026-08-08, 2,1 MB,
+    16 809 Zeilen) — reduziert auf Kopfzeilen, alle 400 Gesamtzeilen und die
+    kompletten 41 Delikte für München (09162), Köln (05315) und Flensburg
+    (01001). sharedStrings und Zellwerte unverändert."""
+    with open(FIXTURES / "raw_pks2024_auszug.xlsx", "rb") as fh:
+        return fh.read()
+
+
+@pytest.fixture(scope="session")
+def lsm_places():
+    return load_fixture("raw_leerstandsmelder.json")
+
+
+@pytest.fixture(scope="session")
+def register_dump_pfad():
+    """Echter Auszug des OffeneRegister-Dumps (erster bz2-Strom der Datei
+    vom 05.02.2019, abgerufen 2026-08-08): 517 vollständige JSONL-Zeilen,
+    unverändert, neu komprimiert."""
+    return FIXTURES / "raw_offeneregister_auszug.jsonl.bz2"
+
+
+@pytest.fixture(scope="session")
 def overture_mira():
     return load_fixture("raw_overture_mira.geojson")
 

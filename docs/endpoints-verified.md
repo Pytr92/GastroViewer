@@ -762,3 +762,27 @@ antwortet 404).
 | Leerstandsmelder-API | `api.leerstandsmelder.de/api/v1/places` antwortet offen, liefert aber den **ungefilterten Weltbestand** (9 318 Meldungen, lat/lon-Parameter ohne Wirkung) und die Seite (SPA) nennt maschinell keine Datenlizenz → bleibt Link mit Befund |
 | OffeneRegister.de | Gesamtdownload ~250 MB (eingefrorene Datenspende), Abfrage-API `db.offeneregister.de` → HTTP 502 → bleibt Link mit Befund; aktuelle Alternativen sind kommerziell |
 | DEHOGA-Zahlenspiegel | Quartals-PDFs, kein stabiler Datenendpunkt → als beschriebener Link aufgenommen, bewusst kein PDF-Parser |
+
+---
+
+## Nachtrag 2026-08-08 (6. Runde): PKS, Leerstandsmelder, OffeneRegister (Y-Runde)
+
+Auf Wunsch des Nutzers wurden drei früher verworfene Quellen neu bewertet:
+Redundanz zählt, wenn die Quellen unabhängig sind — und zwei der drei
+Ablehnungsgründe waren Form (XLSX) bzw. Aufwand, nicht die Datenlage.
+
+| Prüfung | Ergebnis |
+|---|---|
+| **BKA PKS-Kreistabelle** `bka.de/SharedDocs/Downloads/…/KR-F-01-T01-Kreise-Faelle-HZ_xls.xlsx?__blob=publicationFile&v=4` | HTTP 200, 2,1 MB, ein Blatt, 16 809 Zeilen = **400 Kreise × 41 Delikte**, Daten ab Zeile 10; Spalten A Schlüssel (`------` = insgesamt), C AGS5, F Fälle, G HZ (Zensus-2022-Basis), M Aufklärungsquote. Stichprobe München 09162: 93 854 Fälle, HZ 6 304,3, AQ 63,1 % — Rang 148 von 400 (Köln: 134 209 / 13 101,1). Eingebaut als Block **3g** (Stdlib-XLSX-Parser, einmal geladen, lokal ausgewertet, Rang+Median aus derselben Datei) |
+| BKA-Lizenzlage | Impressum nachgeprüft: Urheberrecht, „Kopien … nur für den privaten Bereich" — **keine offene Datenlizenz** (kein dl-de, kein CC). Steht wörtlich in Lizenzzeile und Warnung am Block; das Werkzeug lädt die veröffentlichte Tabelle direkt beim BKA und zeigt sie lokal mit Quellenangabe |
+| **Leerstandsmelder** `api.leerstandsmelder.de/api/v1/places` (Endpunkt aus dem SPA-Bundle) | HTTP 200, 3,0 MB, 9 318 Meldungen weltweit, alle mit lat/lon (Strings) und `published`; Felder title/road/slug/created_at/enddate. Absprung `leerstandsmelder.de/places/<slug>` (Pfad aus dem Bundle). Gegenprobe Sendlinger Tor: 32 Meldungen < 2 km, nächste „Leerstand am Sendlinger Tor" 126 m. Eingebaut als Block **7b** auf ausdrücklichen Nutzerwunsch — Weltbestand einmal geladen, lokal gefiltert; Lizenz bleibt ungeklärt, Warnung am Block |
+| **OffeneRegister** `daten.offeneregister.de/de_companies_ocdata.jsonl.bz2` | HTTP 200, 260 455 433 Bytes, `Last-Modified: 05 Feb 2019`; Startseite nennt **CC BY 4.0** (frühere Kurznotiz „keine Lizenz" damit korrigiert). Mehrstromiges bz2 (pbzip2) — Import über `bz2.open`. Schema geprüft (OpenCorporates-JSONL): name, current_status, registered_address **mit PLZ**, native_company_number, registrar. Abfrage-API `db.offeneregister.de` weiterhin HTTP 502. Eingebaut als Einmal-Import `python -m gastroviewer import-register` → lokale SQLite mit PLZ-Index, Block **7c** (klar beschriftet „Stand 2019") |
+| Vollimport-Selbstprüfung | Import real ausgeführt: 260 MB geladen, Gesamtbestand in SQLite gebaut, PLZ-Abfrage am Sendlinger Tor (80331) im Browser geprüft — Zahlen siehe Abnahmeprotokoll dieser Runde |
+
+**Bewusst weiterhin nicht eingebaut** (Frage „was ergibt keinen Sinn"):
+INKAR-Gesamtpaket (434 MB für Indikatoren, die zu großen Teilen schon aus
+Regionalatlas/Regionaldatenbank kommen; die INKAR-Alleinstellungen sind
+Modellwerte, keine Messungen) und eine **zweite** GENESIS-Kennung bei
+Destatis (gegen das Ein-Konto-Prinzip; Mehrwert wäre allein die
+Monats-Saisonkurve je Kreis, deren Jahressummen bereits im Kreisprofil
+stehen).
