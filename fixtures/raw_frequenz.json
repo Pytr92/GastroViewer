@@ -1,0 +1,806 @@
+{
+ "kommentar": "Echte Antworten vom 2026-08-08, unveraendert: Dortmund und Wuerzburg als Opendatasoft-Stundenaggregation (avg je Stunde), Augsburg als Auszug der Stunden-CSV (Kopfzeile + erste und letzte 600 Datenzeilen der 41.645 Zeilen).",
+ "dortmund_westenhellweg_ost": {
+  "total_count": 24,
+  "results": [
+   {
+    "stunde": 0,
+    "mittel": 89.59545454545454
+   },
+   {
+    "stunde": 1,
+    "mittel": 55.3
+   },
+   {
+    "stunde": 2,
+    "mittel": 29.23744292237443
+   },
+   {
+    "stunde": 3,
+    "mittel": 17.395454545454545
+   },
+   {
+    "stunde": 4,
+    "mittel": 11.45
+   },
+   {
+    "stunde": 5,
+    "mittel": 29.818181818181817
+   },
+   {
+    "stunde": 6,
+    "mittel": 60.586363636363636
+   },
+   {
+    "stunde": 7,
+    "mittel": 132.56363636363636
+   },
+   {
+    "stunde": 8,
+    "mittel": 233.01363636363635
+   },
+   {
+    "stunde": 9,
+    "mittel": 559.9045454545454
+   },
+   {
+    "stunde": 10,
+    "mittel": 1192.6954545454546
+   },
+   {
+    "stunde": 11,
+    "mittel": 1776.0681818181818
+   },
+   {
+    "stunde": 12,
+    "mittel": 2303.609090909091
+   },
+   {
+    "stunde": 13,
+    "mittel": 2434.2818181818184
+   },
+   {
+    "stunde": 14,
+    "mittel": 2541.7545454545457
+   },
+   {
+    "stunde": 15,
+    "mittel": 2737.809090909091
+   },
+   {
+    "stunde": 16,
+    "mittel": 2939.2454545454543
+   },
+   {
+    "stunde": 17,
+    "mittel": 2919.240909090909
+   },
+   {
+    "stunde": 18,
+    "mittel": 2604.9681818181816
+   },
+   {
+    "stunde": 19,
+    "mittel": 2056.85
+   },
+   {
+    "stunde": 20,
+    "mittel": 959.7954545454545
+   },
+   {
+    "stunde": 21,
+    "mittel": 437.96363636363634
+   },
+   {
+    "stunde": 22,
+    "mittel": 265.39269406392697
+   },
+   {
+    "stunde": 23,
+    "mittel": 156.28310502283105
+   }
+  ]
+ },
+ "wuerzburg_schoenbornstrasse": {
+  "total_count": 24,
+  "results": [
+   {
+    "hour(timestamp)": 0,
+    "stunde": null,
+    "mittel": 35.702994011976045
+   },
+   {
+    "hour(timestamp)": 1,
+    "stunde": null,
+    "mittel": 22.61317365269461
+   },
+   {
+    "hour(timestamp)": 10,
+    "stunde": null,
+    "mittel": 2246.1370679380216
+   },
+   {
+    "hour(timestamp)": 11,
+    "stunde": null,
+    "mittel": 2523.153937947494
+   },
+   {
+    "hour(timestamp)": 12,
+    "stunde": null,
+    "mittel": 2616.542857142857
+   },
+   {
+    "hour(timestamp)": 13,
+    "stunde": null,
+    "mittel": 2673.0978520286394
+   },
+   {
+    "hour(timestamp)": 14,
+    "stunde": null,
+    "mittel": 2756.4916267942585
+   },
+   {
+    "hour(timestamp)": 15,
+    "stunde": null,
+    "mittel": 2655.0965435041717
+   },
+   {
+    "hour(timestamp)": 16,
+    "stunde": null,
+    "mittel": 2232.181168057211
+   },
+   {
+    "hour(timestamp)": 17,
+    "stunde": null,
+    "mittel": 1576.0607866507748
+   },
+   {
+    "hour(timestamp)": 18,
+    "stunde": null,
+    "mittel": 878.606674612634
+   },
+   {
+    "hour(timestamp)": 19,
+    "stunde": null,
+    "mittel": 471.90930787589497
+   },
+   {
+    "hour(timestamp)": 2,
+    "stunde": null,
+    "mittel": 19.544802867383513
+   },
+   {
+    "hour(timestamp)": 20,
+    "stunde": null,
+    "mittel": 297.47636363636366
+   },
+   {
+    "hour(timestamp)": 21,
+    "stunde": null,
+    "mittel": 108.47909199522103
+   },
+   {
+    "hour(timestamp)": 22,
+    "stunde": null,
+    "mittel": 68.14814814814815
+   },
+   {
+    "hour(timestamp)": 23,
+    "stunde": null,
+    "mittel": 52.99640287769784
+   },
+   {
+    "hour(timestamp)": 3,
+    "stunde": null,
+    "mittel": 22.091995221027478
+   },
+   {
+    "hour(timestamp)": 4,
+    "stunde": null,
+    "mittel": 44.75985663082437
+   },
+   {
+    "hour(timestamp)": 5,
+    "stunde": null,
+    "mittel": 143.62918660287082
+   },
+   {
+    "hour(timestamp)": 6,
+    "stunde": null,
+    "mittel": 296.64473684210526
+   },
+   {
+    "hour(timestamp)": 7,
+    "stunde": null,
+    "mittel": 610.9641148325359
+   },
+   {
+    "hour(timestamp)": 8,
+    "stunde": null,
+    "mittel": 1177.4278903456495
+   },
+   {
+    "hour(timestamp)": 9,
+    "stunde": null,
+    "mittel": 1771.9440476190475
+   }
+  ]
+ },
+ "wuerzburg_kaiserstrasse": {
+  "total_count": 24,
+  "results": [
+   {
+    "hour(timestamp)": 0,
+    "stunde": null,
+    "mittel": 36.25269461077844
+   },
+   {
+    "hour(timestamp)": 1,
+    "stunde": null,
+    "mittel": 24.05508982035928
+   },
+   {
+    "hour(timestamp)": 10,
+    "stunde": null,
+    "mittel": 1679.365476190476
+   },
+   {
+    "hour(timestamp)": 11,
+    "stunde": null,
+    "mittel": 1877.2899761336516
+   },
+   {
+    "hour(timestamp)": 12,
+    "stunde": null,
+    "mittel": 1880.395238095238
+   },
+   {
+    "hour(timestamp)": 13,
+    "stunde": null,
+    "mittel": 1875.8782816229118
+   },
+   {
+    "hour(timestamp)": 14,
+    "stunde": null,
+    "mittel": 1965.0992822966507
+   },
+   {
+    "hour(timestamp)": 15,
+    "stunde": null,
+    "mittel": 1968.1954707985697
+   },
+   {
+    "hour(timestamp)": 16,
+    "stunde": null,
+    "mittel": 1734.834326579261
+   },
+   {
+    "hour(timestamp)": 17,
+    "stunde": null,
+    "mittel": 1355.5208581644815
+   },
+   {
+    "hour(timestamp)": 18,
+    "stunde": null,
+    "mittel": 832.0643623361144
+   },
+   {
+    "hour(timestamp)": 19,
+    "stunde": null,
+    "mittel": 486.1431980906921
+   },
+   {
+    "hour(timestamp)": 2,
+    "stunde": null,
+    "mittel": 24.38590203106332
+   },
+   {
+    "hour(timestamp)": 20,
+    "stunde": null,
+    "mittel": 332.73001508295624
+   },
+   {
+    "hour(timestamp)": 21,
+    "stunde": null,
+    "mittel": 126.8673835125448
+   },
+   {
+    "hour(timestamp)": 22,
+    "stunde": null,
+    "mittel": 76.16487455197132
+   },
+   {
+    "hour(timestamp)": 23,
+    "stunde": null,
+    "mittel": 57.538922155688624
+   },
+   {
+    "hour(timestamp)": 3,
+    "stunde": null,
+    "mittel": 37.783751493428916
+   },
+   {
+    "hour(timestamp)": 4,
+    "stunde": null,
+    "mittel": 103.98805256869773
+   },
+   {
+    "hour(timestamp)": 5,
+    "stunde": null,
+    "mittel": 285.7523923444976
+   },
+   {
+    "hour(timestamp)": 6,
+    "stunde": null,
+    "mittel": 497.75717703349284
+   },
+   {
+    "hour(timestamp)": 7,
+    "stunde": null,
+    "mittel": 695.6961722488038
+   },
+   {
+    "hour(timestamp)": 8,
+    "stunde": null,
+    "mittel": 1048.5744934445768
+   },
+   {
+    "hour(timestamp)": 9,
+    "stunde": null,
+    "mittel": 1381.3916666666667
+   }
+  ]
+ },
+ "augsburg_annastrasse_csv": "Standort;Jahr;Datum;Stunde;Passanten\nAnnastraße;2020;Mi., 16.12.2020;13 Uhr;521\nAnnastraße;2020;Mi., 16.12.2020;14 Uhr;464\nAnnastraße;2020;Mi., 16.12.2020;15 Uhr;516\nAnnastraße;2020;Mi., 16.12.2020;16 Uhr;480\nAnnastraße;2020;Mi., 16.12.2020;17 Uhr;370\nAnnastraße;2020;Mi., 16.12.2020;18 Uhr;323\nAnnastraße;2020;Mi., 16.12.2020;19 Uhr;152\nAnnastraße;2020;Mi., 16.12.2020;20 Uhr;76\nAnnastraße;2020;Mi., 16.12.2020;21 Uhr;20\nAnnastraße;2020;Mi., 16.12.2020;22 Uhr;14\nAnnastraße;2020;Mi., 16.12.2020;23 Uhr;1\nAnnastraße;2020;Do., 17.12.2020;0 Uhr;1\nAnnastraße;2020;Do., 17.12.2020;1 Uhr;2\nAnnastraße;2020;Do., 17.12.2020;3 Uhr;2\nAnnastraße;2020;Do., 17.12.2020;4 Uhr;7\nAnnastraße;2020;Do., 17.12.2020;5 Uhr;18\nAnnastraße;2020;Do., 17.12.2020;6 Uhr;149\nAnnastraße;2020;Do., 17.12.2020;7 Uhr;156\nAnnastraße;2020;Do., 17.12.2020;8 Uhr;201\nAnnastraße;2020;Do., 17.12.2020;9 Uhr;336\nAnnastraße;2020;Do., 17.12.2020;10 Uhr;475\nAnnastraße;2020;Do., 17.12.2020;11 Uhr;517\nAnnastraße;2020;Do., 17.12.2020;12 Uhr;664\nAnnastraße;2020;Do., 17.12.2020;13 Uhr;625\nAnnastraße;2020;Do., 17.12.2020;14 Uhr;588\nAnnastraße;2020;Do., 17.12.2020;15 Uhr;568\nAnnastraße;2020;Do., 17.12.2020;16 Uhr;558\nAnnastraße;2020;Do., 17.12.2020;17 Uhr;482\nAnnastraße;2020;Do., 17.12.2020;18 Uhr;302\nAnnastraße;2020;Do., 17.12.2020;19 Uhr;150\nAnnastraße;2020;Do., 17.12.2020;20 Uhr;88\nAnnastraße;2020;Do., 17.12.2020;21 Uhr;14\nAnnastraße;2020;Do., 17.12.2020;22 Uhr;6\nAnnastraße;2020;Do., 17.12.2020;23 Uhr;1\nAnnastraße;2020;Fr., 18.12.2020;0 Uhr;8\nAnnastraße;2020;Fr., 18.12.2020;1 Uhr;1\nAnnastraße;2020;Fr., 18.12.2020;4 Uhr;8\nAnnastraße;2020;Fr., 18.12.2020;5 Uhr;26\nAnnastraße;2020;Fr., 18.12.2020;6 Uhr;77\nAnnastraße;2020;Fr., 18.12.2020;7 Uhr;135\nAnnastraße;2020;Fr., 18.12.2020;8 Uhr;233\nAnnastraße;2020;Fr., 18.12.2020;9 Uhr;396\nAnnastraße;2020;Fr., 18.12.2020;10 Uhr;572\nAnnastraße;2020;Fr., 18.12.2020;11 Uhr;651\nAnnastraße;2020;Fr., 18.12.2020;12 Uhr;676\nAnnastraße;2020;Fr., 18.12.2020;13 Uhr;635\nAnnastraße;2020;Fr., 18.12.2020;14 Uhr;633\nAnnastraße;2020;Fr., 18.12.2020;15 Uhr;662\nAnnastraße;2020;Fr., 18.12.2020;16 Uhr;560\nAnnastraße;2020;Fr., 18.12.2020;17 Uhr;466\nAnnastraße;2020;Fr., 18.12.2020;18 Uhr;290\nAnnastraße;2020;Fr., 18.12.2020;19 Uhr;144\nAnnastraße;2020;Fr., 18.12.2020;20 Uhr;38\nAnnastraße;2020;Fr., 18.12.2020;21 Uhr;17\nAnnastraße;2020;Fr., 18.12.2020;22 Uhr;14\nAnnastraße;2020;Fr., 18.12.2020;23 Uhr;2\nAnnastraße;2020;Sa., 19.12.2020;0 Uhr;3\nAnnastraße;2020;Sa., 19.12.2020;4 Uhr;5\nAnnastraße;2020;Sa., 19.12.2020;5 Uhr;19\nAnnastraße;2020;Sa., 19.12.2020;6 Uhr;29\nAnnastraße;2020;Sa., 19.12.2020;7 Uhr;58\nAnnastraße;2020;Sa., 19.12.2020;8 Uhr;165\nAnnastraße;2020;Sa., 19.12.2020;9 Uhr;353\nAnnastraße;2020;Sa., 19.12.2020;10 Uhr;475\nAnnastraße;2020;Sa., 19.12.2020;11 Uhr;586\nAnnastraße;2020;Sa., 19.12.2020;12 Uhr;607\nAnnastraße;2020;Sa., 19.12.2020;13 Uhr;621\nAnnastraße;2020;Sa., 19.12.2020;14 Uhr;517\nAnnastraße;2020;Sa., 19.12.2020;15 Uhr;539\nAnnastraße;2020;Sa., 19.12.2020;16 Uhr;472\nAnnastraße;2020;Sa., 19.12.2020;17 Uhr;415\nAnnastraße;2020;Sa., 19.12.2020;18 Uhr;253\nAnnastraße;2020;Sa., 19.12.2020;19 Uhr;161\nAnnastraße;2020;Sa., 19.12.2020;20 Uhr;50\nAnnastraße;2020;Sa., 19.12.2020;21 Uhr;10\nAnnastraße;2020;Sa., 19.12.2020;22 Uhr;2\nAnnastraße;2020;Sa., 19.12.2020;23 Uhr;2\nAnnastraße;2020;So., 20.12.2020;0 Uhr;3\nAnnastraße;2020;So., 20.12.2020;5 Uhr;2\nAnnastraße;2020;So., 20.12.2020;6 Uhr;14\nAnnastraße;2020;So., 20.12.2020;7 Uhr;14\nAnnastraße;2020;So., 20.12.2020;8 Uhr;20\nAnnastraße;2020;So., 20.12.2020;9 Uhr;45\nAnnastraße;2020;So., 20.12.2020;10 Uhr;90\nAnnastraße;2020;So., 20.12.2020;11 Uhr;97\nAnnastraße;2020;So., 20.12.2020;12 Uhr;105\nAnnastraße;2020;So., 20.12.2020;13 Uhr;149\nAnnastraße;2020;So., 20.12.2020;14 Uhr;136\nAnnastraße;2020;So., 20.12.2020;15 Uhr;213\nAnnastraße;2020;So., 20.12.2020;16 Uhr;247\nAnnastraße;2020;So., 20.12.2020;17 Uhr;233\nAnnastraße;2020;So., 20.12.2020;18 Uhr;166\nAnnastraße;2020;So., 20.12.2020;19 Uhr;94\nAnnastraße;2020;So., 20.12.2020;20 Uhr;61\nAnnastraße;2020;So., 20.12.2020;21 Uhr;6\nAnnastraße;2020;So., 20.12.2020;22 Uhr;3\nAnnastraße;2020;So., 20.12.2020;23 Uhr;3\nAnnastraße;2020;Mo., 21.12.2020;0 Uhr;2\nAnnastraße;2020;Mo., 21.12.2020;2 Uhr;1\nAnnastraße;2020;Mo., 21.12.2020;3 Uhr;2\nAnnastraße;2020;Mo., 21.12.2020;5 Uhr;11\nAnnastraße;2020;Mo., 21.12.2020;6 Uhr;63\nAnnastraße;2020;Mo., 21.12.2020;7 Uhr;157\nAnnastraße;2020;Mo., 21.12.2020;8 Uhr;189\nAnnastraße;2020;Mo., 21.12.2020;9 Uhr;425\nAnnastraße;2020;Mo., 21.12.2020;10 Uhr;646\nAnnastraße;2020;Mo., 21.12.2020;11 Uhr;760\nAnnastraße;2020;Mo., 21.12.2020;12 Uhr;851\nAnnastraße;2020;Mo., 21.12.2020;13 Uhr;877\nAnnastraße;2020;Mo., 21.12.2020;14 Uhr;671\nAnnastraße;2020;Mo., 21.12.2020;15 Uhr;725\nAnnastraße;2020;Mo., 21.12.2020;16 Uhr;751\nAnnastraße;2020;Mo., 21.12.2020;17 Uhr;559\nAnnastraße;2020;Mo., 21.12.2020;18 Uhr;309\nAnnastraße;2020;Mo., 21.12.2020;19 Uhr;179\nAnnastraße;2020;Mo., 21.12.2020;20 Uhr;60\nAnnastraße;2020;Mo., 21.12.2020;21 Uhr;14\nAnnastraße;2020;Mo., 21.12.2020;23 Uhr;2\nAnnastraße;2020;Di., 22.12.2020;0 Uhr;3\nAnnastraße;2020;Di., 22.12.2020;1 Uhr;3\nAnnastraße;2020;Di., 22.12.2020;4 Uhr;7\nAnnastraße;2020;Di., 22.12.2020;5 Uhr;22\nAnnastraße;2020;Di., 22.12.2020;6 Uhr;53\nAnnastraße;2020;Di., 22.12.2020;7 Uhr;121\nAnnastraße;2020;Di., 22.12.2020;8 Uhr;234\nAnnastraße;2020;Di., 22.12.2020;9 Uhr;388\nAnnastraße;2020;Di., 22.12.2020;10 Uhr;638\nAnnastraße;2020;Di., 22.12.2020;11 Uhr;756\nAnnastraße;2020;Di., 22.12.2020;12 Uhr;766\nAnnastraße;2020;Di., 22.12.2020;13 Uhr;638\nAnnastraße;2020;Di., 22.12.2020;14 Uhr;650\nAnnastraße;2020;Di., 22.12.2020;15 Uhr;656\nAnnastraße;2020;Di., 22.12.2020;16 Uhr;646\nAnnastraße;2020;Di., 22.12.2020;17 Uhr;520\nAnnastraße;2020;Di., 22.12.2020;18 Uhr;348\nAnnastraße;2020;Di., 22.12.2020;19 Uhr;167\nAnnastraße;2020;Di., 22.12.2020;20 Uhr;73\nAnnastraße;2020;Di., 22.12.2020;21 Uhr;7\nAnnastraße;2020;Di., 22.12.2020;22 Uhr;4\nAnnastraße;2020;Di., 22.12.2020;23 Uhr;12\nAnnastraße;2020;Mi., 23.12.2020;0 Uhr;5\nAnnastraße;2020;Mi., 23.12.2020;3 Uhr;1\nAnnastraße;2020;Mi., 23.12.2020;4 Uhr;2\nAnnastraße;2020;Mi., 23.12.2020;5 Uhr;14\nAnnastraße;2020;Mi., 23.12.2020;6 Uhr;50\nAnnastraße;2020;Mi., 23.12.2020;7 Uhr;166\nAnnastraße;2020;Mi., 23.12.2020;8 Uhr;301\nAnnastraße;2020;Mi., 23.12.2020;9 Uhr;544\nAnnastraße;2020;Mi., 23.12.2020;10 Uhr;793\nAnnastraße;2020;Mi., 23.12.2020;11 Uhr;832\nAnnastraße;2020;Mi., 23.12.2020;12 Uhr;786\nAnnastraße;2020;Mi., 23.12.2020;13 Uhr;758\nAnnastraße;2020;Mi., 23.12.2020;14 Uhr;748\nAnnastraße;2020;Mi., 23.12.2020;15 Uhr;720\nAnnastraße;2020;Mi., 23.12.2020;16 Uhr;683\nAnnastraße;2020;Mi., 23.12.2020;17 Uhr;619\nAnnastraße;2020;Mi., 23.12.2020;18 Uhr;316\nAnnastraße;2020;Mi., 23.12.2020;19 Uhr;188\nAnnastraße;2020;Mi., 23.12.2020;20 Uhr;76\nAnnastraße;2020;Mi., 23.12.2020;21 Uhr;5\nAnnastraße;2020;Mi., 23.12.2020;22 Uhr;6\nAnnastraße;2020;Mi., 23.12.2020;23 Uhr;5\nAnnastraße;2020;Do., 24.12.2020;0 Uhr;1\nAnnastraße;2020;Do., 24.12.2020;3 Uhr;1\nAnnastraße;2020;Do., 24.12.2020;4 Uhr;10\nAnnastraße;2020;Do., 24.12.2020;5 Uhr;21\nAnnastraße;2020;Do., 24.12.2020;6 Uhr;52\nAnnastraße;2020;Do., 24.12.2020;7 Uhr;157\nAnnastraße;2020;Do., 24.12.2020;8 Uhr;283\nAnnastraße;2020;Do., 24.12.2020;9 Uhr;422\nAnnastraße;2020;Do., 24.12.2020;10 Uhr;573\nAnnastraße;2020;Do., 24.12.2020;11 Uhr;666\nAnnastraße;2020;Do., 24.12.2020;12 Uhr;452\nAnnastraße;2020;Do., 24.12.2020;13 Uhr;307\nAnnastraße;2020;Do., 24.12.2020;14 Uhr;133\nAnnastraße;2020;Do., 24.12.2020;15 Uhr;118\nAnnastraße;2020;Do., 24.12.2020;16 Uhr;162\nAnnastraße;2020;Do., 24.12.2020;17 Uhr;87\nAnnastraße;2020;Do., 24.12.2020;18 Uhr;39\nAnnastraße;2020;Do., 24.12.2020;19 Uhr;19\nAnnastraße;2020;Do., 24.12.2020;20 Uhr;33\nAnnastraße;2020;Do., 24.12.2020;21 Uhr;5\nAnnastraße;2020;Do., 24.12.2020;22 Uhr;2\nAnnastraße;2020;Fr., 25.12.2020;1 Uhr;1\nAnnastraße;2020;Fr., 25.12.2020;5 Uhr;1\nAnnastraße;2020;Fr., 25.12.2020;6 Uhr;6\nAnnastraße;2020;Fr., 25.12.2020;7 Uhr;5\nAnnastraße;2020;Fr., 25.12.2020;8 Uhr;19\nAnnastraße;2020;Fr., 25.12.2020;9 Uhr;34\nAnnastraße;2020;Fr., 25.12.2020;10 Uhr;53\nAnnastraße;2020;Fr., 25.12.2020;11 Uhr;48\nAnnastraße;2020;Fr., 25.12.2020;12 Uhr;65\nAnnastraße;2020;Fr., 25.12.2020;13 Uhr;95\nAnnastraße;2020;Fr., 25.12.2020;14 Uhr;116\nAnnastraße;2020;Fr., 25.12.2020;15 Uhr;111\nAnnastraße;2020;Fr., 25.12.2020;16 Uhr;177\nAnnastraße;2020;Fr., 25.12.2020;17 Uhr;128\nAnnastraße;2020;Fr., 25.12.2020;18 Uhr;92\nAnnastraße;2020;Fr., 25.12.2020;19 Uhr;64\nAnnastraße;2020;Fr., 25.12.2020;20 Uhr;56\nAnnastraße;2020;Fr., 25.12.2020;21 Uhr;9\nAnnastraße;2020;Fr., 25.12.2020;22 Uhr;1\nAnnastraße;2020;Fr., 25.12.2020;23 Uhr;2\nAnnastraße;2020;Sa., 26.12.2020;0 Uhr;1\nAnnastraße;2020;Sa., 26.12.2020;3 Uhr;1\nAnnastraße;2020;Sa., 26.12.2020;5 Uhr;3\nAnnastraße;2020;Sa., 26.12.2020;6 Uhr;6\nAnnastraße;2020;Sa., 26.12.2020;7 Uhr;9\nAnnastraße;2020;Sa., 26.12.2020;8 Uhr;12\nAnnastraße;2020;Sa., 26.12.2020;9 Uhr;18\nAnnastraße;2020;Sa., 26.12.2020;10 Uhr;79\nAnnastraße;2020;Sa., 26.12.2020;11 Uhr;127\nAnnastraße;2020;Sa., 26.12.2020;12 Uhr;169\nAnnastraße;2020;Sa., 26.12.2020;13 Uhr;220\nAnnastraße;2020;Sa., 26.12.2020;14 Uhr;240\nAnnastraße;2020;Sa., 26.12.2020;15 Uhr;248\nAnnastraße;2020;Sa., 26.12.2020;16 Uhr;173\nAnnastraße;2020;Sa., 26.12.2020;17 Uhr;163\nAnnastraße;2020;Sa., 26.12.2020;18 Uhr;121\nAnnastraße;2020;Sa., 26.12.2020;19 Uhr;78\nAnnastraße;2020;Sa., 26.12.2020;20 Uhr;38\nAnnastraße;2020;Sa., 26.12.2020;21 Uhr;3\nAnnastraße;2020;Sa., 26.12.2020;22 Uhr;2\nAnnastraße;2020;Sa., 26.12.2020;23 Uhr;1\nAnnastraße;2020;So., 27.12.2020;3 Uhr;1\nAnnastraße;2020;So., 27.12.2020;6 Uhr;2\nAnnastraße;2020;So., 27.12.2020;7 Uhr;7\nAnnastraße;2020;So., 27.12.2020;8 Uhr;12\nAnnastraße;2020;So., 27.12.2020;9 Uhr;31\nAnnastraße;2020;So., 27.12.2020;10 Uhr;63\nAnnastraße;2020;So., 27.12.2020;11 Uhr;107\nAnnastraße;2020;So., 27.12.2020;12 Uhr;143\nAnnastraße;2020;So., 27.12.2020;13 Uhr;191\nAnnastraße;2020;So., 27.12.2020;14 Uhr;219\nAnnastraße;2020;So., 27.12.2020;15 Uhr;209\nAnnastraße;2020;So., 27.12.2020;16 Uhr;232\nAnnastraße;2020;So., 27.12.2020;17 Uhr;231\nAnnastraße;2020;So., 27.12.2020;18 Uhr;123\nAnnastraße;2020;So., 27.12.2020;19 Uhr;64\nAnnastraße;2020;So., 27.12.2020;20 Uhr;42\nAnnastraße;2020;So., 27.12.2020;22 Uhr;1\nAnnastraße;2020;So., 27.12.2020;23 Uhr;2\nAnnastraße;2020;Mo., 28.12.2020;0 Uhr;2\nAnnastraße;2020;Mo., 28.12.2020;1 Uhr;1\nAnnastraße;2020;Mo., 28.12.2020;2 Uhr;2\nAnnastraße;2020;Mo., 28.12.2020;4 Uhr;1\nAnnastraße;2020;Mo., 28.12.2020;5 Uhr;11\nAnnastraße;2020;Mo., 28.12.2020;6 Uhr;35\nAnnastraße;2020;Mo., 28.12.2020;7 Uhr;62\nAnnastraße;2020;Mo., 28.12.2020;8 Uhr;92\nAnnastraße;2020;Mo., 28.12.2020;9 Uhr;233\nAnnastraße;2020;Mo., 28.12.2020;10 Uhr;408\nAnnastraße;2020;Mo., 28.12.2020;11 Uhr;569\nAnnastraße;2020;Mo., 28.12.2020;12 Uhr;705\nAnnastraße;2020;Mo., 28.12.2020;13 Uhr;673\nAnnastraße;2020;Mo., 28.12.2020;14 Uhr;611\nAnnastraße;2020;Mo., 28.12.2020;15 Uhr;440\nAnnastraße;2020;Mo., 28.12.2020;16 Uhr;442\nAnnastraße;2020;Mo., 28.12.2020;17 Uhr;349\nAnnastraße;2020;Mo., 28.12.2020;18 Uhr;276\nAnnastraße;2020;Mo., 28.12.2020;19 Uhr;126\nAnnastraße;2020;Mo., 28.12.2020;20 Uhr;54\nAnnastraße;2020;Mo., 28.12.2020;21 Uhr;11\nAnnastraße;2020;Mo., 28.12.2020;22 Uhr;5\nAnnastraße;2020;Di., 29.12.2020;0 Uhr;3\nAnnastraße;2020;Di., 29.12.2020;2 Uhr;1\nAnnastraße;2020;Di., 29.12.2020;3 Uhr;1\nAnnastraße;2020;Di., 29.12.2020;4 Uhr;4\nAnnastraße;2020;Di., 29.12.2020;5 Uhr;12\nAnnastraße;2020;Di., 29.12.2020;6 Uhr;39\nAnnastraße;2020;Di., 29.12.2020;7 Uhr;64\nAnnastraße;2020;Di., 29.12.2020;8 Uhr;103\nAnnastraße;2020;Di., 29.12.2020;9 Uhr;208\nAnnastraße;2020;Di., 29.12.2020;10 Uhr;446\nAnnastraße;2020;Di., 29.12.2020;11 Uhr;537\nAnnastraße;2020;Di., 29.12.2020;12 Uhr;638\nAnnastraße;2020;Di., 29.12.2020;13 Uhr;701\nAnnastraße;2020;Di., 29.12.2020;14 Uhr;761\nAnnastraße;2020;Di., 29.12.2020;15 Uhr;694\nAnnastraße;2020;Di., 29.12.2020;16 Uhr;714\nAnnastraße;2020;Di., 29.12.2020;17 Uhr;473\nAnnastraße;2020;Di., 29.12.2020;18 Uhr;263\nAnnastraße;2020;Di., 29.12.2020;19 Uhr;147\nAnnastraße;2020;Di., 29.12.2020;20 Uhr;52\nAnnastraße;2020;Di., 29.12.2020;21 Uhr;6\nAnnastraße;2020;Di., 29.12.2020;22 Uhr;4\nAnnastraße;2020;Mi., 30.12.2020;0 Uhr;6\nAnnastraße;2020;Mi., 30.12.2020;1 Uhr;2\nAnnastraße;2020;Mi., 30.12.2020;2 Uhr;1\nAnnastraße;2020;Mi., 30.12.2020;3 Uhr;1\nAnnastraße;2020;Mi., 30.12.2020;4 Uhr;4\nAnnastraße;2020;Mi., 30.12.2020;5 Uhr;15\nAnnastraße;2020;Mi., 30.12.2020;6 Uhr;26\nAnnastraße;2020;Mi., 30.12.2020;7 Uhr;83\nAnnastraße;2020;Mi., 30.12.2020;8 Uhr;137\nAnnastraße;2020;Mi., 30.12.2020;9 Uhr;323\nAnnastraße;2020;Mi., 30.12.2020;10 Uhr;582\nAnnastraße;2020;Mi., 30.12.2020;11 Uhr;738\nAnnastraße;2020;Mi., 30.12.2020;12 Uhr;861\nAnnastraße;2020;Mi., 30.12.2020;13 Uhr;904\nAnnastraße;2020;Mi., 30.12.2020;14 Uhr;803\nAnnastraße;2020;Mi., 30.12.2020;15 Uhr;765\nAnnastraße;2020;Mi., 30.12.2020;16 Uhr;623\nAnnastraße;2020;Mi., 30.12.2020;17 Uhr;500\nAnnastraße;2020;Mi., 30.12.2020;18 Uhr;310\nAnnastraße;2020;Mi., 30.12.2020;19 Uhr;115\nAnnastraße;2020;Mi., 30.12.2020;20 Uhr;47\nAnnastraße;2020;Mi., 30.12.2020;21 Uhr;7\nAnnastraße;2020;Mi., 30.12.2020;22 Uhr;2\nAnnastraße;2020;Mi., 30.12.2020;23 Uhr;2\nAnnastraße;2020;Do., 31.12.2020;0 Uhr;1\nAnnastraße;2020;Do., 31.12.2020;1 Uhr;1\nAnnastraße;2020;Do., 31.12.2020;3 Uhr;3\nAnnastraße;2020;Do., 31.12.2020;4 Uhr;3\nAnnastraße;2020;Do., 31.12.2020;5 Uhr;13\nAnnastraße;2020;Do., 31.12.2020;6 Uhr;38\nAnnastraße;2020;Do., 31.12.2020;7 Uhr;97\nAnnastraße;2020;Do., 31.12.2020;8 Uhr;204\nAnnastraße;2020;Do., 31.12.2020;9 Uhr;339\nAnnastraße;2020;Do., 31.12.2020;10 Uhr;571\nAnnastraße;2020;Do., 31.12.2020;11 Uhr;792\nAnnastraße;2020;Do., 31.12.2020;12 Uhr;583\nAnnastraße;2020;Do., 31.12.2020;13 Uhr;556\nAnnastraße;2020;Do., 31.12.2020;14 Uhr;324\nAnnastraße;2020;Do., 31.12.2020;15 Uhr;275\nAnnastraße;2020;Do., 31.12.2020;16 Uhr;159\nAnnastraße;2020;Do., 31.12.2020;17 Uhr;145\nAnnastraße;2020;Do., 31.12.2020;18 Uhr;68\nAnnastraße;2020;Do., 31.12.2020;19 Uhr;65\nAnnastraße;2020;Do., 31.12.2020;20 Uhr;31\nAnnastraße;2020;Do., 31.12.2020;21 Uhr;12\nAnnastraße;2020;Do., 31.12.2020;22 Uhr;3\nAnnastraße;2020;Do., 31.12.2020;23 Uhr;6\nAnnastraße;2021;Fr., 01.01.2021;0 Uhr;4\nAnnastraße;2021;Fr., 01.01.2021;1 Uhr;3\nAnnastraße;2021;Fr., 01.01.2021;3 Uhr;1\nAnnastraße;2021;Fr., 01.01.2021;5 Uhr;6\nAnnastraße;2021;Fr., 01.01.2021;6 Uhr;16\nAnnastraße;2021;Fr., 01.01.2021;7 Uhr;6\nAnnastraße;2021;Fr., 01.01.2021;8 Uhr;10\nAnnastraße;2021;Fr., 01.01.2021;9 Uhr;17\nAnnastraße;2021;Fr., 01.01.2021;10 Uhr;37\nAnnastraße;2021;Fr., 01.01.2021;11 Uhr;57\nAnnastraße;2021;Fr., 01.01.2021;12 Uhr;88\nAnnastraße;2021;Fr., 01.01.2021;13 Uhr;98\nAnnastraße;2021;Fr., 01.01.2021;14 Uhr;154\nAnnastraße;2021;Fr., 01.01.2021;15 Uhr;144\nAnnastraße;2021;Fr., 01.01.2021;16 Uhr;196\nAnnastraße;2021;Fr., 01.01.2021;17 Uhr;167\nAnnastraße;2021;Fr., 01.01.2021;18 Uhr;183\nAnnastraße;2021;Fr., 01.01.2021;19 Uhr;95\nAnnastraße;2021;Fr., 01.01.2021;20 Uhr;51\nAnnastraße;2021;Fr., 01.01.2021;21 Uhr;6\nAnnastraße;2021;Fr., 01.01.2021;22 Uhr;1\nAnnastraße;2021;Sa., 02.01.2021;0 Uhr;1\nAnnastraße;2021;Sa., 02.01.2021;3 Uhr;1\nAnnastraße;2021;Sa., 02.01.2021;5 Uhr;20\nAnnastraße;2021;Sa., 02.01.2021;6 Uhr;21\nAnnastraße;2021;Sa., 02.01.2021;7 Uhr;47\nAnnastraße;2021;Sa., 02.01.2021;8 Uhr;83\nAnnastraße;2021;Sa., 02.01.2021;9 Uhr;234\nAnnastraße;2021;Sa., 02.01.2021;10 Uhr;428\nAnnastraße;2021;Sa., 02.01.2021;11 Uhr;649\nAnnastraße;2021;Sa., 02.01.2021;12 Uhr;684\nAnnastraße;2021;Sa., 02.01.2021;13 Uhr;662\nAnnastraße;2021;Sa., 02.01.2021;14 Uhr;629\nAnnastraße;2021;Sa., 02.01.2021;15 Uhr;671\nAnnastraße;2021;Sa., 02.01.2021;16 Uhr;527\nAnnastraße;2021;Sa., 02.01.2021;17 Uhr;383\nAnnastraße;2021;Sa., 02.01.2021;18 Uhr;254\nAnnastraße;2021;Sa., 02.01.2021;19 Uhr;140\nAnnastraße;2021;Sa., 02.01.2021;20 Uhr;51\nAnnastraße;2021;Sa., 02.01.2021;21 Uhr;11\nAnnastraße;2021;Sa., 02.01.2021;22 Uhr;8\nAnnastraße;2021;Sa., 02.01.2021;23 Uhr;4\nAnnastraße;2021;So., 03.01.2021;0 Uhr;1\nAnnastraße;2021;So., 03.01.2021;5 Uhr;2\nAnnastraße;2021;So., 03.01.2021;6 Uhr;15\nAnnastraße;2021;So., 03.01.2021;7 Uhr;4\nAnnastraße;2021;So., 03.01.2021;8 Uhr;11\nAnnastraße;2021;So., 03.01.2021;9 Uhr;27\nAnnastraße;2021;So., 03.01.2021;10 Uhr;64\nAnnastraße;2021;So., 03.01.2021;11 Uhr;82\nAnnastraße;2021;So., 03.01.2021;12 Uhr;131\nAnnastraße;2021;So., 03.01.2021;13 Uhr;160\nAnnastraße;2021;So., 03.01.2021;14 Uhr;156\nAnnastraße;2021;So., 03.01.2021;15 Uhr;245\nAnnastraße;2021;So., 03.01.2021;16 Uhr;251\nAnnastraße;2021;So., 03.01.2021;17 Uhr;190\nAnnastraße;2021;So., 03.01.2021;18 Uhr;130\nAnnastraße;2021;So., 03.01.2021;19 Uhr;94\nAnnastraße;2021;So., 03.01.2021;20 Uhr;33\nAnnastraße;2021;So., 03.01.2021;21 Uhr;17\nAnnastraße;2021;So., 03.01.2021;22 Uhr;5\nAnnastraße;2021;So., 03.01.2021;23 Uhr;1\nAnnastraße;2021;Mo., 04.01.2021;1 Uhr;1\nAnnastraße;2021;Mo., 04.01.2021;4 Uhr;1\nAnnastraße;2021;Mo., 04.01.2021;5 Uhr;19\nAnnastraße;2021;Mo., 04.01.2021;6 Uhr;41\nAnnastraße;2021;Mo., 04.01.2021;7 Uhr;105\nAnnastraße;2021;Mo., 04.01.2021;8 Uhr;127\nAnnastraße;2021;Mo., 04.01.2021;9 Uhr;253\nAnnastraße;2021;Mo., 04.01.2021;10 Uhr;398\nAnnastraße;2021;Mo., 04.01.2021;11 Uhr;543\nAnnastraße;2021;Mo., 04.01.2021;12 Uhr;698\nAnnastraße;2021;Mo., 04.01.2021;13 Uhr;651\nAnnastraße;2021;Mo., 04.01.2021;14 Uhr;590\nAnnastraße;2021;Mo., 04.01.2021;15 Uhr;696\nAnnastraße;2021;Mo., 04.01.2021;16 Uhr;607\nAnnastraße;2021;Mo., 04.01.2021;17 Uhr;412\nAnnastraße;2021;Mo., 04.01.2021;18 Uhr;229\nAnnastraße;2021;Mo., 04.01.2021;19 Uhr;139\nAnnastraße;2021;Mo., 04.01.2021;20 Uhr;56\nAnnastraße;2021;Mo., 04.01.2021;21 Uhr;5\nAnnastraße;2021;Mo., 04.01.2021;22 Uhr;4\nAnnastraße;2021;Mo., 04.01.2021;23 Uhr;7\nAnnastraße;2021;Di., 05.01.2021;0 Uhr;5\nAnnastraße;2021;Di., 05.01.2021;3 Uhr;1\nAnnastraße;2021;Di., 05.01.2021;5 Uhr;10\nAnnastraße;2021;Di., 05.01.2021;6 Uhr;39\nAnnastraße;2021;Di., 05.01.2021;7 Uhr;87\nAnnastraße;2021;Di., 05.01.2021;8 Uhr;99\nAnnastraße;2021;Di., 05.01.2021;9 Uhr;251\nAnnastraße;2021;Di., 05.01.2021;10 Uhr;392\nAnnastraße;2021;Di., 05.01.2021;11 Uhr;539\nAnnastraße;2021;Di., 05.01.2021;12 Uhr;645\nAnnastraße;2021;Di., 05.01.2021;13 Uhr;607\nAnnastraße;2021;Di., 05.01.2021;14 Uhr;570\nAnnastraße;2021;Di., 05.01.2021;15 Uhr;593\nAnnastraße;2021;Di., 05.01.2021;16 Uhr;599\nAnnastraße;2021;Di., 05.01.2021;17 Uhr;462\nAnnastraße;2021;Di., 05.01.2021;18 Uhr;312\nAnnastraße;2021;Di., 05.01.2021;19 Uhr;117\nAnnastraße;2021;Di., 05.01.2021;20 Uhr;58\nAnnastraße;2021;Di., 05.01.2021;21 Uhr;7\nAnnastraße;2021;Di., 05.01.2021;22 Uhr;5\nAnnastraße;2021;Di., 05.01.2021;23 Uhr;2\nAnnastraße;2021;Mi., 06.01.2021;0 Uhr;1\nAnnastraße;2021;Mi., 06.01.2021;5 Uhr;2\nAnnastraße;2021;Mi., 06.01.2021;6 Uhr;2\nAnnastraße;2021;Mi., 06.01.2021;7 Uhr;8\nAnnastraße;2021;Mi., 06.01.2021;8 Uhr;16\nAnnastraße;2021;Mi., 06.01.2021;9 Uhr;34\nAnnastraße;2021;Mi., 06.01.2021;10 Uhr;38\nAnnastraße;2021;Mi., 06.01.2021;11 Uhr;90\nAnnastraße;2021;Mi., 06.01.2021;12 Uhr;119\nAnnastraße;2021;Mi., 06.01.2021;13 Uhr;103\nAnnastraße;2021;Mi., 06.01.2021;14 Uhr;169\nAnnastraße;2021;Mi., 06.01.2021;15 Uhr;184\nAnnastraße;2021;Mi., 06.01.2021;16 Uhr;198\nAnnastraße;2021;Mi., 06.01.2021;17 Uhr;137\nAnnastraße;2021;Mi., 06.01.2021;18 Uhr;102\nAnnastraße;2021;Mi., 06.01.2021;19 Uhr;76\nAnnastraße;2021;Mi., 06.01.2021;20 Uhr;63\nAnnastraße;2021;Mi., 06.01.2021;21 Uhr;5\nAnnastraße;2021;Mi., 06.01.2021;22 Uhr;3\nAnnastraße;2021;Mi., 06.01.2021;23 Uhr;1\nAnnastraße;2021;Do., 07.01.2021;1 Uhr;1\nAnnastraße;2021;Do., 07.01.2021;4 Uhr;3\nAnnastraße;2021;Do., 07.01.2021;5 Uhr;15\nAnnastraße;2021;Do., 07.01.2021;6 Uhr;39\nAnnastraße;2021;Do., 07.01.2021;7 Uhr;94\nAnnastraße;2021;Do., 07.01.2021;8 Uhr;142\nAnnastraße;2021;Do., 07.01.2021;9 Uhr;247\nAnnastraße;2021;Do., 07.01.2021;10 Uhr;370\nAnnastraße;2021;Do., 07.01.2021;11 Uhr;451\nAnnastraße;2021;Do., 07.01.2021;12 Uhr;635\nAnnastraße;2021;Do., 07.01.2021;13 Uhr;513\nAnnastraße;2021;Do., 07.01.2021;14 Uhr;520\nAnnastraße;2021;Do., 07.01.2021;15 Uhr;591\nAnnastraße;2021;Do., 07.01.2021;16 Uhr;495\nAnnastraße;2021;Do., 07.01.2021;17 Uhr;444\nAnnastraße;2021;Do., 07.01.2021;18 Uhr;261\nAnnastraße;2021;Do., 07.01.2021;19 Uhr;136\nAnnastraße;2021;Do., 07.01.2021;20 Uhr;72\nAnnastraße;2021;Do., 07.01.2021;21 Uhr;4\nAnnastraße;2021;Do., 07.01.2021;22 Uhr;7\nAnnastraße;2021;Fr., 08.01.2021;0 Uhr;3\nAnnastraße;2021;Fr., 08.01.2021;1 Uhr;1\nAnnastraße;2021;Fr., 08.01.2021;2 Uhr;1\nAnnastraße;2021;Fr., 08.01.2021;5 Uhr;14\nAnnastraße;2021;Fr., 08.01.2021;6 Uhr;60\nAnnastraße;2021;Fr., 08.01.2021;7 Uhr;97\nAnnastraße;2021;Fr., 08.01.2021;8 Uhr;169\nAnnastraße;2021;Fr., 08.01.2021;9 Uhr;341\nAnnastraße;2021;Fr., 08.01.2021;10 Uhr;458\nAnnastraße;2021;Fr., 08.01.2021;11 Uhr;500\nAnnastraße;2021;Fr., 08.01.2021;12 Uhr;579\nAnnastraße;2021;Fr., 08.01.2021;13 Uhr;603\nAnnastraße;2021;Fr., 08.01.2021;14 Uhr;567\nAnnastraße;2021;Fr., 08.01.2021;15 Uhr;554\nAnnastraße;2021;Fr., 08.01.2021;16 Uhr;544\nAnnastraße;2021;Fr., 08.01.2021;17 Uhr;372\nAnnastraße;2021;Fr., 08.01.2021;18 Uhr;264\nAnnastraße;2021;Fr., 08.01.2021;19 Uhr;149\nAnnastraße;2021;Fr., 08.01.2021;20 Uhr;55\nAnnastraße;2021;Fr., 08.01.2021;21 Uhr;5\nAnnastraße;2021;Fr., 08.01.2021;22 Uhr;5\nAnnastraße;2021;Fr., 08.01.2021;23 Uhr;2\nAnnastraße;2021;Sa., 09.01.2021;0 Uhr;1\nAnnastraße;2021;Sa., 09.01.2021;2 Uhr;1\nAnnastraße;2021;Sa., 09.01.2021;5 Uhr;21\nAnnastraße;2021;Sa., 09.01.2021;6 Uhr;27\nAnnastraße;2021;Sa., 09.01.2021;7 Uhr;35\nAnnastraße;2021;Sa., 09.01.2021;8 Uhr;116\nAnnastraße;2021;Sa., 09.01.2021;9 Uhr;233\nAnnastraße;2021;Sa., 09.01.2021;10 Uhr;433\nAnnastraße;2021;Sa., 09.01.2021;11 Uhr;572\nAnnastraße;2021;Sa., 09.01.2021;12 Uhr;692\nAnnastraße;2021;Sa., 09.01.2021;13 Uhr;636\nAnnastraße;2021;Sa., 09.01.2021;14 Uhr;623\nAnnastraße;2021;Sa., 09.01.2021;15 Uhr;667\nAnnastraße;2021;Sa., 09.01.2021;16 Uhr;505\nAnnastraße;2021;Sa., 09.01.2021;17 Uhr;334\nAnnastraße;2021;Sa., 09.01.2021;18 Uhr;236\nAnnastraße;2021;Sa., 09.01.2021;19 Uhr;102\nAnnastraße;2021;Sa., 09.01.2021;20 Uhr;68\nAnnastraße;2021;Sa., 09.01.2021;21 Uhr;7\nAnnastraße;2021;Sa., 09.01.2021;22 Uhr;7\nAnnastraße;2021;Sa., 09.01.2021;23 Uhr;3\nAnnastraße;2021;So., 10.01.2021;0 Uhr;5\nAnnastraße;2021;So., 10.01.2021;2 Uhr;2\nAnnastraße;2021;So., 10.01.2021;6 Uhr;5\nAnnastraße;2021;So., 10.01.2021;7 Uhr;5\nAnnastraße;2021;So., 10.01.2021;8 Uhr;14\nAnnastraße;2021;So., 10.01.2021;9 Uhr;29\nAnnastraße;2021;So., 10.01.2021;10 Uhr;38\nAnnastraße;2021;So., 10.01.2021;11 Uhr;94\nAnnastraße;2021;So., 10.01.2021;12 Uhr;66\nAnnastraße;2021;So., 10.01.2021;13 Uhr;138\nAnnastraße;2021;So., 10.01.2021;14 Uhr;136\nAnnastraße;2021;So., 10.01.2021;15 Uhr;159\nAnnastraße;2021;So., 10.01.2021;16 Uhr;211\nAnnastraße;2021;So., 10.01.2021;17 Uhr;114\nAnnastraße;2021;So., 10.01.2021;18 Uhr;106\nAnnastraße;2021;So., 10.01.2021;19 Uhr;63\nAnnastraße;2021;So., 10.01.2021;20 Uhr;54\nAnnastraße;2021;So., 10.01.2021;21 Uhr;8\nAnnastraße;2021;So., 10.01.2021;22 Uhr;1\nAnnastraße;2021;So., 10.01.2021;23 Uhr;1\nAnnastraße;2021;Mo., 11.01.2021;4 Uhr;3\nAnnastraße;2021;Mo., 11.01.2021;5 Uhr;16\nAnnastraße;2021;Mo., 11.01.2021;6 Uhr;68\nAnnastraße;2021;Mo., 11.01.2021;7 Uhr;142\nAnnastraße;2021;Mo., 11.01.2021;8 Uhr;194\nAnnastraße;2021;Mo., 11.01.2021;9 Uhr;229\nAnnastraße;2021;Mo., 11.01.2021;10 Uhr;321\nAnnastraße;2021;Mo., 11.01.2021;11 Uhr;449\nAnnastraße;2021;Mo., 11.01.2021;12 Uhr;663\nAnnastraße;2021;Mo., 11.01.2021;13 Uhr;561\nAnnastraße;2021;Mo., 11.01.2021;14 Uhr;430\nAnnastraße;2021;Mo., 11.01.2021;15 Uhr;565\nAnnastraße;2021;Mo., 11.01.2021;16 Uhr;541\nAnnastraße;2021;Mo., 11.01.2021;17 Uhr;466\nAnnastraße;2021;Mo., 11.01.2021;18 Uhr;259\nAnnastraße;2021;Mo., 11.01.2021;19 Uhr;130\nAnnastraße;2021;Mo., 11.01.2021;20 Uhr;68\nAnnastraße;2021;Mo., 11.01.2021;21 Uhr;8\nAnnastraße;2021;Mo., 11.01.2021;22 Uhr;2\nAnnastraße;2021;Mo., 11.01.2021;23 Uhr;2\nAnnastraße;2021;Di., 12.01.2021;0 Uhr;1\nAnnastraße;2021;Di., 12.01.2021;1 Uhr;1\nAnnastraße;2021;Di., 12.01.2021;2 Uhr;1\nAnnastraße;2021;Di., 12.01.2021;4 Uhr;3\nAnnastraße;2021;Di., 12.01.2021;5 Uhr;15\nAnnastraße;2021;Di., 12.01.2021;6 Uhr;52\nAnnastraße;2021;Di., 12.01.2021;7 Uhr;129\nAnnastraße;2021;Di., 12.01.2021;8 Uhr;209\nAnnastraße;2021;Di., 12.01.2021;9 Uhr;248\nAnnastraße;2021;Di., 12.01.2021;10 Uhr;324\nAnnastraße;2021;Di., 12.01.2021;11 Uhr;278\nAnnastraße;2021;Di., 12.01.2021;12 Uhr;393\nAnnastraße;2021;Di., 12.01.2021;13 Uhr;363\nAnnastraße;2021;Di., 12.01.2021;14 Uhr;335\nAnnastraße;2021;Di., 12.01.2021;15 Uhr;384\nAnnastraße;2021;Di., 12.01.2021;16 Uhr;437\nAnnastraße;2021;Di., 12.01.2021;17 Uhr;364\nAnnastraße;2021;Di., 12.01.2021;18 Uhr;231\nAnnastraße;2021;Di., 12.01.2021;19 Uhr;114\nAnnastraße;2021;Di., 12.01.2021;20 Uhr;54\nAnnastraße;2021;Di., 12.01.2021;21 Uhr;5\nAnnastraße;2021;Di., 12.01.2021;22 Uhr;7\nAnnastraße;2021;Mi., 13.01.2021;0 Uhr;1\nAnnastraße;2021;Mi., 13.01.2021;1 Uhr;2\nAnnastraße;2021;Mi., 13.01.2021;3 Uhr;1\nAnnastraße;2021;Mi., 13.01.2021;4 Uhr;3\nAnnastraße;2021;Mi., 13.01.2021;5 Uhr;16\nAnnastraße;2021;Mi., 13.01.2021;6 Uhr;48\nAnnastraße;2021;Mi., 13.01.2021;7 Uhr;137\nAnnastraße;2021;Mi., 13.01.2021;8 Uhr;181\nAnnastraße;2021;Mi., 13.01.2021;9 Uhr;287\nAnnastraße;2021;Mi., 13.01.2021;10 Uhr;421\nAnnastraße;2021;Mi., 13.01.2021;11 Uhr;523\nAnnastraße;2021;Mi., 13.01.2021;12 Uhr;681\nAnnastraße;2021;Mi., 13.01.2021;13 Uhr;648\nAnnastraße;2021;Mi., 13.01.2021;14 Uhr;527\nAnnastraße;2021;Mi., 13.01.2021;15 Uhr;558\nAnnastraße;2021;Mi., 13.01.2021;16 Uhr;576\nAnnastraße;2021;Mi., 13.01.2021;17 Uhr;486\nAnnastraße;2021;Mi., 13.01.2021;18 Uhr;292\nAnnastraße;2025;So., 14.09.2025;11 Uhr;144\nAnnastraße;2025;So., 14.09.2025;12 Uhr;321\nAnnastraße;2025;So., 14.09.2025;13 Uhr;375\nAnnastraße;2025;So., 14.09.2025;14 Uhr;263\nAnnastraße;2025;So., 14.09.2025;15 Uhr;591\nAnnastraße;2025;So., 14.09.2025;16 Uhr;883\nAnnastraße;2025;So., 14.09.2025;17 Uhr;638\nAnnastraße;2025;So., 14.09.2025;18 Uhr;681\nAnnastraße;2025;So., 14.09.2025;19 Uhr;503\nAnnastraße;2025;So., 14.09.2025;20 Uhr;316\nAnnastraße;2025;So., 14.09.2025;21 Uhr;148\nAnnastraße;2025;So., 14.09.2025;22 Uhr;97\nAnnastraße;2025;So., 14.09.2025;23 Uhr;35\nAnnastraße;2025;Mo., 15.09.2025;0 Uhr;24\nAnnastraße;2025;Mo., 15.09.2025;1 Uhr;9\nAnnastraße;2025;Mo., 15.09.2025;2 Uhr;7\nAnnastraße;2025;Mo., 15.09.2025;3 Uhr;1\nAnnastraße;2025;Mo., 15.09.2025;4 Uhr;7\nAnnastraße;2025;Mo., 15.09.2025;5 Uhr;30\nAnnastraße;2025;Mo., 15.09.2025;6 Uhr;92\nAnnastraße;2025;Mo., 15.09.2025;7 Uhr;225\nAnnastraße;2025;Mo., 15.09.2025;8 Uhr;455\nAnnastraße;2025;Mo., 15.09.2025;9 Uhr;693\nAnnastraße;2025;Mo., 15.09.2025;10 Uhr;1256\nAnnastraße;2025;Mo., 15.09.2025;11 Uhr;1806\nAnnastraße;2025;Mo., 15.09.2025;12 Uhr;2343\nAnnastraße;2025;Mo., 15.09.2025;13 Uhr;2342\nAnnastraße;2025;Mo., 15.09.2025;14 Uhr;2350\nAnnastraße;2025;Mo., 15.09.2025;15 Uhr;2384\nAnnastraße;2025;Mo., 15.09.2025;16 Uhr;2643\nAnnastraße;2025;Mo., 15.09.2025;17 Uhr;2462\nAnnastraße;2025;Mo., 15.09.2025;18 Uhr;1927\nAnnastraße;2025;Mo., 15.09.2025;19 Uhr;1124\nAnnastraße;2025;Mo., 15.09.2025;20 Uhr;341\nAnnastraße;2025;Mo., 15.09.2025;21 Uhr;152\nAnnastraße;2025;Mo., 15.09.2025;22 Uhr;40\nAnnastraße;2025;Mo., 15.09.2025;23 Uhr;37\nAnnastraße;2025;Di., 16.09.2025;0 Uhr;15\nAnnastraße;2025;Di., 16.09.2025;1 Uhr;10\nAnnastraße;2025;Di., 16.09.2025;2 Uhr;2\nAnnastraße;2025;Di., 16.09.2025;3 Uhr;5\nAnnastraße;2025;Di., 16.09.2025;4 Uhr;1\nAnnastraße;2025;Di., 16.09.2025;5 Uhr;25\nAnnastraße;2025;Di., 16.09.2025;6 Uhr;104\nAnnastraße;2025;Di., 16.09.2025;7 Uhr;307\nAnnastraße;2025;Di., 16.09.2025;8 Uhr;356\nAnnastraße;2025;Di., 16.09.2025;9 Uhr;671\nAnnastraße;2025;Di., 16.09.2025;10 Uhr;1307\nAnnastraße;2025;Di., 16.09.2025;11 Uhr;1754\nAnnastraße;2025;Di., 16.09.2025;12 Uhr;2504\nAnnastraße;2025;Di., 16.09.2025;13 Uhr;2087\nAnnastraße;2025;Di., 16.09.2025;14 Uhr;1917\nAnnastraße;2025;Di., 16.09.2025;15 Uhr;1894\nAnnastraße;2025;Di., 16.09.2025;16 Uhr;1919\nAnnastraße;2025;Di., 16.09.2025;17 Uhr;2066\nAnnastraße;2025;Di., 16.09.2025;18 Uhr;1585\nAnnastraße;2025;Di., 16.09.2025;19 Uhr;829\nAnnastraße;2025;Di., 16.09.2025;20 Uhr;289\nAnnastraße;2025;Di., 16.09.2025;21 Uhr;187\nAnnastraße;2025;Di., 16.09.2025;22 Uhr;85\nAnnastraße;2025;Di., 16.09.2025;23 Uhr;36\nAnnastraße;2025;Mi., 17.09.2025;0 Uhr;21\nAnnastraße;2025;Mi., 17.09.2025;1 Uhr;5\nAnnastraße;2025;Mi., 17.09.2025;2 Uhr;7\nAnnastraße;2025;Mi., 17.09.2025;3 Uhr;3\nAnnastraße;2025;Mi., 17.09.2025;4 Uhr;1\nAnnastraße;2025;Mi., 17.09.2025;5 Uhr;24\nAnnastraße;2025;Mi., 17.09.2025;6 Uhr;100\nAnnastraße;2025;Mi., 17.09.2025;7 Uhr;319\nAnnastraße;2025;Mi., 17.09.2025;8 Uhr;462\nAnnastraße;2025;Mi., 17.09.2025;9 Uhr;717\nAnnastraße;2025;Mi., 17.09.2025;10 Uhr;953\nAnnastraße;2025;Mi., 17.09.2025;11 Uhr;1366\nAnnastraße;2025;Mi., 17.09.2025;12 Uhr;1947\nAnnastraße;2025;Mi., 17.09.2025;13 Uhr;2342\nAnnastraße;2025;Mi., 17.09.2025;14 Uhr;1875\nAnnastraße;2025;Mi., 17.09.2025;15 Uhr;1889\nAnnastraße;2025;Mi., 17.09.2025;16 Uhr;2068\nAnnastraße;2025;Mi., 17.09.2025;17 Uhr;1997\nAnnastraße;2025;Mi., 17.09.2025;18 Uhr;1783\nAnnastraße;2025;Mi., 17.09.2025;19 Uhr;905\nAnnastraße;2025;Mi., 17.09.2025;20 Uhr;332\nAnnastraße;2025;Mi., 17.09.2025;21 Uhr;201\nAnnastraße;2025;Mi., 17.09.2025;22 Uhr;144\nAnnastraße;2025;Mi., 17.09.2025;23 Uhr;74\nAnnastraße;2025;Do., 18.09.2025;0 Uhr;29\nAnnastraße;2025;Do., 18.09.2025;1 Uhr;4\nAnnastraße;2025;Do., 18.09.2025;2 Uhr;6\nAnnastraße;2025;Do., 18.09.2025;3 Uhr;6\nAnnastraße;2025;Do., 18.09.2025;4 Uhr;7\nAnnastraße;2025;Do., 18.09.2025;5 Uhr;33\nAnnastraße;2025;Do., 18.09.2025;6 Uhr;125\nAnnastraße;2025;Do., 18.09.2025;7 Uhr;335\nAnnastraße;2025;Do., 18.09.2025;8 Uhr;479\nAnnastraße;2025;Do., 18.09.2025;9 Uhr;735\nAnnastraße;2025;Do., 18.09.2025;10 Uhr;1160\nAnnastraße;2025;Do., 18.09.2025;11 Uhr;1447\nAnnastraße;2025;Do., 18.09.2025;12 Uhr;2062\nAnnastraße;2025;Do., 18.09.2025;13 Uhr;2274\nAnnastraße;2025;Do., 18.09.2025;14 Uhr;1892\nAnnastraße;2025;Do., 18.09.2025;15 Uhr;2124\nAnnastraße;2025;Do., 18.09.2025;16 Uhr;2191\nAnnastraße;2025;Do., 18.09.2025;17 Uhr;2158\nAnnastraße;2025;Do., 18.09.2025;18 Uhr;1714\nAnnastraße;2025;Do., 18.09.2025;19 Uhr;988\nAnnastraße;2025;Do., 18.09.2025;20 Uhr;437\nAnnastraße;2025;Do., 18.09.2025;21 Uhr;198\nAnnastraße;2025;Do., 18.09.2025;22 Uhr;110\nAnnastraße;2025;Do., 18.09.2025;23 Uhr;61\nAnnastraße;2025;Fr., 19.09.2025;0 Uhr;31\nAnnastraße;2025;Fr., 19.09.2025;1 Uhr;30\nAnnastraße;2025;Fr., 19.09.2025;2 Uhr;2\nAnnastraße;2025;Fr., 19.09.2025;3 Uhr;3\nAnnastraße;2025;Fr., 19.09.2025;4 Uhr;2\nAnnastraße;2025;Fr., 19.09.2025;5 Uhr;23\nAnnastraße;2025;Fr., 19.09.2025;6 Uhr;95\nAnnastraße;2025;Fr., 19.09.2025;7 Uhr;310\nAnnastraße;2025;Fr., 19.09.2025;8 Uhr;438\nAnnastraße;2025;Fr., 19.09.2025;9 Uhr;746\nAnnastraße;2025;Fr., 19.09.2025;10 Uhr;1332\nAnnastraße;2025;Fr., 19.09.2025;11 Uhr;1580\nAnnastraße;2025;Fr., 19.09.2025;12 Uhr;2012\nAnnastraße;2025;Fr., 19.09.2025;13 Uhr;2045\nAnnastraße;2025;Fr., 19.09.2025;14 Uhr;2079\nAnnastraße;2025;Fr., 19.09.2025;15 Uhr;2149\nAnnastraße;2025;Fr., 19.09.2025;16 Uhr;2190\nAnnastraße;2025;Fr., 19.09.2025;17 Uhr;2176\nAnnastraße;2025;Fr., 19.09.2025;18 Uhr;2005\nAnnastraße;2025;Fr., 19.09.2025;19 Uhr;1226\nAnnastraße;2025;Fr., 19.09.2025;20 Uhr;628\nAnnastraße;2025;Fr., 19.09.2025;21 Uhr;550\nAnnastraße;2025;Fr., 19.09.2025;22 Uhr;366\nAnnastraße;2025;Fr., 19.09.2025;23 Uhr;164\nAnnastraße;2025;Sa., 20.09.2025;0 Uhr;141\nAnnastraße;2025;Sa., 20.09.2025;1 Uhr;74\nAnnastraße;2025;Sa., 20.09.2025;2 Uhr;60\nAnnastraße;2025;Sa., 20.09.2025;3 Uhr;36\nAnnastraße;2025;Sa., 20.09.2025;4 Uhr;34\nAnnastraße;2025;Sa., 20.09.2025;5 Uhr;33\nAnnastraße;2025;Sa., 20.09.2025;6 Uhr;42\nAnnastraße;2025;Sa., 20.09.2025;7 Uhr;104\nAnnastraße;2025;Sa., 20.09.2025;8 Uhr;188\nAnnastraße;2025;Sa., 20.09.2025;9 Uhr;694\nAnnastraße;2025;Sa., 20.09.2025;10 Uhr;1547\nAnnastraße;2025;Sa., 20.09.2025;11 Uhr;2379\nAnnastraße;2025;Sa., 20.09.2025;12 Uhr;2704\nAnnastraße;2025;Sa., 20.09.2025;13 Uhr;2948\nAnnastraße;2025;Sa., 20.09.2025;14 Uhr;2973\nAnnastraße;2025;Sa., 20.09.2025;15 Uhr;3051\nAnnastraße;2025;Sa., 20.09.2025;16 Uhr;3210\nAnnastraße;2025;Sa., 20.09.2025;17 Uhr;3047\nAnnastraße;2025;Sa., 20.09.2025;18 Uhr;2606\nAnnastraße;2025;Sa., 20.09.2025;19 Uhr;1649\nAnnastraße;2025;Sa., 20.09.2025;20 Uhr;833\nAnnastraße;2025;Sa., 20.09.2025;21 Uhr;577\nAnnastraße;2025;Sa., 20.09.2025;22 Uhr;386\nAnnastraße;2025;Sa., 20.09.2025;23 Uhr;219\nAnnastraße;2025;So., 21.09.2025;0 Uhr;153\nAnnastraße;2025;So., 21.09.2025;1 Uhr;126\nAnnastraße;2025;So., 21.09.2025;2 Uhr;90\nAnnastraße;2025;So., 21.09.2025;3 Uhr;55\nAnnastraße;2025;So., 21.09.2025;4 Uhr;30\nAnnastraße;2025;So., 21.09.2025;5 Uhr;6\nAnnastraße;2025;So., 21.09.2025;6 Uhr;15\nAnnastraße;2025;So., 21.09.2025;7 Uhr;48\nAnnastraße;2025;So., 21.09.2025;8 Uhr;74\nAnnastraße;2025;So., 21.09.2025;9 Uhr;169\nAnnastraße;2025;So., 21.09.2025;10 Uhr;319\nAnnastraße;2025;So., 21.09.2025;11 Uhr;385\nAnnastraße;2025;So., 21.09.2025;12 Uhr;462\nAnnastraße;2025;So., 21.09.2025;13 Uhr;504\nAnnastraße;2025;So., 21.09.2025;14 Uhr;592\nAnnastraße;2025;So., 21.09.2025;15 Uhr;793\nAnnastraße;2025;So., 21.09.2025;16 Uhr;846\nAnnastraße;2025;So., 21.09.2025;17 Uhr;709\nAnnastraße;2025;So., 21.09.2025;18 Uhr;516\nAnnastraße;2025;So., 21.09.2025;19 Uhr;423\nAnnastraße;2025;So., 21.09.2025;20 Uhr;269\nAnnastraße;2025;So., 21.09.2025;21 Uhr;170\nAnnastraße;2025;So., 21.09.2025;22 Uhr;55\nAnnastraße;2025;So., 21.09.2025;23 Uhr;26\nAnnastraße;2025;Mo., 22.09.2025;0 Uhr;9\nAnnastraße;2025;Mo., 22.09.2025;1 Uhr;11\nAnnastraße;2025;Mo., 22.09.2025;3 Uhr;2\nAnnastraße;2025;Mo., 22.09.2025;4 Uhr;3\nAnnastraße;2025;Mo., 22.09.2025;5 Uhr;31\nAnnastraße;2025;Mo., 22.09.2025;6 Uhr;87\nAnnastraße;2025;Mo., 22.09.2025;7 Uhr;242\nAnnastraße;2025;Mo., 22.09.2025;8 Uhr;348\nAnnastraße;2025;Mo., 22.09.2025;9 Uhr;488\nAnnastraße;2025;Mo., 22.09.2025;10 Uhr;779\nAnnastraße;2025;Mo., 22.09.2025;11 Uhr;483\nAnnastraße;2025;Mo., 22.09.2025;12 Uhr;866\nAnnastraße;2025;Mo., 22.09.2025;13 Uhr;1030\nAnnastraße;2025;Mo., 22.09.2025;14 Uhr;1172\nAnnastraße;2025;Mo., 22.09.2025;15 Uhr;1361\nAnnastraße;2025;Mo., 22.09.2025;16 Uhr;1396\nAnnastraße;2025;Mo., 22.09.2025;17 Uhr;1347\nAnnastraße;2025;Mo., 22.09.2025;18 Uhr;1128\nAnnastraße;2025;Mo., 22.09.2025;19 Uhr;636\nAnnastraße;2025;Mo., 22.09.2025;20 Uhr;211\nAnnastraße;2025;Mo., 22.09.2025;21 Uhr;66\nAnnastraße;2025;Mo., 22.09.2025;22 Uhr;58\nAnnastraße;2025;Mo., 22.09.2025;23 Uhr;40\nAnnastraße;2025;Di., 23.09.2025;0 Uhr;13\nAnnastraße;2025;Di., 23.09.2025;1 Uhr;4\nAnnastraße;2025;Di., 23.09.2025;2 Uhr;2\nAnnastraße;2025;Di., 23.09.2025;3 Uhr;2\nAnnastraße;2025;Di., 23.09.2025;4 Uhr;5\nAnnastraße;2025;Di., 23.09.2025;5 Uhr;35\nAnnastraße;2025;Di., 23.09.2025;6 Uhr;135\nAnnastraße;2025;Di., 23.09.2025;7 Uhr;277\nAnnastraße;2025;Di., 23.09.2025;8 Uhr;422\nAnnastraße;2025;Di., 23.09.2025;9 Uhr;735\nAnnastraße;2025;Di., 23.09.2025;10 Uhr;991\nAnnastraße;2025;Di., 23.09.2025;11 Uhr;1387\nAnnastraße;2025;Di., 23.09.2025;12 Uhr;1728\nAnnastraße;2025;Di., 23.09.2025;13 Uhr;1832\nAnnastraße;2025;Di., 23.09.2025;14 Uhr;1630\nAnnastraße;2025;Di., 23.09.2025;15 Uhr;1721\nAnnastraße;2025;Di., 23.09.2025;16 Uhr;1663\nAnnastraße;2025;Di., 23.09.2025;17 Uhr;1568\nAnnastraße;2025;Di., 23.09.2025;18 Uhr;1275\nAnnastraße;2025;Di., 23.09.2025;19 Uhr;641\nAnnastraße;2025;Di., 23.09.2025;20 Uhr;240\nAnnastraße;2025;Di., 23.09.2025;21 Uhr;170\nAnnastraße;2025;Di., 23.09.2025;22 Uhr;61\nAnnastraße;2025;Di., 23.09.2025;23 Uhr;29\nAnnastraße;2025;Mi., 24.09.2025;0 Uhr;28\nAnnastraße;2025;Mi., 24.09.2025;1 Uhr;1\nAnnastraße;2025;Mi., 24.09.2025;2 Uhr;2\nAnnastraße;2025;Mi., 24.09.2025;3 Uhr;2\nAnnastraße;2025;Mi., 24.09.2025;4 Uhr;7\nAnnastraße;2025;Mi., 24.09.2025;5 Uhr;21\nAnnastraße;2025;Mi., 24.09.2025;6 Uhr;115\nAnnastraße;2025;Mi., 24.09.2025;7 Uhr;135\nAnnastraße;2025;Mi., 24.09.2025;8 Uhr;212\nAnnastraße;2025;Mi., 24.09.2025;9 Uhr;333\nAnnastraße;2025;Mi., 24.09.2025;10 Uhr;680\nAnnastraße;2025;Mi., 24.09.2025;11 Uhr;870\nAnnastraße;2025;Mi., 24.09.2025;12 Uhr;1449\nAnnastraße;2025;Mi., 24.09.2025;13 Uhr;1565\nAnnastraße;2025;Mi., 24.09.2025;14 Uhr;1199\nAnnastraße;2025;Mi., 24.09.2025;15 Uhr;880\nAnnastraße;2025;Mi., 24.09.2025;16 Uhr;802\nAnnastraße;2025;Mi., 24.09.2025;17 Uhr;643\nAnnastraße;2025;Mi., 24.09.2025;18 Uhr;515\nAnnastraße;2025;Mi., 24.09.2025;19 Uhr;438\nAnnastraße;2025;Mi., 24.09.2025;20 Uhr;203\nAnnastraße;2025;Mi., 24.09.2025;21 Uhr;100\nAnnastraße;2025;Mi., 24.09.2025;22 Uhr;42\nAnnastraße;2025;Mi., 24.09.2025;23 Uhr;38\nAnnastraße;2025;Do., 25.09.2025;0 Uhr;35\nAnnastraße;2025;Do., 25.09.2025;1 Uhr;16\nAnnastraße;2025;Do., 25.09.2025;2 Uhr;11\nAnnastraße;2025;Do., 25.09.2025;3 Uhr;9\nAnnastraße;2025;Do., 25.09.2025;4 Uhr;6\nAnnastraße;2025;Do., 25.09.2025;5 Uhr;38\nAnnastraße;2025;Do., 25.09.2025;6 Uhr;98\nAnnastraße;2025;Do., 25.09.2025;7 Uhr;216\nAnnastraße;2025;Do., 25.09.2025;8 Uhr;541\nAnnastraße;2025;Do., 25.09.2025;9 Uhr;927\nAnnastraße;2025;Do., 25.09.2025;10 Uhr;473\nAnnastraße;2025;Do., 25.09.2025;11 Uhr;982\nAnnastraße;2025;Do., 25.09.2025;12 Uhr;841\nAnnastraße;2025;Do., 25.09.2025;13 Uhr;1629\nAnnastraße;2025;Do., 25.09.2025;14 Uhr;1540\nAnnastraße;2025;Do., 25.09.2025;15 Uhr;1636\nAnnastraße;2025;Do., 25.09.2025;16 Uhr;1842\nAnnastraße;2025;Do., 25.09.2025;17 Uhr;1884\nAnnastraße;2025;Do., 25.09.2025;18 Uhr;1524\nAnnastraße;2025;Do., 25.09.2025;19 Uhr;872\nAnnastraße;2025;Do., 25.09.2025;20 Uhr;356\nAnnastraße;2025;Do., 25.09.2025;21 Uhr;272\nAnnastraße;2025;Do., 25.09.2025;22 Uhr;119\nAnnastraße;2025;Do., 25.09.2025;23 Uhr;73\nAnnastraße;2025;Fr., 26.09.2025;0 Uhr;35\nAnnastraße;2025;Fr., 26.09.2025;1 Uhr;17\nAnnastraße;2025;Fr., 26.09.2025;2 Uhr;5\nAnnastraße;2025;Fr., 26.09.2025;3 Uhr;7\nAnnastraße;2025;Fr., 26.09.2025;4 Uhr;2\nAnnastraße;2025;Fr., 26.09.2025;5 Uhr;27\nAnnastraße;2025;Fr., 26.09.2025;6 Uhr;71\nAnnastraße;2025;Fr., 26.09.2025;7 Uhr;288\nAnnastraße;2025;Fr., 26.09.2025;8 Uhr;451\nAnnastraße;2025;Fr., 26.09.2025;9 Uhr;847\nAnnastraße;2025;Fr., 26.09.2025;10 Uhr;1355\nAnnastraße;2025;Fr., 26.09.2025;11 Uhr;1610\nAnnastraße;2025;Fr., 26.09.2025;12 Uhr;1835\nAnnastraße;2025;Fr., 26.09.2025;13 Uhr;2063\nAnnastraße;2025;Fr., 26.09.2025;14 Uhr;1829\nAnnastraße;2025;Fr., 26.09.2025;15 Uhr;2023\nAnnastraße;2025;Fr., 26.09.2025;16 Uhr;2165\nAnnastraße;2025;Fr., 26.09.2025;17 Uhr;1902\nAnnastraße;2025;Fr., 26.09.2025;18 Uhr;1775\nAnnastraße;2025;Fr., 26.09.2025;19 Uhr;1203\nAnnastraße;2025;Fr., 26.09.2025;20 Uhr;699\nAnnastraße;2025;Fr., 26.09.2025;21 Uhr;526\nAnnastraße;2025;Fr., 26.09.2025;22 Uhr;313\nAnnastraße;2025;Fr., 26.09.2025;23 Uhr;188\nAnnastraße;2025;Sa., 27.09.2025;0 Uhr;134\nAnnastraße;2025;Sa., 27.09.2025;1 Uhr;78\nAnnastraße;2025;Sa., 27.09.2025;2 Uhr;43\nAnnastraße;2025;Sa., 27.09.2025;3 Uhr;32\nAnnastraße;2025;Sa., 27.09.2025;4 Uhr;8\nAnnastraße;2025;Sa., 27.09.2025;5 Uhr;46\nAnnastraße;2025;Sa., 27.09.2025;6 Uhr;42\nAnnastraße;2025;Sa., 27.09.2025;7 Uhr;92\nAnnastraße;2025;Sa., 27.09.2025;8 Uhr;319\nAnnastraße;2025;Sa., 27.09.2025;9 Uhr;855\nAnnastraße;2025;Sa., 27.09.2025;10 Uhr;1727\nAnnastraße;2025;Sa., 27.09.2025;11 Uhr;2236\nAnnastraße;2025;Sa., 27.09.2025;12 Uhr;2885\nAnnastraße;2025;Sa., 27.09.2025;13 Uhr;3346\nAnnastraße;2025;Sa., 27.09.2025;14 Uhr;3537\nAnnastraße;2025;Sa., 27.09.2025;15 Uhr;3448\nAnnastraße;2025;Sa., 27.09.2025;16 Uhr;3782\nAnnastraße;2025;Sa., 27.09.2025;17 Uhr;3200\nAnnastraße;2025;Sa., 27.09.2025;18 Uhr;2576\nAnnastraße;2025;Sa., 27.09.2025;19 Uhr;1533\nAnnastraße;2025;Sa., 27.09.2025;20 Uhr;718\nAnnastraße;2025;Sa., 27.09.2025;21 Uhr;513\nAnnastraße;2025;Sa., 27.09.2025;22 Uhr;358\nAnnastraße;2025;Sa., 27.09.2025;23 Uhr;212\nAnnastraße;2025;So., 28.09.2025;0 Uhr;143\nAnnastraße;2025;So., 28.09.2025;1 Uhr;107\nAnnastraße;2025;So., 28.09.2025;2 Uhr;73\nAnnastraße;2025;So., 28.09.2025;3 Uhr;59\nAnnastraße;2025;So., 28.09.2025;4 Uhr;32\nAnnastraße;2025;So., 28.09.2025;5 Uhr;20\nAnnastraße;2025;So., 28.09.2025;6 Uhr;13\nAnnastraße;2025;So., 28.09.2025;7 Uhr;31\nAnnastraße;2025;So., 28.09.2025;8 Uhr;78\nAnnastraße;2025;So., 28.09.2025;9 Uhr;212\nAnnastraße;2025;So., 28.09.2025;10 Uhr;341\nAnnastraße;2025;So., 28.09.2025;11 Uhr;531\nAnnastraße;2025;So., 28.09.2025;12 Uhr;644\nAnnastraße;2025;So., 28.09.2025;13 Uhr;769\nAnnastraße;2025;So., 28.09.2025;14 Uhr;891\nAnnastraße;2025;So., 28.09.2025;15 Uhr;933\nAnnastraße;2025;So., 28.09.2025;16 Uhr;915\nAnnastraße;2025;So., 28.09.2025;17 Uhr;697\nAnnastraße;2025;So., 28.09.2025;18 Uhr;557\nAnnastraße;2025;So., 28.09.2025;19 Uhr;469\nAnnastraße;2025;So., 28.09.2025;20 Uhr;370\nAnnastraße;2025;So., 28.09.2025;21 Uhr;263\nAnnastraße;2025;So., 28.09.2025;22 Uhr;60\nAnnastraße;2025;So., 28.09.2025;23 Uhr;40\nAnnastraße;2025;Mo., 29.09.2025;0 Uhr;20\nAnnastraße;2025;Mo., 29.09.2025;1 Uhr;13\nAnnastraße;2025;Mo., 29.09.2025;2 Uhr;3\nAnnastraße;2025;Mo., 29.09.2025;3 Uhr;4\nAnnastraße;2025;Mo., 29.09.2025;4 Uhr;2\nAnnastraße;2025;Mo., 29.09.2025;5 Uhr;33\nAnnastraße;2025;Mo., 29.09.2025;6 Uhr;82\nAnnastraße;2025;Mo., 29.09.2025;7 Uhr;276\nAnnastraße;2025;Mo., 29.09.2025;8 Uhr;457\nAnnastraße;2025;Mo., 29.09.2025;9 Uhr;729\nAnnastraße;2025;Mo., 29.09.2025;10 Uhr;1255\nAnnastraße;2025;Mo., 29.09.2025;11 Uhr;1476\nAnnastraße;2025;Mo., 29.09.2025;12 Uhr;1959\nAnnastraße;2025;Mo., 29.09.2025;13 Uhr;2068\nAnnastraße;2025;Mo., 29.09.2025;14 Uhr;1779\nAnnastraße;2025;Mo., 29.09.2025;15 Uhr;1843\nAnnastraße;2025;Mo., 29.09.2025;16 Uhr;1872\nAnnastraße;2025;Mo., 29.09.2025;17 Uhr;1808\nAnnastraße;2025;Mo., 29.09.2025;18 Uhr;1500\nAnnastraße;2025;Mo., 29.09.2025;19 Uhr;797\nAnnastraße;2025;Mo., 29.09.2025;20 Uhr;284\nAnnastraße;2025;Mo., 29.09.2025;21 Uhr;147\nAnnastraße;2025;Mo., 29.09.2025;22 Uhr;85\nAnnastraße;2025;Mo., 29.09.2025;23 Uhr;45\nAnnastraße;2025;Di., 30.09.2025;0 Uhr;19\nAnnastraße;2025;Di., 30.09.2025;1 Uhr;21\nAnnastraße;2025;Di., 30.09.2025;2 Uhr;1\nAnnastraße;2025;Di., 30.09.2025;3 Uhr;1\nAnnastraße;2025;Di., 30.09.2025;4 Uhr;3\nAnnastraße;2025;Di., 30.09.2025;5 Uhr;33\nAnnastraße;2025;Di., 30.09.2025;6 Uhr;102\nAnnastraße;2025;Di., 30.09.2025;7 Uhr;282\nAnnastraße;2025;Di., 30.09.2025;8 Uhr;425\nAnnastraße;2025;Di., 30.09.2025;9 Uhr;780\nAnnastraße;2025;Di., 30.09.2025;10 Uhr;1007\nAnnastraße;2025;Di., 30.09.2025;11 Uhr;919\nAnnastraße;2025;Di., 30.09.2025;12 Uhr;322\nAnnastraße;2025;Di., 30.09.2025;13 Uhr;754\nAnnastraße;2025;Di., 30.09.2025;14 Uhr;1293\nAnnastraße;2025;Di., 30.09.2025;15 Uhr;1577\nAnnastraße;2025;Di., 30.09.2025;16 Uhr;1469\nAnnastraße;2025;Di., 30.09.2025;17 Uhr;1093\nAnnastraße;2025;Di., 30.09.2025;18 Uhr;1035\nAnnastraße;2025;Di., 30.09.2025;19 Uhr;748\nAnnastraße;2025;Di., 30.09.2025;20 Uhr;207\nAnnastraße;2025;Di., 30.09.2025;21 Uhr;202\nAnnastraße;2025;Di., 30.09.2025;22 Uhr;81\nAnnastraße;2025;Di., 30.09.2025;23 Uhr;49\nAnnastraße;2025;Mi., 01.10.2025;0 Uhr;15\nAnnastraße;2025;Mi., 01.10.2025;1 Uhr;12\nAnnastraße;2025;Mi., 01.10.2025;3 Uhr;1\nAnnastraße;2025;Mi., 01.10.2025;4 Uhr;5\nAnnastraße;2025;Mi., 01.10.2025;5 Uhr;34\nAnnastraße;2025;Mi., 01.10.2025;6 Uhr;80\nAnnastraße;2025;Mi., 01.10.2025;7 Uhr;278\nAnnastraße;2025;Mi., 01.10.2025;8 Uhr;428\nAnnastraße;2025;Mi., 01.10.2025;9 Uhr;709\nAnnastraße;2025;Mi., 01.10.2025;10 Uhr;1239\nAnnastraße;2025;Mi., 01.10.2025;11 Uhr;1573\nAnnastraße;2025;Mi., 01.10.2025;12 Uhr;2067\nAnnastraße;2025;Mi., 01.10.2025;13 Uhr;2342\nAnnastraße;2025;Mi., 01.10.2025;14 Uhr;1853\nAnnastraße;2025;Mi., 01.10.2025;15 Uhr;1999\nAnnastraße;2025;Mi., 01.10.2025;16 Uhr;2090\nAnnastraße;2025;Mi., 01.10.2025;17 Uhr;1901\nAnnastraße;2025;Mi., 01.10.2025;18 Uhr;1692\nAnnastraße;2025;Mi., 01.10.2025;19 Uhr;977\nAnnastraße;2025;Mi., 01.10.2025;20 Uhr;318\nAnnastraße;2025;Mi., 01.10.2025;21 Uhr;171\nAnnastraße;2025;Mi., 01.10.2025;22 Uhr;110\nAnnastraße;2025;Mi., 01.10.2025;23 Uhr;41\nAnnastraße;2025;Do., 02.10.2025;0 Uhr;44\nAnnastraße;2025;Do., 02.10.2025;1 Uhr;26\nAnnastraße;2025;Do., 02.10.2025;2 Uhr;16\nAnnastraße;2025;Do., 02.10.2025;3 Uhr;5\nAnnastraße;2025;Do., 02.10.2025;4 Uhr;2\nAnnastraße;2025;Do., 02.10.2025;5 Uhr;39\nAnnastraße;2025;Do., 02.10.2025;6 Uhr;117\nAnnastraße;2025;Do., 02.10.2025;7 Uhr;272\nAnnastraße;2025;Do., 02.10.2025;8 Uhr;537\nAnnastraße;2025;Do., 02.10.2025;9 Uhr;900\nAnnastraße;2025;Do., 02.10.2025;10 Uhr;1286\nAnnastraße;2025;Do., 02.10.2025;11 Uhr;2026\nAnnastraße;2025;Do., 02.10.2025;12 Uhr;2291\nAnnastraße;2025;Do., 02.10.2025;13 Uhr;2356\nAnnastraße;2025;Do., 02.10.2025;14 Uhr;2072\nAnnastraße;2025;Do., 02.10.2025;15 Uhr;2043\nAnnastraße;2025;Do., 02.10.2025;16 Uhr;2283\nAnnastraße;2025;Do., 02.10.2025;17 Uhr;2351\nAnnastraße;2025;Do., 02.10.2025;18 Uhr;2105\nAnnastraße;2025;Do., 02.10.2025;19 Uhr;1204\nAnnastraße;2025;Do., 02.10.2025;20 Uhr;447\nAnnastraße;2025;Do., 02.10.2025;21 Uhr;321\nAnnastraße;2025;Do., 02.10.2025;22 Uhr;217\nAnnastraße;2025;Do., 02.10.2025;23 Uhr;149\nAnnastraße;2025;Fr., 03.10.2025;0 Uhr;94\nAnnastraße;2025;Fr., 03.10.2025;1 Uhr;53\nAnnastraße;2025;Fr., 03.10.2025;2 Uhr;29\nAnnastraße;2025;Fr., 03.10.2025;3 Uhr;16\nAnnastraße;2025;Fr., 03.10.2025;4 Uhr;3\nAnnastraße;2025;Fr., 03.10.2025;5 Uhr;8\nAnnastraße;2025;Fr., 03.10.2025;6 Uhr;21\nAnnastraße;2025;Fr., 03.10.2025;7 Uhr;26\nAnnastraße;2025;Fr., 03.10.2025;8 Uhr;84\nAnnastraße;2025;Fr., 03.10.2025;9 Uhr;135\nAnnastraße;2025;Fr., 03.10.2025;10 Uhr;294\nAnnastraße;2025;Fr., 03.10.2025;11 Uhr;380\nAnnastraße;2025;Fr., 03.10.2025;12 Uhr;604\nAnnastraße;2025;Fr., 03.10.2025;13 Uhr;875\nAnnastraße;2025;Fr., 03.10.2025;14 Uhr;1002\nAnnastraße;2025;Fr., 03.10.2025;15 Uhr;1184\nAnnastraße;2025;Fr., 03.10.2025;16 Uhr;1222\nAnnastraße;2025;Fr., 03.10.2025;17 Uhr;1251\nAnnastraße;2025;Fr., 03.10.2025;18 Uhr;842\nAnnastraße;2025;Fr., 03.10.2025;19 Uhr;691\nAnnastraße;2025;Fr., 03.10.2025;20 Uhr;531\nAnnastraße;2025;Fr., 03.10.2025;21 Uhr;413\nAnnastraße;2025;Fr., 03.10.2025;22 Uhr;284\nAnnastraße;2025;Fr., 03.10.2025;23 Uhr;131\nAnnastraße;2025;Sa., 04.10.2025;0 Uhr;104\nAnnastraße;2025;Sa., 04.10.2025;1 Uhr;84\nAnnastraße;2025;Sa., 04.10.2025;2 Uhr;30\nAnnastraße;2025;Sa., 04.10.2025;3 Uhr;35\nAnnastraße;2025;Sa., 04.10.2025;4 Uhr;12\nAnnastraße;2025;Sa., 04.10.2025;5 Uhr;40\nAnnastraße;2025;Sa., 04.10.2025;6 Uhr;40\nAnnastraße;2025;Sa., 04.10.2025;7 Uhr;72\nAnnastraße;2025;Sa., 04.10.2025;8 Uhr;256\nAnnastraße;2025;Sa., 04.10.2025;9 Uhr;785\nAnnastraße;2025;Sa., 04.10.2025;10 Uhr;1920\nAnnastraße;2025;Sa., 04.10.2025;11 Uhr;2491\nAnnastraße;2025;Sa., 04.10.2025;12 Uhr;3550\nAnnastraße;2025;Sa., 04.10.2025;13 Uhr;3907\nAnnastraße;2025;Sa., 04.10.2025;14 Uhr;4149\nAnnastraße;2025;Sa., 04.10.2025;15 Uhr;4318\nAnnastraße;2025;Sa., 04.10.2025;16 Uhr;3406\nAnnastraße;2025;Sa., 04.10.2025;17 Uhr;1878\nAnnastraße;2025;Sa., 04.10.2025;18 Uhr;1616\nAnnastraße;2025;Sa., 04.10.2025;19 Uhr;954\nAnnastraße;2025;Sa., 04.10.2025;20 Uhr;524\nAnnastraße;2025;Sa., 04.10.2025;21 Uhr;380\nAnnastraße;2025;Sa., 04.10.2025;22 Uhr;290\nAnnastraße;2025;Sa., 04.10.2025;23 Uhr;160\nAnnastraße;2025;So., 05.10.2025;0 Uhr;85\nAnnastraße;2025;So., 05.10.2025;1 Uhr;49\nAnnastraße;2025;So., 05.10.2025;2 Uhr;62\nAnnastraße;2025;So., 05.10.2025;3 Uhr;14\nAnnastraße;2025;So., 05.10.2025;4 Uhr;9\nAnnastraße;2025;So., 05.10.2025;5 Uhr;22\nAnnastraße;2025;So., 05.10.2025;6 Uhr;12\nAnnastraße;2025;So., 05.10.2025;7 Uhr;25\nAnnastraße;2025;So., 05.10.2025;8 Uhr;60\nAnnastraße;2025;So., 05.10.2025;9 Uhr;150\nAnnastraße;2025;So., 05.10.2025;10 Uhr;285\nAnnastraße;2025;So., 05.10.2025;11 Uhr;388\nAnnastraße;2025;So., 05.10.2025;12 Uhr;321\nAnnastraße;2025;So., 05.10.2025;13 Uhr;159\nAnnastraße;2025;So., 05.10.2025;14 Uhr;337\nAnnastraße;2025;So., 05.10.2025;15 Uhr;337\nAnnastraße;2025;So., 05.10.2025;16 Uhr;277\nAnnastraße;2025;So., 05.10.2025;17 Uhr;480\nAnnastraße;2025;So., 05.10.2025;18 Uhr;498\nAnnastraße;2025;So., 05.10.2025;19 Uhr;445\nAnnastraße;2025;So., 05.10.2025;20 Uhr;239\nAnnastraße;2025;So., 05.10.2025;21 Uhr;152\nAnnastraße;2025;So., 05.10.2025;22 Uhr;36\nAnnastraße;2025;So., 05.10.2025;23 Uhr;8\nAnnastraße;2025;Mo., 06.10.2025;0 Uhr;2\nAnnastraße;2025;Mo., 06.10.2025;1 Uhr;3\nAnnastraße;2025;Mo., 06.10.2025;2 Uhr;6\nAnnastraße;2025;Mo., 06.10.2025;3 Uhr;3\nAnnastraße;2025;Mo., 06.10.2025;4 Uhr;2\nAnnastraße;2025;Mo., 06.10.2025;5 Uhr;30\nAnnastraße;2025;Mo., 06.10.2025;6 Uhr;67\nAnnastraße;2025;Mo., 06.10.2025;7 Uhr;255\nAnnastraße;2025;Mo., 06.10.2025;8 Uhr;447\nAnnastraße;2025;Mo., 06.10.2025;9 Uhr;634\nAnnastraße;2025;Mo., 06.10.2025;10 Uhr;943\nAnnastraße;2025;Mo., 06.10.2025;11 Uhr;1074\nAnnastraße;2025;Mo., 06.10.2025;12 Uhr;1102\nAnnastraße;2025;Mo., 06.10.2025;13 Uhr;1166\nAnnastraße;2025;Mo., 06.10.2025;14 Uhr;980\nAnnastraße;2025;Mo., 06.10.2025;15 Uhr;1240\nAnnastraße;2025;Mo., 06.10.2025;16 Uhr;1576\nAnnastraße;2025;Mo., 06.10.2025;17 Uhr;1381\nAnnastraße;2025;Mo., 06.10.2025;18 Uhr;1156\nAnnastraße;2025;Mo., 06.10.2025;19 Uhr;498\nAnnastraße;2025;Mo., 06.10.2025;20 Uhr;180\nAnnastraße;2025;Mo., 06.10.2025;21 Uhr;180\nAnnastraße;2025;Mo., 06.10.2025;22 Uhr;87\nAnnastraße;2025;Mo., 06.10.2025;23 Uhr;17\nAnnastraße;2025;Di., 07.10.2025;0 Uhr;28\nAnnastraße;2025;Di., 07.10.2025;1 Uhr;1\nAnnastraße;2025;Di., 07.10.2025;3 Uhr;1\nAnnastraße;2025;Di., 07.10.2025;4 Uhr;5\nAnnastraße;2025;Di., 07.10.2025;5 Uhr;34\nAnnastraße;2025;Di., 07.10.2025;6 Uhr;112\nAnnastraße;2025;Di., 07.10.2025;7 Uhr;292\nAnnastraße;2025;Di., 07.10.2025;8 Uhr;389\nAnnastraße;2025;Di., 07.10.2025;9 Uhr;778\nAnnastraße;2025;Di., 07.10.2025;10 Uhr;1243\nAnnastraße;2025;Di., 07.10.2025;11 Uhr;1509\nAnnastraße;2025;Di., 07.10.2025;12 Uhr;1883\nAnnastraße;2025;Di., 07.10.2025;13 Uhr;1902\nAnnastraße;2025;Di., 07.10.2025;14 Uhr;1702\nAnnastraße;2025;Di., 07.10.2025;15 Uhr;1917\nAnnastraße;2025;Di., 07.10.2025;16 Uhr;2037\nAnnastraße;2025;Di., 07.10.2025;17 Uhr;1716\nAnnastraße;2025;Di., 07.10.2025;18 Uhr;1343\nAnnastraße;2025;Di., 07.10.2025;19 Uhr;660\nAnnastraße;2025;Di., 07.10.2025;20 Uhr;223\nAnnastraße;2025;Di., 07.10.2025;21 Uhr;183\nAnnastraße;2025;Di., 07.10.2025;22 Uhr;86\nAnnastraße;2025;Di., 07.10.2025;23 Uhr;33\nAnnastraße;2025;Mi., 08.10.2025;0 Uhr;32\nAnnastraße;2025;Mi., 08.10.2025;1 Uhr;17\nAnnastraße;2025;Mi., 08.10.2025;2 Uhr;3\nAnnastraße;2025;Mi., 08.10.2025;3 Uhr;3\nAnnastraße;2025;Mi., 08.10.2025;4 Uhr;7\nAnnastraße;2025;Mi., 08.10.2025;5 Uhr;36\nAnnastraße;2025;Mi., 08.10.2025;6 Uhr;108\nAnnastraße;2025;Mi., 08.10.2025;7 Uhr;286\nAnnastraße;2025;Mi., 08.10.2025;8 Uhr;421\nAnnastraße;2025;Mi., 08.10.2025;9 Uhr;641\nAnnastraße;2025;Mi., 08.10.2025;10 Uhr;1132\nAnnastraße;2025;Mi., 08.10.2025;11 Uhr;1458\nAnnastraße;2025;Mi., 08.10.2025;12 Uhr;1785\nAnnastraße;2025;Mi., 08.10.2025;13 Uhr;2102\nAnnastraße;2025;Mi., 08.10.2025;14 Uhr;1670\nAnnastraße;2025;Mi., 08.10.2025;15 Uhr;1775\nAnnastraße;2025;Mi., 08.10.2025;16 Uhr;1890\nAnnastraße;2025;Mi., 08.10.2025;17 Uhr;1863\nAnnastraße;2025;Mi., 08.10.2025;18 Uhr;1625\nAnnastraße;2025;Mi., 08.10.2025;19 Uhr;946\nAnnastraße;2025;Mi., 08.10.2025;20 Uhr;343\nAnnastraße;2025;Mi., 08.10.2025;21 Uhr;304\nAnnastraße;2025;Mi., 08.10.2025;22 Uhr;164\nAnnastraße;2025;Mi., 08.10.2025;23 Uhr;84\nAnnastraße;2025;Do., 09.10.2025;0 Uhr;30\nAnnastraße;2025;Do., 09.10.2025;1 Uhr;21\nAnnastraße;2025;Do., 09.10.2025;2 Uhr;24\nAnnastraße;2025;Do., 09.10.2025;3 Uhr;21\nAnnastraße;2025;Do., 09.10.2025;4 Uhr;5\nAnnastraße;2025;Do., 09.10.2025;5 Uhr;27\nAnnastraße;2025;Do., 09.10.2025;6 Uhr;112\nAnnastraße;2025;Do., 09.10.2025;7 Uhr;242\nAnnastraße;2025;Do., 09.10.2025;8 Uhr;468\nAnnastraße;2025;Do., 09.10.2025;9 Uhr;480\nAnnastraße;2025;Do., 09.10.2025;10 Uhr;860\nAnnastraße;2025;Do., 09.10.2025;11 Uhr;1209\nAnnastraße;2025;Do., 09.10.2025;12 Uhr;1743\nAnnastraße;2025;Do., 09.10.2025;13 Uhr;1600",
+ "dortmund_flaechen": {
+  "total_count": 3,
+  "results": [
+   {
+    "geo_point_2d": {
+     "lon": 7.465442072003704,
+     "lat": 51.514269195863264
+    },
+    "geo_shape": {
+     "type": "Feature",
+     "geometry": {
+      "coordinates": [
+       [
+        [
+         7.466626167297363,
+         51.51433792404902
+        ],
+        [
+         7.4658966064453125,
+         51.514317893776294
+        ],
+        [
+         7.465558648109436,
+         51.514311217016754
+        ],
+        [
+         7.465011477470397,
+         51.51430120187565
+        ],
+        [
+         7.464721798896789,
+         51.51430287106598
+        ],
+        [
+         7.464544773101807,
+         51.51430120187565
+        ],
+        [
+         7.464284598827362,
+         51.514314555396666
+        ],
+        [
+         7.464284598827362,
+         51.51422775744006
+        ],
+        [
+         7.465298473834991,
+         51.514204388731194
+        ],
+        [
+         7.465783953666686,
+         51.51422775744006
+        ],
+        [
+         7.466534972190856,
+         51.5142578029053
+        ],
+        [
+         7.466628849506378,
+         51.51425947209724
+        ],
+        [
+         7.466626167297363,
+         51.51433792404902
+        ]
+       ]
+      ],
+      "type": "Polygon"
+     },
+     "properties": {}
+    },
+    "name": "Westenhellweg Ost",
+    "kommune": "Dortmund"
+   },
+   {
+    "geo_point_2d": {
+     "lon": 7.457912087920916,
+     "lat": 51.51398205011683
+    },
+    "geo_shape": {
+     "type": "Feature",
+     "geometry": {
+      "coordinates": [
+       [
+        [
+         7.457945577246095,
+         51.51404712596326
+        ],
+        [
+         7.456576884866518,
+         51.5138437181071
+        ],
+        [
+         7.456518153575702,
+         51.513877089809114
+        ],
+        [
+         7.456472189939865,
+         51.51382941599354
+        ],
+        [
+         7.455920627283892,
+         51.51376108344962
+        ],
+        [
+         7.455999786705776,
+         51.51363395284005
+        ],
+        [
+         7.457062055560764,
+         51.513810346441204
+        ],
+        [
+         7.457800026057303,
+         51.51391840705139
+        ],
+        [
+         7.458165181067527,
+         51.51397402638938
+        ],
+        [
+         7.458469051100085,
+         51.51401375444641
+        ],
+        [
+         7.4586605661195335,
+         51.514042358613864
+        ],
+        [
+         7.459041042081945,
+         51.514088443111945
+        ],
+        [
+         7.459990877064606,
+         51.51421048614793
+        ],
+        [
+         7.459911717642722,
+         51.514316956722155
+        ],
+        [
+         7.459102327059609,
+         51.51420285948643
+        ],
+        [
+         7.458619709467758,
+         51.514139294842465
+        ],
+        [
+         7.458172841543622,
+         51.51407731926557
+        ],
+        [
+         7.457945577246095,
+         51.51404712596326
+        ]
+       ]
+      ],
+      "type": "Polygon"
+     },
+     "properties": {}
+    },
+    "name": "Westenhellweg West",
+    "kommune": "Dortmund"
+   },
+   {
+    "geo_point_2d": {
+     "lon": 7.462598392084305,
+     "lat": 51.51431456440767
+    },
+    "geo_shape": {
+     "type": "Feature",
+     "geometry": {
+      "coordinates": [
+       [
+        [
+         7.46400285571556,
+         51.51422687636825
+        ],
+        [
+         7.463995849889861,
+         51.51435707083463
+        ],
+        [
+         7.463496856143345,
+         51.51436211320313
+        ],
+        [
+         7.463215816440011,
+         51.514367683145174
+        ],
+        [
+         7.462476520914676,
+         51.51437882302721
+        ],
+        [
+         7.462215171891191,
+         51.51438550695513
+        ],
+        [
+         7.461792717305285,
+         51.51438773493088
+        ],
+        [
+         7.461722904894901,
+         51.51434206140615
+        ],
+        [
+         7.460869045414068,
+         51.51434540337292
+        ],
+        [
+         7.460894106279335,
+         51.5142752220191
+        ],
+        [
+         7.461205577033351,
+         51.51427410802848
+        ],
+        [
+         7.461583280074138,
+         51.51427856399077
+        ],
+        [
+         7.461785557058067,
+         51.51427856399077
+        ],
+        [
+         7.462263503559918,
+         51.51427188004717
+        ],
+        [
+         7.462694908454848,
+         51.51426408211172
+        ],
+        [
+         7.463049340692174,
+         51.51425851215702
+        ],
+        [
+         7.463897829987595,
+         51.51423623233136
+        ],
+        [
+         7.46400285571556,
+         51.51422687636825
+        ]
+       ]
+      ],
+      "type": "Polygon"
+     },
+     "properties": {}
+    },
+    "name": "Westenhellweg Mitte",
+    "kommune": "Dortmund"
+   }
+  ]
+ },
+ "wuerzburg_zaehlstellen": {
+  "total_count": 3,
+  "results": [
+   {
+    "id": 476,
+    "counter_street_name": "Kaiserstraße",
+    "city": "Würzburg",
+    "geo_shape": {
+     "type": "Feature",
+     "geometry": {
+      "coordinates": [
+       [
+        [
+         9.933534264564514,
+         49.79767989935027
+        ],
+        [
+         9.934167265892029,
+         49.79879140391002
+        ],
+        [
+         9.934676885604858,
+         49.79962588121911
+        ],
+        [
+         9.934483766555786,
+         49.79967089410911
+        ],
+        [
+         9.933979511260986,
+         49.798832954987645
+        ],
+        [
+         9.9334055185318,
+         49.79787727118186
+        ],
+        [
+         9.933443069458008,
+         49.797859957895504
+        ],
+        [
+         9.933362603187561,
+         49.797742227384
+        ],
+        [
+         9.93313193321228,
+         49.79776300337743
+        ],
+        [
+         9.93312656879425,
+         49.79773876471757
+        ],
+        [
+         9.933255314826965,
+         49.79744443716551
+        ],
+        [
+         9.933432340621948,
+         49.79751715355065
+        ],
+        [
+         9.933518171310425,
+         49.79751369086812
+        ],
+        [
+         9.933534264564514,
+         49.79767989935027
+        ]
+       ]
+      ],
+      "type": "Polygon"
+     },
+     "properties": {}
+    },
+    "geo_point_2d": {
+     "lon": 9.933887635731686,
+     "lat": 49.798498976405355
+    }
+   },
+   {
+    "id": 470,
+    "counter_street_name": "Spiegelstraße",
+    "city": "Würzburg",
+    "geo_shape": {
+     "type": "Feature",
+     "geometry": {
+      "coordinates": [
+       [
+        [
+         9.934698343276976,
+         49.7948335003235
+        ],
+        [
+         9.934966564178467,
+         49.794909683498354
+        ],
+        [
+         9.934456944465637,
+         49.79507243806135
+        ],
+        [
+         9.93388831615448,
+         49.79530791178004
+        ],
+        [
+         9.93362545967102,
+         49.7953633171945
+        ],
+        [
+         9.933571815490723,
+         49.79540140838018
+        ],
+        [
+         9.933223128318787,
+         49.795262894834096
+        ],
+        [
+         9.933544993400574,
+         49.795242117768026
+        ],
+        [
+         9.933775663375854,
+         49.79519363791248
+        ],
+        [
+         9.93432819843292,
+         49.7949858665534
+        ],
+        [
+         9.934698343276976,
+         49.7948335003235
+        ]
+       ]
+      ],
+      "type": "Polygon"
+     },
+     "properties": {}
+    },
+    "geo_point_2d": {
+     "lon": 9.934114106308467,
+     "lat": 49.79512717222457
+    }
+   },
+   {
+    "id": 135,
+    "counter_street_name": "Schönbornstraße",
+    "city": "Würzburg",
+    "geo_shape": {
+     "type": "Feature",
+     "geometry": {
+      "coordinates": [
+       [
+        [
+         9.930891591802778,
+         49.795012146595376
+        ],
+        [
+         9.931128097514513,
+         49.79507915654703
+        ],
+        [
+         9.931203382337914,
+         49.795952862293035
+        ],
+        [
+         9.931045320515405,
+         49.79602517939397
+        ],
+        [
+         9.930996048492128,
+         49.79567042082637
+        ],
+        [
+         9.93096648527816,
+         49.79556990589888
+        ],
+        [
+         9.930891591802778,
+         49.795012146595376
+        ]
+       ]
+      ],
+      "type": "Polygon"
+     },
+     "properties": {}
+    },
+    "geo_point_2d": {
+     "lon": 9.931060093195851,
+     "lat": 49.795490162266525
+    }
+   }
+  ]
+ }
+}

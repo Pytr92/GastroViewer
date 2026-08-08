@@ -261,6 +261,13 @@ class Settings:
         # die TTL betrifft nur den gerechneten PLZ-Auszug.
         if source.startswith("register"):
             return self.ttl_zensus
+        # Bebauungspläne werden über Jahre aufgestellt, nicht über Tage.
+        if source.startswith("baurecht"):
+            return self.ttl_zensus
+        # Passantenfrequenz: Stundenmittel über Jahre — ein Tag mehr oder
+        # weniger verschiebt die Kurve nicht.
+        if source.startswith("frequenz"):
+            return self.ttl_zensus
         # Besonnung: hängt am Gebäudebestand, und Häuser stehen lange.
         # Die Rechnung selbst ist teuer genug, um sie nicht zu wiederholen.
         if source.startswith("sonne"):

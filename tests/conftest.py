@@ -234,3 +234,18 @@ def tourismus_muenchen():
 @pytest.fixture(scope="session")
 def erhaltungssatzung_haidhausen():
     return load_fixture("raw_muenchen_erhaltungssatzung.json")
+
+
+@pytest.fixture(scope="session")
+def genesis_bestand_ffcsv():
+    return load_fixture("raw_genesis_bestand_ffcsv.json")
+
+
+@pytest.fixture(scope="session")
+def frequenz_fixture():
+    return load_fixture("raw_frequenz.json")
+
+
+@pytest.fixture(scope="session")
+def baurecht_fixture():
+    return load_fixture("raw_baurecht.json")

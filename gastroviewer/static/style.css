@@ -719,3 +719,12 @@ details.ranking > summary {
   gap: 6px; margin-top: 3px; font-size: 11px;
 }
 .uebersicht-legende .finder-gewicht select { font-size: 11px; }
+
+/* Tagesgang-Balken der Passantenfrequenz (Block 6i). Bewusst schlicht:
+   die Zahl steht daneben, der Balken macht nur den Verlauf sichtbar. */
+.balken {
+  display: block;
+  height: 10px;
+  border-radius: 2px;
+  background: #4a7fb5;
+}

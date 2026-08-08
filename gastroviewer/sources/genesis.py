@@ -86,6 +86,13 @@ TAB_BAUFERTIGSTELLUNGEN = "31121-01-02-5"
 # Werkzeugs, der gemeindescharf ist — München 490 % Gewerbesteuer gegen
 # Garching 330 % sind 160 Prozentpunkte auf den Gewerbeertrag.
 TAB_HEBESAETZE = "71231-01-03-5"
+# Kreistabellen der AA-Runde, Phase-0 am 2026-08-08 aufgezeichnet:
+# Gastgewerbe-Bestand (der amtliche Nenner zur OSM-Zählung, ab 2006) und
+# die beiden Bildungstabellen. München 2024: 4 705 Gastgewerbe-
+# Niederlassungen, 108 490 Studierende, 137 846 Schülerinnen und Schüler.
+TAB_NIEDERLASSUNGEN = "52111-02-01-4"
+TAB_STUDIERENDE = "21311-01-01-4"
+TAB_SCHUELER = "21111-01-03-4"
 
 LIZENZ = (
     "Datenlizenz Deutschland Namensnennung 2.0 (dl-de/by-2-0) · "
@@ -430,6 +437,127 @@ def bau_auswerten(rows: list[dict[str, str]], ags8: str) -> dict[str, Any]:
             "reihe": reihe[-10:]}
 
 
+# Unternehmensregister-System: Bestand an Niederlassungen je
+# Wirtschaftsabschnitt. „I" ist das Gastgewerbe (Beherbergung UND
+# Gastronomie — feiner geht es auf Kreisebene nicht), „B-10" die
+# Insgesamt-Zeile über alle erfassten Abschnitte.
+WZ_GASTGEWERBE = "WZ08-I"
+WZ_INSGESAMT = "WZ08-B-10"
+
+
+def niederlassungen_auswerten(
+    rows: list[dict[str, str]], ags5: str
+) -> dict[str, Any]:
+    """Tabelle 52111-02-01-4: Gastgewerbe-Bestand des Kreises je Jahr.
+
+    Liefert den amtlichen Nenner, den das Werkzeug bisher nur über
+    gezählte OSM-Betriebe genähert hat — und über die Zeitreihe eine
+    Netto-Bestandsdynamik, die keine Insolvenzstatistik hergibt."""
+    zeilen, name = _kreis_zeilen(rows, ags5)
+    je_jahr: dict[int, dict[str, Any]] = {}
+    for r in zeilen:
+        jahr = _jahr(r.get("time"))
+        if jahr is None or r.get("value_variable_code") != "NILA01":
+            continue
+        code = r.get("2_variable_attribute_code")
+        if code == WZ_GASTGEWERBE:
+            je_jahr.setdefault(jahr, {})["gastgewerbe"] = _zahl(r.get("value"))
+        elif code == WZ_INSGESAMT:
+            je_jahr.setdefault(jahr, {})["alle_branchen"] = _zahl(r.get("value"))
+
+    for werte in je_jahr.values():
+        g, a = werte.get("gastgewerbe"), werte.get("alle_branchen")
+        werte["anteil_prozent"] = (
+            round(100 * g / a, 2) if g is not None and a else None)
+    reihe, aktuell = _reihe_aufbauen(je_jahr, "gastgewerbe")
+
+    # Veränderung über die gesamte Reihe — die eigentliche Dynamik.
+    entwicklung = None
+    mit_wert = [r for r in reihe if r.get("gastgewerbe") is not None]
+    if len(mit_wert) > 1:
+        erst, letzt = mit_wert[0], mit_wert[-1]
+        entwicklung = {
+            "von_jahr": erst["jahr"], "bis_jahr": letzt["jahr"],
+            "von": erst["gastgewerbe"], "bis": letzt["gastgewerbe"],
+            "differenz": letzt["gastgewerbe"] - erst["gastgewerbe"],
+            "prozent": (round(100 * (letzt["gastgewerbe"] - erst["gastgewerbe"])
+                              / erst["gastgewerbe"], 1)
+                        if erst["gastgewerbe"] else None),
+        }
+    return {"kreis_name": name, "aktuell": aktuell,
+            "entwicklung": entwicklung, "reihe": reihe[-10:]}
+
+
+def studierende_auswerten(
+    rows: list[dict[str, str]], ags5: str
+) -> dict[str, Any]:
+    """Tabelle 21311-01-01-4: Studierende im Kreisgebiet nach
+    Fächergruppen. Gefiltert auf Geschlecht=Insgesamt und
+    Nationalität=Insgesamt, damit nichts doppelt gezählt wird."""
+    zeilen, name = _kreis_zeilen(rows, ags5)
+    je_semester: dict[int, dict[str, Any]] = {}
+    faecher_je_semester: dict[int, dict[str, Any]] = {}
+    for r in zeilen:
+        jahr = _jahr(r.get("time"))
+        if jahr is None or r.get("value_variable_code") != "HS-W02":
+            continue
+        if (r.get("2_variable_attribute_code") != "INSGESAMT"
+                or r.get("3_variable_attribute_code") != "INSGESAMT"):
+            continue
+        fach = r.get("4_variable_attribute_code") or ""
+        wert = _zahl(r.get("value"))
+        if fach == "INSGESAMT":
+            je_semester.setdefault(jahr, {})["studierende"] = wert
+        elif fach and wert:
+            faecher_je_semester.setdefault(jahr, {})[
+                r.get("4_variable_attribute_label") or fach] = wert
+
+    reihe, aktuell = _reihe_aufbauen(je_semester, "studierende")
+    faecher = []
+    if aktuell:
+        roh = faecher_je_semester.get(aktuell["jahr"], {})
+        faecher = [{"fach": k, "studierende": v}
+                   for k, v in sorted(roh.items(), key=lambda x: -x[1])]
+    return {"kreis_name": name, "aktuell": aktuell, "faechergruppen": faecher,
+            "reihe": reihe[-10:]}
+
+
+def schueler_auswerten(
+    rows: list[dict[str, str]], ags5: str
+) -> dict[str, Any]:
+    """Tabelle 21111-01-03-4: Schulen und Schüler je Schulart.
+
+    Die Geschlechts-Untergliederung steckt im 2er-Merkmal; leer heißt
+    Insgesamt. Die Schulart liegt dann im 3er-Merkmal."""
+    zeilen, name = _kreis_zeilen(rows, ags5)
+    je_jahr: dict[int, dict[str, Any]] = {}
+    arten_je_jahr: dict[int, dict[str, Any]] = {}
+    for r in zeilen:
+        jahr = _jahr(r.get("time"))
+        if jahr is None or r.get("2_variable_attribute_code"):
+            continue
+        art_code = r.get("3_variable_attribute_code") or ""
+        art_label = r.get("3_variable_attribute_label") or art_code
+        wert = _zahl(r.get("value"))
+        code = r.get("value_variable_code")
+        if art_code == "INSGESAMT1":
+            if code == "BIL003":
+                je_jahr.setdefault(jahr, {})["schueler"] = wert
+            elif code == "BIL013":
+                je_jahr.setdefault(jahr, {})["schulen"] = wert
+        elif art_code and code == "BIL003" and wert:
+            arten_je_jahr.setdefault(jahr, {})[art_label] = wert
+
+    reihe, aktuell = _reihe_aufbauen(je_jahr, "schueler")
+    arten = []
+    if aktuell:
+        roh = arten_je_jahr.get(aktuell["jahr"], {})
+        arten = [{"schulart": k, "schueler": v}
+                 for k, v in sorted(roh.items(), key=lambda x: -x[1])]
+    return {"kreis_name": name, "aktuell": aktuell, "schularten": arten,
+            "reihe": reihe[-10:]}
+
+
 _HEBESATZ_FELDER = {
     "STNW09": "gewerbesteuer_hebesatz",
     "STNW08": "grundsteuer_b_hebesatz",
@@ -577,6 +705,17 @@ HINWEISE = [
     "„Gastgewerbe“ (WZ-Abschnitt I) umfasst Beherbergung **und** "
     "Gastronomie — eine feinere Trennung (nur WZ 56 Gastronomie) gibt es "
     "auf Kreisebene nicht.",
+    "Der **Gastgewerbe-Bestand** aus dem Unternehmensregister ist der "
+    "amtliche Gegenwert zur gezählten OSM-Gastronomie: Er erfasst "
+    "Niederlassungen mit Umsatzsteuer- oder Beschäftigtenmeldung, also "
+    "auch solche ohne Schild an der Tür, und reicht als Zeitreihe bis "
+    "2006 zurück. Eine gastrospezifische Insolvenzquote gibt es dagegen "
+    "nicht — die Insolvenzstatistik kennt regional keine Branchen.",
+    "**Studierende** werden am Hochschulstandort gezählt, **einschließlich "
+    "Fernstudium**: Kreise mit einer Fernhochschule (etwa Hagen) weisen "
+    "Zehntausende aus, die nie vor Ort sind. Die Fächergruppen sagen mehr "
+    "als die Gesamtzahl — Wirtschaft und Jura essen anders mittags als "
+    "Ingenieure am Campusrand.",
     "Die Gewerbeanzeigen zählen **alle Wirtschaftszweige**, nicht nur "
     "Gastronomie — auf Kreisebene ohne Branchen-Aufteilung. Als Maß für "
     "die Gründungsdynamik des Kreises, nicht der Branche.",
@@ -698,6 +837,9 @@ async def load(
         "kreis": None,
         "umsatz": None,
         "gewerbe": None,
+        "niederlassungen": None,
+        "studierende": None,
+        "schueler": None,
         "gemeinde": None,
         "hinweise": HINWEISE,
     }
@@ -705,6 +847,9 @@ async def load(
     for schluessel, tabelle, auswerten_fn in (
         ("umsatz", TAB_UMSATZ, umsatz_auswerten),
         ("gewerbe", TAB_GEWERBE, gewerbe_auswerten),
+        ("niederlassungen", TAB_NIEDERLASSUNGEN, niederlassungen_auswerten),
+        ("studierende", TAB_STUDIERENDE, studierende_auswerten),
+        ("schueler", TAB_SCHUELER, schueler_auswerten),
     ):
         try:
             text, warnung = await _tabelle(out, zugang, tabelle, ags5)

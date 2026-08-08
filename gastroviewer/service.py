@@ -20,9 +20,11 @@ from .config import Settings
 from .http import Outbound
 from .sources import (airbnb as airbnb_mod,
                       bast as bast_mod,
+                      baurecht as baurecht_mod,
                       baustellen as baustellen_mod, bayern,
                       berlin as berlin_mod, boris,
                       dynamik as dynamik_mod,
+                      frequenz as frequenz_mod,
                       hamburg as hamburg_mod,
                       einkommen as einkommen_mod, gehweg,
                       genesis as genesis_mod,
@@ -573,6 +575,54 @@ class PointService:
             lambda: luft_mod.load(
                 self.outbound, lat, lon,
                 lambda: self._luft_stationen(refresh)),
+            refresh=refresh,
+        )
+
+    async def _augsburg_frequenz(self, refresh: bool = False):
+        """Augsburg liefert keine Aggregation, sondern eine 1,8-MB-CSV —
+        einmal laden, Stundenmittel lokal rechnen."""
+        async def laden() -> SourceResult:
+            text = await self.outbound.get_text(
+                "frequenz_augsburg", frequenz_mod.QUELLEN["augsburg"]["url"],
+                timeout=120.0, limiter="frequenz_augsburg", min_interval=1.0)
+            kurve = await asyncio.to_thread(frequenz_mod.parse_augsburg_csv, text)
+            return SourceResult(name="frequenz_augsburg", ok=True,
+                                data={"kurve": kurve})
+
+        res = await self._cached("frequenz_augsburg", "frequenz|augsburg",
+                                 laden, refresh=refresh)
+        if not res.ok or not res.data:
+            raise SourceError(
+                (res.error or {}).get("kind", "unknown"),
+                (res.error or {}).get("message",
+                                      "Augsburger Frequenzdatei fehlt."))
+        return res.data["kurve"]
+
+    async def frequenz(self, lat: float, lon: float, refresh: bool = False):
+        """Gemessene Passantenfrequenz, falls eine Zählstelle in der Nähe
+        steht. Der Schlüssel hängt an der Zählstelle, nicht am Punkt —
+        sonst würde für jede Adresse derselbe Tagesgang neu geholt."""
+        z = frequenz_mod.naechste_zaehlstelle(lat, lon)
+        if z is None:
+            # Ohne Zählstelle gibt es nichts zu cachen und nichts zu holen.
+            return await frequenz_mod.load(self.outbound, lat, lon)
+        key = f"frequenz|{z['quelle']}|{z['filter']}"
+        return await self._cached(
+            "frequenz",
+            key,
+            lambda: frequenz_mod.load(
+                self.outbound, lat, lon,
+                lambda: self._augsburg_frequenz(refresh)),
+            refresh=refresh,
+        )
+
+    async def baurecht(self, lat: float, lon: float, refresh: bool = False):
+        """Baurechtlicher Rahmen am Punkt (Gebietsart, Plan, Sanierung,
+        Denkmal). Bebauungspläne ändern sich selten — lange TTL."""
+        key = cache_key("baurecht", lat, lon, 0)
+        return await self._cached(
+            "baurecht", key,
+            lambda: baurecht_mod.load(self.outbound, lat, lon),
             refresh=refresh,
         )
 

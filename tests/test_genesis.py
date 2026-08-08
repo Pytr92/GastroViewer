@@ -184,7 +184,7 @@ def test_load_ohne_kennung_bleibt_leer_ohne_abruf(settings, monkeypatch):
 
 @pytest.fixture
 def alle_tabellen(genesis_ffcsv, genesis_gemeinde_ffcsv, genesis_bau_ffcsv,
-                  genesis_hebesatz_ffcsv):
+                  genesis_hebesatz_ffcsv, genesis_bestand_ffcsv):
     """Alle Tabellen, die ``load`` abfragt. Als Fixture, damit eine neue
     Tabelle nur hier eingetragen werden muss — vorher zog jede Erweiterung
     eine Änderung an sämtlichen Aufrufstellen nach sich."""
@@ -197,6 +197,9 @@ def alle_tabellen(genesis_ffcsv, genesis_gemeinde_ffcsv, genesis_bau_ffcsv,
         genesis.TAB_BAUGENEHMIGUNGEN: genesis_bau_ffcsv["31111"],
         genesis.TAB_BAUFERTIGSTELLUNGEN: genesis_bau_ffcsv["31121"],
         genesis.TAB_HEBESAETZE: genesis_hebesatz_ffcsv["71231"],
+        genesis.TAB_NIEDERLASSUNGEN: genesis_bestand_ffcsv["52111"],
+        genesis.TAB_STUDIERENDE: genesis_bestand_ffcsv["21311"],
+        genesis.TAB_SCHUELER: genesis_bestand_ffcsv["21111"],
     }
 
 
@@ -273,7 +276,9 @@ def test_load_fehlerantwort_wird_benannt(settings):
                          "Object": None})
     # Tabellenliste aus dem Modul ableiten, damit eine neue Tabelle diesen
     # Test nicht mit einem KeyError umwirft.
-    alle = {genesis.TAB_UMSATZ, genesis.TAB_GEWERBE} | {
+    alle = {genesis.TAB_UMSATZ, genesis.TAB_GEWERBE,
+            genesis.TAB_NIEDERLASSUNGEN, genesis.TAB_STUDIERENDE,
+            genesis.TAB_SCHUELER} | {
         tab for _s, tab, _fn in genesis.GEMEINDE_TABELLEN}
     fake = FakePost({t: fehler for t in alle})
     res = asyncio.run(genesis.load(fake, settings, "09162000"))
@@ -394,3 +399,63 @@ def test_hebesatz_ohne_treffer_bleibt_leer(genesis_hebesatz_ffcsv):
     rows = genesis.parse_ffcsv(genesis_hebesatz_ffcsv["71231"])
     r = genesis.hebesatz_auswerten(rows, "11000000")  # Berlin, nicht in Fixture
     assert r["aktuell"] is None and r["vergleich"] is None and r["reihe"] == []
+
+
+# --------------------------- Bestand und Bildung je Kreis (AA-Runde)
+
+def test_gastgewerbe_bestand_muenchen(genesis_bestand_ffcsv):
+    """Unternehmensregister 52111-02-01-4: der amtliche Gegenwert zur
+    gezählten OSM-Gastronomie, mit Zeitreihe ab 2006."""
+    rows = genesis.parse_ffcsv(genesis_bestand_ffcsv["52111"])
+    n = genesis.niederlassungen_auswerten(rows, "09162")
+    assert n["kreis_name"] == "München, kreisfreie Stadt"
+    assert n["aktuell"]["jahr"] == 2024
+    assert n["aktuell"]["gastgewerbe"] == 4705
+    assert n["aktuell"]["alle_branchen"] == 94691
+    assert n["aktuell"]["anteil_prozent"] == 4.97
+    assert n["entwicklung"] == {
+        "von_jahr": 2006, "bis_jahr": 2024, "von": 4450, "bis": 4705,
+        "differenz": 255, "prozent": 5.7,
+    }
+
+    # Der Landkreis darf nicht mit der Stadt verwechselt werden.
+    lk = genesis.niederlassungen_auswerten(rows, "09184")
+    assert lk["aktuell"]["gastgewerbe"] == 959
+
+
+def test_studierende_nach_faechergruppen(genesis_bestand_ffcsv):
+    """21311-01-01-4, Wintersemester 2023/24. Gefiltert auf Geschlecht
+    und Nationalität „Insgesamt", sonst würde mehrfach gezählt."""
+    s = genesis.studierende_auswerten(
+        genesis.parse_ffcsv(genesis_bestand_ffcsv["21311"]), "09162")
+    assert s["aktuell"] == {"jahr": 2023, "studierende": 108490}
+    # Die Summe der Fächergruppen muss die Gesamtzahl ergeben.
+    assert sum(f["studierende"] for f in s["faechergruppen"]) == 108490
+    assert s["faechergruppen"][0]["fach"].startswith("Rechts-")
+    assert s["faechergruppen"][0]["studierende"] == 40264
+
+
+def test_schueler_nach_schularten(genesis_bestand_ffcsv):
+    """21111-01-03-4: Die Geschlechts-Untergliederung steht im 2er-
+    Merkmal — nur die leeren Zeilen sind die Insgesamt-Werte."""
+    sc = genesis.schueler_auswerten(
+        genesis.parse_ffcsv(genesis_bestand_ffcsv["21111"]), "09162")
+    assert sc["aktuell"]["jahr"] == 2024
+    assert sc["aktuell"]["schueler"] == 137846
+    arten = {a["schulart"]: a["schueler"] for a in sc["schularten"]}
+    assert arten["Grundschulen"] == 50434
+    assert arten["Gymnasien"] == 43717
+    # Die Schularten dürfen die Insgesamt-Zeile nicht mitzählen.
+    assert "Insgesamt" not in arten
+    assert sum(arten.values()) <= sc["aktuell"]["schueler"]
+
+
+def test_bestand_ohne_treffer_bleibt_leer(genesis_bestand_ffcsv):
+    rows = genesis.parse_ffcsv(genesis_bestand_ffcsv["52111"])
+    n = genesis.niederlassungen_auswerten(rows, "11000")  # Berlin
+    assert n["aktuell"] is None and n["entwicklung"] is None
+
+
+def test_fernstudium_warnung_steht_im_block():
+    """Hagen wäre sonst eine Universitätsstadt ohne Studierende vor Ort."""
+    assert any("Fernstudium" in h for h in genesis.HINWEISE)

@@ -1231,6 +1231,14 @@ function lade(refresh = false) {
     .then((d) => { if (aktuell()) { state.daten.sonne = d; zeigeSonne(d); } })
     .catch((e) => aktuell() && zeigeBlockFehler('sonne', e));
 
+  hole('/api/point/frequenz', { lat, lon, ...(refresh ? { refresh: 'true' } : {}) })
+    .then((d) => { if (aktuell()) { state.daten.frequenz = d; zeigeFrequenz(d); } })
+    .catch((e) => aktuell() && zeigeBlockFehler('frequenz', e));
+
+  hole('/api/point/baurecht', { lat, lon, ...(refresh ? { refresh: 'true' } : {}) })
+    .then((d) => { if (aktuell()) { state.daten.baurecht = d; zeigeBaurecht(d); } })
+    .catch((e) => aktuell() && zeigeBlockFehler('baurecht', e));
+
   hole('/api/point/dynamik', p)
     .then((d) => { if (aktuell()) { state.daten.dynamik = d; zeigeDynamik(d); } })
     .catch((e) => aktuell() && zeigeBlockFehler('dynamik', e));
@@ -1314,8 +1322,10 @@ function baueGeruest() {
     block('verkehr', '6 · Verkehr'),
     block('gtfs', '6b · Abfahrten (GTFS)'),
     block('radzaehlung', '6c · Gemessene Radverkehrsfrequenz'),
+    block('frequenz', '6i · Gemessene Passantenfrequenz (Tagesgang)'),
     block('verkehrsmenge', '6d · Verkehrsmenge (DTV)'),
     block('planung', '6e · Planungsrecht und Hochwasser'),
+    block('baurecht', '6j · Baurecht am Punkt (BauNVO, Denkmal, Sanierung)'),
     block('laerm', '6f · Straßenlärm (EU-Umgebungslärmkartierung)'),
     block('baustellen', '6g · Baustellen (München/Hamburg/Berlin)'),
     block('oepnveinzug', '6h · ÖPNV-Einzugsgebiet (GTFS)'),
@@ -2580,6 +2590,153 @@ function zeigeLuft(d) {
   setQuelle(id, d.provenance);
 }
 
+/* Block 6j — Baurecht. Die Frage, die jede Umsatzprognose schlägt: Darf
+   hier überhaupt Gastronomie betrieben werden? Punktgenau beantwortbar ist
+   das bundesweit fast nirgends — der Block sagt offen, auf welcher Stufe
+   die Antwort steht. */
+function zeigeBaurecht(d) {
+  const id = 'baurecht';
+  if (!d.ok) {
+    setStatus(id, 'fehler', 'nicht erreichbar');
+    setInhalt(id, fehlerbox(d.error));
+    setQuelle(id, d.provenance);
+    return;
+  }
+  const b = d.data;
+  const STUFEN = {
+    gebietsart: 'Gebietsart bekannt',
+    umring: 'Plan bekannt, Gebietsart nicht',
+    kein_plan: 'kein Bebauungsplan (§ 34 BauGB)',
+    kein_dienst: 'kein offener Dienst',
+  };
+  setStatus(id, b.stufe === 'gebietsart' ? 'ok' : 'leer',
+    STUFEN[b.stufe] || '');
+
+  const teile = [];
+  for (const f of b.baugebiete || []) {
+    const dt = f.deutung || {};
+    teile.push(el('div', { class: 'notiz' },
+      el('strong', {},
+        `${f.art || 'Gebietsart unbekannt'}`
+        + (dt.kuerzel ? ` (${dt.kuerzel})` : '')),
+      el('div', {}, dt.gastronomie || ''),
+      el('div', { class: 'hinweis-klein' },
+        [`Plan: ${f.plan || '—'}`,
+          f.rechtsstand ? `Rechtsstand: ${f.rechtsstand}` : null,
+          f.grz ? `GRZ ${f.grz}` : null,
+          f.gfz ? `GFZ ${f.gfz}` : null].filter(Boolean).join(' · ')),
+      f.text ? el('div', { class: 'hinweis-klein' },
+        el('em', {}, f.text)) : null));
+  }
+  if ((b.plaene || []).length) {
+    const ptab = el('table', { class: 'daten' },
+      el('tr', {},
+        el('th', {}, 'Plan'),
+        el('th', {}, 'Rechtsstand'),
+        el('th', {}, 'Inhalt (planweit)'),
+        el('th', {}, 'Dokument')));
+    for (const p of b.plaene) {
+      ptab.append(el('tr', {},
+        el('td', {}, p.plan || '—'),
+        el('td', {}, p.rechtsstand || '—'),
+        el('td', {}, (p.inhalt_planweit || '—').slice(0, 90)),
+        el('td', {}, p.pdf
+          ? el('a', { href: p.pdf, target: '_blank', rel: 'noopener' }, 'PDF')
+          : '—')));
+    }
+    teile.push(ptab);
+  }
+  for (const s of b.sanierungsgebiete || []) {
+    teile.push(el('div', { class: 'notiz' },
+      el('strong', {}, `Sanierungsgebiet: ${s.name}`),
+      el('div', { class: 'hinweis-klein' },
+        `${s.verfahren || ''} · seit ${s.in_kraft_seit || '—'} · `
+        + `${s.flaeche_ha || '—'} ha · Bezirk ${s.bezirk || '—'}`)));
+  }
+  if ((b.denkmale || []).length) {
+    teile.push(el('div', { class: 'notiz' },
+      el('strong', {}, `Denkmalschutz: ${b.denkmale.length} Objekt(e)`),
+      el('ul', { class: 'liste' },
+        b.denkmale.slice(0, 5).map((x) => el('li', {},
+          el('span', { class: 'haupt' },
+            el('a', { href: x.link, target: '_blank', rel: 'noopener' },
+              `${x.typ || 'Denkmal'} ${x.id || ''}`)))))));
+  }
+
+  setInhalt(id, ...teile.filter(Boolean),
+    ...(b.hinweise || []).map((h) => el('div', { class: 'hinweis-klein' }, h)),
+    ...warnungen(d.warnings || []));
+  setQuelle(id, d.provenance);
+}
+
+/* Block 6i — gemessene Passantenfrequenz. Die einzige Stelle im Werkzeug,
+   an der echte Zählungen von Menschen stehen statt Näherungen. Es gibt sie
+   nur an sieben Straßenabschnitten in drei Städten — überall sonst sagt der
+   Block das offen, statt Unbekanntes als Null auszugeben. */
+function zeigeFrequenz(d) {
+  const id = 'frequenz';
+  if (!d.ok) {
+    setStatus(id, 'fehler', 'nicht erreichbar');
+    setInhalt(id, fehlerbox(d.error));
+    setQuelle(id, d.provenance);
+    return;
+  }
+  const f = d.data;
+  if (!f) {
+    setStatus(id, 'leer', 'keine Zählstelle in der Nähe');
+    setInhalt(id, ...warnungen(d.warnings || []));
+    setQuelle(id, d.provenance);
+    return;
+  }
+  setStatus(id, 'ok', `${f.zaehlstelle} · ${NF.format(f.distanz_m)} m`);
+
+  // Tagesgang als Balken — die Kurve ist die Aussage, nicht die Summe.
+  const max = Math.max(1, ...f.kurve.map((k) => k.passanten));
+  const balken = el('table', { class: 'daten' },
+    el('tr', {},
+      el('th', {}, 'Stunde'),
+      el('th', { class: 'num' }, 'Passanten/h'),
+      el('th', {}, 'Verlauf')));
+  for (const k of f.kurve) {
+    if (k.stunde < 6 || k.stunde > 23) continue;
+    const breite = Math.round(100 * k.passanten / max);
+    balken.append(el('tr', {},
+      el('td', {}, `${String(k.stunde).padStart(2, '0')}:00`),
+      el('td', { class: 'num' }, NF.format(k.passanten)),
+      el('td', {},
+        el('div', {
+          class: 'balken',
+          style: `width:${breite}%;min-width:2px`,
+          title: `${NF.format(k.passanten)} Passanten je Stunde`,
+        }))));
+  }
+
+  setInhalt(id,
+    el('div', { class: 'kennzahlen' },
+      el('div', { class: 'kennzahl' },
+        el('div', { class: 'titel' }, 'Spitzenstunde'),
+        el('div', { class: 'wert' },
+          `${String(f.spitzenstunde).padStart(2, '0')}:00`),
+        el('div', { class: 'basis' },
+          `${NF.format(f.spitze_passanten)} Passanten je Stunde`)),
+      kennzahl('Mittags (12–14 Uhr)', f.mittags, '/h'),
+      kennzahl('Abends (18–20 Uhr)', f.abends, '/h'),
+      el('div', { class: 'kennzahl' },
+        el('div', { class: 'titel' }, 'Anteil ab 18 Uhr'),
+        el('div', { class: `wert${f.abendanteil_prozent === null ? ' fehlt' : ''}` },
+          f.abendanteil_prozent === null
+            ? 'keine Angabe' : `${NF1.format(f.abendanteil_prozent)} %`),
+        el('div', { class: 'basis' }, 'vom gesamten Tagesaufkommen'))),
+    balken,
+    el('div', { class: 'notiz' },
+      el('strong', {}, 'Zählstelle: '),
+      `${f.zaehlstelle} in ${f.stadt}, ${NF.format(f.distanz_m)} m entfernt · `
+      + `${f.traeger} · Stand: ${f.stand}`),
+    ...(f.hinweise || []).map((h) => el('div', { class: 'hinweis-klein' }, h)),
+    ...warnungen(d.warnings || []));
+  setQuelle(id, d.provenance);
+}
+
 /* Block 5g — Besonnung. Für Außengastronomie der Unterschied zwischen
    Abendsonne und Dauerschatten, und bisher nur durch tagelanges eigenes
    Beobachten zu ermitteln. Gerechnet aus Sonnenstand (Astronomie) und
@@ -3584,6 +3741,55 @@ function zeigeGenesis(d, ags) {
         w ? `darunter Neuerrichtungen ${NF.format(w.neuerrichtungen ?? 0)}, `
           + `Betriebsaufgaben ${NF.format(w.betriebsaufgaben ?? 0)}` : '')));
 
+  // Bestand und Bildung (AA-Runde): der amtliche Gastgewerbe-Nenner und
+  // die beiden Frequenztreiber Studierende/Schüler.
+  const nl = (g.niederlassungen || {}).aktuell;
+  const nlEnt = (g.niederlassungen || {}).entwicklung;
+  const st = (g.studierende || {}).aktuell;
+  const sch = (g.schueler || {}).aktuell;
+  const kreisTeile = [];
+  if (nl || st || sch) {
+    kreisTeile.push(el('h4', {}, 'Bestand und Bildung im Kreis'));
+    kreisTeile.push(el('div', { class: 'kennzahlen' },
+      el('div', { class: 'kennzahl' },
+        el('div', { class: 'titel' },
+          nl ? `Gastgewerbe-Betriebe (${nl.jahr})` : 'Gastgewerbe-Betriebe'),
+        el('div', { class: `wert${nl ? '' : ' fehlt'}` },
+          nl && nl.gastgewerbe !== null
+            ? NF.format(nl.gastgewerbe) : 'keine Angabe'),
+        el('div', { class: 'basis' }, nl && nl.anteil_prozent !== null
+          ? `${NF1.format(nl.anteil_prozent)} % aller Niederlassungen`
+          : '')),
+      el('div', { class: 'kennzahl' },
+        el('div', { class: 'titel' }, 'Bestandsentwicklung'),
+        el('div', { class: `wert${nlEnt ? '' : ' fehlt'}` },
+          nlEnt
+            ? `${nlEnt.differenz > 0 ? '+' : ''}${NF.format(nlEnt.differenz)}`
+            : 'keine Angabe'),
+        el('div', { class: 'basis' }, nlEnt
+          ? `${nlEnt.von_jahr}–${nlEnt.bis_jahr} · `
+            + `${nlEnt.prozent > 0 ? '+' : ''}${NF1.format(nlEnt.prozent)} %`
+          : '')),
+      kennzahl(st ? `Studierende (WS ${st.jahr}/${String(st.jahr + 1).slice(2)})`
+        : 'Studierende', st ? st.studierende : null),
+      kennzahl(sch ? `Schülerinnen und Schüler (${sch.jahr})`
+        : 'Schülerinnen und Schüler', sch ? sch.schueler : null)));
+
+    const faecher = (g.studierende || {}).faechergruppen || [];
+    if (faecher.length) {
+      const ftab = el('table', { class: 'daten' },
+        el('tr', {},
+          el('th', {}, 'Fächergruppe'),
+          el('th', { class: 'num' }, 'Studierende')));
+      for (const f of faecher.slice(0, 6)) {
+        ftab.append(el('tr', {},
+          el('td', {}, f.fach),
+          el('td', { class: 'num' }, NF.format(f.studierende))));
+      }
+      kreisTeile.push(ftab);
+    }
+  }
+
   const reihe = (g.umsatz || {}).reihe || [];
   let tab = null;
   if (reihe.length > 1) {
@@ -3730,7 +3936,7 @@ function zeigeGenesis(d, ags) {
     }
   }
 
-  setInhalt(id, kz, tab, ...gemTeile,
+  setInhalt(id, kz, tab, ...kreisTeile, ...gemTeile,
     ...(g.hinweise || []).map((h) => el('div', { class: 'hinweis-klein' }, h)),
     ...warnungen(d.warnings || []),
     el('div', { class: 'pflegeleiste' },

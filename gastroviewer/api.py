@@ -529,6 +529,26 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         _validate(lat, lon, 600)
         return (await svc(request).luft(lat, lon, refresh)).to_dict()
 
+    @app.get("/api/point/baurecht")
+    async def point_baurecht(
+        request: Request, lat: float, lon: float, refresh: bool = False,
+    ):
+        """Baurechtlicher Rahmen am Punkt: Art der baulichen Nutzung nach
+        BauNVO (wo offen verfügbar), sonst Planumring bzw. die Aussage
+        „kein Plan → § 34 BauGB". Ersetzt keine Bauvoranfrage."""
+        _validate(lat, lon, 600)
+        return (await svc(request).baurecht(lat, lon, refresh)).to_dict()
+
+    @app.get("/api/point/frequenz")
+    async def point_frequenz(
+        request: Request, lat: float, lon: float, refresh: bool = False,
+    ):
+        """Gemessene Passantenfrequenz der nächsten offenen Zählstelle —
+        Tagesgang statt Tagessumme. Nur wenige Straßen in Deutschland sind
+        so vermessen; sonst bleibt der Block ehrlich leer."""
+        _validate(lat, lon, 600)
+        return (await svc(request).frequenz(lat, lon, refresh)).to_dict()
+
     @app.get("/api/point/sonne")
     async def point_sonne(
         request: Request, lat: float, lon: float, refresh: bool = False,
