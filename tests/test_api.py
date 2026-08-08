@@ -29,9 +29,10 @@ class FakeOutbound:
                  airbnb=None, messe=None, tourismus=None,
                  uba=None, bfg_hochwasser=None,
                  pks=None, leerstandsmelder=None,
-                 luft_api=None, wahl_dateien=None):
+                 luft_api=None, wahl_dateien=None, gebaeude=None):
         self.zensus = zensus
         self.overpass = overpass
+        self.gebaeude = gebaeude or {"elements": []}
         self.nominatim = nominatim
         self.einkommen = einkommen or {"features": []}
         # Fixture je Tabelle — Einkommen und Kreisprofil teilen sich Endpunkt
@@ -108,6 +109,15 @@ class FakeOutbound:
                 raise SourceError("timeout", "Zeitüberschreitung — Dienst antwortet nicht.")
             return self.zensus
         if "interpreter" in url:
+            # Die Sonnenrechnung fragt denselben Endpunkt, aber nach
+            # Gebäudeumrissen — an der Abfrage unterscheidbar.
+            abfrage = ((kw or {}).get("data") or {}).get("data", "")
+            if "building" in abfrage and "out geom" in abfrage:
+                self.calls.append("overpass_gebaeude")
+                if "overpass_gebaeude" in self.fehler:
+                    raise SourceError("http_status",
+                                      "HTTP 504 — der Dienst hat abgebrochen.")
+                return self.gebaeude
             self.calls.append("overpass")
             if "overpass" in self.fehler:
                 raise SourceError("http_status", "HTTP 504 — der Dienst hat abgebrochen.")
@@ -284,7 +294,8 @@ def client(tmp_path, monkeypatch, zensus_600, overpass_combined, nominatim_rever
            ohsome_dynamik, laerm_bayern, muenchen_baustellen, muenchen_maerkte,
            muenchen_indikatoren, airbnb_muenchen, messe_muenchen,
            tourismus_muenchen, uba_laerm, bfg_hochwasser,
-           pks_auszug, lsm_places, uba_luft_api, wahl_btw25):
+           pks_auszug, lsm_places, uba_luft_api, wahl_btw25,
+           overpass_gebaeude):
     from gastroviewer.config import Settings
 
     # Der Genesis-Block ist ein Opt-in — die Testumgebung darf keine echte
@@ -307,6 +318,7 @@ def client(tmp_path, monkeypatch, zensus_600, overpass_combined, nominatim_rever
                              "30": uba_laerm["hlq_den"],
                              "29": uba_laerm["hlq_night"]},
                         bfg_hochwasser=bfg_hochwasser["koeln_rheinufer"],
+                        gebaeude=overpass_gebaeude["sendlinger_tor"],
                         pks=pks_auszug,
                         leerstandsmelder=lsm_places["places"],
                         luft_api=uba_luft_api,
@@ -1749,3 +1761,22 @@ async def test_cached_dedupliziert_gleichzeitige_abrufe(tmp_path):
     # Danach kommt derselbe Key aus dem Cache — weiterhin kein zweiter Abruf.
     r3 = await svc._cached("zensus", "stampede|k", loader)
     assert aufrufe == 1 and r3.ok
+
+
+def test_point_sonne_endpunkt(client):
+    """Besonnung am Sendlinger Tor gegen die echte Gebäude-Fixture."""
+    d = client.get("/api/point/sonne",
+                   params={"lat": LAT, "lon": LON}).json()
+    assert d["ok"] and d["data"]
+    s = d["data"]
+    assert s["gebaeude_gesamt"] == 64
+    assert s["umkreis_m"] == 150
+    # Sommer deutlich sonniger als Winter — und beide unter der
+    # geometrisch möglichen Tageslänge.
+    sommer, winter = s["tage"]["sommer"], s["tage"]["winter"]
+    assert sommer["stunden"] > winter["stunden"]
+    assert sommer["stunden"] <= sommer["moeglich_stunden"]
+    assert "OpenStreetMap" in d["provenance"]["license"]
+    # Die Abdeckung der Höhenangaben muss mitgeliefert werden.
+    assert s["gebaeude_ohne_hoehe"] >= 0
+    assert any("Obergrenze" in h for h in s["hinweise"])

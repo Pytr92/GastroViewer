@@ -1227,6 +1227,10 @@ function lade(refresh = false) {
     .then((d) => { if (aktuell()) { state.daten.luft = d; zeigeLuft(d); } })
     .catch((e) => aktuell() && zeigeBlockFehler('luft', e));
 
+  hole('/api/point/sonne', { lat, lon, ...(refresh ? { refresh: 'true' } : {}) })
+    .then((d) => { if (aktuell()) { state.daten.sonne = d; zeigeSonne(d); } })
+    .catch((e) => aktuell() && zeigeBlockFehler('sonne', e));
+
   hole('/api/point/dynamik', p)
     .then((d) => { if (aktuell()) { state.daten.dynamik = d; zeigeDynamik(d); } })
     .catch((e) => aktuell() && zeigeBlockFehler('dynamik', e));
@@ -1306,6 +1310,7 @@ function baueGeruest() {
     block('airbnb', '5d · Kurzzeitvermietung (Inside Airbnb)'),
     block('messe', '5e · Messe-Kalender (Messe München)'),
     block('luft', '5f · Luftqualität (nächste Messstation)'),
+    block('sonne', '5g · Sonne auf der Terrasse (Verschattung)'),
     block('verkehr', '6 · Verkehr'),
     block('gtfs', '6b · Abfahrten (GTFS)'),
     block('radzaehlung', '6c · Gemessene Radverkehrsfrequenz'),
@@ -2575,6 +2580,70 @@ function zeigeLuft(d) {
   setQuelle(id, d.provenance);
 }
 
+/* Block 5g — Besonnung. Für Außengastronomie der Unterschied zwischen
+   Abendsonne und Dauerschatten, und bisher nur durch tagelanges eigenes
+   Beobachten zu ermitteln. Gerechnet aus Sonnenstand (Astronomie) und
+   OSM-Gebäudehöhen; die Abdeckung der Höhenangaben steht dabei, weil das
+   Ergebnis ohne sie eine Obergrenze ist. */
+function zeigeSonne(d) {
+  const id = 'sonne';
+  if (!d.ok) {
+    setStatus(id, 'fehler', 'nicht erreichbar');
+    setInhalt(id, fehlerbox(d.error));
+    setQuelle(id, d.provenance);
+    return;
+  }
+  const s = d.data;
+  const sommer = (s.tage || {}).sommer || {};
+  setStatus(id, 'ok', `${NF1.format(sommer.stunden || 0)} h im Hochsommer`);
+
+  const tab = el('table', { class: 'daten' },
+    el('tr', {},
+      el('th', {}, 'Stichtag'),
+      el('th', { class: 'num' }, 'Sonne'),
+      el('th', { class: 'num' }, 'davon ab 17 Uhr'),
+      el('th', {}, 'Fenster')));
+  for (const k of ['sommer', 'uebergang', 'winter']) {
+    const t = (s.tage || {})[k];
+    if (!t) continue;
+    const fenster = (t.fenster || []).length
+      ? (t.fenster || []).map((f) => `${f.von}–${f.bis}`).join(', ')
+      : 'kein Fenster ab 30 Minuten';
+    tab.append(el('tr', {},
+      el('td', {}, t.beschriftung),
+      el('td', { class: 'num' },
+        `${NF1.format(t.stunden)} h von ${NF1.format(t.moeglich_stunden)} h`),
+      el('td', { class: 'num' }, `${NF1.format(t.abendsonne_stunden)} h`),
+      el('td', {}, fenster)));
+  }
+
+  setInhalt(id,
+    el('div', { class: 'kennzahlen' },
+      kennzahl('Sonne zur Sommersonnenwende', sommer.stunden, 'h', 1),
+      kennzahl('davon Abendsonne (ab 17 Uhr)', sommer.abendsonne_stunden, 'h', 1),
+      kennzahl('Sonne zur Wintersonnenwende',
+        ((s.tage || {}).winter || {}).stunden, 'h', 1),
+      el('div', { class: 'kennzahl' },
+        el('div', { class: 'titel' }, 'Höchstes Hindernis'),
+        el('div', { class: 'wert' },
+          `${NF1.format(s.hoechstes_hindernis_grad)}°`),
+        el('div', { class: 'basis' },
+          `Richtung ${s.hoechstes_hindernis_richtung} · `
+          + `${s.umkreis_m} m Umkreis`))),
+    tab,
+    el('div', { class: 'notiz' },
+      el('strong', {}, 'Datengrundlage: '),
+      `${NF.format(s.gebaeude_mit_hoehe)} von ${NF.format(s.gebaeude_gesamt)} `
+      + `Gebäuden im Umkreis haben eine Höhenangabe in OpenStreetMap`
+      + (s.hoehen_abdeckung_prozent !== null
+        ? ` (${NF.format(s.hoehen_abdeckung_prozent)} %)` : '')
+      + `. Die übrigen ${NF.format(s.gebaeude_ohne_hoehe)} werfen hier keinen `
+      + 'Schatten — die Sonnenzeiten sind deshalb eine Obergrenze.'),
+    ...(s.hinweise || []).map((h) => el('div', { class: 'hinweis-klein' }, h)),
+    ...warnungen(d.warnings || []));
+  setQuelle(id, d.provenance);
+}
+
 /* Block 3d — Pendlerverflechtungen der Gemeinde (Pendlerrechnung der
    Länder). Die Tagesbevölkerungs-Frage: Wer ist tagsüber wirklich da?
    Braucht wie 3b/3c den Gemeindeschlüssel aus dem Zensusblock. */
@@ -3605,6 +3674,41 @@ function zeigeGenesis(d, ags) {
               f && f.wohnungen !== null ? NF.format(f.wohnungen) : '—')));
         }
         gemTeile.push(btab);
+      }
+    }
+    // Hebesätze: der einzige harte Kostenfaktor, der gemeindescharf ist.
+    const hs = (gem.hebesaetze || {}).aktuell;
+    const hv = (gem.hebesaetze || {}).vergleich;
+    if (hs) {
+      gemTeile.push(el('h4', {}, 'Steuerlast der Gemeinde'));
+      gemTeile.push(el('div', { class: 'kennzahlen' },
+        el('div', { class: 'kennzahl' },
+          el('div', { class: 'titel' }, `Gewerbesteuer-Hebesatz (${hs.jahr})`),
+          el('div', { class: `wert${hs.gewerbesteuer_hebesatz === null ? ' fehlt' : ''}` },
+            hs.gewerbesteuer_hebesatz === null
+              ? 'keine Angabe' : `${NF.format(hs.gewerbesteuer_hebesatz)} %`),
+          el('div', { class: 'basis' }, hv
+            ? `Bund ${hv.bund} % (${hv.bund_jahr}) · `
+              + `${hv.differenz_punkte > 0 ? '+' : ''}${hv.differenz_punkte} Punkte`
+            : '')),
+        kennzahl(`Grundsteuer B (${hs.jahr})`, hs.grundsteuer_b_hebesatz, '%'),
+        kennzahl('Steuereinnahmekraft', hs.steuereinnahmekraft_eur, '€')));
+      const hreihe = (gem.hebesaetze || {}).reihe || [];
+      if (hreihe.length > 1) {
+        const htab = el('table', { class: 'daten' },
+          el('tr', {},
+            el('th', {}, 'Jahr'),
+            el('th', { class: 'num' }, 'Gewerbesteuer'),
+            el('th', { class: 'num' }, 'Grundsteuer B')));
+        for (const z of hreihe.slice(-8)) {
+          htab.append(el('tr', {},
+            el('td', {}, String(z.jahr)),
+            el('td', { class: 'num' }, z.gewerbesteuer_hebesatz === null
+              ? '—' : `${NF.format(z.gewerbesteuer_hebesatz)} %`),
+            el('td', { class: 'num' }, z.grundsteuer_b_hebesatz === null
+              ? '—' : `${NF.format(z.grundsteuer_b_hebesatz)} %`)));
+        }
+        gemTeile.push(htab);
       }
     }
     const br = (gem.beschaeftigte || {}).reihe || [];

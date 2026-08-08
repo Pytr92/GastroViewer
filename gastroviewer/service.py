@@ -37,6 +37,7 @@ from .sources import (airbnb as airbnb_mod,
                       luft as luft_mod,
                       pendler as pendler_mod, pks as pks_mod, planung,
                       register as register_mod, scan as scan_mod,
+                      sonne as sonne_mod,
                       tourismus as tourismus_mod, wahl as wahl_mod, zensus)
 from .sources.base import Provenance, SourceError, SourceResult, now_iso
 
@@ -572,6 +573,19 @@ class PointService:
             lambda: luft_mod.load(
                 self.outbound, lat, lon,
                 lambda: self._luft_stationen(refresh)),
+            refresh=refresh,
+        )
+
+    async def sonne(self, lat: float, lon: float, refresh: bool = False):
+        """Besonnung am Punkt. Der Gebäudebestand ändert sich langsam, das
+        Ergebnis darf deshalb lange liegen bleiben; das Jahr geht in den
+        Schlüssel ein, damit die Stichtage zum Kalender passen."""
+        jahr = int(now_iso()[:4])
+        key = cache_key(f"sonne_{jahr}", lat, lon, sonne_mod.UMKREIS_M)
+        return await self._cached(
+            "sonne",
+            key,
+            lambda: sonne_mod.load(self.outbound, self.settings, lat, lon, jahr),
             refresh=refresh,
         )
 

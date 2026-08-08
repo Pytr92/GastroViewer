@@ -529,6 +529,16 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         _validate(lat, lon, 600)
         return (await svc(request).luft(lat, lon, refresh)).to_dict()
 
+    @app.get("/api/point/sonne")
+    async def point_sonne(
+        request: Request, lat: float, lon: float, refresh: bool = False,
+    ):
+        """Besonnung und Verschattung am Punkt — Sonnenstunden je Stichtag
+        aus Sonnenstand und Nachbarbebauung. Für Außengastronomie der
+        Unterschied zwischen Abendsonne und Dauerschatten."""
+        _validate(lat, lon, 600)
+        return (await svc(request).sonne(lat, lon, refresh)).to_dict()
+
     @app.get("/api/wahl")
     async def wahl(
         request: Request,

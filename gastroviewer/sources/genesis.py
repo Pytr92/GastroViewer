@@ -81,6 +81,11 @@ TAB_ARBEITSLOSE_GEMEINDE = "13211-01-03-5"
 # München 2024: 7 118 genehmigte, 5 915 fertiggestellte Wohnungen.
 TAB_BAUGENEHMIGUNGEN = "31111-01-02-5"
 TAB_BAUFERTIGSTELLUNGEN = "31121-01-02-5"
+# Realsteuervergleich (AA-Runde, Phase-0 am 2026-08-08 aufgezeichnet):
+# Hebesätze je Gemeinde und Jahr. Der einzige harte Kostenfaktor des
+# Werkzeugs, der gemeindescharf ist — München 490 % Gewerbesteuer gegen
+# Garching 330 % sind 160 Prozentpunkte auf den Gewerbeertrag.
+TAB_HEBESAETZE = "71231-01-03-5"
 
 LIZENZ = (
     "Datenlizenz Deutschland Namensnennung 2.0 (dl-de/by-2-0) · "
@@ -425,6 +430,47 @@ def bau_auswerten(rows: list[dict[str, str]], ags8: str) -> dict[str, Any]:
             "reihe": reihe[-10:]}
 
 
+_HEBESATZ_FELDER = {
+    "STNW09": "gewerbesteuer_hebesatz",
+    "STNW08": "grundsteuer_b_hebesatz",
+    "STNW07": "grundsteuer_a_hebesatz",
+    "STNW15": "steuereinnahmekraft_eur",
+    "STNW03": "gewerbesteuer_aufkommen_eur",
+}
+
+# Bundesdurchschnitt aus derselben Tabelle (Zeile „DG Deutschland",
+# Berichtsjahr 2023) — dient nur als Einordnung, nicht als Bewertung.
+HEBESATZ_BUND = {"gewerbesteuer": 407, "grundsteuer_b": 493, "jahr": 2023}
+
+
+def hebesatz_auswerten(rows: list[dict[str, str]], ags8: str) -> dict[str, Any]:
+    """Tabelle 71231-01-03-5: Hebesätze der Gemeinde je Jahr.
+
+    Schlichte Insgesamt-Tabelle ohne Untergliederung — die Werte hängen
+    allein am Merkmalscode (STNW07…STNW15)."""
+    zeilen, name, ebene = _gemeinde_zeilen(rows, ags8)
+    je_jahr: dict[int, dict[str, Any]] = {}
+    for r in zeilen:
+        jahr = _jahr(r.get("time"))
+        feld = _HEBESATZ_FELDER.get(r.get("value_variable_code") or "")
+        if jahr is None or feld is None:
+            continue
+        je_jahr.setdefault(jahr, {})[feld] = _zahl(r.get("value"))
+    reihe, aktuell = _reihe_aufbauen(je_jahr, "gewerbesteuer_hebesatz")
+
+    # Abstand zum Bundesdurchschnitt — die eigentliche Aussage des Blocks.
+    vergleich = None
+    if aktuell and aktuell.get("gewerbesteuer_hebesatz") is not None:
+        vergleich = {
+            "bund": HEBESATZ_BUND["gewerbesteuer"],
+            "bund_jahr": HEBESATZ_BUND["jahr"],
+            "differenz_punkte": (aktuell["gewerbesteuer_hebesatz"]
+                                 - HEBESATZ_BUND["gewerbesteuer"]),
+        }
+    return {"name": name, "ebene": ebene, "aktuell": aktuell,
+            "vergleich": vergleich, "reihe": reihe[-10:]}
+
+
 # Attribut-Codes der Gewerbeanzeigentabelle (live aus dem ffcsv abgelesen).
 _GEWERBE_FELDER = {
     ("GEW011", None): "anmeldungen",
@@ -552,6 +598,15 @@ GEMEINDE_HINWEISE = [
     "drei Jahren Bewohner. Gezählt werden Wohnungen in Wohngebäuden "
     "(inkl. Wohnheimen) — der Zensus-Neubauhinweis ist dagegen auf 2022 "
     "eingefroren.",
+    "Der **Gewerbesteuer-Hebesatz** ist der einzige harte Kostenfaktor "
+    "dieses Werkzeugs, der von Gemeinde zu Gemeinde springt: Er "
+    "multipliziert den Steuermessbetrag und wirkt damit unmittelbar auf "
+    "den Gewinn nach Steuern. Zwischen Kernstadt und Umlandgemeinde "
+    "liegen leicht 150 Prozentpunkte. Der **Grundsteuer-B-Hebesatz** "
+    "trifft Mieter indirekt über die Nebenkosten — seit der "
+    "Grundsteuerreform 2025 sind die Sätze zwischen Gemeinden allerdings "
+    "nur noch eingeschränkt vergleichbar, weil sich zugleich die "
+    "Bemessungsgrundlage geändert hat.",
 ]
 
 
@@ -561,6 +616,7 @@ GEMEINDE_TABELLEN = (
     ("arbeitslose", TAB_ARBEITSLOSE_GEMEINDE, arbeitslose_auswerten),
     ("baugenehmigungen", TAB_BAUGENEHMIGUNGEN, bau_auswerten),
     ("baufertigstellungen", TAB_BAUFERTIGSTELLUNGEN, bau_auswerten),
+    ("hebesaetze", TAB_HEBESAETZE, hebesatz_auswerten),
 )
 
 
@@ -581,6 +637,7 @@ async def _gemeinde_laden(
         "ags": ags8, "name": None, "ebene": None,
         "beschaeftigte": None, "tourismus": None, "arbeitslose": None,
         "baugenehmigungen": None, "baufertigstellungen": None,
+        "hebesaetze": None,
         "hinweise": GEMEINDE_HINWEISE,
     }
     geliefert = False

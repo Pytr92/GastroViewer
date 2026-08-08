@@ -182,7 +182,12 @@ def test_load_ohne_kennung_bleibt_leer_ohne_abruf(settings, monkeypatch):
     assert any("Opt-in" in w for w in res.warnings)
 
 
-def _alle_tabellen(genesis_ffcsv, genesis_gemeinde_ffcsv, genesis_bau_ffcsv):
+@pytest.fixture
+def alle_tabellen(genesis_ffcsv, genesis_gemeinde_ffcsv, genesis_bau_ffcsv,
+                  genesis_hebesatz_ffcsv):
+    """Alle Tabellen, die ``load`` abfragt. Als Fixture, damit eine neue
+    Tabelle nur hier eingetragen werden muss — vorher zog jede Erweiterung
+    eine Änderung an sämtlichen Aufrufstellen nach sich."""
     return {
         genesis.TAB_UMSATZ: genesis_ffcsv["umsatz"],
         genesis.TAB_GEWERBE: genesis_ffcsv["gewerbe"],
@@ -191,14 +196,13 @@ def _alle_tabellen(genesis_ffcsv, genesis_gemeinde_ffcsv, genesis_bau_ffcsv):
         genesis.TAB_ARBEITSLOSE_GEMEINDE: genesis_gemeinde_ffcsv["arbeitslose"],
         genesis.TAB_BAUGENEHMIGUNGEN: genesis_bau_ffcsv["31111"],
         genesis.TAB_BAUFERTIGSTELLUNGEN: genesis_bau_ffcsv["31121"],
+        genesis.TAB_HEBESAETZE: genesis_hebesatz_ffcsv["71231"],
     }
 
 
-def test_load_mit_kennung_roh_csv(settings, genesis_ffcsv,
-                                  genesis_gemeinde_ffcsv, genesis_bau_ffcsv):
+def test_load_mit_kennung_roh_csv(settings, alle_tabellen):
     genesis.speichere_zugang(settings, "AB1234", "geheim")
-    fake = FakePost(_alle_tabellen(genesis_ffcsv, genesis_gemeinde_ffcsv,
-                                   genesis_bau_ffcsv))
+    fake = FakePost(alle_tabellen)
     res = asyncio.run(genesis.load(fake, settings, "09162000"))
     assert res.ok
     assert res.data["kreis"] == "München, kreisfreie Stadt"
@@ -220,15 +224,12 @@ def test_load_mit_kennung_roh_csv(settings, genesis_ffcsv,
         assert a["data"]["format"] == "ffcsv"
 
 
-def test_load_echte_gemeinde_fragt_gemein_ab(settings, genesis_ffcsv,
-                                             genesis_gemeinde_ffcsv,
-                                             genesis_bau_ffcsv):
+def test_load_echte_gemeinde_fragt_gemein_ab(settings, alle_tabellen):
     """Garching (09184119): Kreistabellen laufen über KREISE/09184, die
     Gemeindetabellen über GEMEIN/09184119 — ohne Kreis-Rückfall, weil die
     GEMEIN-Abfrage liefert."""
     genesis.speichere_zugang(settings, "AB1234", "geheim")
-    fake = FakePost(_alle_tabellen(genesis_ffcsv, genesis_gemeinde_ffcsv,
-                                   genesis_bau_ffcsv))
+    fake = FakePost(alle_tabellen)
     res = asyncio.run(genesis.load(fake, settings, "09184119"))
     assert res.ok
     assert res.data["kreis"] == "München, Landkreis"
@@ -250,8 +251,7 @@ def test_load_echte_gemeinde_fragt_gemein_ab(settings, genesis_ffcsv,
         assert a["data"]["regionalkey"] == "09184119"
 
 
-def test_load_mit_json_umschlag(settings, genesis_ffcsv,
-                                genesis_gemeinde_ffcsv, genesis_bau_ffcsv):
+def test_load_mit_json_umschlag(settings, alle_tabellen):
     """Die REST-Schnittstelle liefert das CSV in ``Object.Content`` — der
     Lader nimmt beide Formen an."""
     genesis.speichere_zugang(settings, "AB1234", "geheim")
@@ -260,9 +260,7 @@ def test_load_mit_json_umschlag(settings, genesis_ffcsv,
         return json.dumps({"Status": {"Code": 0, "Content": "erfolgreich"},
                            "Object": {"Content": csv_text}})
 
-    tabellen = {name: umschlag(text) for name, text
-                in _alle_tabellen(genesis_ffcsv, genesis_gemeinde_ffcsv,
-                                  genesis_bau_ffcsv).items()}
+    tabellen = {name: umschlag(text) for name, text in alle_tabellen.items()}
     fake = FakePost(tabellen)
     res = asyncio.run(genesis.load(fake, settings, "09162000"))
     assert res.ok and res.data["umsatz"]["aktuell"]["pflichtige"] == 4019
@@ -273,10 +271,11 @@ def test_load_fehlerantwort_wird_benannt(settings):
     genesis.speichere_zugang(settings, "AB1234", "geheim")
     fehler = json.dumps({"Status": {"Code": 15, "Content": "Sie sind nicht berechtigt"},
                          "Object": None})
-    fake = FakePost({t: fehler for t in (
-        genesis.TAB_UMSATZ, genesis.TAB_GEWERBE, genesis.TAB_BESCHAEFTIGTE,
-        genesis.TAB_TOURISMUS_GEMEINDE, genesis.TAB_ARBEITSLOSE_GEMEINDE,
-        genesis.TAB_BAUGENEHMIGUNGEN, genesis.TAB_BAUFERTIGSTELLUNGEN)})
+    # Tabellenliste aus dem Modul ableiten, damit eine neue Tabelle diesen
+    # Test nicht mit einem KeyError umwirft.
+    alle = {genesis.TAB_UMSATZ, genesis.TAB_GEWERBE} | {
+        tab for _s, tab, _fn in genesis.GEMEINDE_TABELLEN}
+    fake = FakePost({t: fehler for t in alle})
     res = asyncio.run(genesis.load(fake, settings, "09162000"))
     assert not res.ok
     assert "nicht berechtigt" in res.error["message"]
@@ -361,3 +360,37 @@ def test_kreise_rueckfall_traegt_nicht_das_etikett_kreisfreie_stadt():
                 "1_variable_attribute_label": "München, kreisfreie Stadt"}]
     _zeilen, _name, ebene_kf = genesis._gemeinde_zeilen(rows_kf, "09162000")
     assert ebene_kf == "kreisfreie Stadt"
+
+
+# ------------------------------------------------- Hebesätze (AA-Runde)
+
+def test_hebesatz_muenchen_und_garching(genesis_hebesatz_ffcsv):
+    """Realsteuervergleich 71231-01-03-5, aufgezeichnet am 2026-08-08.
+    Der Stadt-Umland-Unterschied ist die eigentliche Aussage des Blocks."""
+    rows = genesis.parse_ffcsv(genesis_hebesatz_ffcsv["71231"])
+
+    muc = genesis.hebesatz_auswerten(rows, "09162000")
+    assert muc["name"] == "München, kreisfreie Stadt"
+    assert muc["aktuell"]["jahr"] == 2024
+    assert muc["aktuell"]["gewerbesteuer_hebesatz"] == 490
+    assert muc["aktuell"]["grundsteuer_b_hebesatz"] == 535
+    assert muc["vergleich"]["differenz_punkte"] == 490 - genesis.HEBESATZ_BUND[
+        "gewerbesteuer"]
+
+    gar = genesis.hebesatz_auswerten(rows, "09184119")
+    assert gar["name"] == "Garching b.München, St"
+    assert gar["ebene"] == "Gemeinde"
+    assert gar["aktuell"]["gewerbesteuer_hebesatz"] == 330
+    # Garching hat 2024 die Grundsteuer angehoben (280 → 310).
+    assert gar["aktuell"]["grundsteuer_b_hebesatz"] == 310
+    z2020 = next(r for r in gar["reihe"] if r["jahr"] == 2020)
+    assert z2020["grundsteuer_b_hebesatz"] == 280
+    # 160 Prozentpunkte Unterschied zur Kernstadt — der Kern der Aussage.
+    assert (muc["aktuell"]["gewerbesteuer_hebesatz"]
+            - gar["aktuell"]["gewerbesteuer_hebesatz"]) == 160
+
+
+def test_hebesatz_ohne_treffer_bleibt_leer(genesis_hebesatz_ffcsv):
+    rows = genesis.parse_ffcsv(genesis_hebesatz_ffcsv["71231"])
+    r = genesis.hebesatz_auswerten(rows, "11000000")  # Berlin, nicht in Fixture
+    assert r["aktuell"] is None and r["vergleich"] is None and r["reihe"] == []

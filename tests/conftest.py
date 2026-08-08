@@ -139,6 +139,16 @@ def genesis_bau_ffcsv():
 
 
 @pytest.fixture(scope="session")
+def genesis_hebesatz_ffcsv():
+    return load_fixture("raw_genesis_hebesatz_ffcsv.json")
+
+
+@pytest.fixture(scope="session")
+def overpass_gebaeude():
+    return load_fixture("raw_overpass_gebaeude.json")
+
+
+@pytest.fixture(scope="session")
 def uba_luft_api():
     return load_fixture("raw_uba_luft_api.json")
 

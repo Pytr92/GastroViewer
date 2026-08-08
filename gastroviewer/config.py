@@ -261,6 +261,10 @@ class Settings:
         # die TTL betrifft nur den gerechneten PLZ-Auszug.
         if source.startswith("register"):
             return self.ttl_zensus
+        # Besonnung: hängt am Gebäudebestand, und Häuser stehen lange.
+        # Die Rechnung selbst ist teuer genug, um sie nicht zu wiederholen.
+        if source.startswith("sonne"):
+            return self.ttl_zensus
         return self.ttl_osm
 
     def ensure_dirs(self) -> None:
