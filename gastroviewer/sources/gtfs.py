@@ -578,3 +578,177 @@ def status(settings: Settings) -> dict[str, Any]:
         "groesse_mb": round(db.stat().st_size / 1024 / 1024, 1),
         **meta,
     }
+
+
+# ---------------------------------------------- ÖPNV-Einzugsgebiet (Z8)
+
+GEHTEMPO_M_MIN = 75          # zu Fuß, wie in der Gehweg-Auswertung benannt
+START_GEHWEG_M = 600         # Fußweg zum Einstieg
+UMSTIEG_FUSSWEG_M = 200      # Fußweg zwischen nahen Halten beim Umstieg
+UMSTIEG_MINUTEN = 2          # Puffer je Umstieg
+MAX_RUNDEN = 3               # Einstieg + 2 Umstiege
+
+
+def _sekunden(zeit: str | None) -> int | None:
+    """GTFS-Zeit „HH:MM:SS" → Sekunden. Fahrten nach Mitternacht tragen
+    Stunden über 24 — das ist gewollt und bleibt erhalten."""
+    try:
+        h, m, s = str(zeit).split(":")
+        return int(h) * 3600 + int(m) * 60 + int(s)
+    except (ValueError, AttributeError):
+        return None
+
+
+def einzugsgebiet(
+    settings: Settings, lat: float, lon: float,
+    minuten: int = 30, abfahrt: str = "12:00:00",
+) -> dict[str, Any] | None:
+    """Erreichbare Halte ab dem Punkt — vereinfachter Runden-Router
+    (RAPTOR-Idee) über den importierten Fahrplan.
+
+    Bewusst benannte Vereinfachungen (stehen auch am Block):
+
+    * Die Datenbank führt je Halt nur die Abfahrtszeit — die Ankunft an
+      einem Halt wird mit dessen Abfahrtszeit gleichgesetzt (Fehler:
+      Sekunden Standzeit). Die Reihenfolge innerhalb einer Fahrt folgt
+      den Zeiten.
+    * Fußwege: Luftlinie mit 75 m/min — zum Einstieg bis 600 m, beim
+      Umstieg bis 200 m plus 2 Minuten Puffer.
+    * Gezählt wird am benannten Referenztag des Fahrplans (Dienstag),
+      Abfahrt 12:00 — dieselbe Konvention wie der Abfahrten-Block.
+    * Es gilt der importierte Ausschnitt: Halte außerhalb des beim
+      GTFS-Import gewählten Gebiets existieren für die Rechnung nicht.
+
+    Rein lokal, kein Netzzugriff. ``None``, wenn kein Fahrplan
+    importiert ist."""
+    db_path = settings.gtfs_db_path
+    if not db_path.exists():
+        return None
+
+    conn = sqlite3.connect(f"file:{db_path}?mode=ro", uri=True)
+    conn.row_factory = sqlite3.Row
+    try:
+        meta = {r["key"]: r["value"] for r in conn.execute(
+            "SELECT key, value FROM meta")}
+        ref = _reference_date(conn)
+        date = meta.get("referenzdatum") or ref["date"]
+        weekday_idx = dt.datetime.strptime(date, "%Y%m%d").date().weekday()
+        services = _active_services(conn, date, WEEKDAYS[weekday_idx])
+
+        start_s = _sekunden(abfahrt) or 12 * 3600
+        horizont_s = start_s + minuten * 60
+
+        alle_halte = [dict(r) for r in conn.execute(
+            "SELECT stop_id, stop_name, stop_lat, stop_lon FROM stops "
+            "WHERE stop_lat IS NOT NULL AND stop_lon IS NOT NULL")]
+
+        # Ankunftszeit je Halt (Sekunden); Start: Fußweg vom Punkt.
+        ankunft: dict[str, int] = {}
+        info: dict[str, dict[str, Any]] = {}
+        markiert: set[str] = set()
+        for h in alle_halte:
+            d = haversine_m(lat, lon, h["stop_lat"], h["stop_lon"])
+            info[h["stop_id"]] = {**h, "distanz_m": d}
+            if d <= START_GEHWEG_M:
+                t = start_s + int(d / GEHTEMPO_M_MIN * 60)
+                if t < horizont_s:
+                    ankunft[h["stop_id"]] = t
+                    markiert.add(h["stop_id"])
+
+        if not markiert:
+            return {"referenztag": ref, "abfahrt": abfahrt[:5],
+                    "minuten": minuten, "halte": [], "linien": 0,
+                    "start_halte": 0}
+
+        # Räumliches Raster (~300 m Maschen) für die Umstiegs-Fußwege —
+        # sonst wäre die Nachbarsuche quadratisch über alle Halte.
+        raster: dict[tuple[int, int], list[dict[str, Any]]] = {}
+        for h in alle_halte:
+            zelle = (int(h["stop_lat"] / 0.003), int(h["stop_lon"] / 0.0045))
+            raster.setdefault(zelle, []).append(h)
+
+        def nachbarn(lat0: float, lon0: float):
+            z = (int(lat0 / 0.003), int(lon0 / 0.0045))
+            for dz in (-1, 0, 1):
+                for ds in (-1, 0, 1):
+                    yield from raster.get((z[0] + dz, z[1] + ds), [])
+
+        start_halte = len(markiert)
+        benutzte_trips: set[str] = set()
+        linien: set[str] = set()
+
+        for _runde in range(MAX_RUNDEN):
+            if not markiert:
+                break
+            naechste: set[str] = set()
+            for stop_id in sorted(markiert, key=lambda s: ankunft[s]):
+                ab = ankunft[stop_id] + 60  # eine Minute zum Einsteigen
+                if ab >= horizont_s:
+                    continue
+                for r in conn.execute(
+                    "SELECT st.trip_id, st.departure_time, t.route_id, "
+                    "t.service_id FROM stop_times st "
+                    "JOIN trips t ON t.trip_id = st.trip_id "
+                    "WHERE st.stop_id = ?", (stop_id,),
+                ):
+                    dep = _sekunden(r["departure_time"])
+                    if (dep is None or dep < ab or dep >= horizont_s
+                            or r["trip_id"] in benutzte_trips
+                            or r["service_id"] not in services):
+                        continue
+                    benutzte_trips.add(r["trip_id"])
+                    linien.add(r["route_id"])
+                    for halt in conn.execute(
+                        "SELECT stop_id, departure_time FROM stop_times "
+                        "WHERE trip_id = ?", (r["trip_id"],),
+                    ):
+                        t = _sekunden(halt["departure_time"])
+                        if t is None or t <= dep or t > horizont_s:
+                            continue
+                        sid = halt["stop_id"]
+                        if sid in info and t < ankunft.get(sid, 10**9):
+                            ankunft[sid] = t
+                            naechste.add(sid)
+            # Fußweg-Umstieg: nahegelegene Halte erben die Ankunft.
+            if naechste and _runde < MAX_RUNDEN - 1:
+                for quelle_id in list(naechste):
+                    q = info[quelle_id]
+                    for h in nachbarn(q["stop_lat"], q["stop_lon"]):
+                        sid = h["stop_id"]
+                        if sid == quelle_id:
+                            continue
+                        d = haversine_m(q["stop_lat"], q["stop_lon"],
+                                        h["stop_lat"], h["stop_lon"])
+                        if d > UMSTIEG_FUSSWEG_M:
+                            continue
+                        t = (ankunft[quelle_id] + UMSTIEG_MINUTEN * 60
+                             + int(d / GEHTEMPO_M_MIN * 60))
+                        if t < horizont_s and t < ankunft.get(sid, 10**9):
+                            ankunft[sid] = t
+                            naechste.add(sid)
+            markiert = naechste
+
+        halte = []
+        for sid, t in ankunft.items():
+            h = info[sid]
+            halte.append({
+                "name": h["stop_name"],
+                "lat": h["stop_lat"],
+                "lon": h["stop_lon"],
+                "minuten": max(0, round((t - start_s) / 60)),
+                "distanz_m": round(h["distanz_m"]),
+            })
+        halte.sort(key=lambda h: h["minuten"])
+        return {
+            "referenztag": ref,
+            "abfahrt": abfahrt[:5],
+            "minuten": minuten,
+            "halte": halte,
+            "start_halte": start_halte,
+            "linien": len(linien),
+            "fahrten": len(benutzte_trips),
+            "fernster_km": round(max(
+                (h["distanz_m"] for h in halte), default=0) / 1000, 1),
+        }
+    finally:
+        conn.close()

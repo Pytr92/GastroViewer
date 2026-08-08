@@ -274,3 +274,35 @@ def test_nachtfenster_wird_gezaehlt():
     from gastroviewer.sources import gtfs
 
     assert gtfs.NACHT_STUNDEN == (22, 23, 0)
+
+
+# ------------------------------------------- ÖPNV-Einzugsgebiet (Z-Runde)
+
+def test_einzugsgebiet_ohne_import_gibt_none(tmp_path):
+    from gastroviewer.config import Settings
+
+    s = Settings()
+    s.data_dir = tmp_path
+    assert gtfs.einzugsgebiet(s, LAT, LON) is None
+
+
+def test_einzugsgebiet_am_stachus(importiert):
+    s, _ = importiert
+    d = gtfs.einzugsgebiet(s, LAT, LON, minuten=30)
+    assert d is not None
+    assert d["start_halte"] >= 1
+    assert d["minuten"] == 30
+    # Der Feed-Ausschnitt kennt nur 4 Halte — mehr kann nicht erreichbar sein.
+    assert 1 <= len(d["halte"]) <= 4
+    for h in d["halte"]:
+        assert 0 <= h["minuten"] <= 30
+        assert h["name"]
+    # Referenztag ist ein benannter Dienstag, wie im Abfahrten-Block.
+    assert d["referenztag"]["weekday_de"] == "Dienstag"
+
+
+def test_einzugsgebiet_weit_weg_ohne_starthalt(importiert):
+    s, _ = importiert
+    d = gtfs.einzugsgebiet(s, 53.55, 10.0, minuten=30)  # Hamburg, Feed: München
+    assert d is not None
+    assert d["halte"] == [] and d["start_halte"] == 0

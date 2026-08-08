@@ -215,6 +215,41 @@ async def search(
     )
 
 
+async def vorschlaege(
+    out: Outbound, settings: Settings, query: str, limit: int = 6
+) -> SourceResult:
+    """Adress-Vorschläge fürs Tippen (Autovervollständigung).
+
+    Läuft bewusst NUR über Photon: Die Nominatim-Nutzungsbedingungen
+    untersagen Autocomplete ausdrücklich („no autocomplete search"),
+    Photon ist genau dafür gebaut. Die eigentliche Suche (Enter) geht
+    weiterhin zuerst an Nominatim."""
+    started = time.perf_counter()
+    url = f"{PHOTON_BASE}/api"
+    try:
+        raw = await out.get_json(
+            "photon", url,
+            params={"q": query, "limit": str(limit), "lang": "de"},
+            timeout=settings.nominatim_timeout,
+            limiter="photon",
+            min_interval=0.3,
+        )
+    except SourceError as err:
+        return SourceResult.failed(
+            "vorschlaege", err, int((time.perf_counter() - started) * 1000))
+    features = (raw or {}).get("features") or []
+    items = [photon_shape(f) for f in features
+             if ((f.get("properties") or {}).get("countrycode") or "").upper()
+             in ("DE", "")]
+    return SourceResult(
+        name="vorschlaege",
+        ok=True,
+        data=items,
+        duration_ms=int((time.perf_counter() - started) * 1000),
+        provenance=_photon_provenance(url),
+    )
+
+
 # ------------------------------------------------- Photon-Rückfall
 
 async def _photon_reverse(

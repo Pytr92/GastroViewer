@@ -786,3 +786,17 @@ Modellwerte, keine Messungen) und eine **zweite** GENESIS-Kennung bei
 Destatis (gegen das Ein-Konto-Prinzip; Mehrwert wäre allein die
 Monats-Saisonkurve je Kreis, deren Jahressummen bereits im Kreisprofil
 stehen).
+
+---
+
+## Nachtrag 2026-08-08 (7. Runde): Bautätigkeit, Luftqualität, Wahl + Funktions-Ausbau (Z-Runde)
+
+| Prüfung | Ergebnis |
+|---|---|
+| **Bautätigkeit je Gemeinde** `31111-01-02-5` (Baugenehmigungen) / `31121-01-02-5` (Baufertigstellungen) | Tabellencodes über die Werteabruf-Oberfläche verifiziert (`-01-01-5`/`-02-01-5` existieren nicht); ffcsv einmal manuell aufgezeichnet: je Gemeinde/Jahr Wohngebäude (BAUGEB01) mit Gebäuden (BAU015), **Wohnungen (WOHN01)** und Wohnfläche (FLC001, 1000 qm); Untergliederung WHGZHL… wird ignoriert. München 2024: **7 118 genehmigt, 5 915 fertiggestellt** (Pipeline +1 203); Garching über GEMEIN-Knoten (67/80). Läuft über die **bestehende** Regionalstatistik-Kennung — kein neues Konto |
+| **UBA-Luftqualität** `luftdaten.umweltbundesamt.de/api/air-data/v3` | Offen, ohne Schlüssel (alte www-Adresse leitet weiter). `stations/json?use=airquality`: Stationen mit Koordinaten (Feldfolge aus `indices`; München 5, DEBY037 Stachus = id 471); `airquality/json`: je Stunde `[Ende, Gesamtindex, unvollständig, [Komponente, Wert, Teilindex]…]`. Skala 0-basiert belegt: NO₂ 13 µg/m³ → Teilindex 0 („sehr gut" nach UBA-Schwelle bis 20). Browser-Befund Sendlinger Tor: Index „sehr gut", NO₂ 13/PM₁₀ 16/PM₂,₅ 7, Station Stachus 472 m NW |
+| **Bundestagswahl 2025** (Bundeswahlleiterin, beide dl-de/by-2-0) | `kerg2.csv` (1,8 MB, endgültig 14.03.2025, Spalte `DiffProzentPkt`) + Zuordnung `btw25_wkr_gemeinden_20241130_utf8.csv` (AGS aus RGS-Bausteinen; München = **WK 216–219**, Garching = WK 220). Mehr-Wahlkreis-Gemeinden: absolute Zweitstimmen summiert, Punktdifferenzen entfallen dann ehrlich. Browser-Befund München: CSU 29,4 %, GRÜNE 23,5 %, SPD 15,3 %, Beteiligung 84,3 % (gewichtet) — mit Struktur-Marker-Warnung am Block |
+| **ÖPNV-Einzugsgebiet** (rein lokal) | Runden-Router über das importierte GTFS (RAPTOR-Idee, max. 2 Umstiege, benannte Vereinfachungen am Block). Realprobe Sendlinger Tor 30 min: **2 144 Halte, 124 Linien, fernster Halt Garching-Forschungszentrum 16,5 km (29 min — deckt sich mit der echten U6-Fahrzeit)**, Einwohner-Näherung 1,27 Mio. über das 1-km-Gitter; Laufzeit ~11 s → auf Anforderung mit Cache |
+| **Autovervollständigung** | Nur über Photon — dabei Altbestand korrigiert: die frühere 1,1-s-Tippsuche ging an **Nominatim**, dessen Regeln Autocomplete ausdrücklich untersagen. Jetzt: Tippen → Photon-Vorschläge (350 ms, serverseitig gecacht), Enter → präzise Nominatim-Suche |
+| **Kannibalisierungs-Check** | Realprobe Sendlinger Tor ↔ Marienplatz (600-m-Radien, 722 m Abstand): 3 629 gemeinsame Einwohner = 22,2 % von A / 36,0 % von B — über 100-m-Zensuszellen, Grenzen benannt |
+| **Standort-Finder / Veränderungs-Wächter** | Finder: Top-10-Zellen des Scans nach eigenen Gewichten (Perzentilränge, Komposit offen beschriftet), Browser-Befund 875 Zellen → 10 Marker. Wächter: OSM-Gastro-Diff je gespeichertem Punkt ohne Überschreiben (Realprobe: 281 → 281, unverändert) |

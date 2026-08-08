@@ -73,6 +73,14 @@ TAB_GEWERBE = "52311-01-04-4"
 TAB_BESCHAEFTIGTE = "13111-01-03-5"
 TAB_TOURISMUS_GEMEINDE = "45412-01-03-5"
 TAB_ARBEITSLOSE_GEMEINDE = "13211-01-03-5"
+# Bautätigkeit (Z-Runde, Phase-0 am 2026-08-08 über den öffentlichen
+# Werteabruf aufgezeichnet): je Gemeinde und Jahr die Wohngebäude
+# (BAUGEB01 inkl. Wohnheime) mit Gebäuden (BAU015), Wohnungen (WOHN01)
+# und Wohnfläche (FLC001, 1000 qm); Untergliederung nach Wohnungszahl
+# (WHGZHL…) wird ignoriert — es zählt die Insgesamt-Zeile.
+# München 2024: 7 118 genehmigte, 5 915 fertiggestellte Wohnungen.
+TAB_BAUGENEHMIGUNGEN = "31111-01-02-5"
+TAB_BAUFERTIGSTELLUNGEN = "31121-01-02-5"
 
 LIZENZ = (
     "Datenlizenz Deutschland Namensnennung 2.0 (dl-de/by-2-0) · "
@@ -383,6 +391,36 @@ def arbeitslose_auswerten(
             "reihe": reihe[-10:]}
 
 
+_BAU_FELDER = {
+    "WOHN01": "wohnungen",
+    "BAU015": "gebaeude",
+    "FLC001": "wohnflaeche_1000qm",
+}
+
+
+def bau_auswerten(rows: list[dict[str, str]], ags8: str) -> dict[str, Any]:
+    """Tabellen 31111-01-02-5 / 31121-01-02-5: Wohnungsbau der Gemeinde.
+
+    Anders als bei den übrigen Gemeindetabellen ist die Insgesamt-Zeile
+    hier nicht die mit leeren Untergliederungen: das 2er-Merkmal trägt
+    immer die Gebäudeart (BAUGEB01 = Wohngebäude inkl. Wohnheime), erst
+    das 3er-Merkmal (Wohnungszahl-Klassen) muss leer sein."""
+    zeilen, name, ebene = _gemeinde_zeilen(rows, ags8)
+    je_jahr: dict[int, dict[str, Any]] = {}
+    for r in zeilen:
+        jahr = _jahr(r.get("time"))
+        feld = _BAU_FELDER.get(r.get("value_variable_code") or "")
+        if jahr is None or feld is None:
+            continue
+        if (r.get("2_variable_attribute_code") != "BAUGEB01"
+                or r.get("3_variable_attribute_code")):
+            continue
+        je_jahr.setdefault(jahr, {})[feld] = _zahl(r.get("value"))
+    reihe, aktuell = _reihe_aufbauen(je_jahr, "wohnungen")
+    return {"name": name, "ebene": ebene, "aktuell": aktuell,
+            "reihe": reihe[-10:]}
+
+
 # Attribut-Codes der Gewerbeanzeigentabelle (live aus dem ffcsv abgelesen).
 _GEWERBE_FELDER = {
     ("GEW011", None): "anmeldungen",
@@ -505,6 +543,11 @@ GEMEINDE_HINWEISE = [
     "dem Kreisprofil keine feinere Auflösung. Ihren Wert entfalten sie im "
     "Umland: Garching, Erding oder Freising bekommen eigene Zahlen statt "
     "des Landkreis-Durchschnitts.",
+    "Die **Bau-Pipeline** (genehmigte minus fertiggestellte Wohnungen) "
+    "zeigt kommende Nachfrage: Was heute genehmigt ist, sind in zwei bis "
+    "drei Jahren Bewohner. Gezählt werden Wohnungen in Wohngebäuden "
+    "(inkl. Wohnheimen) — der Zensus-Neubauhinweis ist dagegen auf 2022 "
+    "eingefroren.",
 ]
 
 
@@ -512,6 +555,8 @@ GEMEINDE_TABELLEN = (
     ("beschaeftigte", TAB_BESCHAEFTIGTE, beschaeftigte_auswerten),
     ("tourismus", TAB_TOURISMUS_GEMEINDE, tourismus_gemeinde_auswerten),
     ("arbeitslose", TAB_ARBEITSLOSE_GEMEINDE, arbeitslose_auswerten),
+    ("baugenehmigungen", TAB_BAUGENEHMIGUNGEN, bau_auswerten),
+    ("baufertigstellungen", TAB_BAUFERTIGSTELLUNGEN, bau_auswerten),
 )
 
 
@@ -531,6 +576,7 @@ async def _gemeinde_laden(
     ergebnis: dict[str, Any] = {
         "ags": ags8, "name": None, "ebene": None,
         "beschaeftigte": None, "tourismus": None, "arbeitslose": None,
+        "baugenehmigungen": None, "baufertigstellungen": None,
         "hinweise": GEMEINDE_HINWEISE,
     }
     geliefert = False
@@ -630,7 +676,9 @@ async def load(
                 f"{TAB_UMSATZ}, Gewerbeanzeigen {TAB_GEWERBE}; Gemeindeebene: "
                 f"SV-Beschäftigte am Arbeitsort {TAB_BESCHAEFTIGTE}, "
                 f"Tourismus {TAB_TOURISMUS_GEMEINDE}, "
-                f"Arbeitslose {TAB_ARBEITSLOSE_GEMEINDE}"
+                f"Arbeitslose {TAB_ARBEITSLOSE_GEMEINDE}, "
+                f"Baugenehmigungen {TAB_BAUGENEHMIGUNGEN}, "
+                f"Baufertigstellungen {TAB_BAUFERTIGSTELLUNGEN}"
             ),
             license=LIZENZ,
             endpoint=f"{REST_BASE}/data/table",

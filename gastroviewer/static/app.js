@@ -192,6 +192,8 @@ state.gehwegRenderer = L.canvas({ padding: 0.3 });
 state.ebenen.gehflaeche = L.layerGroup();
 /* Rad-Liefergebiet (4d): dasselbe Prinzip, größeres Gebiet, Radprofil. */
 state.ebenen.liefergebiet = L.layerGroup();
+/* ÖPNV-Einzugsgebiet (6h): erreichte Halte, nach Fahrzeit eingefärbt. */
+state.ebenen.oepnveinzug = L.layerGroup();
 /* Übersichtsgitter 1 km/10 km — beantwortet „WO ist es interessant?", bevor
    man klickt. Canvas, weil es bis zu ~1.500 Zellen sind. */
 state.uebersichtRenderer = L.canvas({ padding: 0.3 });
@@ -200,6 +202,9 @@ state.ebenen.uebersicht = L.layerGroup();
    100-m-Zelle. Die feine Stufe zwischen Übersichtsebene und Umkreis. */
 state.scanRenderer = L.canvas({ padding: 0.3 });
 state.ebenen.scan = L.layerGroup();
+/* Standort-Finder: nummerierte Top-Zellen des Scans nach eigenen
+   Gewichten — entsteht auf Knopfdruck in der Scan-Legende. */
+state.ebenen.finder = L.layerGroup();
 /* Treffer der Markensuche (Gebietsschutz-Check). Bewusst nicht im
    Ebenenschalter: die Ebene entsteht durch die Suche und verschwindet mit dem
    Punktwechsel. */
@@ -218,9 +223,11 @@ const ebenenSchalter = L.control.layers({
 }, {
   'Übersicht Einwohner (1/10 km)': state.ebenen.uebersicht,
   'Flächen-Scan (Einwohner je Betrieb)': state.ebenen.scan,
+  'Standort-Finder (Top 10)': state.ebenen.finder,
   'Gemerkte Punkte': state.ebenen.punkte,
   'Zu Fuß erreichbar': state.ebenen.gehflaeche,
   'Rad-Liefergebiet': state.ebenen.liefergebiet,
+  'ÖPNV-Einzugsgebiet': state.ebenen.oepnveinzug,
   'Zensus-Gitter': state.ebenen.zensus,
   'Gastronomie': state.ebenen.gastronomie,
   'Wettbewerb nur in Overture': state.ebenen.overture,
@@ -553,7 +560,124 @@ function zeigeScanLegende(status) {
     zeilen.push(el('button', { class: 'scan-knopf', onclick: () => ladeScan() },
       'Diesen Ausschnitt scannen'));
   }
+  zeilen.push(...finderBedienung());
   c.replaceChildren(...zeilen);
+}
+
+/* ------------------------------------------------- Standort-Finder (Z4) */
+
+/* Verheiratet Scan und Gewichtungsidee des Gesamt-Scores: die Zellen des
+   gescannten Ausschnitts werden nach EIGENEN Gewichten geordnet und die
+   zehn besten nummeriert auf die Karte gelegt. Ehrlich beschriftet: Das
+   Komposit rechnet nur über die drei Scan-Kennzahlen (Perzentilränge im
+   Ausschnitt), nicht über den vollen Gesamt-Score — der braucht je Punkt
+   eine komplette Analyse. Reine Lokalrechnung, keine neue Abfrage. */
+const FINDER_SPEICHER = 'gastroviewer.finder';
+
+function finderGewichte() {
+  try {
+    const g = JSON.parse(localStorage.getItem(FINDER_SPEICHER) || '{}');
+    return {
+      chance: [0, 1, 2, 3].includes(g.chance) ? g.chance : 2,
+      dichte: [0, 1, 2, 3].includes(g.dichte) ? g.dichte : 1,
+      cluster: [-2, -1, 0, 1, 2].includes(g.cluster) ? g.cluster : 0,
+    };
+  } catch { return { chance: 2, dichte: 1, cluster: 0 }; }
+}
+
+function finderBedienung() {
+  const g = finderGewichte();
+  const wahl = (name, werte, wert, titel) => el('label', { class: 'finder-gewicht' },
+    `${titel} `,
+    el('select', { onchange: (ev) => {
+      const neu = finderGewichte();
+      neu[name] = Number(ev.target.value);
+      localStorage.setItem(FINDER_SPEICHER, JSON.stringify(neu));
+    } }, werte.map((w) => {
+      const o = el('option', { value: String(w) }, String(w));
+      if (w === wert) o.selected = true;
+      return o;
+    })));
+  return [
+    el('div', { class: 'legende-zeile' }, el('strong', {}, 'Standort-Finder')),
+    wahl('chance', [0, 1, 2, 3], g.chance, 'Einwohner je Betrieb (Chance)'),
+    wahl('dichte', [0, 1, 2, 3], g.dichte, 'Einwohnerdichte im Umfeld'),
+    wahl('cluster', [-2, -1, 0, 1, 2], g.cluster,
+      'Gastro-Cluster (− meiden … + suchen)'),
+    el('button', { class: 'scan-knopf', onclick: () => zeigeFinder() },
+      'Top 10 nach meinen Gewichten'),
+  ];
+}
+
+function zeigeFinder() {
+  const daten = scanState.daten;
+  state.ebenen.finder.clearLayers();
+  if (!daten || !daten.zellen?.length) return;
+  const g = finderGewichte();
+  const summe = g.chance + g.dichte + Math.abs(g.cluster);
+  if (!summe) return;
+  const zellen = daten.zellen.filter((z) => z.einwohner_umfeld > 0);
+
+  // Perzentilrang je Kennzahl im gescannten Ausschnitt (0 … 1).
+  const rang = (werte) => {
+    const sortiert = [...werte].sort((a, b) => a - b);
+    return (w) => sortiert.findIndex((x) => x >= w) / Math.max(1, sortiert.length - 1);
+  };
+  // „Kein Betrieb im Umfeld" ist für die Chance-Kennzahl der Extremfall —
+  // er zählt als bester Rang und wird in der Liste eigens benannt.
+  const chanceWerte = zellen.map((z) => z.je_betrieb ?? Infinity);
+  const rc = rang(chanceWerte.filter(Number.isFinite));
+  const rd = rang(zellen.map((z) => z.einwohner_umfeld));
+  const rk = rang(zellen.map((z) => z.betriebe_umfeld));
+
+  const bewertet = zellen.map((z) => {
+    const chance = z.je_betrieb === null || z.je_betrieb === undefined
+      ? 1 : rc(z.je_betrieb);
+    const cluster = rk(z.betriebe_umfeld);
+    const punkte = (g.chance * chance + g.dichte * rd(z.einwohner_umfeld)
+      + Math.abs(g.cluster) * (g.cluster >= 0 ? cluster : 1 - cluster)) / summe;
+    return { z, punkte };
+  }).sort((a, b) => b.punkte - a.punkte).slice(0, 10);
+
+  bewertet.forEach((b, i) => {
+    const ring = b.z.ring.map((pt) => [pt[1], pt[0]]);
+    const mitte = [
+      ring.reduce((s, x) => s + x[0], 0) / ring.length,
+      ring.reduce((s, x) => s + x[1], 0) / ring.length,
+    ];
+    const marker = L.marker(mitte, {
+      icon: L.divIcon({
+        className: 'finder-marker',
+        html: `<div class="finder-nummer">${i + 1}</div>`,
+        iconSize: [26, 26], iconAnchor: [13, 13],
+      }),
+      title: `Platz ${i + 1} — ${Math.round(b.punkte * 100)} von 100`,
+    });
+    marker.bindPopup(() => el('div', {},
+      el('h4', {}, `Standort-Finder: Platz ${i + 1}`),
+      el('table', {},
+        el('tr', {}, el('td', {}, 'Komposit (eigene Gewichte)'),
+          el('td', {}, el('b', {}, `${Math.round(b.punkte * 100)} / 100`))),
+        el('tr', {}, el('td', {}, 'Einwohner je Betrieb'),
+          el('td', {}, el('b', {}, b.z.je_betrieb === null
+            ? 'kein Betrieb im Umfeld' : NF.format(b.z.je_betrieb)))),
+        el('tr', {}, el('td', {}, 'Einwohner im 300-m-Umfeld'),
+          el('td', {}, el('b', {}, NF.format(b.z.einwohner_umfeld)))),
+        el('tr', {}, el('td', {}, 'Betriebe im 300-m-Umfeld'),
+          el('td', {}, el('b', {}, NF.format(b.z.betriebe_umfeld))))),
+      el('button', {
+        style: 'margin-top:7px',
+        onclick: () => { karte.closePopup(); setzePunkt(mitte[0], mitte[1], true); },
+      }, 'Hier analysieren'),
+      el('p', { class: 'hinweis-klein' },
+        'Rangordnung nur aus den drei Scan-Kennzahlen (Perzentile im '
+        + 'gescannten Ausschnitt) — kein Gesamt-Score. OSM-Betriebszahlen '
+        + 'sind Untergrenzen.')), { maxWidth: 300 });
+    state.ebenen.finder.addLayer(marker);
+  });
+  if (!karte.hasLayer(state.ebenen.finder)) {
+    state.ebenen.finder.addTo(karte);
+  }
 }
 
 function scanPopup(z, mitte) {
@@ -703,7 +827,7 @@ function ueberlappungen(zeilen) {
       const dist = L.latLng(a.lat, a.lon).distanceTo(L.latLng(b.lat, b.lon));
       const summe = (a.radius || 0) + (b.radius || 0);
       if (dist < summe) {
-        paare.push({ a: a.label, b: b.label,
+        paare.push({ a: a.label, b: b.label, aId: a.id, bId: b.id,
           distanz_m: Math.round(dist), um_m: Math.round(summe - dist) });
       }
     }
@@ -1024,6 +1148,7 @@ function lade(refresh = false) {
         ladeLaerm(d.data?.bundesland_code, lauf);
         ladeGenesis(d.data?.ags, lauf);
         ladePks(d.data?.ags, lauf);
+        ladeWahl(d.data?.ags, lauf);
       }
     })
     .catch((e) => {
@@ -1079,6 +1204,10 @@ function lade(refresh = false) {
   hole('/api/point/leerstandsmelder', p)
     .then((d) => { if (aktuell()) { state.daten.leerstandsmelder = d; zeigeLeerstandsmelder(d); } })
     .catch((e) => aktuell() && zeigeBlockFehler('leerstandsmelder', e));
+
+  hole('/api/point/luft', { lat, lon, ...(refresh ? { refresh: 'true' } : {}) })
+    .then((d) => { if (aktuell()) { state.daten.luft = d; zeigeLuft(d); } })
+    .catch((e) => aktuell() && zeigeBlockFehler('luft', e));
 
   hole('/api/point/dynamik', p)
     .then((d) => { if (aktuell()) { state.daten.dynamik = d; zeigeDynamik(d); } })
@@ -1146,6 +1275,7 @@ function baueGeruest() {
     block('genesis', '3e · Amtliche Gastro-Anker (Regionaldatenbank, Opt-in)'),
     block('tourismus', '3f · Tourismus-Saisonalität (München)'),
     block('pks', '3g · Sicherheitslage (Kriminalstatistik, Kreis)'),
+    block('wahl', '3h · Wahlergebnis (Bundestagswahl 2025, Wahlkreis)'),
     block('gastronomie', '4 · Gastronomie'),
     block('gehweg', '4b · Erreichbarkeit zu Fuß'),
     block('liefergebiet', '4d · Rad-Liefergebiet'),
@@ -1157,6 +1287,7 @@ function baueGeruest() {
     block('maerkte', '5c · Städtische Märkte (München/Hamburg)'),
     block('airbnb', '5d · Kurzzeitvermietung (Inside Airbnb)'),
     block('messe', '5e · Messe-Kalender (Messe München)'),
+    block('luft', '5f · Luftqualität (nächste Messstation)'),
     block('verkehr', '6 · Verkehr'),
     block('gtfs', '6b · Abfahrten (GTFS)'),
     block('radzaehlung', '6c · Gemessene Radverkehrsfrequenz'),
@@ -1164,6 +1295,7 @@ function baueGeruest() {
     block('planung', '6e · Planungsrecht und Hochwasser'),
     block('laerm', '6f · Straßenlärm (EU-Umgebungslärmkartierung)'),
     block('baustellen', '6g · Baustellen (München/Hamburg/Berlin)'),
+    block('oepnveinzug', '6h · ÖPNV-Einzugsgebiet (GTFS)'),
     block('leerstand', '7 · Leerstände'),
     block('leerstandsmelder', '7b · Leerstandsmelder (bürgerschaftlich gemeldet)'),
     block('register', '7c · Handelsregister-Umfeld (OffeneRegister, Stand 2019)'),
@@ -1175,6 +1307,108 @@ function baueGeruest() {
     GRENZEN.map((g) => el('li', {}, el('span', { class: 'haupt' }, g)))));
   zeigeGehwegAngebot();
   zeigeLieferAngebot();
+  zeigeOepnvEinzugAngebot();
+}
+
+/* --- 6h ÖPNV-Einzugsgebiet: wie 4b/4d auf Anforderung — die Rechnung über
+   den lokalen Fahrplan dauert etliche Sekunden (Runden-Router). */
+function zeigeOepnvEinzugAngebot() {
+  state.ebenen.oepnveinzug?.clearLayers();
+  setStatus('oepnveinzug', 'ok', 'auf Anforderung');
+  const minuten = el('select', { id: 'oepnv-minuten' },
+    [15, 20, 30, 45].map((m) => {
+      const o = el('option', { value: String(m) }, `${m} Minuten`);
+      if (m === 30) o.selected = true;
+      return o;
+    }));
+  setInhalt('oepnveinzug',
+    el('p', { class: 'hinweis-klein' },
+      'Wie weit trägt der ÖPNV? Der Runden-Router rechnet über den lokal '
+      + 'importierten Fahrplan, welche Halte am Referenz-Dienstag ab 12:00 '
+      + 'in der gewählten Zeit erreichbar sind (max. zwei Umstiege) — und '
+      + 'näherungsweise, wie viele Menschen dort wohnen. Das ist das '
+      + 'Einzugsgebiet für Gäste, die mit Bahn und Bus kommen.'),
+    el('p', { class: 'hinweis-klein' },
+      'Auf Anforderung, weil die Rechnung einige Sekunden dauert; das '
+      + 'Ergebnis bleibt danach im Cache.'),
+    el('div', {}, minuten, ' ',
+      el('button', { id: 'btn-oepnv-einzug', onclick: ladeOepnvEinzug },
+        'Einzugsgebiet berechnen')));
+}
+
+async function ladeOepnvEinzug() {
+  const id = 'oepnveinzug';
+  const minuten = Number(document.getElementById('oepnv-minuten')?.value || 30);
+  setStatus(id, 'laedt', 'rechnet …');
+  const knopf = document.getElementById('btn-oepnv-einzug');
+  if (knopf) knopf.disabled = true;
+  try {
+    const d = await hole('/api/point/oepnv-einzug',
+      { lat: state.lat, lon: state.lon, minuten });
+    state.daten.oepnveinzug = d;
+    zeigeOepnvEinzug(d, minuten);
+  } catch (e) {
+    zeigeBlockFehler(id, e);
+  } finally {
+    if (knopf) knopf.disabled = false;
+  }
+}
+
+function zeigeOepnvEinzug(d, minuten) {
+  const id = 'oepnveinzug';
+  state.ebenen.oepnveinzug.clearLayers();
+  if (!d.ok) {
+    setStatus(id, 'fehler', 'nicht berechenbar');
+    setInhalt(id, fehlerbox(d.error));
+    setQuelle(id, d.provenance);
+    return;
+  }
+  const z = d.data;
+  if (!z) {
+    setStatus(id, 'leer', 'kein Fahrplan importiert');
+    setInhalt(id, ...warnungen(d.warnings || []),
+      el('button', { id: 'btn-oepnv-einzug', onclick: zeigeOepnvEinzugAngebot },
+        'zurück'));
+    setQuelle(id, d.provenance);
+    return;
+  }
+  setStatus(id, 'ok', `${NF.format((z.halte || []).length)} Halte`);
+
+  // Halte auf die Karte, eingefärbt nach Fahrzeit-Dritteln.
+  const farben = ['#1b7837', '#f5a623', '#c0392b'];
+  const stufe = (m) => (m <= z.minuten / 3 ? 0 : m <= (2 * z.minuten) / 3 ? 1 : 2);
+  for (const h of z.halte || []) {
+    state.ebenen.oepnveinzug.addLayer(L.circleMarker([h.lat, h.lon], {
+      radius: 4, color: farben[stufe(h.minuten)],
+      fillColor: farben[stufe(h.minuten)],
+      fillOpacity: 0.7, weight: 1, _basisDeckkraft: 0.7, _basisRand: 1,
+    }).bindTooltip(`${h.name} — ${h.minuten} min`));
+  }
+  if (!karte.hasLayer(state.ebenen.oepnveinzug)) {
+    state.ebenen.oepnveinzug.addTo(karte);
+  }
+
+  const je = [0, 0, 0];
+  for (const h of z.halte || []) je[stufe(h.minuten)] += 1;
+
+  setInhalt(id,
+    el('div', { class: 'kennzahlen' },
+      kennzahl(`Erreichbare Halte (${z.minuten} min)`, (z.halte || []).length),
+      kennzahl('Einwohner im Einzugsgebiet (Näherung)', z.einwohner_naeherung),
+      kennzahl('Linien benutzt', z.linien),
+      kennzahl('Fernster Halt (Luftlinie)', z.fernster_km, 'km', 1),
+      kennzahl('Starthalte zu Fuß (≤ 600 m)', z.start_halte)),
+    el('div', { class: 'notiz' },
+      `Referenztag ${z.referenztag?.weekday_de || 'Dienstag'} `
+      + `${z.referenztag?.date || ''}, Abfahrt ${z.abfahrt} Uhr. `
+      + `Fahrzeit-Drittel: ${NF.format(je[0])} · ${NF.format(je[1])} · `
+      + `${NF.format(je[2])} Halte (grün/gelb/rot auf der Karte).`),
+    el('div', {},
+      el('button', { id: 'btn-oepnv-einzug', onclick: zeigeOepnvEinzugAngebot },
+        'neue Rechnung')),
+    ...(z.hinweise || []).map((h) => el('div', { class: 'hinweis-klein' }, h)),
+    ...warnungen(d.warnings || []));
+  setQuelle(id, d.provenance);
 }
 
 /* Der Gehwegblock lädt nicht von selbst: das Fußwegenetz ist mit 1–3 MB je Punkt
@@ -2200,6 +2434,122 @@ function zeigePks(d) {
   setQuelle(id, d.provenance);
 }
 
+/* Block 3h — Wahlergebnis (BTW 2025) auf Wahlkreisebene. Struktur-Marker
+   mit deutlicher Deutungs-Warnung — auf ausdrücklichen Wunsch eingebaut. */
+async function ladeWahl(ags, lauf) {
+  if (!ags) {
+    setStatus('wahl', 'leer', 'kein Gemeindeschlüssel');
+    setInhalt('wahl', el('div', { class: 'notiz' },
+      'Ohne Gemeindeschlüssel (aus dem Zensusblock) lässt sich kein '
+      + 'Wahlkreis zuordnen.'));
+    return;
+  }
+  try {
+    const d = await hole('/api/wahl', { ags });
+    if (lauf !== state.ladeLauf) return;
+    state.daten.wahl = d;
+    zeigeWahl(d);
+  } catch (e) {
+    if (lauf === state.ladeLauf) zeigeBlockFehler('wahl', e);
+  }
+}
+
+function zeigeWahl(d) {
+  const id = 'wahl';
+  if (!d.ok) {
+    setStatus(id, 'fehler', 'nicht erreichbar');
+    setInhalt(id, fehlerbox(d.error));
+    setQuelle(id, d.provenance);
+    return;
+  }
+  const w = d.data;
+  if (!w) {
+    setStatus(id, 'leer', 'keine Zuordnung');
+    setInhalt(id, ...warnungen(d.warnings || []));
+    setQuelle(id, d.provenance);
+    return;
+  }
+  const wk = (w.wahlkreise || []).map((x) => `${x.nr} ${x.name}`).join(' · ');
+  setStatus(id, 'ok', w.mehrere_wahlkreise
+    ? `${w.wahlkreise.length} Wahlkreise` : `WK ${w.wahlkreise[0]?.nr}`);
+
+  const tab = el('table', { class: 'daten' },
+    el('tr', {},
+      el('th', {}, 'Partei'),
+      el('th', { class: 'num' }, 'Zweitstimmen'),
+      el('th', { class: 'num' }, 'Anteil'),
+      el('th', { class: 'num' }, 'ggü. 2021')));
+  for (const p of w.parteien || []) {
+    tab.append(el('tr', {},
+      el('td', {}, p.partei),
+      el('td', { class: 'num' }, NF.format(p.zweitstimmen)),
+      el('td', { class: 'num' },
+        p.prozent === null ? '—' : `${NF1.format(p.prozent)} %`),
+      el('td', { class: 'num' },
+        p.diff_prozentpunkte === null || p.diff_prozentpunkte === undefined
+          ? '—'
+          : `${p.diff_prozentpunkte > 0 ? '+' : ''}${NF1.format(p.diff_prozentpunkte)} Pkt.`)));
+  }
+
+  setInhalt(id,
+    el('div', { class: 'notiz' },
+      `${w.wahl}, ${w.mehrere_wahlkreise ? 'Summe der Wahlkreise' : 'Wahlkreis'} `
+      + `${wk}.`
+      + (w.beteiligung_prozent !== null && w.beteiligung_prozent !== undefined
+        ? ` Wahlbeteiligung ${NF1.format(w.beteiligung_prozent)} %`
+          + (w.mehrere_wahlkreise ? ' (gewichtet berechnet)' : '') + '.'
+        : '')),
+    tab,
+    ...(w.hinweise || []).map((h) => el('div', { class: 'warnung' }, h)),
+    ...warnungen(d.warnings || []));
+  setQuelle(id, d.provenance);
+}
+
+/* Block 5f — Luftqualität der nächsten Messstation (UBA/Länder): der
+   gemessene Begleiter zum Lärmblock für Außengastronomie an Achsen. */
+function zeigeLuft(d) {
+  const id = 'luft';
+  if (!d.ok) {
+    setStatus(id, 'fehler', 'nicht erreichbar');
+    setInhalt(id, fehlerbox(d.error));
+    setQuelle(id, d.provenance);
+    return;
+  }
+  const l = d.data;
+  if (!l) {
+    setStatus(id, 'leer', 'keine Station in der Nähe');
+    setInhalt(id, ...warnungen(d.warnings || []));
+    setQuelle(id, d.provenance);
+    return;
+  }
+  setStatus(id, 'ok', l.index_label || 'geladen');
+
+  const komp = el('div', { class: 'kennzahlen' },
+    ...(l.komponenten || []).map((k) => el('div', { class: 'kennzahl' },
+      el('div', { class: 'titel' }, k.komponente),
+      el('div', { class: 'wert' },
+        k.wert === null || k.wert === undefined
+          ? 'keine Angabe' : `${NF.format(k.wert)} ${k.einheit || ''}`),
+      el('div', { class: 'basis' }, k.teilindex_label || ''))));
+
+  setInhalt(id,
+    el('div', { class: 'kennzahlen' },
+      el('div', { class: 'kennzahl' },
+        el('div', { class: 'titel' }, 'Luftqualitätsindex'),
+        el('div', { class: `wert${l.index_label ? '' : ' fehlt'}` },
+          l.index_label || 'keine Angabe'),
+        el('div', { class: 'basis' }, `Stundenwert bis ${l.stand || '?'}`))),
+    komp,
+    el('div', { class: 'notiz' },
+      `Station: ${l.station?.name || '?'} (${l.station?.code || '?'}) — `
+      + `${NF.format(l.station?.distanz_m ?? 0)} m ${l.station?.richtung || ''}. `,
+      el('a', { href: l.portal, target: '_blank', rel: 'noopener' },
+        'Luftdaten-Portal des UBA')),
+    ...(l.hinweise || []).map((h) => el('div', { class: 'hinweis-klein' }, h)),
+    ...warnungen(d.warnings || []));
+  setQuelle(id, d.provenance);
+}
+
 /* Block 3d — Pendlerverflechtungen der Gemeinde (Pendlerrechnung der
    Länder). Die Tagesbevölkerungs-Frage: Wer ist tagsüber wirklich da?
    Braucht wie 3b/3c den Gemeindeschlüssel aus dem Zensusblock. */
@@ -3188,6 +3538,49 @@ function zeigeGenesis(d, ags) {
         t ? t.betriebe : null),
       kennzahl(a ? `Arbeitslose (Ø ${a.jahr})` : 'Arbeitslose',
         a ? a.arbeitslose : null)));
+    // Bau-Pipeline: genehmigte gegen fertiggestellte Wohnungen — die
+    // kommende Nachfrage, die der eingefrorene Zensus-Neubauhinweis
+    // nicht mehr sehen kann.
+    const bg = (gem.baugenehmigungen || {}).aktuell;
+    const bf = (gem.baufertigstellungen || {}).aktuell;
+    if (bg || bf) {
+      gemTeile.push(el('div', { class: 'kennzahlen' },
+        kennzahl(bg ? `Genehmigte Wohnungen (${bg.jahr})` : 'Genehmigte Wohnungen',
+          bg ? bg.wohnungen : null),
+        kennzahl(bf ? `Fertiggestellte Wohnungen (${bf.jahr})` : 'Fertiggestellte Wohnungen',
+          bf ? bf.wohnungen : null),
+        el('div', { class: 'kennzahl' },
+          el('div', { class: 'titel' }, 'Bau-Pipeline (genehmigt − fertig)'),
+          el('div', {
+            class: `wert${bg && bf && bg.wohnungen !== null && bf.wohnungen !== null ? '' : ' fehlt'}`,
+          }, bg && bf && bg.wohnungen !== null && bf.wohnungen !== null && bg.jahr === bf.jahr
+            ? `${bg.wohnungen - bf.wohnungen > 0 ? '+' : ''}${NF.format(bg.wohnungen - bf.wohnungen)}`
+            : 'keine Angabe'),
+          el('div', { class: 'basis' },
+            bg && bf && bg.jahr === bf.jahr
+              ? `Jahr ${bg.jahr} · berechnet, Wohngebäude inkl. Wohnheime`
+              : 'nur bei gleichem Berichtsjahr berechnet'))));
+      const breihe = ((gem.baugenehmigungen || {}).reihe || []);
+      const freihe = ((gem.baufertigstellungen || {}).reihe || []);
+      if (breihe.length > 1 || freihe.length > 1) {
+        const fmap = Object.fromEntries(freihe.map((z) => [z.jahr, z]));
+        const btab = el('table', { class: 'daten' },
+          el('tr', {},
+            el('th', {}, 'Jahr'),
+            el('th', { class: 'num' }, 'Wohnungen genehmigt'),
+            el('th', { class: 'num' }, 'Wohnungen fertiggestellt')));
+        for (const z of breihe.slice(-8)) {
+          const f = fmap[z.jahr];
+          btab.append(el('tr', {},
+            el('td', {}, String(z.jahr)),
+            el('td', { class: 'num' },
+              z.wohnungen === null ? '—' : NF.format(z.wohnungen)),
+            el('td', { class: 'num' },
+              f && f.wohnungen !== null ? NF.format(f.wohnungen) : '—')));
+        }
+        gemTeile.push(btab);
+      }
+    }
     const br = (gem.beschaeftigte || {}).reihe || [];
     if (br.length > 1) {
       const btab = el('table', { class: 'daten' },
@@ -3729,6 +4122,11 @@ async function zeigeVergleich() {
         onclick: () => neuPruefen(z),
       }, 'neu prüfen'),
       el('button', {
+        title: 'Nur die OSM-Gastronomie gegen den gespeicherten Stand halten — '
+          + 'schnell, ohne den Punkt zu verändern',
+        onclick: () => waechterPruefen(z),
+      }, 'Wächter'),
+      el('button', {
         onclick: async () => {
           await fetch(`/api/points/${z.id}`, { method: 'DELETE' });
           zeigeVergleich();
@@ -3742,9 +4140,14 @@ async function zeigeVergleich() {
   const ueberlappungsBox = paare.length
     ? el('div', { class: 'warnung' },
       el('strong', {}, 'Einzugsgebiete überschneiden sich: '),
-      paare.map((p) =>
+      ...paare.map((p) => el('div', { class: 'legende-zeile' },
         `${p.a} ↔ ${p.b} (Abstand ${NF.format(p.distanz_m)} m, Kreise `
-        + `überlappen um ${NF.format(p.um_m)} m)`).join(' · '),
+        + `überlappen um ${NF.format(p.um_m)} m) `,
+        el('button', {
+          class: 'kein-druck',
+          title: 'Einwohner in beiden Umkreisen über das Zensusgitter zählen',
+          onclick: (ev) => kannibalisierungRechnen(p, ev.target),
+        }, 'Gemeinsame Einwohner rechnen'))),
       el('div', { class: 'hinweis-klein' },
         'Diese Kandidaten teilen sich einen Teil derselben Einwohner — die '
         + 'Kartenebene „Gemerkte Punkte" zeigt es. Ob das stört, hängt vom '
@@ -3873,6 +4276,107 @@ async function alleNeuPruefen(zeilen) {
       el('div', { class: 'hinweis-klein' },
         'Details je Punkt: „neu prüfen" am einzelnen Punkt zeigt die '
         + 'veränderten Kennzahlen und Betriebe.')));
+}
+
+/* --------------------------------- Kannibalisierungs-Check (Z6) */
+
+/* Macht aus der Geometrie-Warnung eine Zahl: Einwohner, deren Zensuszelle
+   in BEIDEN Umkreisen liegt. Zwei Zensus-Abfragen je Rechnung — deshalb
+   auf Knopfdruck, nicht automatisch. */
+async function kannibalisierungRechnen(paar, knopf) {
+  const box = el('div', { class: 'verlauf-ergebnis' },
+    el('div', { class: 'laden' }),
+    `Zensuszellen für „${paar.a}" und „${paar.b}" werden gezählt …`);
+  document.getElementById('vergleich-inhalt').prepend(box);
+  if (knopf) knopf.disabled = true;
+  let d;
+  try {
+    const r = await fetch(`/api/points/kannibalisierung?a=${paar.aId}&b=${paar.bId}`);
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    d = await r.json();
+  } catch (e) {
+    box.replaceChildren(el('div', { class: 'fehlerbox' },
+      `Kannibalisierungs-Check fehlgeschlagen: ${e.message}`));
+    if (knopf) knopf.disabled = false;
+    return;
+  }
+  if (knopf) knopf.disabled = false;
+  if (!d.ueberlappung) {
+    box.replaceChildren(el('strong', {}, 'Keine Überlappung'),
+      el('div', {}, `${paar.a} und ${paar.b} überschneiden sich nicht mehr.`));
+    return;
+  }
+  box.replaceChildren(
+    el('strong', {}, `Kannibalisierung: ${d.a.label} ↔ ${d.b.label}`),
+    el('div', { class: 'kennzahlen' },
+      kennzahl('Gemeinsame Einwohner', d.gemeinsame_einwohner),
+      kennzahl(`Anteil am Umkreis „${d.a.label}"`, d.anteil_an_a_prozent, '%', 1),
+      kennzahl(`Anteil am Umkreis „${d.b.label}"`, d.anteil_an_b_prozent, '%', 1),
+      kennzahl(`Einwohner „${d.a.label}" (${NF.format(d.a.radius_m)} m)`, d.einwohner_a),
+      kennzahl(`Einwohner „${d.b.label}" (${NF.format(d.b.radius_m)} m)`, d.einwohner_b)),
+    ...(d.hinweise || []).map((h) => el('div', { class: 'hinweis-klein' }, h)),
+    el('button', {
+      class: 'kein-druck',
+      onclick: (ev) => ev.target.closest('.verlauf-ergebnis').remove(),
+    }, 'ausblenden'));
+}
+
+/* ------------------------------------- Veränderungs-Wächter (Z5) */
+
+/* Der leichte Bruder von „neu prüfen": nur die OSM-Gastronomie wird gegen
+   den gespeicherten Stand gehalten (eine Quelle, standardmäßig aus dem
+   Cache), und der Punkt bleibt unverändert — Konkurrenzbeobachtung ohne
+   Nebenwirkungen. Erst „neu prüfen" übernimmt den neuen Stand. */
+async function waechterPruefen(z) {
+  const inhalt = document.getElementById('vergleich-inhalt');
+  const box = el('div', { class: 'verlauf-ergebnis' },
+    el('div', { class: 'laden' }), `Wächter prüft „${z.label}" …`);
+  inhalt.prepend(box);
+  let d;
+  try {
+    const r = await fetch(`/api/points/${z.id}/waechter`);
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    d = await r.json();
+  } catch (e) {
+    box.replaceChildren(el('div', { class: 'fehlerbox' },
+      `Wächter fehlgeschlagen: ${e.message}`));
+    return;
+  }
+  if (!d.ok) {
+    box.replaceChildren(el('div', { class: 'fehlerbox' },
+      `Wächter: OSM nicht erreichbar (${d.fehler || '?'})`));
+    return;
+  }
+  const teile = [el('strong', {}, `Wächter: ${d.label}`)];
+  const delta = d.gastro_jetzt - d.gastro_gespeichert;
+  teile.push(el('div', {},
+    `Gastronomie im Umkreis: ${NF.format(d.gastro_gespeichert)} gespeichert → `
+    + `${NF.format(d.gastro_jetzt)} jetzt`
+    + (delta ? ` (${delta > 0 ? '+' : ''}${NF.format(delta)})` : ' (unverändert)')
+    + (d.aus_cache ? ' · OSM-Stand aus dem Cache' : ' · frisch abgefragt')));
+  const liste = (titel, eintraege) => (eintraege.length
+    ? el('div', {},
+      el('h3', { class: 'hinweis-klein' }, `${titel} (${eintraege.length})`),
+      el('ul', { class: 'liste' }, eintraege.slice(0, 12).map((g) => el('li', {},
+        el('span', { class: 'dist' },
+          g.distanz_m === null || g.distanz_m === undefined
+            ? '' : `${NF.format(g.distanz_m)} m`),
+        el('span', { class: 'haupt' },
+          el('div', { class: 'name' }, g.name || '(ohne Name)'),
+          g.typ ? el('div', { class: 'meta' }, g.typ) : null)))))
+    : null);
+  teile.push(liste('Seit dem Speichern dazugekommen', d.neue_betriebe));
+  teile.push(liste('Seit dem Speichern verschwunden', d.verschwundene_betriebe));
+  if (!d.neue_betriebe.length && !d.verschwundene_betriebe.length) {
+    teile.push(el('div', { class: 'notiz' },
+      'Keine Veränderung im OSM-Gastro-Bestand seit dem gespeicherten Stand.'));
+  }
+  teile.push(el('div', { class: 'hinweis-klein' }, d.hinweis || ''));
+  teile.push(el('button', {
+    class: 'kein-druck',
+    onclick: (ev) => ev.target.closest('.verlauf-ergebnis').remove(),
+  }, 'ausblenden'));
+  box.replaceChildren(...teile.filter(Boolean));
 }
 
 /* --------------------------------------------- Neu prüfen (Verlauf) */
@@ -4165,16 +4669,10 @@ const sucheFeld = document.getElementById('suche');
 const trefferBox = document.getElementById('suche-treffer');
 const sucheStatus = document.getElementById('suche-status');
 
-/* Debounce ≥ 1 s — Nominatim erlaubt 1 Anfrage/Sekunde (Spec §5). */
-const DEBOUNCE_MS = 1100;
-
-sucheFeld.addEventListener('input', () => {
-  clearTimeout(sucheTimer);
-  const q = sucheFeld.value.trim();
-  if (q.length < 3) { trefferBox.hidden = true; sucheStatus.textContent = ''; return; }
-  sucheStatus.textContent = 'wartet (max. 1 Anfrage/s) …';
-  sucheTimer = setTimeout(() => sucheAusfuehren(q), DEBOUNCE_MS);
-});
+/* Beim Tippen läuft seit der Z-Runde NUR noch die Photon-Vervollständigung
+   (Listener weiter unten) — die Nominatim-Nutzungsbedingungen untersagen
+   Autocomplete ausdrücklich, die frühere 1,1-s-Tippsuche ging dorthin.
+   Nominatim beantwortet weiterhin die ausdrückliche Suche per Enter. */
 
 document.getElementById('suche-form').addEventListener('submit', (e) => {
   e.preventDefault();
@@ -4206,6 +4704,51 @@ async function sucheAusfuehren(q) {
 
 document.addEventListener('click', (e) => {
   if (!trefferBox.contains(e.target) && e.target !== sucheFeld) trefferBox.hidden = true;
+});
+
+/* ----------------------------- Adress-Autovervollständigung (Z7) */
+
+/* Beim Tippen Vorschläge über Photon (die Nominatim-Regeln untersagen
+   Autocomplete ausdrücklich — deshalb ein eigener, Photon-einziger
+   Endpunkt). Enter läuft weiter über die normale Suche. Entprellt auf
+   350 ms und ab drei Zeichen, damit der öffentliche Photon-Dienst nicht
+   je Tastendruck gefragt wird; jede Eingabe wird zudem serverseitig
+   gecacht. */
+let vorschlagTimer = null;
+let vorschlagLauf = 0;
+sucheFeld.addEventListener('input', () => {
+  clearTimeout(vorschlagTimer);
+  const q = sucheFeld.value.trim();
+  if (q.length < 3) {
+    trefferBox.hidden = true;
+    sucheStatus.textContent = '';
+    return;
+  }
+  sucheStatus.textContent = 'Vorschläge …';
+  vorschlagTimer = setTimeout(async () => {
+    const lauf = ++vorschlagLauf;
+    try {
+      const d = await hole('/api/geocode/vorschlaege', { q });
+      if (lauf !== vorschlagLauf || sucheFeld.value.trim() !== q) return;
+      const treffer = (d.ok && d.data) || [];
+      trefferBox.replaceChildren(...[
+        ...treffer.map((t) => el('button', {
+          type: 'button',
+          onclick: () => {
+            trefferBox.hidden = true;
+            sucheFeld.value = t.display_name;
+            setzePunkt(t.lat, t.lon, true);
+          },
+        }, t.display_name)),
+        treffer.length ? el('div', { class: 'hinweis-klein', style: 'padding:4px 8px' },
+          'Vorschläge: Photon (OSM-Daten)') : null,
+      ].filter(Boolean));
+      trefferBox.hidden = !treffer.length;
+      sucheStatus.textContent = treffer.length
+        ? `${treffer.length} Vorschläge — Enter sucht genau (Nominatim)`
+        : 'keine Vorschläge — Enter sucht genau (Nominatim)';
+    } catch { /* Vorschläge sind Komfort — die Suche per Enter bleibt. */ }
+  }, 350);
 });
 
 /* ------------------------------------------------------------ Bedienung */

@@ -134,6 +134,21 @@ def genesis_gemeinde_ffcsv():
 
 
 @pytest.fixture(scope="session")
+def genesis_bau_ffcsv():
+    return load_fixture("raw_genesis_bau_ffcsv.json")
+
+
+@pytest.fixture(scope="session")
+def uba_luft_api():
+    return load_fixture("raw_uba_luft_api.json")
+
+
+@pytest.fixture(scope="session")
+def wahl_btw25():
+    return load_fixture("raw_wahl_btw25.json")
+
+
+@pytest.fixture(scope="session")
 def uba_laerm():
     return load_fixture("raw_uba_laerm.json")
 

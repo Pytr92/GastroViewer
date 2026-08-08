@@ -507,6 +507,39 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             raise HTTPException(422, "Der Gemeindeschlüssel besteht aus Ziffern.")
         return (await svc(request).kreisprofil(ags)).to_dict()
 
+    @app.get("/api/point/oepnv-einzug")
+    async def point_oepnv_einzug(
+        request: Request, lat: float, lon: float,
+        minuten: int = Query(30, ge=10, le=45),
+        refresh: bool = False,
+    ):
+        """ÖPNV-Einzugsgebiet aus dem lokal importierten GTFS-Fahrplan:
+        erreichbare Halte in N Minuten (Referenz-Dienstag, 12:00, max.
+        zwei Umstiege) samt Einwohner-Näherung. Rechnet einige Sekunden —
+        deshalb nur auf Anforderung."""
+        _validate(lat, lon, 600)
+        return (await svc(request).oepnv_einzug(lat, lon, minuten, refresh)).to_dict()
+
+    @app.get("/api/point/luft")
+    async def point_luft(
+        request: Request, lat: float, lon: float, refresh: bool = False,
+    ):
+        """Luftqualitätsindex der nächsten Messstation (UBA/Länder) —
+        gemessene Stundenwerte, mit Entfernung und Stationsart."""
+        _validate(lat, lon, 600)
+        return (await svc(request).luft(lat, lon, refresh)).to_dict()
+
+    @app.get("/api/wahl")
+    async def wahl(
+        request: Request,
+        ags: str = Query(..., min_length=5, max_length=8),
+    ):
+        """Zweitstimmen der Bundestagswahl 2025 auf Wahlkreisebene für die
+        Gemeinde des Schlüssels — Struktur-Marker mit Deutungs-Warnung."""
+        if not ags.isdigit():
+            raise HTTPException(422, "Der Gemeindeschlüssel besteht aus Ziffern.")
+        return (await svc(request).wahl(ags)).to_dict()
+
     @app.get("/api/pks")
     async def pks(
         request: Request,
@@ -606,6 +639,16 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         refresh: bool = Query(False),
     ):
         return (await svc(request).suche(q, refresh)).to_dict()
+
+    @app.get("/api/geocode/vorschlaege")
+    async def geocode_vorschlaege(
+        request: Request,
+        q: str = Query(..., min_length=3),
+    ):
+        """Adress-Vorschläge beim Tippen — nur über Photon (die
+        Nominatim-Nutzungsbedingungen untersagen Autocomplete). Kurzer
+        Cache je Eingabe, damit Zurücktippen nichts erneut abfragt."""
+        return (await svc(request).vorschlaege(q)).to_dict()
 
     # ------------------------------- Bodenrichtwert-Kartendienste (Phase 4)
 
@@ -750,6 +793,20 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     # Muss NACH /api/points/vergleich und den festen Pfaden (export/import)
     # registriert sein — sonst finge der Pfadparameter das Wort ab und
     # antwortete mit 422.
+    @app.get("/api/points/kannibalisierung")
+    async def punkte_kannibalisierung(
+        request: Request, a: int = Query(...), b: int = Query(...),
+    ):
+        """Gemeinsame Einwohner zweier gespeicherter Punkte (Umkreis-
+        Überlappung auf dem Zensusgitter) — macht aus der „Kreise
+        überschneiden sich"-Warnung eine Zahl."""
+        cache: AsyncCache = request.app.state.cache
+        row_a = await asyncio.to_thread(cache.sync.get_point, a)
+        row_b = await asyncio.to_thread(cache.sync.get_point, b)
+        if row_a is None or row_b is None:
+            raise HTTPException(404, "Punkt nicht gefunden.")
+        return await svc(request).kannibalisierung(row_a, row_b)
+
     @app.get("/api/points/{point_id}")
     async def get_point(request: Request, point_id: int):
         """Ein gemerkter Punkt mit vollem Datenstand — Grundlage des Berichts."""
@@ -827,6 +884,57 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                 "Zensuswerte ändern sich nicht: der Stichtag bleibt der "
                 "15.05.2022. Beweglich sind OSM, GTFS und die Zählstellen.",
             ],
+        }
+
+    @app.get("/api/points/{point_id}/waechter")
+    async def punkt_waechter(request: Request, point_id: int,
+                             refresh: bool = False):
+        """Veränderungs-Wächter: gespeicherten Gastro-Stand gegen eine
+        frische OSM-Zählung halten — **ohne** den gespeicherten Stand zu
+        überschreiben. Der leichte Bruder von „neu prüfen": eine einzige
+        Quelle (Overpass, standardmäßig über den Cache), keine
+        Nebenwirkungen. Erst „neu prüfen" übernimmt den neuen Stand."""
+        cache: AsyncCache = request.app.state.cache
+        row = await asyncio.to_thread(cache.sync.get_point, point_id)
+        if row is None:
+            raise HTTPException(404, "Punkt nicht gefunden.")
+
+        osm = await svc(request).osm(row["lat"], row["lon"], row["radius"],
+                                     refresh)
+        if not osm.ok:
+            return {"id": point_id, "label": row.get("label"),
+                    "ok": False, "fehler": (osm.error or {}).get("message")}
+
+        def _gastro_map(liste):
+            return {g.get("id"): g for g in (liste or [])
+                    if g.get("id") is not None}
+
+        alt = _gastro_map((((row.get("payload") or {}).get("bloecke") or {})
+                           .get("osm") or {}).get("data", {}).get("gastronomie"))
+        neu = _gastro_map((osm.data or {}).get("gastronomie"))
+
+        def _kurz(g):
+            return {"name": g.get("name"), "typ": g.get("typ_label"),
+                    "distanz_m": g.get("distanz_m")}
+
+        neue = sorted((_kurz(g) for gid, g in neu.items() if gid not in alt),
+                      key=lambda g: g.get("distanz_m") or 0)
+        weg = sorted((_kurz(g) for gid, g in alt.items() if gid not in neu),
+                     key=lambda g: g.get("distanz_m") or 0)
+        return {
+            "id": point_id,
+            "label": row.get("label"),
+            "gespeichert_am": row.get("updated_at") or row.get("created_at"),
+            "ok": True,
+            "aus_cache": bool(osm.provenance and osm.provenance.cached),
+            "gastro_gespeichert": len(alt),
+            "gastro_jetzt": len(neu),
+            "neue_betriebe": neue,
+            "verschwundene_betriebe": weg,
+            "hinweis": (
+                "Nur der OSM-Gastro-Stand wird verglichen; der gespeicherte "
+                "Punkt bleibt unverändert. Übernehmen: „neu prüfen“."
+            ),
         }
 
     @app.get("/api/points/{point_id}/verlauf")

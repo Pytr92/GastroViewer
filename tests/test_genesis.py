@@ -182,20 +182,23 @@ def test_load_ohne_kennung_bleibt_leer_ohne_abruf(settings, monkeypatch):
     assert any("Opt-in" in w for w in res.warnings)
 
 
-def _alle_tabellen(genesis_ffcsv, genesis_gemeinde_ffcsv):
+def _alle_tabellen(genesis_ffcsv, genesis_gemeinde_ffcsv, genesis_bau_ffcsv):
     return {
         genesis.TAB_UMSATZ: genesis_ffcsv["umsatz"],
         genesis.TAB_GEWERBE: genesis_ffcsv["gewerbe"],
         genesis.TAB_BESCHAEFTIGTE: genesis_gemeinde_ffcsv["beschaeftigte"],
         genesis.TAB_TOURISMUS_GEMEINDE: genesis_gemeinde_ffcsv["tourismus"],
         genesis.TAB_ARBEITSLOSE_GEMEINDE: genesis_gemeinde_ffcsv["arbeitslose"],
+        genesis.TAB_BAUGENEHMIGUNGEN: genesis_bau_ffcsv["31111"],
+        genesis.TAB_BAUFERTIGSTELLUNGEN: genesis_bau_ffcsv["31121"],
     }
 
 
 def test_load_mit_kennung_roh_csv(settings, genesis_ffcsv,
-                                  genesis_gemeinde_ffcsv):
+                                  genesis_gemeinde_ffcsv, genesis_bau_ffcsv):
     genesis.speichere_zugang(settings, "AB1234", "geheim")
-    fake = FakePost(_alle_tabellen(genesis_ffcsv, genesis_gemeinde_ffcsv))
+    fake = FakePost(_alle_tabellen(genesis_ffcsv, genesis_gemeinde_ffcsv,
+                                   genesis_bau_ffcsv))
     res = asyncio.run(genesis.load(fake, settings, "09162000"))
     assert res.ok
     assert res.data["kreis"] == "München, kreisfreie Stadt"
@@ -206,6 +209,8 @@ def test_load_mit_kennung_roh_csv(settings, genesis_ffcsv,
     assert g["ebene"] == "kreisfreie Stadt"
     assert g["beschaeftigte"]["aktuell"]["beschaeftigte"] == 976230
     assert g["tourismus"]["aktuell"]["uebernachtungen"] == 19712703
+    assert g["baugenehmigungen"]["aktuell"]["wohnungen"] == 7118
+    assert g["baufertigstellungen"]["aktuell"]["wohnungen"] == 5915
     # Kennung wandert in Header und Body, nie in die URL.
     for a in fake.aufrufe:
         assert "AB1234" not in a["url"] and "geheim" not in a["url"]
@@ -216,12 +221,14 @@ def test_load_mit_kennung_roh_csv(settings, genesis_ffcsv,
 
 
 def test_load_echte_gemeinde_fragt_gemein_ab(settings, genesis_ffcsv,
-                                             genesis_gemeinde_ffcsv):
+                                             genesis_gemeinde_ffcsv,
+                                             genesis_bau_ffcsv):
     """Garching (09184119): Kreistabellen laufen über KREISE/09184, die
     Gemeindetabellen über GEMEIN/09184119 — ohne Kreis-Rückfall, weil die
     GEMEIN-Abfrage liefert."""
     genesis.speichere_zugang(settings, "AB1234", "geheim")
-    fake = FakePost(_alle_tabellen(genesis_ffcsv, genesis_gemeinde_ffcsv))
+    fake = FakePost(_alle_tabellen(genesis_ffcsv, genesis_gemeinde_ffcsv,
+                                   genesis_bau_ffcsv))
     res = asyncio.run(genesis.load(fake, settings, "09184119"))
     assert res.ok
     assert res.data["kreis"] == "München, Landkreis"
@@ -234,7 +241,9 @@ def test_load_echte_gemeinde_fragt_gemein_ab(settings, genesis_ffcsv,
                         if a["data"]["name"] in (
                             genesis.TAB_BESCHAEFTIGTE,
                             genesis.TAB_TOURISMUS_GEMEINDE,
-                            genesis.TAB_ARBEITSLOSE_GEMEINDE)]
+                            genesis.TAB_ARBEITSLOSE_GEMEINDE,
+                            genesis.TAB_BAUGENEHMIGUNGEN,
+                            genesis.TAB_BAUFERTIGSTELLUNGEN)]
     assert gemeinde_aufrufe, "Gemeindetabellen wurden nicht abgefragt"
     for a in gemeinde_aufrufe:
         assert a["data"]["regionalvariable"] == "GEMEIN"
@@ -242,7 +251,7 @@ def test_load_echte_gemeinde_fragt_gemein_ab(settings, genesis_ffcsv,
 
 
 def test_load_mit_json_umschlag(settings, genesis_ffcsv,
-                                genesis_gemeinde_ffcsv):
+                                genesis_gemeinde_ffcsv, genesis_bau_ffcsv):
     """Die REST-Schnittstelle liefert das CSV in ``Object.Content`` — der
     Lader nimmt beide Formen an."""
     genesis.speichere_zugang(settings, "AB1234", "geheim")
@@ -252,7 +261,8 @@ def test_load_mit_json_umschlag(settings, genesis_ffcsv,
                            "Object": {"Content": csv_text}})
 
     tabellen = {name: umschlag(text) for name, text
-                in _alle_tabellen(genesis_ffcsv, genesis_gemeinde_ffcsv).items()}
+                in _alle_tabellen(genesis_ffcsv, genesis_gemeinde_ffcsv,
+                                  genesis_bau_ffcsv).items()}
     fake = FakePost(tabellen)
     res = asyncio.run(genesis.load(fake, settings, "09162000"))
     assert res.ok and res.data["umsatz"]["aktuell"]["pflichtige"] == 4019
@@ -265,7 +275,8 @@ def test_load_fehlerantwort_wird_benannt(settings):
                          "Object": None})
     fake = FakePost({t: fehler for t in (
         genesis.TAB_UMSATZ, genesis.TAB_GEWERBE, genesis.TAB_BESCHAEFTIGTE,
-        genesis.TAB_TOURISMUS_GEMEINDE, genesis.TAB_ARBEITSLOSE_GEMEINDE)})
+        genesis.TAB_TOURISMUS_GEMEINDE, genesis.TAB_ARBEITSLOSE_GEMEINDE,
+        genesis.TAB_BAUGENEHMIGUNGEN, genesis.TAB_BAUFERTIGSTELLUNGEN)})
     res = asyncio.run(genesis.load(fake, settings, "09162000"))
     assert not res.ok
     assert "nicht berechtigt" in res.error["message"]
@@ -287,3 +298,47 @@ def test_logincheck_unterscheidet_gueltig_und_falsch():
     ok, meldung = asyncio.run(genesis.logincheck(
         falsch_fake, {"kennung": "XX", "passwort": "x"}))
     assert not ok and "Fehler" in meldung
+
+
+# ---------------------------------------------------- Bautätigkeit (Z-Runde)
+# Gegen die echten ffcsv-Antworten des Werteabrufs vom 2026-08-08
+# (Tabellen 31111-01-02-5 / 31121-01-02-5, München + Umlandgemeinden).
+
+def test_baugenehmigungen_muenchen(genesis_bau_ffcsv):
+    rows = genesis.parse_ffcsv(genesis_bau_ffcsv["31111"])
+    d = genesis.bau_auswerten(rows, "09162000")
+    assert d["ebene"] == "kreisfreie Stadt"
+    assert d["aktuell"] == {"jahr": 2024, "wohnungen": 7118,
+                            "gebaeude": 948, "wohnflaeche_1000qm": 517.2}
+
+
+def test_baufertigstellungen_muenchen_und_pipeline(genesis_bau_ffcsv):
+    rows = genesis.parse_ffcsv(genesis_bau_ffcsv["31121"])
+    d = genesis.bau_auswerten(rows, "09162000")
+    assert d["aktuell"]["wohnungen"] == 5915
+    # Pipeline 2024: 7 118 genehmigt − 5 915 fertig = +1 203 offen.
+    assert 7118 - d["aktuell"]["wohnungen"] == 1203
+
+
+def test_bau_garching_ueber_gemeindeknoten(genesis_bau_ffcsv):
+    rows = genesis.parse_ffcsv(genesis_bau_ffcsv["31111"])
+    d = genesis.bau_auswerten(rows, "09184119")
+    assert d["ebene"] == "Gemeinde"
+    assert d["name"].startswith("Garching")
+    assert d["aktuell"]["wohnungen"] == 67
+
+
+def test_bau_untergliederung_zaehlt_nicht_doppelt(genesis_bau_ffcsv):
+    """Die WHGZHL-Klassenzeilen dürfen die Insgesamt-Werte nicht
+    überschreiben — nur BAUGEB01 mit leerem 3er-Merkmal zählt."""
+    rows = genesis.parse_ffcsv(genesis_bau_ffcsv["31111"])
+    d = genesis.bau_auswerten(rows, "09162000")
+    reihe = {z["jahr"]: z["wohnungen"] for z in d["reihe"]}
+    assert reihe[2016] != d["aktuell"]["wohnungen"] or 2016 == 2024
+    assert all(v is None or v > 100 for v in reihe.values())
+
+
+def test_bau_in_gemeinde_tabellen_registriert():
+    schluessel = [s for s, _, _ in genesis.GEMEINDE_TABELLEN]
+    assert "baugenehmigungen" in schluessel
+    assert "baufertigstellungen" in schluessel

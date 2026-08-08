@@ -46,6 +46,10 @@ hinter Login bzw. Lizenz.
 | **Tourismus-Saisonalität (3f)** | Monatszahlen des Statistischen Amts München seit 2006: letzte 12 Monate mit Vorjahresvergleich, Auslandsanteil, Aufenthaltsdauer und Saisonkurve (Juli 130, Januar 59 — indexiert auf den Jahresdurchschnitt); bundesweit gibt es Monatswerte je Kreis nicht offen, der Block sagt das |
 | **Messe-Kalender (5e)** | Veranstaltungen der Messe München seit 2018 mit Besucherzahlen (bauma 2025: 605.974): laufende/kommende Termine, Jahresbilanz, größte Veranstaltungen, Entfernung zum nächsten Gelände — planbare Frequenzspitzen, die über Hotels und die U2 ankommen |
 | **Sicherheitslage (3g, bundesweit)** | PKS-Kreistabelle des BKA: Straftaten insgesamt, Straßen-/Gewaltkriminalität, Raub gegen Geschäfte, Sachbeschädigung, Rauschgift — je mit Häufigkeitszahl, Median und **Rang unter 400 Kreisen** (München: 148., Köln: weit vorn), Aufklärungsquote; BKA-Vergleichbarkeits-Hinweis und Lizenzgrenze am Block |
+| **Wahlergebnis (3h, bundesweit)** | Bundestagswahl 2025 auf Wahlkreisebene (Zweitstimmen, Beteiligung, Differenz zur Vorwahl); Großstädte über mehrere Wahlkreise werden summiert und genau so beschriftet — mit ausdrücklicher „Struktur-Marker, kein Kundenprofil"-Warnung |
+| **Bau-Pipeline (3e, bundesweit)** | über das Regionaldatenbank-Opt-in: genehmigte und fertiggestellte Wohnungen je Gemeinde (München 2024: 7.118/5.915) samt berechneter Pipeline — die kommende Nachfrage, die der eingefrorene Zensus-Neubauhinweis nicht mehr sieht |
+| **Luftqualität (5f, bundesweit)** | Luftqualitätsindex der nächsten Messstation (UBA/Länder, stündlich): NO₂/PM₁₀/PM₂,₅ mit Teilindex, Stationsname und Entfernung — der gemessene Begleiter zum Lärmblock für Außengastronomie |
+| **ÖPNV-Einzugsgebiet (6h)** | Runden-Router über den lokal importierten GTFS-Fahrplan: erreichbare Halte in 15–45 min (max. 2 Umstiege, Referenz-Dienstag 12:00) samt Einwohner-Näherung und Karten-Ebene — am Sendlinger Tor: 2.144 Halte/1,27 Mio. EW in 30 min, fernster Halt Garching-Forschungszentrum (deckt sich mit der echten U6-Fahrzeit) |
 | Verkehr/ÖPNV | Haltestellen, Linien, GTFS-Abfahrten je Stunde eines konkreten Tages, Mittagsfenster 11–14, Abendfenster 17–22, Nachtfenster 22–1 Uhr |
 | Gemessene Frequenz | Radzählstellen München (Jahressumme + **Jahresgang aus Tages-Rohdaten**) und **Hamburg** (Zählsäulen mit Jahressumme und Vortageswert), Kfz-Verkehrsstärke DTV: BAYSIS in Bayern (9.441 Zählstellen), **BASt-Dauerzählstellen im Rest Deutschlands** (Autobahnen/Bundesstraßen) |
 | Planungsrecht | Hochwassergefahrenflächen HQhäufig/HQ100/HQextrem **bundesweit** (Bayern: LfU mit Gewässer/Jährlichkeit, sonst BfG/LAWA), Bebauungsplan-Umgriffe (München) und **Erhaltungssatzungen/Milieuschutz § 172 BauGB mit Satzungs-PDFs** (München und Hamburg) |
@@ -63,6 +67,10 @@ hinter Login bzw. Lizenz.
 | Vergleichstabelle: 62 Kennzahlen in 6 schaltbaren Gruppen | jede berechnete Spalte ist als „berechnet" beschriftet |
 | Gesamt-Score im Punkt und im Bericht | Anker offen, Gewichte eigene Setzung, Rechnung nachvollziehbar bis zur Teilnote |
 | Gewichtetes Ranking | Punktzahl allein aus eigenen Gewichten, jeder Beitrag offen |
+| **Standort-Finder** | Top-10-Zellen des Flächen-Scans nach eigenen Gewichten (Chance/Dichte/Cluster als Perzentilränge), nummeriert auf der Karte mit „Hier analysieren" — ehrlich als Scan-Komposit beschriftet, kein Gesamt-Score |
+| **Veränderungs-Wächter** | je gemerktem Punkt: OSM-Gastro-Diff gegen den gespeicherten Stand (neu/verschwunden), ohne den Punkt zu überschreiben — Konkurrenzbeobachtung ohne Nebenwirkungen |
+| **Kannibalisierungs-Check** | gemeinsame Einwohner zweier gemerkter Punkte über das Zensusgitter, mit Anteil je Umkreis (Sendlinger Tor ↔ Marienplatz: 3.629 EW = 22 %/36 %) |
+| **Adress-Autovervollständigung** | beim Tippen über Photon (Nominatim untersagt Autocomplete — die frühere Tippsuche wurde deshalb umgestellt); Enter sucht weiter präzise über Nominatim |
 | Eigene Note (1–5) und Notiz je Punkt | einzige Wertung im Werkzeug — und sie kommt vom Nutzer |
 | Verlauf & „Neu prüfen" | Quellen erneut abfragen; eröffnete/verschwundene Betriebe namentlich; ab drei Ständen Verlaufslinien im Bericht |
 | Pflegelauf | „alle N neu prüfen" mit Kostenansage, Zusammenfassung je Punkt |

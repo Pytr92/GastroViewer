@@ -34,10 +34,11 @@ from .sources import (airbnb as airbnb_mod,
                       muenchen, nominatim, overpass,
                       overture as overture_mod,
                       leerstandsmelder as lsm_mod,
+                      luft as luft_mod,
                       pendler as pendler_mod, pks as pks_mod, planung,
                       register as register_mod, scan as scan_mod,
-                      tourismus as tourismus_mod, zensus)
-from .sources.base import Provenance, SourceError, SourceResult
+                      tourismus as tourismus_mod, wahl as wahl_mod, zensus)
+from .sources.base import Provenance, SourceError, SourceResult, now_iso
 
 Loader = Callable[[], Awaitable[SourceResult]]
 
@@ -116,6 +117,15 @@ class PointService:
             key,
             lambda: nominatim.search(self.outbound, self.settings, query),
             refresh=refresh,
+        )
+
+    async def vorschlaege(self, query: str):
+        """Autocomplete-Vorschläge (nur Photon) — je Eingabe gecacht."""
+        key = f"vorschlaege|{query.strip().lower()}"
+        return await self._cached(
+            "vorschlaege",
+            key,
+            lambda: nominatim.vorschlaege(self.outbound, self.settings, query),
         )
 
     async def _rad_jahresgang(self):
@@ -509,6 +519,73 @@ class PointService:
             refresh=refresh,
         )
 
+    async def _luft_stationen(self, refresh: bool = False) -> list[dict[str, Any]]:
+        """Stationsliste des Luftmessnetzes, **einmal** geladen und
+        reduziert gecacht — je Punkt wird nur die nächste Station
+        abgefragt."""
+
+        async def laden() -> SourceResult:
+            roh = await self.outbound.get_json(
+                "luft_stationen", luft_mod.STATIONS_URL, timeout=60.0,
+                limiter="luft", min_interval=1.0,
+            )
+            return SourceResult(name="luft_stationen", ok=True,
+                                data={"stationen": luft_mod.parse_stationen(roh)})
+
+        res = await self._cached("luft_stationen", "luft|stationen", laden,
+                                 refresh=refresh)
+        if not res.ok or not res.data:
+            raise SourceError(
+                (res.error or {}).get("kind", "unknown"),
+                (res.error or {}).get("message", "unbekannter Fehler"),
+            )
+        return res.data["stationen"]
+
+    async def luft(self, lat: float, lon: float, refresh: bool = False):
+        key = cache_key("luft_punkt", lat, lon, 0)
+        return await self._cached(
+            "luft_punkt",
+            key,
+            lambda: luft_mod.load(
+                self.outbound, lat, lon,
+                lambda: self._luft_stationen(refresh)),
+            refresh=refresh,
+        )
+
+    async def _wahl_daten(self, refresh: bool = False):
+        """kerg2 + Wahlkreis-Zuordnung, **einmal** geladen (endgültiges
+        Ergebnis — ändert sich bis zur nächsten Wahl nicht)."""
+
+        async def laden() -> SourceResult:
+            kerg2 = await self.outbound.get_text(
+                "wahl", wahl_mod.KERG2_URL, timeout=120.0,
+                limiter="wahl", min_interval=1.0)
+            zuordnung = await self.outbound.get_text(
+                "wahl", wahl_mod.MAPPING_URL, timeout=120.0,
+                limiter="wahl", min_interval=1.0)
+            return SourceResult(name="wahl", ok=True, data={
+                "zuordnung": wahl_mod.parse_mapping(zuordnung),
+                "kreise": wahl_mod.parse_kerg2(kerg2),
+            })
+
+        res = await self._cached("wahl", "wahl|btw25", laden, refresh=refresh)
+        if not res.ok or not res.data:
+            raise SourceError(
+                (res.error or {}).get("kind", "unknown"),
+                (res.error or {}).get("message", "unbekannter Fehler"),
+            )
+        return res.data["zuordnung"], res.data["kreise"]
+
+    async def wahl(self, ags: str, refresh: bool = False):
+        key = f"wahl_gemeinde|{(ags or '')[:8]}"
+        return await self._cached(
+            "wahl_gemeinde",
+            key,
+            lambda: wahl_mod.load(
+                self.outbound, ags, lambda: self._wahl_daten(refresh)),
+            refresh=refresh,
+        )
+
     async def register(self, plz: str | None, refresh: bool = False):
         """Handelsregister-Umfeld (OffeneRegister, Stand 2019) — rein
         lokal aus der einmal importierten Datenbank."""
@@ -523,6 +600,154 @@ class PointService:
             lambda: register_mod.load(self.settings, plz),
             refresh=refresh,
         )
+
+    async def oepnv_einzug(
+        self, lat: float, lon: float, minuten: int = 30,
+        refresh: bool = False,
+    ) -> SourceResult:
+        """ÖPNV-Einzugsgebiet aus dem lokal importierten GTFS-Fahrplan —
+        auf Anforderung (wie die Gehweg-Auswertung), weil die Rechnung
+        einige Sekunden dauert. Einwohner-Näherung über das 1-km-Gitter:
+        Zellen, in deren Nähe ein erreichter Halt liegt."""
+        key = cache_key("oepnv_einzug", lat, lon, minuten)
+
+        async def laden() -> SourceResult:
+            started = time.perf_counter()
+            from .sources import gtfs as gtfs_mod
+            from .sources.base import haversine_m
+
+            data = await asyncio.to_thread(
+                gtfs_mod.einzugsgebiet, self.settings, lat, lon, minuten)
+            if data is None:
+                return SourceResult(
+                    name="oepnv_einzug", ok=True, data=None,
+                    warnings=[
+                        "Kein GTFS-Fahrplan importiert — einmalig "
+                        "`gastroviewer import-gtfs` ausführen."],
+                    provenance=Provenance(
+                        source="GTFS-Fahrplan (nicht importiert)",
+                        license=gtfs_mod.LICENSE),
+                )
+
+            halte = data["halte"]
+            warnungen: list[str] = []
+            if halte:
+                # Einwohner-Näherung: 1-km-Zellen, deren Mittelpunkt
+                # höchstens ~700 m von einem erreichten Halt liegt.
+                w = min(h["lon"] for h in halte) - 0.02
+                o = max(h["lon"] for h in halte) + 0.02
+                s = min(h["lat"] for h in halte) - 0.015
+                n = max(h["lat"] for h in halte) + 0.015
+                gitter = await self.gitter("1km", w, s, o, n)
+                if gitter.ok and gitter.data:
+                    einwohner = 0
+                    zellen_mit_halt = 0
+                    for z in gitter.data["zellen"]:
+                        ring = z.get("ring") or []
+                        if not ring:
+                            continue
+                        clat = sum(p[1] for p in ring) / len(ring)
+                        clon = sum(p[0] for p in ring) / len(ring)
+                        if any(haversine_m(clat, clon, h["lat"], h["lon"]) <= 700
+                               for h in halte):
+                            zellen_mit_halt += 1
+                            ew = z.get("einwohner")
+                            if isinstance(ew, (int, float)) and ew > 0:
+                                einwohner += ew
+                    data["einwohner_naeherung"] = round(einwohner)
+                    data["einwohner_zellen"] = zellen_mit_halt
+                    warnungen.extend(gitter.warnings or [])
+                else:
+                    warnungen.append(
+                        "Einwohner-Näherung nicht möglich — das "
+                        "Zensus-Gitter war nicht erreichbar.")
+            data["hinweise"] = [
+                "Runden-Router mit benannten Vereinfachungen: Ankunft = "
+                "Abfahrtszeit am Halt, Fußwege als Luftlinie (75 m/min, "
+                "Einstieg ≤ 600 m, Umstieg ≤ 200 m + 2 min), höchstens "
+                "zwei Umstiege, Referenz-Dienstag 12:00 — dieselbe "
+                "Tageskonvention wie der Abfahrten-Block.",
+                "Es gilt der beim GTFS-Import gewählte Ausschnitt — "
+                "Halte außerhalb existieren für die Rechnung nicht.",
+                "Die Einwohnerzahl ist eine grobe Näherung über das "
+                "1-km-Zensusgitter (Zellen nahe erreichter Halte) — keine "
+                "Gehweg-Genauigkeit.",
+            ]
+            return SourceResult(
+                name="oepnv_einzug", ok=True, data=data,
+                duration_ms=int((time.perf_counter() - started) * 1000),
+                warnings=warnungen,
+                provenance=Provenance(
+                    source="GTFS-Fahrplan (lokal importiert) + Zensus 2022 "
+                           "1-km-Gitter",
+                    license=gtfs_mod.LICENSE,
+                    stand=f"Referenztag {data['referenztag']['date']}",
+                    retrieved_at=now_iso(),
+                    note="Rechnung läuft vollständig lokal; nur die "
+                         "Einwohner-Näherung fragt das Zensus-Gitter "
+                         "(mit Kachel-Cache).",
+                ),
+            )
+
+        return await self._cached("oepnv_einzug", key, laden, refresh=refresh)
+
+    async def kannibalisierung(
+        self, a: dict[str, Any], b: dict[str, Any]
+    ) -> dict[str, Any]:
+        """Kannibalisierungs-Check zweier gespeicherter Punkte: Welche
+        Einwohner liegen in **beiden** Umkreisen? Gerechnet über die
+        100-m-Zensuszellen (Luftlinie, Zensus 2022) — die Merkliste warnt
+        bislang nur, DASS sich Kreise überschneiden; hier steht, wie viele
+        Menschen sich die Kandidaten teilen."""
+        from .sources.base import haversine_m
+        from .sources.zensus import build_cells, fetch_cells
+
+        dist = haversine_m(a["lat"], a["lon"], b["lat"], b["lon"])
+        grunddaten = {
+            "a": {"label": a.get("label"), "radius_m": a["radius"]},
+            "b": {"label": b.get("label"), "radius_m": b["radius"]},
+            "distanz_m": round(dist),
+        }
+        if dist >= a["radius"] + b["radius"]:
+            return {**grunddaten, "ueberlappung": False,
+                    "gemeinsame_einwohner": 0}
+
+        def ew(zelle: dict[str, Any]) -> float:
+            v = zelle.get("Einwohner")
+            return v if isinstance(v, (int, float)) and v > 0 else 0
+
+        def innerhalb(zelle, lat, lon, radius):
+            c = zelle.get("_center")
+            return bool(c) and haversine_m(lat, lon, c[0], c[1]) <= radius
+
+        zellen_a = build_cells((await fetch_cells(
+            self.outbound, self.settings, a["lat"], a["lon"], a["radius"]))[0])
+        zellen_b = build_cells((await fetch_cells(
+            self.outbound, self.settings, b["lat"], b["lon"], b["radius"]))[0])
+
+        ew_a = sum(ew(z) for z in zellen_a)
+        ew_b = sum(ew(z) for z in zellen_b)
+        gemeinsam = sum(
+            ew(z) for z in zellen_a
+            if innerhalb(z, b["lat"], b["lon"], b["radius"]))
+
+        return {
+            **grunddaten,
+            "ueberlappung": True,
+            "einwohner_a": round(ew_a),
+            "einwohner_b": round(ew_b),
+            "gemeinsame_einwohner": round(gemeinsam),
+            "anteil_an_a_prozent": round(gemeinsam / ew_a * 100, 1) if ew_a else None,
+            "anteil_an_b_prozent": round(gemeinsam / ew_b * 100, 1) if ew_b else None,
+            "hinweise": [
+                "Luftlinien-Umkreise auf dem 100-m-Zensusgitter "
+                "(Stichtag 15.05.2022) — Flüsse, Gleise und Gehstrecken "
+                "sieht die Rechnung nicht; die Gehweg-Auswertung je Punkt "
+                "bleibt der genauere Blick.",
+                "Gezählt werden Zellen, deren Mittelpunkt in beiden "
+                "Umkreisen liegt — Randzellen können leicht abweichen.",
+            ],
+        }
 
     async def gehweg(self, lat: float, lon: float, radius: int, refresh: bool = False):
         """Gehstrecken statt Luftlinie.
@@ -901,11 +1126,12 @@ class PointService:
             self.messe(lat, lon, refresh),
             self.tourismus(lat, lon, refresh),
             self.leerstandsmelder(lat, lon, radius, refresh),
+            self.luft(lat, lon, refresh),
             return_exceptions=True,
         )
         names = ["adresse", "zensus", "osm", "gtfs", "radzaehlung", "verkehrsmenge",
                  "planung", "klima", "dynamik", "baustellen", "maerkte",
-                 "messe", "tourismus", "leerstandsmelder"]
+                 "messe", "tourismus", "leerstandsmelder", "luft"]
         blocks: dict[str, Any] = {}
         for name, res in zip(names, results):
             if isinstance(res, BaseException):
@@ -964,11 +1190,11 @@ class PointService:
             kreis_results = await asyncio.gather(
                 self.einkommen(ags), self.kreisprofil(ags), self.pendler(ags),
                 self.laerm(lat, lon, bl_code), self.genesis(ags),
-                self.pks(ags),
+                self.pks(ags), self.wahl(ags),
                 return_exceptions=True,
             )
             for name, res in zip(("einkommen", "kreisprofil", "pendler", "laerm",
-                                  "genesis", "pks"),
+                                  "genesis", "pks", "wahl"),
                                  kreis_results):
                 if isinstance(res, BaseException):
                     blocks[name] = SourceResult.failed(
@@ -977,7 +1203,8 @@ class PointService:
                 else:
                     blocks[name] = res.to_dict()
         else:
-            for name in ("einkommen", "kreisprofil", "pendler", "genesis", "pks"):
+            for name in ("einkommen", "kreisprofil", "pendler", "genesis", "pks",
+                         "wahl"):
                 blocks[name] = SourceResult(
                     name=name, ok=True, data=None,
                     warnings=["Ohne Gemeindeschlüssel lässt sich kein Kreiswert zuordnen."],

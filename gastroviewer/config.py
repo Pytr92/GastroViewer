@@ -243,6 +243,16 @@ class Settings:
         # BKA-Kreistabelle: ein Berichtsjahr, bundesweit ein Download.
         if source.startswith("pks"):
             return self.ttl_zensus
+        # Luftmessnetz: Stationsliste ändert sich selten, der
+        # Stundenindex am Punkt veraltet nach einer Stunde.
+        if source.startswith("luft_stationen"):
+            return self.ttl_zensus
+        if source.startswith("luft"):
+            return 3600
+        # Endgültiges Wahlergebnis: ändert sich bis zur nächsten Wahl
+        # nicht — längste TTL.
+        if source.startswith("wahl"):
+            return self.ttl_zensus
         # Leerstandsmelder-Weltbestand: laufend gemeldet, aber ein einziger
         # 3-MB-Abruf für alle Punkte — die kurze TTL hält ihn aktuell genug.
         if source.startswith("leerstandsmelder"):

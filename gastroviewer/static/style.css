@@ -705,3 +705,17 @@ details.ranking > summary {
 /* Listeneinträge, die zur Karte springen (Leerstand) */
 .liste li.springbar { cursor: pointer; }
 .liste li.springbar:hover { background: var(--akzent-hell); }
+
+/* Standort-Finder (Z4): nummerierte Top-Zellen + Gewichtswahl in der Legende */
+.finder-marker { background: none; border: none; }
+.finder-nummer {
+  width: 26px; height: 26px; border-radius: 50%;
+  background: #7a2e8d; color: #fff; font-weight: 700; font-size: 13px;
+  display: flex; align-items: center; justify-content: center;
+  border: 2px solid #fff; box-shadow: 0 1px 4px rgba(0, 0, 0, 0.45);
+}
+.uebersicht-legende .finder-gewicht {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 6px; margin-top: 3px; font-size: 11px;
+}
+.uebersicht-legende .finder-gewicht select { font-size: 11px; }

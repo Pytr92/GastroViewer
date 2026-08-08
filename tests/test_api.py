@@ -28,7 +28,8 @@ class FakeOutbound:
                  baustellen=None, maerkte=None, indikatoren=None,
                  airbnb=None, messe=None, tourismus=None,
                  uba=None, bfg_hochwasser=None,
-                 pks=None, leerstandsmelder=None):
+                 pks=None, leerstandsmelder=None,
+                 luft_api=None, wahl_dateien=None):
         self.zensus = zensus
         self.overpass = overpass
         self.nominatim = nominatim
@@ -63,6 +64,10 @@ class FakeOutbound:
         self.pks = pks
         # Leerstandsmelder: die Meldungsliste (Weltbestand-Auszug).
         self.leerstandsmelder = leerstandsmelder
+        # UBA-Luft: {"stations": ..., "airquality": ...}.
+        self.luft_api = luft_api
+        # Wahl: {"kerg2": CSV-Text, "zuordnung": CSV-Text}.
+        self.wahl_dateien = wahl_dateien
         self.indikatoren_csv_urls: dict[str, str] = {}
         if indikatoren:
             from gastroviewer.sources import indikatoren as ind_mod
@@ -149,6 +154,14 @@ class FakeOutbound:
                 raise SourceError("timeout",
                                   "Zeitüberschreitung — Dienst antwortet nicht.")
             return self.indikatoren["suche"]
+        if "luftdaten.umweltbundesamt.de" in url:
+            self.calls.append("luft")
+            if "luft" in self.fehler or self.luft_api is None:
+                raise SourceError("timeout",
+                                  "Zeitüberschreitung — Dienst antwortet nicht.")
+            if "/stations/" in url:
+                return self.luft_api["stations"]
+            return self.luft_api["airquality"]
         if "api.leerstandsmelder.de" in url:
             self.calls.append("leerstandsmelder")
             if "leerstandsmelder" in self.fehler or self.leerstandsmelder is None:
@@ -228,6 +241,13 @@ class FakeOutbound:
                 raise SourceError("timeout",
                                   "Zeitüberschreitung — Dienst antwortet nicht.")
             return self.airbnb["csv"]
+        if "bundeswahlleiterin.de" in url:
+            self.calls.append("wahl")
+            if "wahl" in self.fehler or self.wahl_dateien is None:
+                raise SourceError("timeout",
+                                  "Zeitüberschreitung — Dienst antwortet nicht.")
+            return (self.wahl_dateien["kerg2"] if "kerg2" in url
+                    else self.wahl_dateien["zuordnung"])
         if "bafg.de" in url:
             self.calls.append("bfg_hochwasser")
             if "bfg_hochwasser" in self.fehler or self.bfg_hochwasser is None:
@@ -264,7 +284,7 @@ def client(tmp_path, monkeypatch, zensus_600, overpass_combined, nominatim_rever
            ohsome_dynamik, laerm_bayern, muenchen_baustellen, muenchen_maerkte,
            muenchen_indikatoren, airbnb_muenchen, messe_muenchen,
            tourismus_muenchen, uba_laerm, bfg_hochwasser,
-           pks_auszug, lsm_places):
+           pks_auszug, lsm_places, uba_luft_api, wahl_btw25):
     from gastroviewer.config import Settings
 
     # Der Genesis-Block ist ein Opt-in — die Testumgebung darf keine echte
@@ -288,7 +308,9 @@ def client(tmp_path, monkeypatch, zensus_600, overpass_combined, nominatim_rever
                              "29": uba_laerm["hlq_night"]},
                         bfg_hochwasser=bfg_hochwasser["koeln_rheinufer"],
                         pks=pks_auszug,
-                        leerstandsmelder=lsm_places["places"])
+                        leerstandsmelder=lsm_places["places"],
+                        luft_api=uba_luft_api,
+                        wahl_dateien=wahl_btw25)
     app = create_app(settings)
 
     original_lifespan_state = {}
@@ -353,7 +375,9 @@ def test_zweiter_aufruf_erzeugt_keinen_outbound_traffic(client):
     # Tourismus-Monatszahlen (1 CSV). Genesis: 0 — Opt-in ohne Kennung,
     # es geht nichts hinaus. — Leerstandsmelder (1 Weltbestand) und
     # PKS-Kreistabelle (1 XLSX); das Registerumfeld läuft rein lokal (0).
-    assert vorher == 51
+    # Luft (Stationsliste + Stundenwerte der nächsten Station = 2) und
+    # Wahl (kerg2 + Zuordnung = 2).
+    assert vorher == 55
 
     d = client.get("/api/point", params={"lat": LAT, "lon": LON, "r": R}).json()
     assert len(client.fake.calls) == vorher, "Cache hat nicht gegriffen"
@@ -374,6 +398,12 @@ def test_point_neue_bloecke_pks_leerstandsmelder_register(client):
     reg = d["bloecke"]["register"]
     assert reg["ok"] and reg["data"]["importiert"] is False
     assert "import-register" in reg["data"]["anleitung"]
+    luft = d["bloecke"]["luft"]
+    assert luft["ok"] and luft["data"]["station"]["code"] == "DEBY037"
+    assert luft["data"]["index_label"] == "sehr gut"
+    w = d["bloecke"]["wahl"]
+    assert w["ok"] and w["data"]["mehrere_wahlkreise"]
+    assert len(w["data"]["wahlkreise"]) == 4
 
 
 def test_point_dynamik_block_und_endpunkt(client):
