@@ -1672,3 +1672,80 @@ def test_point_tourismus_block(client):
                     params={"lat": 49.4521, "lon": 11.0767}).json()
     assert d2["ok"] and d2["data"] is None
     assert "Kreisprofil" in d2["warnings"][0]
+
+
+# --------------------------------------------- Review-Runde: Regressionen
+
+def test_waechter_uebersteht_gespeicherten_osm_ausfall(client):
+    """Gespeicherte Punkte tragen bei OSM-Ausfall den osm-Block mit
+    data=None (der Key existiert, ist aber null) — der Wächter darf daran
+    nicht mit einem 500er scheitern, sondern zählt alles als neu."""
+    r = client.post("/api/points", json={"label": "W", "lat": LAT, "lon": LON,
+                                         "radius": R})
+    pid = r.json()["id"]
+    cache = client.app.state.cache.sync
+    payload = cache.get_point(pid)["payload"]
+    payload["bloecke"]["osm"] = {"ok": False, "data": None,
+                                 "error": {"message": "Timeout"}}
+    assert cache.replace_point_payload(pid, payload)
+
+    w = client.get(f"/api/points/{pid}/waechter")
+    assert w.status_code == 200
+    d = w.json()
+    assert d["neue_betriebe"]
+    assert d["verschwundene_betriebe"] == []
+    client.delete(f"/api/points/{pid}")
+
+
+def test_oepnv_einzug_nicht_importiert_wird_nicht_gecacht(client):
+    """Die „kein Fahrplan importiert“-Antwort darf nicht im Cache landen —
+    direkt nach `import-gtfs` muss der Block rechnen (wie beim Register)."""
+    from pathlib import Path
+
+    from gastroviewer.sources import gtfs
+
+    # Stachus — dort liegen die vier Halte des Fixture-Ausschnitts.
+    p = {"lat": 48.13964, "lon": 11.56556, "minuten": 30}
+    r1 = client.get("/api/point/oepnv-einzug", params=p).json()
+    assert r1["ok"] and r1["data"] is None
+
+    fixture = Path(__file__).resolve().parents[1] / "fixtures" / \
+        "gtfs_muenchen_ausschnitt.zip"
+    gtfs.import_feed(client.app.state.settings, fixture,
+                     progress=lambda _m: None)
+    r2 = client.get("/api/point/oepnv-einzug", params=p).json()
+    assert r2["ok"] and r2["data"] is not None
+    assert r2["data"]["start_halte"] >= 1
+
+
+async def test_cached_dedupliziert_gleichzeitige_abrufe(tmp_path):
+    """Zwei gleichzeitige Anfragen desselben Keys dürfen den Loader (also
+    den echten Netzabruf) nur einmal auslösen — §7: Spendendienste nicht
+    doppelt fragen, der Rate-Limiter serialisiert Duplikate nur."""
+    import asyncio
+
+    from gastroviewer.cache import AsyncCache
+    from gastroviewer.config import Settings
+    from gastroviewer.service import PointService
+    from gastroviewer.sources.base import SourceResult
+
+    s = Settings()
+    s.data_dir = tmp_path
+    svc = PointService(s, AsyncCache(s.db_path), outbound=None)
+
+    aufrufe = 0
+
+    async def loader():
+        nonlocal aufrufe
+        aufrufe += 1
+        await asyncio.sleep(0.05)
+        return SourceResult(name="zensus", ok=True, data={"n": 1})
+
+    r1, r2 = await asyncio.gather(
+        svc._cached("zensus", "stampede|k", loader),
+        svc._cached("zensus", "stampede|k", loader))
+    assert aufrufe == 1
+    assert r1.ok and r2.ok and r1.data == r2.data
+    # Danach kommt derselbe Key aus dem Cache — weiterhin kein zweiter Abruf.
+    r3 = await svc._cached("zensus", "stampede|k", loader)
+    assert aufrufe == 1 and r3.ok

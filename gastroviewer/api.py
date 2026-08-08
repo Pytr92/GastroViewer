@@ -909,8 +909,10 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             return {g.get("id"): g for g in (liste or [])
                     if g.get("id") is not None}
 
-        alt = _gastro_map((((row.get("payload") or {}).get("bloecke") or {})
-                           .get("osm") or {}).get("data", {}).get("gastronomie"))
+        # ".get("data") or {}" statt Default-Argument: gespeicherte Punkte
+        # tragen bei OSM-Ausfall data=None — der Key existiert, ist aber null.
+        alt = _gastro_map(((((row.get("payload") or {}).get("bloecke") or {})
+                           .get("osm") or {}).get("data") or {}).get("gastronomie"))
         neu = _gastro_map((osm.data or {}).get("gastronomie"))
 
         def _kurz(g):

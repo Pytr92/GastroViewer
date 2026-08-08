@@ -800,3 +800,40 @@ stehen).
 | **Autovervollständigung** | Nur über Photon — dabei Altbestand korrigiert: die frühere 1,1-s-Tippsuche ging an **Nominatim**, dessen Regeln Autocomplete ausdrücklich untersagen. Jetzt: Tippen → Photon-Vorschläge (350 ms, serverseitig gecacht), Enter → präzise Nominatim-Suche |
 | **Kannibalisierungs-Check** | Realprobe Sendlinger Tor ↔ Marienplatz (600-m-Radien, 722 m Abstand): 3 629 gemeinsame Einwohner = 22,2 % von A / 36,0 % von B — über 100-m-Zensuszellen, Grenzen benannt |
 | **Standort-Finder / Veränderungs-Wächter** | Finder: Top-10-Zellen des Scans nach eigenen Gewichten (Perzentilränge, Komposit offen beschriftet), Browser-Befund 875 Zellen → 10 Marker. Wächter: OSM-Gastro-Diff je gespeichertem Punkt ohne Überschreiben (Realprobe: 281 → 281, unverändert) |
+
+---
+
+## Nachtrag 2026-08-08 (8. Runde): CI-Testlauf + Review-Härtung
+
+Keine neue Quelle — ein Qualitätsdurchgang: drei unabhängige Code-Reviews
+(neue Quellen-Module, Service/API-Kern, komplette Oberfläche), jeder Fund
+vor dem Fix einzeln verifiziert, die wichtigsten mit Regressionstests
+abgesichert. Dazu ein zweiter GitHub-Actions-Workflow **„Tests"**, der bei
+jedem Push die komplette pytest-Suite (offline gegen aufgezeichnete
+Antworten) und den JS-Syntaxcheck auf Python 3.10 und 3.12 ausführt —
+bisher lief nur der Installer-Bau mit Rauchprobe.
+
+| Befund (verifiziert) | Fix |
+|---|---|
+| Wächter-Endpunkt: HTTP 500, wenn der gespeicherte Punkt bei OSM-Ausfall `data: null` trägt (`.get("data", {})` greift nur bei *fehlendem* Key) | `… or {}` wie in der Schwesterfunktion; Regressionstest |
+| Cache-Stampede: gleichzeitige gleiche Anfragen (z. B. `/api/point/osm` + `/api/point/gehweg` bei kaltem Cache) lösten **zwei identische Overpass-Abfragen** aus | Laufende Abrufe je Cache-Key dedupliziert (`service._laufend`); Regressionstest: Loader läuft bei zwei gleichzeitigen Aufrufen genau 1× |
+| „Kein GTFS importiert" wurde beim ÖPNV-Einzugsgebiet bis 24 h gecacht — direkt nach `import-gtfs` blieb der Block leer | Wie beim Register: ohne `gtfs.sqlite` wird nicht gecacht; Regressionstest |
+| Mehrsekündige synchrone Parser (PKS-XLSX ≈ 5 s CPU, BASt, Airbnb, Wahl, Rad-Jahresdatei, Indikatoren) froren beim Cache-Füllen den ganzen Server ein | alle sechs über `asyncio.to_thread` |
+| GTFS-Einzugsgebiet: `abfahrt="00:00:00"` wurde stumm als 12:00 gerechnet (`or`-Rückfall auf falsy 0) und der ausgewiesene Referenztag war der beim **Abruf** neu bestimmte Dienstag statt des gerechneten Import-Referenzdatums | expliziter `None`-Vergleich; Ergebnis meldet exakt den gerouteten Tag; zwei Regressionstests |
+| Genesis: KREISE-Rückfall einer normalen Gemeinde wurde als „kreisfreie Stadt" etikettiert (Landkreiswerte als Gemeindewerte) | Ebene „Kreis (Rückfall)" + Warnung am Block + Kennzeichnung im Frontend; Regressionstest |
+| Register-Import: PLZ-Regex verwarf die PLZ, sobald nach dem Ort noch eine Ziffer stand („…, Zimmer 3") | letzte fünfstellige Zahl per `findall`; Regressionstest |
+| Oberfläche: ÖPNV-Einzug und Markensuche übernahmen verspätete Antworten für den inzwischen gewechselten Punkt (fehlende `ladeLauf`-Prüfung) | Lauf-Prüfung wie bei den Geschwisterfunktionen |
+| Oberfläche: bei Zensus-Ausfall blieben sieben Folgeblöcke (3b–3e, 3g, 3h, 6f) für immer auf „lädt …" | Loader werden im Fehlerpfad mit leerem Schlüssel aufgerufen und sagen das ehrlich |
+| Oberfläche: bei Overpass-/Zensus-Ausfall nach Punktwechsel blieben Marker und Gitter des **vorigen** Punkts auf der Karte | POI- und Zensus-Ebenen werden beim Wechsel sofort geleert |
+| Oberfläche: sichtbarer Text „null" an drei Stellen (`replaceChildren` stringifiziert null — Adressliste, Mietprobe, Branchenprofil; die dritte Stelle fand erst die Browser-Selbstprüfung) | `.filter(Boolean)` wie an den dokumentierten Altstellen |
+| Oberfläche: Enter innerhalb der 350-ms-Entprellung — die Nominatim-Treffer wurden von den verspäteten Photon-Vorschlägen überschrieben (`clearTimeout` zeigte auf einen nie gesetzten Alt-Timer) | Vorschlags-Timer und laufende Vorschlags-Abrufe werden bei Enter verworfen; Browser-verifiziert („3 Treffer" bleibt stehen) |
+| Kleineres: ÖPNV-Einzug-Ebene ignorierte den Deckkraftregler; Vergleichs-Dialog/Notiz-Speichern/Löschen ohne Fehlerbehandlung (Notiz ging bei Serverfehler stumm verloren) | Ebene registriert, Fehler werden angezeigt |
+
+Bewusst nicht angefasst: die `meta.outbound_requests`-Zählung je Antwort
+zählt bei parallelen Requests auch fremde Abrufe mit (globaler Zähler ohne
+Request-Bezug) — reine Anzeige-Ungenauigkeit, eine request-bezogene Zählung
+stünde in keinem Verhältnis zum Nutzen.
+
+Browser-Selbstprüfung nach den Fixes: kein hängender Block, Punktwechsel
+leert die Marker-Ebenen sofort (281 → 0 → 384), kein „null"-Text mehr,
+keine JS-Fehler. Testsuite: **549 Tests grün** (542 + 7 neue Regressionen).

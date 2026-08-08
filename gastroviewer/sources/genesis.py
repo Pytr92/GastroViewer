@@ -298,8 +298,12 @@ def _gemeinde_zeilen(
              if r.get("1_variable_code") == "KREISE"
              and r.get("1_variable_attribute_code") == ags8[:5]]
     if kreis:
-        return (kreis, kreis[0].get("1_variable_attribute_label"),
-                "kreisfreie Stadt")
+        # „kreisfreie Stadt" nur, wenn der Schlüssel das hergibt (…000).
+        # Sonst ist das der KREISE-Rückfall einer normalen Gemeinde — die
+        # Zeilen gehören dem ganzen Landkreis und heißen auch so.
+        ebene = ("kreisfreie Stadt" if ags8.endswith("000")
+                 else "Kreis (Rückfall)")
+        return kreis, kreis[0].get("1_variable_attribute_label"), ebene
     return [], None, None
 
 
@@ -602,6 +606,10 @@ async def _gemeinde_laden(
                 ergebnis["ebene"] = ergebnis["ebene"] or teil.get("ebene")
                 geliefert = True
                 break
+    if ergebnis["ebene"] == "Kreis (Rückfall)":
+        warnungen.append(
+            "Der Gemeindeknoten kennt diesen Schlüssel nicht — gezeigt "
+            "werden ersatzweise die Werte des gesamten Landkreises.")
     return ergebnis if geliefert else None
 
 

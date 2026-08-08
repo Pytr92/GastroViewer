@@ -48,6 +48,12 @@ class PointService:
         self.settings = settings
         self.cache = cache
         self.outbound = outbound
+        # Laufende Abrufe je Cache-Key. Die Block-Endpunkte treffen parallel
+        # ein — ohne Deduplizierung lösten z. B. /api/point/osm und
+        # /api/point/gehweg bei kaltem Cache zwei identische Overpass-Abfragen
+        # aus. Der Rate-Limiter serialisiert Duplikate nur, verhindern muss
+        # sie diese Stelle (§7: Spendendienste nicht doppelt fragen).
+        self._laufend: dict[str, asyncio.Task] = {}
 
     async def _cached(
         self, source: str, key: str, loader: Loader, *, refresh: bool = False
@@ -68,6 +74,18 @@ class PointService:
                     ).strip()
                 return result
 
+        laufend = self._laufend.get(key)
+        if laufend is None:
+            # Als eigenständige Task, damit der Abruf weiterläuft, falls der
+            # anstoßende Request abbricht — Mitwartende bekommen ihn trotzdem.
+            laufend = asyncio.create_task(self._laden(source, key, loader, ttl))
+            self._laufend[key] = laufend
+            laufend.add_done_callback(lambda _t: self._laufend.pop(key, None))
+        return await laufend
+
+    async def _laden(
+        self, source: str, key: str, loader: Loader, ttl: int
+    ) -> SourceResult:
         try:
             result = await loader()
         except SourceError as err:
@@ -149,7 +167,9 @@ class PointService:
                 "muenchen_rad_jahr", url, timeout=60.0,
                 limiter="muenchen", min_interval=1.0,
             )
-            stationen = muenchen.parse_tageswerte(text)
+            # Parser mit Sekunden-Laufzeit gehören in einen Thread — sonst
+            # steht der ganze Server, solange die Jahresdatei gelesen wird.
+            stationen = await asyncio.to_thread(muenchen.parse_tageswerte, text)
             if not stationen:
                 raise SourceError(
                     "parse", f"Tageswerte {jahr} ließen sich nicht lesen."
@@ -190,7 +210,7 @@ class PointService:
                     "muenchen_indikatoren", url, timeout=60.0,
                     limiter="muenchen", min_interval=1.0,
                 )
-            kompakt = indikatoren_mod.reduzieren(texte)
+            kompakt = await asyncio.to_thread(indikatoren_mod.reduzieren, texte)
             if not kompakt:
                 raise SourceError(
                     "parse", "Indikatorenatlas-CSVs ließen sich nicht lesen."
@@ -244,7 +264,7 @@ class PointService:
                 "airbnb", fund["url"], timeout=120.0,
                 limiter="airbnb", min_interval=1.0,
             )
-            listings = airbnb_mod.reduzieren(csv_text)
+            listings = await asyncio.to_thread(airbnb_mod.reduzieren, csv_text)
             if not listings:
                 raise SourceError(
                     "parse", "Die listings.csv ließ sich nicht lesen."
@@ -413,7 +433,7 @@ class PointService:
                 limiter="bast", min_interval=1.0,
                 encoding="latin-1",
             )
-            stellen = bast_mod.parse_zaehlstellen(csv_text)
+            stellen = await asyncio.to_thread(bast_mod.parse_zaehlstellen, csv_text)
             if not stellen:
                 raise SourceError(
                     "parse", "BASt-Jahresdatei ohne verwertbare Zählstellen.")
@@ -460,7 +480,10 @@ class PointService:
                 "pks", pks_mod.XLSX_URL, timeout=120.0,
                 limiter="pks", min_interval=1.0,
             )
-            kreise = pks_mod.aufbereiten(pks_mod.zeilen_aus_xlsx(daten))
+            # Die bundesweite XLSX per ElementTree zu lesen dauert mehrere
+            # Sekunden CPU-Zeit — im Event-Loop fröre derweil alles ein.
+            kreise = await asyncio.to_thread(
+                lambda: pks_mod.aufbereiten(pks_mod.zeilen_aus_xlsx(daten)))
             return SourceResult(name="pks", ok=True, data={"kreise": kreise})
 
         res = await self._cached("pks", f"pks|{pks_mod.JAHR}", laden,
@@ -564,8 +587,9 @@ class PointService:
                 "wahl", wahl_mod.MAPPING_URL, timeout=120.0,
                 limiter="wahl", min_interval=1.0)
             return SourceResult(name="wahl", ok=True, data={
-                "zuordnung": wahl_mod.parse_mapping(zuordnung),
-                "kreise": wahl_mod.parse_kerg2(kerg2),
+                "zuordnung": await asyncio.to_thread(
+                    wahl_mod.parse_mapping, zuordnung),
+                "kreise": await asyncio.to_thread(wahl_mod.parse_kerg2, kerg2),
             })
 
         res = await self._cached("wahl", "wahl|btw25", laden, refresh=refresh)
@@ -609,6 +633,20 @@ class PointService:
         auf Anforderung (wie die Gehweg-Auswertung), weil die Rechnung
         einige Sekunden dauert. Einwohner-Näherung über das 1-km-Gitter:
         Zellen, in deren Nähe ein erreichter Halt liegt."""
+        if not self.settings.gtfs_db_path.exists():
+            # Nicht cachen — wie beim Register: direkt nach `import-gtfs`
+            # soll der Block rechnen, nicht die alte „nicht importiert"-
+            # Antwort bis zu 24 h aus dem Cache wiederholen.
+            from .sources import gtfs as gtfs_mod
+            return SourceResult(
+                name="oepnv_einzug", ok=True, data=None,
+                warnings=[
+                    "Kein GTFS-Fahrplan importiert — einmalig "
+                    "`gastroviewer import-gtfs` ausführen."],
+                provenance=Provenance(
+                    source="GTFS-Fahrplan (nicht importiert)",
+                    license=gtfs_mod.LICENSE),
+            )
         key = cache_key("oepnv_einzug", lat, lon, minuten)
 
         async def laden() -> SourceResult:

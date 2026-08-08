@@ -306,3 +306,36 @@ def test_einzugsgebiet_weit_weg_ohne_starthalt(importiert):
     d = gtfs.einzugsgebiet(s, 53.55, 10.0, minuten=30)  # Hamburg, Feed: München
     assert d is not None
     assert d["halte"] == [] and d["start_halte"] == 0
+
+
+def test_einzugsgebiet_mitternacht_rechnet_nicht_mit_zwoelf(importiert):
+    # _sekunden("00:00:00") ist 0 und damit falsy — mit dem früheren
+    # ``or``-Rückfall wurde Mitternacht stumm als 12:00 gerechnet und beide
+    # Ergebnisse waren identisch.
+    s, _ = importiert
+    nacht = gtfs.einzugsgebiet(s, LAT, LON, minuten=30, abfahrt="00:00:00")
+    mittag = gtfs.einzugsgebiet(s, LAT, LON, minuten=30, abfahrt="12:00:00")
+    assert nacht["abfahrt"] == "00:00"
+    assert nacht["fahrten"] != mittag["fahrten"]
+
+
+def test_einzugsgebiet_meldet_den_gerechneten_referenztag(importiert, tmp_path):
+    # Geroutet wird am beim Import eingefrorenen Referenzdatum — genau das
+    # muss auch im Ergebnis stehen, nicht ein beim Abruf neu bestimmter
+    # nächster Dienstag.
+    import shutil
+    import sqlite3
+
+    from gastroviewer.config import Settings
+
+    s0, _ = importiert
+    s = Settings()
+    s.data_dir = tmp_path
+    shutil.copy(s0.gtfs_db_path, s.gtfs_db_path)
+    conn = sqlite3.connect(s.gtfs_db_path)
+    conn.execute("UPDATE meta SET value='20250902' WHERE key='referenzdatum'")
+    conn.commit()
+    conn.close()
+    d = gtfs.einzugsgebiet(s, LAT, LON, minuten=30)
+    assert d["referenztag"]["date"] == "20250902"
+    assert d["referenztag"]["weekday_de"] == "Dienstag"

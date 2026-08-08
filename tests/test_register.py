@@ -70,3 +70,17 @@ def test_load_ohne_plz_warnt(settings, register_dump_pfad):
     res = asyncio.run(register.load(settings, None))
     assert res.ok and res.data is None
     assert any("Postleitzahl" in w for w in res.warnings)
+
+
+def test_plz_ist_die_letzte_fuenfstellige_zahl_auch_vor_zusaetzen():
+    """Der frühere Lookahead verlangte „keine Ziffer mehr danach“ und
+    verwarf die PLZ komplett, sobald hinter dem Ort noch eine Ziffer stand."""
+    z = register.zeile_parsen(
+        '{"name": "Test GmbH", "registered_address": '
+        '"Waidmannstraße 1, 22769 Hamburg, Zimmer 3"}')
+    assert z["plz"] == "22769"
+    # Postfach vor der PLZ: weiterhin gewinnt die letzte fünfstellige Zahl.
+    z2 = register.zeile_parsen(
+        '{"name": "Test GmbH", "registered_address": '
+        '"Postfach 10234, 80331 München"}')
+    assert z2["plz"] == "80331"

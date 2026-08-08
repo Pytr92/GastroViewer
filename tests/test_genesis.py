@@ -342,3 +342,22 @@ def test_bau_in_gemeinde_tabellen_registriert():
     schluessel = [s for s, _, _ in genesis.GEMEINDE_TABELLEN]
     assert "baugenehmigungen" in schluessel
     assert "baufertigstellungen" in schluessel
+
+
+def test_kreise_rueckfall_traegt_nicht_das_etikett_kreisfreie_stadt():
+    """Springt für eine normale Gemeinde der KREISE-Rückfall an, gehören
+    die Zeilen dem ganzen Landkreis — sie dürfen weder als Gemeindewert
+    noch als „kreisfreie Stadt“ ausgegeben werden."""
+    rows = [{"1_variable_code": "KREISE",
+             "1_variable_attribute_code": "09184",
+             "1_variable_attribute_label": "München, Landkreis"}]
+    _zeilen, name, ebene = genesis._gemeinde_zeilen(rows, "09184119")
+    assert name == "München, Landkreis"
+    assert ebene == "Kreis (Rückfall)"
+
+    # Für eine echte kreisfreie Stadt (…000) bleiben KREISE-Zeilen korrekt.
+    rows_kf = [{"1_variable_code": "KREISE",
+                "1_variable_attribute_code": "09162",
+                "1_variable_attribute_label": "München, kreisfreie Stadt"}]
+    _zeilen, _name, ebene_kf = genesis._gemeinde_zeilen(rows_kf, "09162000")
+    assert ebene_kf == "kreisfreie Stadt"

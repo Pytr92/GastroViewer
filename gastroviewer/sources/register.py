@@ -47,10 +47,12 @@ LIZENZ = (
 )
 STAND = "Datenspende vom 05.02.2019 — nicht fortgeschrieben"
 
-# Letzte fünfstellige Zahl vor dem Ortsnamen: „Waidmannstraße 1, 22769
+# Letzte fünfstellige Zahl der Adresse: „Waidmannstraße 1, 22769
 # Hamburg." — Hausnummern sind kürzer, und wenn zwei fünfstellige Zahlen
-# vorkommen (Postfach), ist die PLZ die letzte.
-_PLZ = re.compile(r"\b(\d{5})\b(?=[^\d]*$)")
+# vorkommen (Postfach), ist die PLZ die letzte. findall + [-1] statt eines
+# „keine Ziffer mehr danach"-Lookaheads: der verwarf die PLZ komplett,
+# sobald hinter dem Ort noch irgendeine Ziffer stand („…, Zimmer 3").
+_PLZ = re.compile(r"\b(\d{5})\b")
 
 # Namensheuristik für den Gastro-Auszug. Bewusst mit Wortgrenzen, damit
 # „Barbara GmbH" und „Eisenwerk" nicht zu Bars und Eisdielen werden.
@@ -73,10 +75,8 @@ def zeile_parsen(zeile: bytes | str) -> dict[str, Any] | None:
     adresse = (r.get("registered_address") or "").strip().rstrip(".")
     if not name:
         return None
-    plz = None
-    m = _PLZ.search(adresse)
-    if m:
-        plz = m.group(1)
+    treffer = _PLZ.findall(adresse)
+    plz = treffer[-1] if treffer else None
     attribute = r.get("all_attributes") or {}
     return {
         "name": name,

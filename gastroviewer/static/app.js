@@ -261,7 +261,7 @@ function wendeDeckkraftAn() {
   const f = state.deckkraft;
   for (const name of ['zensus', 'gastronomie', 'frequenzbringer', 'oepnv', 'leerstand',
     'overture', 'maerkte', 'baustellen', 'airbnb', 'uebersicht', 'scan', 'marke',
-    'gehflaeche', 'liefergebiet']) {
+    'gehflaeche', 'liefergebiet', 'oepnveinzug']) {
     state.ebenen[name]?.eachLayer((l) => {
       const basis = l.options?._basisDeckkraft;
       if (basis === undefined || !l.setStyle) return;
@@ -1113,6 +1113,13 @@ function lade(refresh = false) {
   state.ebenen.maerkte?.clearLayers();
   state.ebenen.baustellen?.clearLayers();
   state.ebenen.airbnb?.clearLayers();
+  // Die POI- und Zensus-Ebenen werden sonst erst beim Zeichnen der neuen
+  // Antwort geleert — scheitert Overpass oder der Zensus, blieben die Marker
+  // und das Gitter des vorigen Punktes auf der Karte liegen.
+  for (const name of ['gastronomie', 'frequenzbringer', 'oepnv', 'leerstand',
+    'zensus']) {
+    state.ebenen[name]?.clearLayers();
+  }
   // Der Schätzungsreiter hängt an den Punktdaten. Ist er gerade offen, muss er
   // mitwandern statt die Werte des vorigen Punktes stehen zu lassen.
   if (!document.getElementById('panel-schaetzung').hidden) {
@@ -1161,6 +1168,17 @@ function lade(refresh = false) {
       state.daten.zensus = { ok: false, error: { message: e.message } };
       zeigeKopf();
       ladeLinks();
+      // Die Folgeblöcke hängen am Gemeindeschlüssel aus dieser Antwort. Ohne
+      // den Aufruf hier blieben sie bei Zensus-Ausfall für immer auf „lädt …“.
+      ladeEinkommen(null, lauf);
+      ladeKreisprofil(null, lauf);
+      ladePendler(null, lauf);
+      ladeGenesis(null, lauf);
+      ladePks(null, lauf);
+      ladeWahl(null, lauf);
+      // Der Lärmblock braucht keinen Schlüssel — nur der Bundesland-Hinweis
+      // entfällt, die Kartierung selbst lädt trotzdem.
+      ladeLaerm(null, lauf);
     });
 
   hole('/api/point/osm', p)
@@ -1338,6 +1356,7 @@ function zeigeOepnvEinzugAngebot() {
 
 async function ladeOepnvEinzug() {
   const id = 'oepnveinzug';
+  const lauf = state.ladeLauf;
   const minuten = Number(document.getElementById('oepnv-minuten')?.value || 30);
   setStatus(id, 'laedt', 'rechnet …');
   const knopf = document.getElementById('btn-oepnv-einzug');
@@ -1345,10 +1364,11 @@ async function ladeOepnvEinzug() {
   try {
     const d = await hole('/api/point/oepnv-einzug',
       { lat: state.lat, lon: state.lon, minuten });
+    if (lauf !== state.ladeLauf) return;
     state.daten.oepnveinzug = d;
     zeigeOepnvEinzug(d, minuten);
   } catch (e) {
-    zeigeBlockFehler(id, e);
+    if (lauf === state.ladeLauf) zeigeBlockFehler(id, e);
   } finally {
     if (knopf) knopf.disabled = false;
   }
@@ -1381,7 +1401,8 @@ function zeigeOepnvEinzug(d, minuten) {
     state.ebenen.oepnveinzug.addLayer(L.circleMarker([h.lat, h.lon], {
       radius: 4, color: farben[stufe(h.minuten)],
       fillColor: farben[stufe(h.minuten)],
-      fillOpacity: 0.7, weight: 1, _basisDeckkraft: 0.7, _basisRand: 1,
+      fillOpacity: 0.7 * state.deckkraft, opacity: state.deckkraft,
+      weight: 1, _basisDeckkraft: 0.7, _basisRand: 1,
     }).bindTooltip(`${h.name} — ${h.minuten} min`));
   }
   if (!karte.hasLayer(state.ebenen.oepnveinzug)) {
@@ -1812,7 +1833,8 @@ function brancheBereich(o) {
   const zeichne = (key) => {
     const b = BRANCHEN.find((x) => x.key === key) || BRANCHEN[0];
     const k = brancheKennzahlen(o.gastronomie || [], b.typen);
-    inhalt.replaceChildren(
+    // .filter(Boolean): replaceChildren rendert null als sichtbaren Text.
+    inhalt.replaceChildren(...[
       el('div', { class: 'kennzahlen' },
         kennzahl('Direkter Wettbewerb', k.anzahl),
         kennzahl('davon bis 300 m', k.bis300),
@@ -1823,7 +1845,8 @@ function brancheBereich(o) {
         `Gezählt werden die OSM-Typen: ${b.typen.join(', ')}. `
         + 'Das cuisine-Feld ist Freitext und wird nicht ausgewertet — ein '
         + 'Burger-Restaurant mit amenity=restaurant zählt hier nicht als '
-        + 'Schnellrestaurant.') : null);
+        + 'Schnellrestaurant.') : null,
+    ].filter(Boolean));
   };
   const auswahl = el('select', { onchange: (ev) => {
     localStorage.setItem(BRANCHE_SPEICHER, ev.target.value);
@@ -2248,9 +2271,11 @@ async function ladeMarke() {
   }
   ziel.replaceChildren(el('div', { class: 'laden' }));
   state.ebenen.marke.clearLayers();
+  const lauf = state.ladeLauf;
   try {
     const d = await hole('/api/point/marke',
       { lat: state.lat, lon: state.lon, marke: name, r: radius });
+    if (lauf !== state.ladeLauf) return;
     if (!d.ok) { ziel.replaceChildren(fehlerbox(d.error)); return; }
     const m = d.data;
 
@@ -3518,7 +3543,8 @@ function zeigeGenesis(d, ags) {
     const a = (gem.arbeitslose || {}).aktuell;
     gemTeile.push(el('h4', {},
       `Gemeindewerte: ${gem.name || gem.ags}`
-      + (gem.ebene === 'kreisfreie Stadt' ? ' (kreisfreie Stadt)' : '')));
+      + (gem.ebene === 'kreisfreie Stadt' ? ' (kreisfreie Stadt)' : '')
+      + (gem.ebene === 'Kreis (Rückfall)' ? ' (ganzer Landkreis — Rückfall)' : '')));
     gemTeile.push(el('div', { class: 'kennzahlen' },
       el('div', { class: 'kennzahl' },
         el('div', { class: 'titel' }, 'Beschäftigte am Arbeitsort'),
@@ -3996,15 +4022,21 @@ function merkeGruppenwahl() {
    Rangfolge auf — der Nutzer darf und soll das aber. Gespeichert wird beim
    Verlassen des Feldes, nicht bei jedem Tastendruck. */
 async function speichereEigenes(id, zeile) {
-  await fetch(`/api/points/${id}`, {
-    method: 'PATCH',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      notiz: zeile.notiz || null,
-      bewertung: zeile.bewertung === '' || zeile.bewertung === null
-        ? null : Number(zeile.bewertung),
-    }),
-  });
+  try {
+    const r = await fetch(`/api/points/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        notiz: zeile.notiz || null,
+        bewertung: zeile.bewertung === '' || zeile.bewertung === null
+          ? null : Number(zeile.bewertung),
+      }),
+    });
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+  } catch (e) {
+    // Sonst ginge eine eingetippte Notiz bei Server-Schluckauf kommentarlos verloren.
+    alert(`Notiz/Note konnte nicht gespeichert werden: ${e.message}`);
+  }
 }
 
 function eigenesFeld(z, key) {
@@ -4035,8 +4067,17 @@ function eigenesFeld(z, key) {
 }
 
 async function zeigeVergleich() {
-  const d = await (await fetch('/api/points/vergleich')).json();
   const ziel = document.getElementById('vergleich-inhalt');
+  let d;
+  try {
+    const r = await fetch('/api/points/vergleich');
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    d = await r.json();
+  } catch (e) {
+    ziel.replaceChildren(fehlerbox({ message: e.message }));
+    document.getElementById('vergleich-dialog').showModal();
+    return;
+  }
   const gruppen = d.gruppen || [];
   const sichtbar = ladeGruppenwahl(gruppen);
 
@@ -4128,7 +4169,9 @@ async function zeigeVergleich() {
       }, 'Wächter'),
       el('button', {
         onclick: async () => {
-          await fetch(`/api/points/${z.id}`, { method: 'DELETE' });
+          try {
+            await fetch(`/api/points/${z.id}`, { method: 'DELETE' });
+          } catch { /* Der Neuaufbau unten zeigt den echten Zustand. */ }
           zeigeVergleich();
         },
       }, 'löschen')));
@@ -4641,7 +4684,8 @@ async function adresslisteVerarbeiten() {
     }
   }
   knopf.disabled = false;
-  ziel.replaceChildren(
+  // .filter(Boolean): replaceChildren stringifiziert null zum sichtbaren „null“.
+  ziel.replaceChildren(...[
     el('div', { class: 'notiz' },
       el('strong', {}, `${befunde.length} von ${zeilen.length} Adressen gemerkt.`),
       befunde.length ? el('ul', { class: 'liste' },
@@ -4658,13 +4702,13 @@ async function adresslisteVerarbeiten() {
         document.getElementById('adressliste-dialog').close();
         zeigeVergleich();
       },
-    }, 'zum Standortvergleich'));
+    }, 'zum Standortvergleich'),
+  ].filter(Boolean));
   ladePunkteEbene();
 }
 
 /* ------------------------------------------------------------- Suche */
 
-let sucheTimer = null;
 const sucheFeld = document.getElementById('suche');
 const trefferBox = document.getElementById('suche-treffer');
 const sucheStatus = document.getElementById('suche-status');
@@ -4676,7 +4720,10 @@ const sucheStatus = document.getElementById('suche-status');
 
 document.getElementById('suche-form').addEventListener('submit', (e) => {
   e.preventDefault();
-  clearTimeout(sucheTimer);
+  // Anstehende und bereits laufende Photon-Vervollständigungen verwerfen —
+  // sonst überschreibt eine verspätete Vorschlagsliste die Nominatim-Treffer.
+  clearTimeout(vorschlagTimer);
+  vorschlagLauf += 1;
   const q = sucheFeld.value.trim();
   if (q.length >= 3) sucheAusfuehren(q);
 });
@@ -5220,7 +5267,9 @@ function zeigeSchaetzErgebnis(d, ziel) {
       `Bei ${d.eingaben.mietanteil_min_prozent} bis ${d.eingaben.mietanteil_max_prozent} % `
       + 'vom Umsatz. Faustregel aus notizen-standort-flaeche.md §6 — keine erhobene Statistik. '
       + 'Liegt die geforderte Miete darüber, trägt der Standort sich unter diesen Annahmen nicht.'),
-    ...mietprobeTeile(d.mietprobe),
+    // .filter(Boolean): mietprobeTeile enthält ohne Zensus-Wohnmiete ein null,
+    // das replaceChildren sonst als sichtbaren Text „null“ rendert.
+    ...mietprobeTeile(d.mietprobe).filter(Boolean),
     ...sensitivitaetTeile(d.sensitivitaet),
     ...franchiseTeile);
 }

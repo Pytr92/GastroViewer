@@ -630,12 +630,21 @@ def einzugsgebiet(
     try:
         meta = {r["key"]: r["value"] for r in conn.execute(
             "SELECT key, value FROM meta")}
-        ref = _reference_date(conn)
-        date = meta.get("referenzdatum") or ref["date"]
-        weekday_idx = dt.datetime.strptime(date, "%Y%m%d").date().weekday()
-        services = _active_services(conn, date, WEEKDAYS[weekday_idx])
+        # Gerechnet wird am beim Import eingefrorenen Referenztag (wie in
+        # load()) — und genau dieser Tag wird auch zurückgemeldet. Vorher
+        # stand im Ergebnis der beim Abruf neu bestimmte nächste Dienstag,
+        # der ab einer Woche nach dem Import vom gerechneten Tag abwich.
+        date = meta.get("referenzdatum") or _reference_date(conn)["date"]
+        tag = dt.datetime.strptime(date, "%Y%m%d").date()
+        ref = {"date": date, "weekday": WEEKDAYS[tag.weekday()],
+               "weekday_de": WEEKDAYS_DE[tag.weekday()]}
+        services = _active_services(conn, date, WEEKDAYS[tag.weekday()])
 
-        start_s = _sekunden(abfahrt) or 12 * 3600
+        # Kein ``or``-Rückfall: _sekunden("00:00:00") ist 0 und damit falsy —
+        # Mitternacht würde sonst stumm zu 12:00 Uhr.
+        start_s = _sekunden(abfahrt)
+        if start_s is None:
+            start_s = 12 * 3600
         horizont_s = start_s + minuten * 60
 
         alle_halte = [dict(r) for r in conn.execute(
