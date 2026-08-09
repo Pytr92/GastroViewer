@@ -22,7 +22,7 @@ import pytest
 WURZEL = Path(__file__).resolve().parent.parent
 AUFNAHME_DATEI = (WURZEL / "tests" / "fixtures" / "ui"
                   / "api-antworten.json.gz")
-APP_JS = WURZEL / "gastroviewer" / "static" / "app.js"
+STATISCH = WURZEL / "gastroviewer" / "static"
 
 # Routen mit Zustand laufen in der Attrappe gegen die echte Anwendung und
 # werden bewusst nicht aufgezeichnet.
@@ -155,7 +155,16 @@ def test_punkte_routen_bleiben_echt(attrappe):
 
 
 def _pfade_aus_app_js() -> set[str]:
-    text = APP_JS.read_text(encoding="utf-8")
+    """Alle Endpunkte aus **allen** Oberflächendateien.
+
+    Bewusst nicht nur aus app.js: Die Oberfläche wird in Module aufgeteilt,
+    und ein Wächter, der nur eine Datei liest, würde mit jeder
+    ausgelagerten Zeile stillschweigend weniger prüfen — ohne dass es
+    jemandem auffällt. Genau das soll er ja verhindern.
+    """
+    text = "\n".join(p.read_text(encoding="utf-8")
+                     for p in sorted(STATISCH.rglob("*.js"))
+                     if "vendor" not in p.parts)
     roh = set(re.findall(r"['\"`](/api/[a-zA-Z0-9/_.-]*)", text))
     pfade = set()
     for p in roh:

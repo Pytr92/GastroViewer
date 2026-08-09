@@ -669,10 +669,18 @@ def test_spalten_geben_ihre_nachkommastellen_vor(client):
 
 def test_saettigung_wird_nicht_als_hoechstwert_hervorgehoben():
     """Der Höchstwert bekommt in der Tabelle die Klasse „best". Bei der
-    Wettbewerbsdichte wäre das die dichteste Konkurrenz — kein Lob."""
-    js = (Path(__file__).resolve().parents[1]
-          / "gastroviewer" / "static" / "app.js").read_text(encoding="utf-8")
-    block = js.split("HOCH_IST_AUFFAELLIG = new Set([")[1].split("]);")[0]
+    Wettbewerbsdichte wäre das die dichteste Konkurrenz — kein Lob.
+
+    Gesucht wird in allen Oberflächendateien, nicht in einer bestimmten:
+    Die Oberfläche wird gerade in Module aufgeteilt, und ein Test, der an
+    einem Dateinamen klebt, geht beim nächsten Umzug kaputt, ohne dass
+    inhaltlich etwas falsch wäre.
+    """
+    statisch = Path(__file__).resolve().parents[1] / "gastroviewer" / "static"
+    treffer = [p.read_text(encoding="utf-8") for p in statisch.rglob("*.js")
+               if "HOCH_IST_AUFFAELLIG = new Set([" in p.read_text(encoding="utf-8")]
+    assert len(treffer) == 1, "genau eine Definition erwartet"
+    block = treffer[0].split("HOCH_IST_AUFFAELLIG = new Set([")[1].split("]);")[0]
     assert "abfahrten_je_einwohner" in block
     assert "wettbewerb_je_1000" not in block
 
@@ -971,8 +979,11 @@ def test_gehwegspalten_stehen_im_vergleich(client):
 def test_deckkraftregler_ist_vorhanden_und_beruehrt_die_grundkarte_nicht():
     """Der Regler soll die aufgesetzten Ebenen zurückblenden, damit Straßen und
     Gebäude sichtbar bleiben — die Grundkarte selbst darf er nicht dimmen."""
-    js = (Path(__file__).resolve().parents[1]
-          / "gastroviewer" / "static" / "app.js").read_text(encoding="utf-8")
+    # Alle Oberflächendateien zusammen — die Aufteilung in Module darf
+    # diesen Test nicht ins Leere laufen lassen.
+    statisch = Path(__file__).resolve().parents[1] / "gastroviewer" / "static"
+    js = "\n".join(p.read_text(encoding="utf-8")
+                   for p in sorted(statisch.rglob("*.js")))
     assert "deckkraft-regler" in js and 'type="range"' in js
     assert "localStorage.setItem(DECKKRAFT_SPEICHER" in js, "Einstellung muss bleiben"
     # Grundkarten werden ohne setOpacity eingehängt.
