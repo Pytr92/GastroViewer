@@ -227,8 +227,12 @@ def aufzeichnen(basis: str, vorhanden: dict[str, Any] | None = None,
                           "ost": 14.2, "nord": 50.7})
     merke("/api/gitter", {"ebene": "1km", "west": 11.34, "sued": 48.06,
                           "ost": 11.76, "nord": 48.23})
-    merke("/api/scan", {"west": 11.52, "sued": 48.116,
-                        "ost": 11.63, "nord": 48.158})
+    # Der Flächen-Scan klemmt seinen Ausschnitt selbst auf SCAN_SPANNE
+    # (0,055° × 0,04°) um die Kartenmitte — größer beantwortet der Server
+    # ihn gar nicht. Das ist exakt die Box, die die Oberfläche an der
+    # Prüfkoordinate 48.137/11.575 bildet.
+    merke("/api/scan", {"west": 11.5475, "sued": 48.117,
+                        "ost": 11.6025, "nord": 48.157})
 
     print()
     ueberzaehlig = sorted(set(aufnahme) - gewollt)
@@ -258,8 +262,11 @@ def main(argv: list[str]) -> int:
     ergebnis = aufzeichnen(basis, vorhanden)
     aufnahme, fehler = ergebnis["aufnahme"], ergebnis["fehler"]
 
+    # Kompakt: Die Datei ist eine Maschinenaufnahme, keine Lektüre —
+    # Einrückung kostete hier gut ein Drittel der Größe.
     datei.write_text(
-        json.dumps(aufnahme, ensure_ascii=False, sort_keys=True, indent=1),
+        json.dumps(aufnahme, ensure_ascii=False, sort_keys=True,
+                   separators=(",", ":")),
         encoding="utf-8")
 
     mb = datei.stat().st_size / 1_000_000
