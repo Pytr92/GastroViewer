@@ -884,3 +884,23 @@ sind Teil des Ergebnisses.
 **Betriebsbefunde:** Die GENESIS-**GET**-Methode wurde am 27.11.2025 abgeschaltet (HTTP 405) — das Werkzeug ist nicht betroffen, es nutzt durchgehend POST. Der Berliner Geodienst `gdi.berlin.de` nutzt ein Wurzelzertifikat, das ältere Zertifikatsspeicher nicht kennen; das Werkzeug übersetzt den TLS-Fehler in eine verständliche Meldung mit dem Hinweis auf `pip install --upgrade certifi`. Die CKAN-Schnittstellen der Portale München, Berlin und Hamburg sind per robots.txt gesperrt (`Disallow: /api/`) — die eigentlichen Download-Adressen nicht; das Werkzeug verdrahtet sie deshalb fest, statt die API abzufragen.
 
 Browser-Selbstprüfung: alle fünf neuen Blöcke rendern, kein hängender Block, kein „null"-Text, keine JS-Fehler. Dabei fiel auf, dass die Markdown-Betonung (`**so**`) der Quellenmodule als sichtbare Sternchen im Text stand — zentral behoben, betrifft jetzt alle 21 Hinweis-Renderings und sämtliche Warnungen. Testsuite: **613 Tests grün** (549 + 64 neue).
+
+---
+
+## Nachtrag 10. Runde (09.08.2026) — die Oberfläche prüft sich jetzt selbst
+
+Diese Runde hat keine neue Datenquelle gebracht, sondern die letzte große Lücke in der Absicherung geschlossen. Die Oberfläche ist mit über 6 000 Zeilen `app.js` das größte Einzelstück des Projekts und war bis hierher nur per Syntaxprüfung abgedeckt. Die Browserprüfung `scripts/uitest.py` existierte zwar mit 43 Prüfungen, brauchte aber einen Server **mit Internetzugang** und lief deshalb nur von Hand.
+
+**Der Aufbau.** `scripts/aufzeichnen.py` nimmt einmalig die echten `/api`-Antworten für sieben Prüfkoordinaten auf (Marienplatz, Isarufer, Isarauen, Freiham, Giesing, Haidhausen, Köln) — 224 Antworten, roh 7,8 MB, gepackt 1,32. `scripts/attrappe.py` spielt sie ab. Es ist bewusst **kein** Antwort-Abspieler, sondern die echte Anwendung mit abgeschalteter Datenschicht: Von den 44 Prüfungen brauchen sechs Zustand — merken, benoten, vergleichen, löschen. Deshalb laufen alle `/api/points`-Routen sowie Bericht und Duell echt gegen eine frische Datenbank in einem Wegwerfordner; nur die datenholenden Routen kommen aus der Aufzeichnung. Der ausgehende Verkehr ist gesperrt und meldet sich mit Klartext statt mit einem Zeitablauf.
+
+**Drei Befunde, alle vom selben Typ.** Der erste vollständige Lauf brachte drei Fälle ans Licht — und keiner davon war ein Fehler in der Oberfläche, sondern jedes Mal eine Prüfung, die stillschweigend nichts prüfte:
+
+* Die Prüfung „Quelle, Stand, Lizenz je Block" führte eine **handgepflegte Namensliste** der ausgenommenen Auf-Knopfdruck-Blöcke. Sie war seit Block 6h (ÖPNV-Einzug) und 4g (IHK Berlin) veraltet und meldete beide fälschlich als quellenlos. Nachverfolgt zeigte sich: `zeigeIhkBerlin` setzt die Quelle in jedem Zweig, auch im Fehler- und im Leerfall. Die Liste ist jetzt durch die Eigenschaft ersetzt, die eigentlich gemeint war — ein Block im Zustand „auf Anforderung" hat nichts zu belegen. Damit pflegt sich die Regel selbst.
+* Die aufgezeichnete Markensuche war eine **echte Zeitüberschreitung** von Overpass. Ein Fehlerzustand in der Aufnahme ist grundsätzlich legitim und prüfenswert — hier hätte er aber Prüfung 18 dauerhaft stillgelegt, weil das Skript dafür einen Übersprung-Zweig hat. Der Eintrag wurde gegen den Live-Server nachgeholt (Vapiano, 361 m).
+* Die Prüfung der **Vergleichstabelle** stand an Position 22 der Reihenfolge, die Testpunkte legt aber erst der Standortbericht an Position 38 an. Sie lief immer gegen eine leere Punkteliste und sprang ab; weil ein Übersprung nicht als Fehler zählt, fiel es nie auf. Sie steht jetzt zwischen Bericht und Ranking.
+
+Dass diese drei erst jetzt auffielen, hat einen benennbaren Grund: In den beiden Runden davor lief statt `uitest.py` jeweils ein kleines Prüfskript nur für die neuen Blöcke. Der volle Lauf war länger nicht durchgezogen worden. Genau das kann jetzt nicht mehr passieren.
+
+**Ein Fund aus der Aufzeichnung selbst.** Der Flächen-Scan antwortete auf meinen ersten Ausschnitt mit HTTP 422 — „Ausschnitt zu groß, rund 4×5 km sind das Limit". Die Oberfläche klemmt ihren Ausschnitt selbst auf `SCAN_SPANNE` (0,055° × 0,04°) um die Kartenmitte. Aufgezeichnet wird jetzt genau die Box, die sie an der Prüfkoordinate bildet. Ein ausgedachter Ausschnitt hätte hier plausibel ausgesehen und wäre falsch gewesen — dasselbe Muster wie bei den WFS-Fallen der 9. Runde.
+
+**Stand:** Alle **44 Prüfungen ohne Befund**, nichts übersprungen. Testsuite **628 Tests grün** (613 + 15 neue). Beides läuft bei jedem Push in der CI; ein eigener Test liest die Endpunkte direkt aus `app.js` und schlägt fehl, wenn ein neuer Block weder aufgezeichnet ist noch echt läuft.

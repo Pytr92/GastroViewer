@@ -35,4 +35,45 @@ jobs:
         run: python -m pytest -q
 
       - name: Oberfläche auf Syntaxfehler prüfen
-        run: node --check gastroviewer/static/app.js
+        run: |
+          node --check gastroviewer/static/app.js
+          node --check gastroviewer/static/bericht.js
+          node --check gastroviewer/static/duell.js
+          node --check gastroviewer/static/score.js
+
+  # Die Oberfläche ist mit über 6 000 Zeilen das größte Einzelstück des
+  # Projekts und war bisher nur per Syntaxprüfung abgesichert — ein
+  # Renderfehler fiel erst auf, wenn jemand hinsah. Dieser Job fährt die
+  # echte Anwendung mit aufgezeichneter Datenschicht hoch (kein Netz, keine
+  # Kennung) und lässt die vollständige Browserprüfung dagegen laufen.
+  oberflaeche:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Abhängigkeiten installieren
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install .[dev] playwright
+
+      - name: Chromium bereitstellen
+        run: python -m playwright install --with-deps chromium
+
+      - name: Attrappe starten
+        run: |
+          python scripts/attrappe.py --port 8041 &
+          for i in $(seq 1 60); do
+            if curl -sf http://127.0.0.1:8041/api/health > /dev/null; then
+              echo "Attrappe bereit nach ${i}s"; exit 0
+            fi
+            sleep 1
+          done
+          echo "Attrappe ist nicht hochgekommen."; exit 1
+
+      - name: Browserprüfung
+        run: python scripts/uitest.py http://127.0.0.1:8041 --attrappe
