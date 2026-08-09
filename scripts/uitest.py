@@ -1108,7 +1108,6 @@ PRUEFUNGEN = [
     ("ÖPNV-Mittags- und Abendfenster", pruefe_gtfs_mittagsfenster),
     ("Schätzung im eigenen Reiter", pruefe_schaetzung_getrennt),
     ("Deckkraftregler", pruefe_deckkraftregler),
-    ("Vergleichstabelle", pruefe_vergleich),
     ("Gesamt-Score mit Gewichten", pruefe_score),
     ("Baustellen (Stadt München)", pruefe_baustellen),
     ("Städtische Märkte (München)", pruefe_maerkte),
@@ -1128,6 +1127,11 @@ PRUEFUNGEN = [
     ("Duell-Bericht A gegen B", pruefe_duell),
     ("Gemerkte Punkte auf der Karte", pruefe_punkte_ebene),
     ("Eigene Notiz und Note", pruefe_eigene_notiz),
+    # Muss NACH dem Standortbericht stehen (der legt die Testpunkte an) und
+    # VOR dem Ranking (das räumt sie wieder auf). Vorher lief die Prüfung
+    # gegen eine leere Punkteliste und sprang jedes Mal ab — sie war damit
+    # dauerhaft stumm, ohne dass es auffiel.
+    ("Vergleichstabelle", pruefe_vergleich),
     ("Gewichtetes Ranking", pruefe_ranking),
     ("Bodenrichtwert-Ebene (NRW)", pruefe_bodenrichtwert_ebene),
 ]
