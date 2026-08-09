@@ -12,8 +12,9 @@ Entscheidungen:
   (``gastroviewer/static``) wird dorthin mitgepackt, und zwar unter genau dem
   Pfad, den ``api.STATIC_DIR`` (``Path(__file__).parent / "static"``) erwartet.
 * **Mit Konsolenfenster**: Fehlermeldungen und das Abruf-Protokoll bleiben
-  sichtbar; Fenster schließen beendet den Server — das ist für Laien der
-  verständlichste Aus-Schalter.
+  sichtbar. Seit es das Startfenster gibt, ist die Konsole nicht mehr der
+  Aus-Schalter, sondern nur noch die Protokollansicht — bewusst behalten,
+  weil ein Fehler beim Start sonst spurlos verschwände.
 * Die ``uvicorn``-Untermodule stehen explizit hier, weil uvicorn sie zur
   Laufzeit über Strings lädt ("uvicorn.loops.auto" …) — die statische Analyse
   von PyInstaller sieht solche Importe nicht.
@@ -33,6 +34,12 @@ a = Analysis(
         (str(WURZEL / "gastroviewer" / "static"), "gastroviewer/static"),
     ],
     hiddenimports=[
+        # Das Startfenster laedt tkinter erst beim Oeffnen — die statische
+        # Analyse findet solche Importe zwar, hier steht es zur Sicherheit
+        # ausdruecklich, weil ohne Fenster der Doppelklick-Start ins Leere
+        # liefe.
+        "tkinter",
+        "tkinter.ttk",
         "uvicorn.logging",
         "uvicorn.loops",
         "uvicorn.loops.auto",

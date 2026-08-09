@@ -54,6 +54,22 @@ jobs:
       - name: Paket bauen
         run: pyinstaller --clean --noconfirm packaging/gastroviewer.spec
 
+      # Das Startfenster ist der Doppelklick-Weg. Hier wird geprueft, dass
+      # es auf der Zielplattform ueberhaupt entsteht — Exitcode 4 heisst
+      # "keine Bildschirmsitzung", das ist uebersprungen und wird als
+      # solches gemeldet, nicht als bestanden.
+      - name: Startfenster — Selbsttest
+        shell: bash
+        run: |
+          set +e
+          ./${{ matrix.binaerdatei }} fenster --selbsttest --port 8018
+          code=$?
+          set -e
+          if [ "$code" = "0" ]; then echo "Startfenster entsteht."
+          elif [ "$code" = "4" ]; then echo "UEBERSPRUNGEN: keine Bildschirmsitzung."
+          else echo "Startfenster fehlgeschlagen (Exitcode $code)"; exit 1; fi
+        continue-on-error: false
+
       - name: Rauchprobe — Server starten und Startseite abrufen (Unix)
         if: runner.os != 'Windows'
         shell: bash

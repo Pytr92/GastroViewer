@@ -35,6 +35,19 @@ def _port_belegt(host: str, port: int) -> bool:
         return s.connect_ex((host if host != "0.0.0.0" else "127.0.0.1", port)) == 0
 
 
+def cmd_fenster(args: argparse.Namespace, settings: Settings) -> int:
+    """Das Startfenster. Fehlt tkinter, wird das gesagt statt abzustürzen."""
+    from .startfenster import starte_fenster
+
+    return starte_fenster(
+        settings,
+        host=args.host or settings.host,
+        port=args.port or settings.port,
+        sofort_starten=not getattr(args, "nicht_starten", False),
+        selbsttest=getattr(args, "selbsttest", False),
+    )
+
+
 def cmd_serve(args: argparse.Namespace, settings: Settings) -> int:
     import uvicorn
 
@@ -385,7 +398,22 @@ def build_parser() -> argparse.ArgumentParser:
     )
     sub = p.add_subparsers(dest="cmd")
 
-    s = sub.add_parser("serve", help="Server starten (Standard)")
+    f = sub.add_parser(
+        "fenster",
+        help="Kleines Fenster mit Status, Start-/Stopp-Knopf und Link "
+             "(Standard im Doppelklick-Paket)")
+    f.add_argument("--host")
+    f.add_argument("--port", type=int)
+    f.add_argument(
+        "--nicht-starten", action="store_true",
+        help="Fenster öffnen, den Server aber noch nicht starten")
+    f.add_argument(
+        "--selbsttest", action="store_true",
+        help="Fenster aufbauen, einmal aktualisieren, schließen — prüft im "
+             "Paketbau, dass das Fenster auf der Zielplattform entsteht")
+    f.set_defaults(func=cmd_fenster)
+
+    s = sub.add_parser("serve", help="Server starten (ohne Fenster)")
     s.add_argument("--host")
     s.add_argument("--port", type=int)
     s.add_argument("--log-level", default="info")
@@ -453,10 +481,12 @@ def main(argv: list[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
     if not getattr(args, "func", None):
-        # Ohne Unterbefehl: Server starten. Im Doppelklick-Paket (PyInstaller
-        # setzt sys.frozen) zusätzlich den Browser öffnen — wer die Datei
-        # anklickt, hat kein Terminal-Wissen und erwartet ein Fenster.
-        standard = ["serve", "--browser"] if getattr(sys, "frozen", False) else ["serve"]
+        # Ohne Unterbefehl: Im Doppelklick-Paket (PyInstaller setzt
+        # sys.frozen) das Startfenster — wer die Datei anklickt, hat kein
+        # Terminal-Wissen und will sehen, ob etwas läuft und wo es liegt.
+        # Ohne Paket bleibt es beim reinen Server; das Fenster gibt es dort
+        # ausdrücklich über "gastroviewer fenster".
+        standard = ["fenster"] if getattr(sys, "frozen", False) else ["serve"]
         args = parser.parse_args((argv or []) + standard)
     settings = get_settings()
     settings.ensure_dirs()

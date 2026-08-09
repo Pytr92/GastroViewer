@@ -33,9 +33,42 @@ Release entsteht mit jedem Versions-Tag):
   „Weitere Informationen" → „Trotzdem ausführen".
 - **macOS:** `GastroViewer-macOS-AppleSilicon` (M1–M4) bzw. `…-Intel` laden, im
   Terminal einmal `chmod +x GastroViewer-…`, dann Rechtsklick → „Öffnen".
-- Es öffnet sich ein Konsolenfenster (der Server, zugleich das Abruf-Protokoll)
-  und automatisch der Browser mit der Karte. **Konsolenfenster schließen = Programm
-  beenden.** Beim ersten Start dauert das Entpacken ein paar Sekunden.
+- Es öffnet sich das **Startfenster** (siehe unten) und dahinter ein
+  Konsolenfenster mit dem Abruf-Protokoll. Beim ersten Start dauert das Entpacken
+  ein paar Sekunden.
+
+#### Das Startfenster
+
+Ein kleines Fenster, das genau vier Dinge zeigt — und nichts behauptet, was es
+nicht belegen kann:
+
+| | |
+|---|---|
+| **Statuslampe und Text** | „Nicht gestartet" · „Startet …" · „Läuft — bereit" · „Gestartet, antwortet aber nicht" · „Port belegt — von einem anderen Programm" · „Start fehlgeschlagen: …" |
+| **Ein Knopf** | „Starten" bzw. „Beenden" |
+| **Der Link** | die Adresse der Oberfläche — anklicken öffnet den Browser |
+| **Was im Hintergrund läuft** | Datenverzeichnis, Fahrplanstand (GTFS), Einträge im Zwischenspeicher, Abrufe der letzten 24 Stunden |
+
+Zwei Entscheidungen dahinter sind wichtig:
+
+**Grün heißt wirklich grün.** Der Zustand „läuft" erscheint erst, wenn der Server
+tatsächlich geantwortet hat — nicht schon, wenn er gestartet wurde. Antwortet auf
+dem Port ein *anderes* Programm, sagt das Fenster genau das und startet nicht.
+Ein Statusfeld, das im Zweifel grün zeigt, wäre schlimmer als keines.
+
+**Nur Belegbares im Hintergrund-Abschnitt.** Dort stehen ausschließlich Werte aus
+Antworten des eigenen Servers. Kein Arbeitsspeicher, keine Prozessorlast, kein
+„alles in Ordnung" — solche Anzeigen sehen nach Kontrolle aus und sagen nichts
+über die Arbeit des Werkzeugs.
+
+Der Server läuft im **selben Prozess** wie das Fenster, in einem eigenen Faden.
+Deshalb gibt es keine verwaisten Hintergrundprozesse: Fenster zu, Server aus.
+Das Konsolenfenster bleibt daneben bestehen — nicht mehr als Aus-Schalter,
+sondern als Protokoll, damit ein Fehler beim Start nicht spurlos verschwindet.
+
+Mit Python gibt es dasselbe Fenster über `gastroviewer fenster`. Fehlt `tkinter`
+(auf manchen Linux-Systemen ein eigenes Paket), sagt das Programm das und nennt
+den Weg ohne Fenster — es stürzt nicht ab.
 
 Das Paket kann auch alle Kommandos (in einem Terminal aufrufen):
 `GastroViewer-Windows.exe import-gtfs --region muenchen` importiert z. B. den
@@ -100,7 +133,8 @@ export GASTROVIEWER_CONTACT="deine@mailadresse.de"     # Windows: set GASTROVIEW
 ## Kommandos
 
 ```bash
-gastroviewer serve                       # Server starten (Standard)
+gastroviewer fenster                     # Startfenster: Status, Start/Stopp, Link
+gastroviewer serve                       # Server ohne Fenster (Standard mit Python)
 gastroviewer serve --port 8080           # anderer Port
 gastroviewer status                      # Cache- und GTFS-Status
 gastroviewer clear-cache                 # Cache leeren
@@ -1320,6 +1354,7 @@ stillschweigend überspringt.
 ```
 gastroviewer/
   config.py          Einstellungen aus Umgebungsvariablen
+  startfenster.py    Startfenster: Status, Start/Stopp, Link zum Browser
   cache.py           SQLite-Cache mit TTL + Protokoll der echten Abrufe
   ratelimit.py       Mindestabstand je Dienst, serialisiert
   http.py            alle ausgehenden Aufrufe, Fehler → benennbare Ursachen
