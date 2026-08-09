@@ -16,4 +16,9 @@ export const state = {
   ebenen: {},         // name -> L.LayerGroup
   choroMetrik: 'Einwohner',
   ladeLauf: 0,        // verhindert, dass eine alte Antwort eine neue überschreibt
+  /* „Bekannte Grenzen dieser Daten" — kommt beim Start aus dem Backend,
+     damit die Texte nur an einer Stelle stehen. Steht hier und nicht als
+     eigene Variable, weil Modul-Importe schreibgeschützt sind: Ein
+     `export let` liesse sich vom Startcode aus nicht neu setzen. */
+  grenzen: [],
 };

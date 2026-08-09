@@ -131,3 +131,26 @@ export function warnungen(liste) {
 export function hinweisZeile(text, klasse = 'hinweis-klein') {
   return el('div', { class: klasse }, ...mitBetonung(text));
 }
+
+/* Eine aufklappbare Liste: erst die ersten Einträge, auf Knopfdruck alle.
+   Von mehreren Blockgruppen gebraucht — deshalb hier und nicht bei einer
+   von ihnen. */
+export function liste(eintraege, zeigeAnfangs = 12, zeichner) {
+  const ul = el('ul', { class: 'liste' });
+  const zeichne = (n) => {
+    ul.replaceChildren(...eintraege.slice(0, n).map(zeichner));
+    if (n < eintraege.length) {
+      ul.append(el('li', {}, el('button', {
+        class: 'mehr', onclick: () => zeichne(eintraege.length),
+      }, `alle ${eintraege.length} anzeigen`)));
+    }
+  };
+  zeichne(zeigeAnfangs);
+  return ul;
+}
+
+/* Fehleranzeige eines Blocks mit konkreter Ursache (Spec §5). */
+export function zeigeBlockFehler(id, err) {
+  setStatus(id, 'fehler', 'nicht erreichbar');
+  setInhalt(id, fehlerbox({ message: err.message || String(err) }));
+}

@@ -26,8 +26,8 @@ import {
 } from './js/format.js';
 import { state } from './js/state.js';
 import {
-  beiBlockRender, block, el, esc, fehlerbox, hinweisZeile, kennzahl,
-  setInhalt, setQuelle, setStatus, warnungen,
+  beiBlockRender, block, el, esc, fehlerbox, hinweisZeile, kennzahl, liste,
+  setInhalt, setQuelle, setStatus, warnungen, zeigeBlockFehler,
 } from './js/dom.js';
 import { hole } from './js/api.js';
 import { BRANCHEN, BRANCHE_SPEICHER, brancheKennzahlen } from './js/branche.js';
@@ -236,10 +236,6 @@ function ladeLinks() {
   }).then(zeigeLinks).catch((e) => zeigeBlockFehler('quellen', e));
 }
 
-function zeigeBlockFehler(id, err) {
-  setStatus(id, 'fehler', 'nicht erreichbar');
-  setInhalt(id, fehlerbox({ message: err.message || String(err) }));
-}
 
 function baueGeruest() {
   linksGeladen = false;
@@ -291,7 +287,7 @@ function baueGeruest() {
   );
   setStatus('grenzen', 'ok', '');
   setInhalt('grenzen', el('ul', { class: 'liste' },
-    GRENZEN.map((g) => el('li', {}, el('span', { class: 'haupt' }, g)))));
+    state.grenzen.map((g) => el('li', {}, el('span', { class: 'haupt' }, g)))));
   zeigeGehwegAngebot();
   zeigeLieferAngebot();
   zeigeOepnvEinzugAngebot();
@@ -555,7 +551,6 @@ function ladeGehweg() {
 }
 
 /* Wird beim Start vom Server geholt, damit die Texte nicht doppelt gepflegt werden. */
-let GRENZEN = [];
 
 /* ------------------------------------------------------------- Bloecke */
 
@@ -753,19 +748,6 @@ function kundenprofilSatz(b, ew) {
     + 'stehen nicht im Zensus-Gitter.');
 }
 
-function liste(eintraege, zeigeAnfangs = 12, zeichner) {
-  const ul = el('ul', { class: 'liste' });
-  const zeichne = (n) => {
-    ul.replaceChildren(...eintraege.slice(0, n).map(zeichner));
-    if (n < eintraege.length) {
-      ul.append(el('li', {}, el('button', {
-        class: 'mehr', onclick: () => zeichne(eintraege.length),
-      }, `alle ${eintraege.length} anzeigen`)));
-    }
-  };
-  zeichne(zeigeAnfangs);
-  return ul;
-}
 
 
 function brancheBereich(o) {
@@ -3584,8 +3566,8 @@ async function aktualisiereFuss() {
   try {
     // Grenzen-Texte kommen aus dem Backend, damit sie nur an einer Stelle stehen.
     const p = await (await fetch('/api/point/links?lat=48.1334&lon=11.5674&r=600')).json();
-    GRENZEN = p.grenzen || [];
-  } catch { GRENZEN = []; }
+    state.grenzen = p.grenzen || [];
+  } catch { state.grenzen = []; }
   aktualisiereFuss();
 }());
 
