@@ -11,6 +11,12 @@ Aufruf::
     gastroviewer serve --port 8011 &
     python scripts/uitest.py http://127.0.0.1:8011
 
+In der CI läuft dasselbe Skript ohne Netz gegen die Attrappe — die echte
+Anwendung mit aufgezeichneter Datenschicht::
+
+    python scripts/attrappe.py --port 8041 &
+    python scripts/uitest.py http://127.0.0.1:8041 --attrappe
+
 Voraussetzung ist Playwright mit Chromium::
 
     pip install playwright && playwright install chromium
@@ -1122,7 +1128,13 @@ def chromium_pfad() -> str | None:
 
 
 def main(argv: list[str]) -> int:
-    basis = argv[1] if len(argv) > 1 else "http://127.0.0.1:8000"
+    # --attrappe: Der Gegenüber ist scripts/attrappe.py, also die echte
+    # Anwendung mit aufgezeichneter Datenschicht und ohne Netz. Dann darf
+    # auch der Browser nicht hinaus — sonst hinge der Lauf in DNS-Zeitabläufen
+    # für Kartenkacheln, die keine einzige Prüfung braucht.
+    attrappe = "--attrappe" in argv
+    stellen = [a for a in argv[1:] if not a.startswith("-")]
+    basis = stellen[0] if stellen else "http://127.0.0.1:8000"
     basis = basis.rstrip("/")
 
     try:
@@ -1144,12 +1156,22 @@ def main(argv: list[str]) -> int:
     pfad = chromium_pfad()
     if pfad:
         startargs["executable_path"] = pfad
-    proxy = os.environ.get("HTTPS_PROXY")
-    if proxy:
-        # Der lokale Server darf nicht über den Proxy laufen.
-        startargs["proxy"] = {"server": proxy, "bypass": "127.0.0.1,localhost"}
+    if attrappe:
+        # Namensauflösung für alles außer dem lokalen Server abschalten.
+        # Das wirkt für jede Seite und jeden Kontext — anders als
+        # page.route(), das bei den eigenen Fenstern von Bericht und Duell
+        # neu gesetzt werden müsste. Kein Proxy: es soll nichts hinaus.
+        startargs["args"].append(
+            "--host-resolver-rules=MAP * ~NOTFOUND,EXCLUDE 127.0.0.1")
+    else:
+        proxy = os.environ.get("HTTPS_PROXY")
+        if proxy:
+            # Der lokale Server darf nicht über den Proxy laufen.
+            startargs["proxy"] = {"server": proxy,
+                                  "bypass": "127.0.0.1,localhost"}
 
-    print(f"Oberflächenprüfung gegen {basis}")
+    print(f"Oberflächenprüfung gegen {basis}"
+          + (" (Attrappe, ohne Netz)" if attrappe else ""))
     print("=" * 72)
 
     befunde: list[str] = []

@@ -1275,6 +1275,44 @@ Fehlt Playwright oder Chromium, endet das Skript mit **Exitcode 3** und der Meld
 „Oberfläche NICHT geprüft" — ein übersprungener Test darf nicht wie ein bestandener
 aussehen. Exitcode 2 heißt: der Server läuft nicht.
 
+### Dieselbe Prüfung ohne Netz — die Attrappe
+
+Der Haken an der Oberflächenprüfung war lange, dass sie einen Server **mit Internet**
+braucht und deshalb nur von Hand lief. Damit war das größte Einzelstück des Projekts
+das einzige, das keine automatische Absicherung hatte. Genau dort saßen zuletzt drei
+echte Fehler: sichtbare Sternchen aus der Markdown-Betonung, `null` als Text, und
+Blöcke, die bei einem Quellenfehler ewig im Ladezustand hingen.
+
+`scripts/attrappe.py` schließt die Lücke. Es ist **kein** Server, der aufgezeichnete
+Antworten ausspuckt, sondern die richtige Anwendung mit abgeschalteter Datenschicht:
+
+* Alles unter `/api/points` sowie Bericht und Duell laufen **echt** gegen eine frische
+  Datenbank in einem Wegwerfordner — sonst würden die Prüfungen zu Merken, Benoten,
+  Vergleichen und Löschen nichts mehr prüfen.
+* Die datenholenden Routen beantwortet eine Aufzeichnung echter Serverantworten.
+* Der ausgehende Verkehr ist gesperrt. Rutscht ein Aufruf durch, gibt es sofort eine
+  klare Meldung statt eines Zeitablaufs — ein Loch in der Abschirmung soll auffallen.
+
+```bash
+# einmalig aufnehmen (braucht Netz)
+gastroviewer serve --port 8031 &
+python scripts/aufzeichnen.py http://127.0.0.1:8031
+
+# beliebig oft abspielen (braucht nichts)
+python scripts/attrappe.py --port 8041 &
+python scripts/uitest.py http://127.0.0.1:8041 --attrappe
+```
+
+In diesem Modus schaltet die Prüfung zusätzlich die Namensauflösung des Browsers für
+alles außer `127.0.0.1` ab. Kartenkacheln laden dann nicht — das stört keine einzige
+Prüfung, verhindert aber, dass der Lauf ohne Netz in Zeitabläufen hängt.
+
+Beides läuft bei jedem Push in der CI (`.github/workflows/tests.yml`, Job
+`oberflaeche`). Ein eigener Test wacht darüber, dass die Aufzeichnung vollständig
+bleibt: Wer einen Block mit einem neuen Endpunkt ergänzt und das Aufzeichnen vergisst,
+bekommt einen roten Test — statt einer Browserprüfung, die den neuen Block
+stillschweigend überspringt.
+
 ---
 
 ## Aufbau
@@ -1305,7 +1343,9 @@ gastroviewer/
   static/            Oberfläche (Leaflet lokal, kein CDN)
 scripts/
   abnahme.py         Abnahmekriterien aus §7 gegen einen laufenden Server
-  uitest.py          Oberflächenprüfung im echten Browser
+  uitest.py          Oberflächenprüfung im echten Browser (auch --attrappe)
+  aufzeichnen.py     nimmt die echten /api-Antworten für die Attrappe auf
+  attrappe.py        die Anwendung ohne Netz — Grundlage der Browserprüfung in der CI
   vollpruefung.py    alle 29 API-Routen live, mit inhaltlicher Bewertung
 fixtures/            echte API-Antworten aus Phase 0, Grundlage der Tests
 docs/                Endpunktprüfung
