@@ -47,7 +47,8 @@ nicht belegen kann:
 | **Statuslampe und Text** | „Nicht gestartet" · „Startet …" · „Läuft — bereit" · „Gestartet, antwortet aber nicht" · „Port belegt — von einem anderen Programm" · „Start fehlgeschlagen: …" |
 | **Ein Knopf** | „Starten" bzw. „Beenden" |
 | **Der Link** | die Adresse der Oberfläche — anklicken öffnet den Browser |
-| **Was im Hintergrund läuft** | Datenverzeichnis, Fahrplanstand (GTFS), Einträge im Zwischenspeicher, Abrufe der letzten 24 Stunden |
+| **Kontaktadresse** | ein Feld für die eigene E-Mail — siehe unten |
+| **Was im Hintergrund läuft** | Datenverzeichnis, Kennzeichen der Abrufe, Fahrplanstand (GTFS), Einträge im Zwischenspeicher, Abrufe der letzten 24 Stunden |
 
 Zwei Entscheidungen dahinter sind wichtig:
 
@@ -65,6 +66,21 @@ Der Server läuft im **selben Prozess** wie das Fenster, in einem eigenen Faden.
 Deshalb gibt es keine verwaisten Hintergrundprozesse: Fenster zu, Server aus.
 Das Konsolenfenster bleibt daneben bestehen — nicht mehr als Aus-Schalter,
 sondern als Protokoll, damit ein Fehler beim Start nicht spurlos verschwindet.
+
+**Die Kontaktadresse.** OpenStreetMap und Nominatim verlangen in ihren
+Nutzungsbedingungen eine erreichbare Adresse im Kennzeichen der Abrufe — damit der
+Betreiber sich melden kann, statt einfach zu sperren. Bisher ging das nur über die
+Umgebungsvariable `GASTROVIEWER_CONTACT`; wer das Doppelklick-Paket benutzt, hatte
+davon nichts. Jetzt gibt es ein Feld im Startfenster: eintragen, speichern, fertig.
+Die Adresse landet als Datei `kontakt.txt` im Datenverzeichnis, wird **nur**
+mitgesendet und für nichts anderes benutzt. Läuft der Server gerade, wird er beim
+Speichern neu gestartet — sonst ginge die neue Adresse erst beim nächsten
+Programmstart mit, und das Fenster sagt es auch.
+
+Eine offensichtlich unbrauchbare Eingabe wird abgelehnt. Das ist Absicht: Eine
+erfundene Adresse ist schlimmer als keine, weil sie das Versprechen der
+Erreichbarkeit wertlos macht. Eine gesetzte Umgebungsvariable schlägt weiterhin die
+Datei — was jemand ausdrücklich in die Umgebung schreibt, gilt.
 
 Mit Python gibt es dasselbe Fenster über `gastroviewer fenster`. Fehlt `tkinter`
 (auf manchen Linux-Systemen ein eigenes Paket), sagt das Programm das und nennt

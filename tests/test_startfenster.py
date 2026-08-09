@@ -171,3 +171,64 @@ def test_fensterbau_wenn_tkinter_vorhanden():
     wurzel, aktualisieren, _ = _fenster_bauen(lauf, selbsttest=True)
     aktualisieren()
     wurzel.destroy()
+
+
+# ------------------------------------------------------- Kontaktadresse
+
+
+def test_kontakt_form_wird_geprueft():
+    """Geprüft wird die Form, nicht die Existenz. Eine erfundene Adresse
+    wäre schlimmer als keine — Nominatim verlangt sie, um bei Problemen
+    jemanden erreichen zu können."""
+    from gastroviewer.config import kontakt_gueltig
+
+    assert kontakt_gueltig("wirt@example.de")
+    assert kontakt_gueltig("max.mustermann@gastro-gmbh.de")
+    assert not kontakt_gueltig("falsch")
+    assert not kontakt_gueltig("a@b")
+    assert not kontakt_gueltig("mit leer@zeichen.de")
+    assert not kontakt_gueltig("")
+    assert not kontakt_gueltig("x@" + "y" * 250 + ".de")
+
+
+def test_kontakt_wird_gespeichert_und_gelesen(tmp_path):
+    from gastroviewer.config import lade_kontakt, loesche_kontakt, speichere_kontakt
+
+    assert lade_kontakt(tmp_path) is None
+    speichere_kontakt(tmp_path, "  wirt@example.de  ")
+    assert lade_kontakt(tmp_path) == "wirt@example.de"
+    assert loesche_kontakt(tmp_path) is True
+    assert lade_kontakt(tmp_path) is None
+
+
+def test_hinterlegte_adresse_wird_zum_kennzeichen(tmp_path, monkeypatch):
+    from gastroviewer.config import Settings, speichere_kontakt
+
+    monkeypatch.delenv("GASTROVIEWER_CONTACT", raising=False)
+    speichere_kontakt(tmp_path, "wirt@example.de")
+    s = Settings()
+    s.data_dir = tmp_path
+    s.ensure_dirs()
+    assert s.contact == "wirt@example.de"
+    assert "wirt@example.de" in s.user_agent
+
+
+def test_umgebungsvariable_schlaegt_die_datei(tmp_path, monkeypatch):
+    """Was jemand ausdrücklich in die Umgebung schreibt, gilt — nicht eine
+    Datei, die er vor Monaten einmal ausgefüllt hat."""
+    from gastroviewer.config import Settings, speichere_kontakt
+
+    monkeypatch.setenv("GASTROVIEWER_CONTACT", "aus-der-umgebung@example.de")
+    speichere_kontakt(tmp_path, "aus-der-datei@example.de")
+    s = Settings()
+    s.data_dir = tmp_path
+    s.ensure_dirs()
+    assert s.contact == "aus-der-umgebung@example.de"
+
+
+def test_kennzeichen_steht_in_den_hintergrundangaben():
+    """Angezeigt wird der Wert des Servers, nicht der eingetippte — nur so
+    sieht man, ob die Adresse wirklich angekommen ist."""
+    zeilen = dict(hintergrund_fakten(
+        {"user_agent": "gastroviewer/0.1.0 (wirt@example.de)"}, None))
+    assert zeilen["Kennzeichen der Abrufe"].endswith("(wirt@example.de)")

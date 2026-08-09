@@ -7,6 +7,7 @@ Plattformunabhängig: Pfade über pathlib, Datenverzeichnis im Home des Nutzers
 from __future__ import annotations
 
 import os
+import re
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -283,6 +284,60 @@ class Settings:
 
     def ensure_dirs(self) -> None:
         self.data_dir.mkdir(parents=True, exist_ok=True)
+        # Eine hinterlegte Kontaktadresse gilt, sobald das Datenverzeichnis
+        # bekannt ist — aber nur, wenn keine Umgebungsvariable gesetzt ist.
+        # Was jemand ausdrücklich in die Umgebung schreibt, schlägt eine
+        # Datei, die er vor Monaten einmal ausgefüllt hat.
+        if not _env("GASTROVIEWER_CONTACT", ""):
+            hinterlegt = lade_kontakt(self.data_dir)
+            if hinterlegt:
+                self.contact = hinterlegt
+
+
+#: Wo die Kontaktadresse liegt. Bewusst eine eigene, gut auffindbare Datei
+#: und kein Eintrag in der Cache-Datenbank: Wer sie ändern oder löschen
+#: will, soll das ohne Werkzeug tun können.
+KONTAKT_DATEI = "kontakt.txt"
+
+#: Absichtlich großzügig. Die Adresse geht an fremde Dienste; sie muss
+#: erkennbar eine Kontaktmöglichkeit sein, aber das Werkzeug ist nicht der
+#: Ort, an dem entschieden wird, welche Adressen es gibt.
+_KONTAKT_MUSTER = re.compile(r"^[^@\s]+@[^@\s]+\.[A-Za-z]{2,}$")
+
+
+def kontakt_gueltig(adresse: str) -> bool:
+    """Sieht das nach einer erreichbaren Adresse aus?
+
+    Geprüft wird die Form, nicht die Existenz — zustellen kann das Werkzeug
+    nichts. Eine falsche Adresse hier ist schlimmer als keine: Nominatim
+    verlangt sie ausdrücklich, um bei Problemen jemanden erreichen zu
+    können, und eine erfundene Adresse macht dieses Versprechen wertlos.
+    """
+    adresse = (adresse or "").strip()
+    return bool(_KONTAKT_MUSTER.match(adresse)) and len(adresse) <= 200
+
+
+def lade_kontakt(data_dir: Path) -> str | None:
+    pfad = Path(data_dir) / KONTAKT_DATEI
+    try:
+        adresse = pfad.read_text(encoding="utf-8").strip()
+    except OSError:
+        return None
+    return adresse or None
+
+
+def speichere_kontakt(data_dir: Path, adresse: str) -> None:
+    pfad = Path(data_dir) / KONTAKT_DATEI
+    pfad.parent.mkdir(parents=True, exist_ok=True)
+    pfad.write_text(adresse.strip() + "\n", encoding="utf-8")
+
+
+def loesche_kontakt(data_dir: Path) -> bool:
+    pfad = Path(data_dir) / KONTAKT_DATEI
+    if pfad.exists():
+        pfad.unlink()
+        return True
+    return False
 
 
 _settings: Settings | None = None

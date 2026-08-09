@@ -34,7 +34,7 @@ import urllib.error
 import urllib.request
 from typing import Any
 
-from .config import Settings
+from .config import Settings, kontakt_gueltig, speichere_kontakt
 
 # Wie lange ein Start dauern darf, bevor „startet …" zu „antwortet nicht"
 # wird. Großzügig, weil der erste Start eines gefrorenen Pakets das Paket
@@ -111,6 +111,12 @@ def hintergrund_fakten(health: dict[str, Any] | None,
     verzeichnis = h.get("datenverzeichnis") or datenverzeichnis
     if verzeichnis:
         zeilen.append(("Datenverzeichnis", str(verzeichnis)))
+    # Das Kennzeichen, mit dem die Abrufe hinausgehen — die Stelle, an der
+    # die eingetragene Kontaktadresse tatsächlich auftaucht. Angezeigt wird
+    # der Wert des Servers, nicht der eingetippte: Nur so sieht man, ob die
+    # Adresse wirklich angekommen ist.
+    if h.get("user_agent"):
+        zeilen.append(("Kennzeichen der Abrufe", str(h["user_agent"])))
 
     gtfs = h.get("gtfs") or {}
     if gtfs.get("importiert"):
@@ -231,7 +237,7 @@ def _fenster_bauen(lauf: Serverlauf, selbsttest: bool = False):
 
     wurzel = tk.Tk()
     wurzel.title("GastroViewer — Standort-Datenterminal")
-    wurzel.minsize(560, 420)
+    wurzel.minsize(600, 560)
     rahmen = ttk.Frame(wurzel, padding=16)
     rahmen.pack(fill="both", expand=True)
 
@@ -252,10 +258,68 @@ def _fenster_bauen(lauf: Serverlauf, selbsttest: bool = False):
 
     ttk.Separator(rahmen, orient="horizontal").grid(
         row=4, column=0, columnspan=2, sticky="ew", pady=12)
-    ttk.Label(rahmen, text="Was im Hintergrund läuft",
+
+    # --- Kontaktadresse ---------------------------------------------------
+    # Nominatim verlangt in seinen Nutzungsbedingungen ausdrücklich eine
+    # Kontaktmöglichkeit im User-Agent, damit der Betreiber bei Problemen
+    # jemanden erreichen kann. Bisher ging das nur über eine
+    # Umgebungsvariable — wer das Doppelklick-Paket benutzt, hat davon
+    # nichts. Deshalb hier ein Feld.
+    ttk.Label(rahmen, text="Kontaktadresse für die Datendienste",
               font=("", 10, "bold")).grid(row=5, column=0, columnspan=2, sticky="w")
+    ttk.Label(
+        rahmen, justify="left", foreground="#666", wraplength=520,
+        text=("OpenStreetMap/Nominatim verlangt eine erreichbare Adresse im "
+              "Kennzeichen der Abrufe — damit der Betreiber sich melden kann, "
+              "statt einfach zu sperren. Sie wird nur mitgesendet, nirgends "
+              "hinterlegt und für nichts anderes benutzt."),
+    ).grid(row=6, column=0, columnspan=2, sticky="w", pady=(2, 4))
+
+    kontakt_zeile = ttk.Frame(rahmen)
+    kontakt_zeile.grid(row=7, column=0, columnspan=2, sticky="ew")
+    kontakt_feld = ttk.Entry(kontakt_zeile, width=38)
+    vorbelegt = lauf.settings.contact or ""
+    kontakt_feld.insert(0, vorbelegt if "@" in vorbelegt else "")
+    kontakt_feld.pack(side="left")
+    kontakt_knopf = ttk.Button(kontakt_zeile, text="Speichern")
+    kontakt_knopf.pack(side="left", padx=(8, 0))
+    kontakt_meldung = ttk.Label(rahmen, text="", justify="left", wraplength=520)
+    kontakt_meldung.grid(row=8, column=0, columnspan=2, sticky="w", pady=(2, 0))
+
+    def kontakt_speichern() -> None:
+        adresse = kontakt_feld.get().strip()
+        if not kontakt_gueltig(adresse):
+            kontakt_meldung.configure(
+                text="Das sieht nicht nach einer E-Mail-Adresse aus. Eine "
+                     "erfundene Adresse wäre schlimmer als keine — dann "
+                     "lieber leer lassen.",
+                foreground="#a01c1c")
+            return
+        speichere_kontakt(lauf.settings.data_dir, adresse)
+        lauf.settings.contact = adresse
+        if lauf.laeuft:
+            # Das Kennzeichen entsteht beim Aufbau der Anwendung. Damit die
+            # neue Adresse wirklich mitgeht, muss der Server neu starten —
+            # das wird getan und gesagt, statt es stillschweigend erst beim
+            # nächsten Programmstart wirken zu lassen.
+            lauf.beenden()
+            lauf.starten()
+            kontakt_meldung.configure(
+                text=f"Gespeichert: {adresse} — der Server wurde dafür neu "
+                     "gestartet.", foreground="#2f712c")
+        else:
+            kontakt_meldung.configure(
+                text=f"Gespeichert: {adresse}", foreground="#2f712c")
+        aktualisieren()
+
+    kontakt_knopf.configure(command=kontakt_speichern)
+
+    ttk.Separator(rahmen, orient="horizontal").grid(
+        row=9, column=0, columnspan=2, sticky="ew", pady=12)
+    ttk.Label(rahmen, text="Was im Hintergrund läuft",
+              font=("", 10, "bold")).grid(row=10, column=0, columnspan=2, sticky="w")
     fakten = ttk.Label(rahmen, text="—", justify="left", foreground="#333")
-    fakten.grid(row=6, column=0, columnspan=2, sticky="w", pady=(4, 0))
+    fakten.grid(row=11, column=0, columnspan=2, sticky="w", pady=(4, 0))
     rahmen.columnconfigure(1, weight=1)
 
     def oeffnen(_ereignis: Any = None) -> None:
