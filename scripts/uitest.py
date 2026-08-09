@@ -114,7 +114,19 @@ def pruefe_grundgeruest(page) -> str:
 
 
 def pruefe_quellenangaben(page) -> str:
-    """Spec §5: jeder Block nennt Quelle, Stand und Lizenz."""
+    """Spec §5: jeder Block nennt Quelle, Stand und Lizenz.
+
+    Ausgenommen sind zwei Gruppen. Die erste ist eine kurze, begründete
+    Namensliste. Die zweite — Blöcke, die erst auf Knopfdruck laden — wird
+    **nicht** namentlich geführt, sondern am Zustand erkannt: Was noch
+    nichts geholt hat, hat auch nichts zu belegen.
+
+    Das ist die Lehre aus einem echten Befund: Die frühere Namensliste war
+    seit Block 6h und 4g veraltet, weil beim Anlegen neuer
+    Auf-Knopfdruck-Blöcke niemand daran dachte, sie nachzuziehen. Eine
+    Prüfung, die bei jedem neuen Block von Hand gepflegt werden muss,
+    schlägt irgendwann fehl, ohne dass etwas kaputt ist.
+    """
     ohne = page.eval_on_selector_all(
         ".block",
         """e => e.filter(b => {
@@ -122,8 +134,12 @@ def pruefe_quellenangaben(page) -> str:
             // 'score' ist abgeleitet: seine Quellen stehen je Kennzahl in den
             // Zeilen, ein einzelner Quellen-Fuß wäre irreführend. 'genesis'
             // bleibt ohne Kennung begründet leer — und dann ohne Quelle.
-            if (['grenzen', 'gehweg', 'liefergebiet', 'bodenrichtwert', 'score', 'genesis'].includes(id)) return false;
-            return !b.querySelector('.quelle');
+            if (['grenzen', 'bodenrichtwert', 'score', 'genesis'].includes(id)) return false;
+            if (b.querySelector('.quelle')) return false;
+            const st = (b.querySelector('.status')?.textContent || '').toLowerCase();
+            // Ruhezustände: noch nicht angefordert, oder für diesen Ort gar
+            // nicht zuständig. In beiden Fällen wurde nichts geholt.
+            return !st.includes('anforderung') && !st.includes('nur berlin');
         }).map(b => b.id)""")
     fordere(not ohne, f"Blöcke ohne Quellenangabe: {ohne}")
     q = text(page, "#block-gastronomie .quelle")
