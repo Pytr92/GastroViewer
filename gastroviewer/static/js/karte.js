@@ -56,6 +56,9 @@ state.gehwegRenderer = L.canvas({ padding: 0.3 });
 state.ebenen.gehflaeche = L.layerGroup();
 /* Rad-Liefergebiet (4d): dasselbe Prinzip, größeres Gebiet, Radprofil. */
 state.ebenen.liefergebiet = L.layerGroup();
+/* Fahrzeit-Einzugsgebiet mit dem Auto (4h): die Kennzahl, nach der jede
+   Systemzentrale fragt — und die, bei der der Kreis am stärksten trügt. */
+state.ebenen.fahrzeit = L.layerGroup();
 /* ÖPNV-Einzugsgebiet (6h): erreichte Halte, nach Fahrzeit eingefärbt. */
 state.ebenen.oepnveinzug = L.layerGroup();
 /* Übersichtsgitter 1 km/10 km — beantwortet „WO ist es interessant?", bevor
@@ -91,6 +94,7 @@ const ebenenSchalter = L.control.layers({
   'Gemerkte Punkte': state.ebenen.punkte,
   'Zu Fuß erreichbar': state.ebenen.gehflaeche,
   'Rad-Liefergebiet': state.ebenen.liefergebiet,
+  'Fahrzeit mit dem Auto': state.ebenen.fahrzeit,
   'ÖPNV-Einzugsgebiet': state.ebenen.oepnveinzug,
   'Zensus-Gitter': state.ebenen.zensus,
   'Gastronomie': state.ebenen.gastronomie,

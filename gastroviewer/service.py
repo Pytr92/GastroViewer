@@ -1108,6 +1108,24 @@ class PointService:
 
         return await self._cached("pendler", f"pendler|{a}", laden)
 
+    async def fahrzeit(self, lat: float, lon: float, minuten: int) -> SourceResult:
+        """Fahrzeit-Einzugsgebiet mit dem Auto — nur auf Anforderung.
+
+        Phase 0 hat gezeigt, dass die öffentlichen Overpass-Spiegel bei
+        dieser Abfragegröße zeitweise mit HTTP 504 antworten. Ein Block,
+        der bei jedem Punktwechsel automatisch liefe, würde das Werkzeug
+        unzuverlässig machen — und die Dienste unnötig belasten.
+        """
+        from .sources import fahrzeit as fz_mod
+
+        minuten = max(fz_mod.MIN_MINUTEN, min(fz_mod.MAX_MINUTEN, int(minuten)))
+        key = cache_key("fahrzeit", lat, lon, minuten)
+
+        async def laden() -> SourceResult:
+            return await fz_mod.load(self.out, self.settings, lat, lon, minuten)
+
+        return await self._cached("fahrzeit", key, laden)
+
     async def liefergebiet(self, lat: float, lon: float, minuten: int) -> SourceResult:
         """Rad-Liefergebiet — wie der Gehweg-Block nur auf Anforderung, denn
         das Wegenetz für 10 Minuten Rad ist eine große Overpass-Abfrage.

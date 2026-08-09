@@ -930,6 +930,33 @@ Regionaldatenbank führt nur Jahressummen, Destatis verlangt für den Abruf eine
 Kennung; außerhalb Münchens verweist der Block deshalb ehrlich auf den
 Jahreswert im Kreisprofil.
 
+## Fahrzeit-Einzugsgebiet (Block 4h) — wie weit kommt ein Gast mit dem Auto?
+
+Für Schnellgastronomie, erst recht mit Drive-through, ist „Einwohner im
+10-Minuten-Fahrzeitgebiet" die Kennzahl, nach der jede Systemzentrale fragt. Der
+Umkreis-Kreis überschätzt das systematisch: Flüsse, Bahnlinien und Autobahnen ohne
+Anschluss schneiden ganze Sektoren ab — beim Auto stärker als zu Fuß.
+
+Vier Grenzen stehen im Block, weil sie das Ergebnis prägen:
+
+- **Freifluss-Fahrzeit** — ohne Stau, ohne Ampelphasen, ohne Tageszeit. Im
+  Berufsverkehr ist das Gebiet kleiner, nachts größer.
+- **Hauptstraßennetz** (Autobahn bis Tertiärstraße). Wohnstraßen vervierfachen die
+  Datenmenge und ändern an einer Zehn-Minuten-Fahrt wenig; die letzten Meter fehlen
+  dadurch, die Fläche ist am Rand eher zu klein als zu groß.
+- **Einbahnstraßen bleiben unberücksichtigt** — jede Kante wird in beide Richtungen
+  gefahren. In Innenstädten fällt das Gebiet dadurch etwas zu groß aus.
+- **Tempolimits** kommen aus OpenStreetMap, wo vorhanden (Phase 0: München 97–99 %,
+  Köln 85 %); sonst gilt eine Annahme je Straßenklasse, die mitausgegeben wird.
+
+Ausgewiesen wird auch der **Weg bis zur nächsten Hauptstraße**. Am Marienplatz sind
+das 278 m — es ist eine Fußgängerzone, und für Autokundschaft ist genau das der
+entscheidende Befund.
+
+Der Block läuft **nur auf Knopfdruck**: Die Abfrage ist die größte des Werkzeugs,
+und die öffentlichen Overpass-Spiegel antworteten in Phase 0 in drei von sieben
+Fällen mit einer Zeitüberschreitung.
+
 ## Rad-Liefergebiet (Block 4d) — erreichbare Einwohner in Lieferzeit
 
 Für Lieferkonzepte zählt nicht der Umkreis, sondern: wie viele Menschen erreicht ein

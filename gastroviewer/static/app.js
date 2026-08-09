@@ -35,7 +35,8 @@ import { BRANCHEN, BRANCHE_SPEICHER, brancheKennzahlen } from './js/branche.js';
 import { schaetzState, spanne, zeigeSchaetzung } from './js/schaetzung.js';
 import { ueberlappungen } from './js/geometrie.js';
 import {
-  zeigeGehwegAngebot, zeigeLieferAngebot, zeigeOepnvEinzugAngebot,
+  zeigeFahrzeitAngebot, zeigeGehwegAngebot, zeigeLieferAngebot,
+  zeigeOepnvEinzugAngebot,
 } from './js/bloecke-mobilitaet.js';
 import {
   ladeRegister, zeigeKopf, zeigeLeerstandsmelder, zeigeOsm, zeigeZensus,
@@ -270,6 +271,7 @@ function baueGeruest() {
     block('gastronomie', '4 · Gastronomie'),
     block('gehweg', '4b · Erreichbarkeit zu Fuß'),
     block('liefergebiet', '4d · Rad-Liefergebiet'),
+    block('fahrzeit', '4h · Fahrzeit-Einzugsgebiet (Auto)'),
     block('franchise', '4c · Systemgastronomie & Marken'),
     block('dynamik', '4e · Gastro-Dynamik (OSM-Historie)'),
     block('overture', '4f · Wettbewerbs-Abgleich (Overture)'),
@@ -303,6 +305,7 @@ function baueGeruest() {
     state.grenzen.map((g) => el('li', {}, el('span', { class: 'haupt' }, g)))));
   zeigeGehwegAngebot();
   zeigeLieferAngebot();
+  zeigeFahrzeitAngebot();
   zeigeOepnvEinzugAngebot();
   zeigeIhkAngebot();
 }

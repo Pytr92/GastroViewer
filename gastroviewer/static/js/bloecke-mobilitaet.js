@@ -273,12 +273,128 @@ function ladeGehweg() {
 
 /* Wird beim Start vom Server geholt, damit die Texte nicht doppelt gepflegt werden. */
 
+/* --- 4h Fahrzeit-Einzugsgebiet mit dem Auto ---------------------------
+   Für Schnellgastronomie mit Drive-through die Kennzahl, nach der jede
+   Systemzentrale fragt. Nur auf Knopfdruck: Phase 0 hat gezeigt, dass die
+   öffentlichen Overpass-Spiegel bei dieser Abfragegröße zeitweise mit
+   HTTP 504 antworten — automatisch geladen würde das Werkzeug dadurch
+   unzuverlässig wirken. */
+function zeigeFahrzeitAngebot() {
+  state.ebenen.fahrzeit?.clearLayers();
+  setStatus('fahrzeit', 'ok', 'auf Anforderung');
+  const minuten = el('select', { id: 'fahrzeit-minuten' },
+    [5, 8, 10].map((m) => {
+      const o = el('option', { value: String(m) }, `${m} Minuten`);
+      if (m === 10) o.selected = true;
+      return o;
+    }));
+  setInhalt('fahrzeit',
+    el('p', { class: 'hinweis-klein' },
+      'Wie weit kommt ein Gast in fünf bis zehn Minuten mit dem Auto? Der '
+      + 'Umkreis-Kreis überschätzt das systematisch — Flüsse, Bahnlinien und '
+      + 'Autobahnen ohne Anschluss schneiden ganze Sektoren ab.'),
+    hinweisZeile(
+      'Gerechnet wird die **Freifluss-Fahrzeit** auf dem Hauptstraßennetz: '
+      + 'ohne Stau, ohne Ampelphasen. Im Berufsverkehr ist das Gebiet '
+      + 'kleiner, nachts größer.'),
+    el('div', { class: 'pflegeleiste' },
+      el('label', { for: 'fahrzeit-minuten' }, 'Fahrzeit'),
+      minuten,
+      el('button', { id: 'btn-fahrzeit', onclick: ladeFahrzeit },
+        'Einzugsgebiet berechnen')));
+}
+
+function ladeFahrzeit() {
+  const lauf = state.ladeLauf;
+  const { lat, lon } = state;
+  const minuten = Number(document.getElementById('fahrzeit-minuten')?.value || 10);
+  setStatus('fahrzeit', 'laedt', 'lädt …');
+  setInhalt('fahrzeit', el('div', { class: 'laden' }),
+    el('p', { class: 'hinweis-klein' },
+      'Das Straßennetz wird geholt — je nach Auslastung der öffentlichen '
+      + 'Overpass-Spiegel dauert das bis zu eineinhalb Minuten.'));
+  const knopf = document.getElementById('btn-fahrzeit');
+  if (knopf) knopf.disabled = true;
+  hole('/api/point/fahrzeit', { lat, lon, minuten })
+    .then((d) => {
+      if (lauf !== state.ladeLauf) return;
+      state.daten.fahrzeit = d;
+      zeigeFahrzeit(d);
+    })
+    .catch((e) => { if (lauf === state.ladeLauf) zeigeBlockFehler('fahrzeit', e); })
+    .finally(() => { if (knopf) knopf.disabled = false; });
+}
+
+function zeigeFahrzeit(d) {
+  const id = 'fahrzeit';
+  if (!d.ok) {
+    setStatus(id, 'fehler', 'nicht erreichbar');
+    setInhalt(id, fehlerbox(d.error),
+      el('button', { onclick: zeigeFahrzeitAngebot }, 'Erneut versuchen'));
+    setQuelle(id, d.provenance);
+    return;
+  }
+  const f = d.data;
+  if (!f) {
+    setStatus(id, 'ok', 'ohne Ergebnis');
+    setInhalt(id, ...warnungen(d.warnings || []),
+      el('button', { onclick: zeigeFahrzeitAngebot }, 'Erneut versuchen'));
+    setQuelle(id, d.provenance);
+    return;
+  }
+  setStatus(id, 'ok', `${f.minuten} min`);
+  zeichneFahrzeitflaeche(f);
+
+  setInhalt(id,
+    el('div', { class: 'kennzahlen' },
+      kennzahl(`Erreichte Netzknoten in ${f.minuten} min`, f.erreichte_knoten),
+      kennzahl('Weg bis zur Hauptstraße', f.anbindung_m, 'm'),
+      kennzahl('Wege im Netz', f.netz.wege),
+      kennzahl('davon mit Tempolimit', f.netz.tempolimit_anteil, '%', 1)),
+    el('p', { class: 'hinweis-klein' },
+      `Gerechnet mit ${Math.round(f.annahmen.zuegigkeit * 100)} % des `
+      + 'Tempolimits (gewählter Wert für Kreuzungen und Abbiegen). Wo '
+      + 'OpenStreetMap kein Limit kennt, gilt eine Annahme je Straßenklasse. '
+      + `Netz geholt im Umkreis von ${NF.format(f.netz.umkreis_m)} m.`),
+    el('button', { onclick: zeigeFahrzeitAngebot }, 'andere Fahrzeit wählen'),
+    ...(f.hinweise || []).map((h) => hinweisZeile(h, 'notiz')),
+    ...warnungen(d.warnings || []));
+  setQuelle(id, d.provenance);
+}
+
+function zeichneFahrzeitflaeche(f) {
+  const gruppe = state.ebenen.fahrzeit;
+  if (!gruppe) return;
+  gruppe.clearLayers();
+  const punkte = f?.flaeche || [];
+  if (!punkte.length) return;
+  const max = f.minuten * 60 || 1;
+  for (const [lat, lon, sekunden] of punkte) {
+    const anteil = sekunden / max;
+    const stufe = GEH_STUFEN.find((s) => anteil <= s.bis)
+      || GEH_STUFEN[GEH_STUFEN.length - 1];
+    gruppe.addLayer(L.circleMarker([lat, lon], {
+      renderer: state.gehwegRenderer,
+      radius: 3,
+      stroke: false,
+      fillColor: stufe.farbe,
+      fillOpacity: 0.75,
+    }));
+  }
+  gruppe.addTo(karte);
+}
+
+
 export {
+  ladeFahrzeit,
   ladeGehweg,
   ladeLiefergebiet,
   ladeOepnvEinzug,
   zeichneLieferflaeche,
   zeigeGehwegAngebot,
+  zeichneFahrzeitflaeche,
+  zeigeFahrzeit,
+  zeigeFahrzeitAngebot,
   zeigeLieferAngebot,
   zeigeLiefergebiet,
   zeigeOepnvEinzug,

@@ -904,3 +904,31 @@ Dass diese drei erst jetzt auffielen, hat einen benennbaren Grund: In den beiden
 **Ein Fund aus der Aufzeichnung selbst.** Der Flächen-Scan antwortete auf meinen ersten Ausschnitt mit HTTP 422 — „Ausschnitt zu groß, rund 4×5 km sind das Limit". Die Oberfläche klemmt ihren Ausschnitt selbst auf `SCAN_SPANNE` (0,055° × 0,04°) um die Kartenmitte. Aufgezeichnet wird jetzt genau die Box, die sie an der Prüfkoordinate bildet. Ein ausgedachter Ausschnitt hätte hier plausibel ausgesehen und wäre falsch gewesen — dasselbe Muster wie bei den WFS-Fallen der 9. Runde.
 
 **Stand:** Alle **44 Prüfungen ohne Befund**, nichts übersprungen. Testsuite **628 Tests grün** (613 + 15 neue). Beides läuft bei jedem Push in der CI; ein eigener Test liest die Endpunkte direkt aus `app.js` und schlägt fehl, wenn ein neuer Block weder aufgezeichnet ist noch echt läuft.
+
+---
+
+## Nachtrag 11. Runde (09.08.2026) — Franchise-Sicht: Profil, Arbeitsstand, Fahrzeit
+
+**Phase 0 zum Autonetz (Overpass, 09.08.2026).** Sieben Abrufe, protokolliert:
+
+| Ort | Umkreis | Netz | Dauer | Größe | Wege | mit `maxspeed` |
+|---|---|---|---|---|---|---|
+| München | 3 000 m | vollständig (mit Wohnstraßen) | 13–67 s | 5,04 MB | 5 109 | 98 % |
+| München | 2 200 m | Hauptnetz | 16 s | 1,34 MB | 1 338 | 99 % |
+| München | 6 500 m | Hauptnetz | 13 s | 6,64 MB | 6 801 | 97 % |
+| Köln | 6 500 m | Hauptnetz | 63 s | 5,80 MB | 6 745 | **85 %** |
+| München | 9 000 m | Hauptnetz | — | — | — | HTTP 504 |
+| Köln | 5 000 m | Hauptnetz | — (91 s) | — | — | HTTP 504 |
+| München | 6 500 m (erster Versuch, anderer Spiegel) | Hauptnetz | — (32 s) | — | — | HTTP 504 |
+
+Drei Befunde, die den Entwurf bestimmen:
+
+1. **Wohnstraßen vervierfachen die Datenmenge.** Mit ihnen sind bei 3 km schon 5 MB erreicht, ohne sie reichen 6,6 MB für 6,5 km. Gerechnet wird deshalb auf dem **Hauptnetz** (Autobahn bis Tertiärstraße). Was fehlt, sind die letzten Meter durchs Wohngebiet — die erreichbare Fläche ist am Rand also eher zu klein als zu groß.
+2. **Die öffentlichen Spiegel sind unzuverlässig.** Drei von sieben Abrufen endeten mit HTTP 504, teils erst nach 91 Sekunden; **dieselbe** Abfrage lief beim zweiten Versuch durch (Köln 6 500 m). Der Block läuft deshalb nur **auf Anforderung**, nicht bei jedem Punktwechsel — und ein Fehlschlag wird als Fehlschlag angezeigt.
+3. **Tempolimits sind gut, aber ungleich erfasst.** München 97–99 %, Köln 85 %. Für den Rest gilt eine Annahme je Straßenklasse; sie steht in der Antwort, nicht nur im Quelltext. Der Umkreis ist auf 6 500 m gedeckelt (9 km lieferte reproduzierbar nichts mehr); greift der Deckel, wird das ausgewiesen.
+
+**Ein Fund beim Rechnen:** Am Marienplatz liegt keine Hauptstraße in unmittelbarer Nähe — es ist eine Fußgängerzone. Die erste Fassung nahm die 150-m-Anbindungsgrenze des Gehwegnetzes und scheiterte dort. Für das Auto sind es jetzt 900 m, und der Anfahrtsweg wird als eigene Kennzahl ausgewiesen (Marienplatz 278 m gegen 256 m in der Wohnlage). Für Autokundschaft ist genau diese Zahl der Befund, nicht ein Nebenwert.
+
+**Kriterienkatalog und Arbeitsstand** brauchten keine neue Quelle — sie arbeiten auf den vorhandenen Vergleichsspalten bzw. der Punkte-Datenbank. Beim Arbeitsstand fiel ein Datenverlust-Risiko auf: Der bisherige Schreibweg setzte Notiz und Note immer gemeinsam; mit einem dritten Feld hätte das Setzen des Arbeitsstands eine eingetippte Notiz stillschweigend gelöscht. Geschrieben werden jetzt nur die übergebenen Felder.
+
+**Stand:** 694 Tests grün, 44 Browserprüfungen ohne Befund.

@@ -259,3 +259,15 @@ def ihk_berlin_csv():
 @pytest.fixture(scope="session")
 def kalender_fixture():
     return load_fixture("raw_kalender.json")
+
+
+@pytest.fixture(scope="session")
+def overpass_auto_muenchen():
+    """Echtes Autonetz um den Marienplatz (Overpass, 09.08.2026, r=2 200 m).
+
+    Auf die Felder eingedampft, die das Modul liest — roh sind es 1,34 MB.
+    """
+    import gzip
+
+    pfad = FIXTURES / "raw_overpass_auto_muenchen.json.gz"
+    return json.loads(gzip.decompress(pfad.read_bytes()))

@@ -187,7 +187,8 @@ class Settings:
 
     def ttl_for(self, source: str) -> int:
         if (source.startswith("gehweg") or source.startswith("planung")
-                or source.startswith("liefergebiet")):
+                or source.startswith("liefergebiet")
+                or source.startswith("fahrzeit")):
             return self.ttl_gehweg
         if source.startswith("overpass"):
             return self.ttl_osm

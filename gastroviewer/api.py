@@ -473,6 +473,18 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             await s.indikatoren(adresse.data if adresse.ok else None)
         ).to_dict()
 
+    @app.get("/api/point/fahrzeit")
+    async def point_fahrzeit(
+        request: Request,
+        lat: float = Query(...), lon: float = Query(...),
+        minuten: int = Query(10, ge=5, le=10),
+    ):
+        """Erreichbare Fläche mit dem Auto — auf Anforderung (Phase 0: die
+        Abfrage ist gross und die oeffentlichen Spiegel antworten zeitweise
+        mit HTTP 504)."""
+        _validate(lat, lon, 600)
+        return (await svc(request).fahrzeit(lat, lon, minuten)).to_dict()
+
     @app.get("/api/point/liefergebiet")
     async def point_liefergebiet(
         request: Request, lat: float, lon: float,

@@ -69,6 +69,9 @@ NUR_FUER = {
     "/api/point/gehweg": ["isarufer"],          # Prüfungen 33 und 34
     "/api/point/liefergebiet": ["marienplatz"],
     "/api/point/oepnv-einzug": ["marienplatz"],
+    # Das Autonetz ist die groesste Einzelabfrage des Werkzeugs (Phase 0:
+    # 6,6 MB bei 6,5 km). Zwei Standorte reichen der Browserpruefung.
+    "/api/point/fahrzeit": ["marienplatz", "giesing"],
     "/api/point/marke": ["marienplatz"],         # Prüfung 18
 }
 
@@ -216,6 +219,9 @@ def aufzeichnen(basis: str, vorhanden: dict[str, Any] | None = None,
         if name in NUR_FUER["/api/point/oepnv-einzug"]:
             merke("/api/point/oepnv-einzug", {"lat": lat, "lon": lon,
                                               "minuten": 30})
+        if name in NUR_FUER["/api/point/fahrzeit"]:
+            merke("/api/point/fahrzeit", {"lat": lat, "lon": lon,
+                                          "minuten": 10})
         merke("/api/register", {"plz": ""})
 
     # Kartenebenen. Die Ausschnitte müssen zu dem passen, was der Browser
