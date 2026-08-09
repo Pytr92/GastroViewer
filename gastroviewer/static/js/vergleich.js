@@ -87,31 +87,72 @@ function merkeGruppenwahl() {
 /* Eigene Note und Notiz. Das Werkzeug bewertet bewusst nicht und stellt keine
    Rangfolge auf — der Nutzer darf und soll das aber. Gespeichert wird beim
    Verlassen des Feldes, nicht bei jedem Tastendruck. */
-async function speichereEigenes(id, zeile) {
+async function speichereEigenes(id, felder) {
   try {
     const r = await fetch(`/api/points/${id}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        notiz: zeile.notiz || null,
-        bewertung: zeile.bewertung === '' || zeile.bewertung === null
-          ? null : Number(zeile.bewertung),
-      }),
+      // Nur das geänderte Feld schicken: Der Server schreibt genau das, was
+      // ankommt — so löscht das Ändern des Arbeitsstands keine Notiz.
+      body: JSON.stringify(felder),
     });
     if (!r.ok) throw new Error(`HTTP ${r.status}`);
   } catch (e) {
     // Sonst ginge eine eingetippte Notiz bei Server-Schluckauf kommentarlos verloren.
-    alert(`Notiz/Note konnte nicht gespeichert werden: ${e.message}`);
+    alert(`Eintrag konnte nicht gespeichert werden: ${e.message}`);
   }
 }
 
+/* Die Arbeitsstände kommen mit der Vergleichsantwort aus dem Backend. */
+let STAENDE = [];
+
 function eigenesFeld(z, key) {
+  if (key === 'stand') {
+    const box = el('div', { class: 'stand-feld' });
+    const aus = el('select', {
+      'aria-label': 'Arbeitsstand',
+      onchange: (ev) => {
+        z.stand = ev.target.value || null;
+        speichereEigenes(z.id, { stand: z.stand });
+        zeichneGrund();
+      },
+    });
+    aus.append(el('option', { value: '', selected: !z.stand }, '—'));
+    for (const s of STAENDE) {
+      aus.append(el('option', {
+        value: s.key, selected: z.stand === s.key,
+      }, s.label));
+    }
+    box.append(aus);
+    /* Der Grund erscheint nur bei einer Ablehnung. Ein abgelehnter Standort
+       ohne Begründung ist in einem Jahr wertlos — dann wird dieselbe Adresse
+       noch einmal durchgeprüft. */
+    const grundZeile = el('div', {});
+    const zeichneGrund = () => {
+      grundZeile.replaceChildren(...(z.stand === 'abgelehnt' ? [
+        el('input', {
+          type: 'text',
+          value: z.stand_grund || '',
+          maxlength: '500',
+          placeholder: 'Grund der Ablehnung …',
+          'aria-label': 'Grund der Ablehnung',
+          onchange: (ev) => {
+            z.stand_grund = ev.target.value;
+            speichereEigenes(z.id, { stand_grund: z.stand_grund || null });
+          },
+        }),
+      ] : []));
+    };
+    zeichneGrund();
+    box.append(grundZeile);
+    return box;
+  }
   if (key === 'bewertung') {
     const aus = el('select', {
       'aria-label': 'Eigene Note',
       onchange: (ev) => {
         z.bewertung = ev.target.value === '' ? null : Number(ev.target.value);
-        speichereEigenes(z.id, z);
+        speichereEigenes(z.id, { bewertung: z.bewertung });
       },
     });
     for (const [wert, beschriftung] of [['', '—'], ['1', '1 sehr gut'], ['2', '2 gut'],
@@ -128,7 +169,10 @@ function eigenesFeld(z, key) {
     maxlength: '2000',
     placeholder: 'eigene Notiz …',
     'aria-label': 'Eigene Notiz',
-    onchange: (ev) => { z.notiz = ev.target.value; speichereEigenes(z.id, z); },
+    onchange: (ev) => {
+      z.notiz = ev.target.value;
+      speichereEigenes(z.id, { notiz: z.notiz || null });
+    },
   });
 }
 
@@ -145,6 +189,7 @@ async function zeigeVergleich() {
     return;
   }
   const gruppen = d.gruppen || [];
+  STAENDE = d.staende || [];
   const sichtbar = ladeGruppenwahl(gruppen);
 
   if (!d.zeilen.length) {
@@ -203,7 +248,7 @@ async function zeigeVergleich() {
     for (const c of spalten) {
       /* Die beiden einzigen Felder, die der Nutzer selbst füllt. Sie werden
          direkt in der Tabelle bearbeitet — ein Dialog dafür wäre ein Umweg. */
-      if (c.key === 'bewertung' || c.key === 'notiz') {
+      if (c.key === 'bewertung' || c.key === 'notiz' || c.key === 'stand') {
         tr.append(el('td', { class: 'eigen' }, eigenesFeld(z, c.key)));
         continue;
       }

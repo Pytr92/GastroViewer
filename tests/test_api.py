@@ -1027,9 +1027,20 @@ def test_vorgabe_zeigt_deutlich_weniger_als_alle_spalten(client):
     assert "erreichbarkeit" not in vorgabe, (
         "die Gehwegspalten sind meist leer und gehören nicht in die Vorgabe"
     )
-    assert len(sichtbar) <= 20, (
-        f"die Vorgabe ist mit {len(sichtbar)} Spalten wieder zu breit geworden — "
-        "abgeleitete und Detailwerte gehören in die abschaltbare Gruppe"
+    # Die Grenze wurde einmal von 20 auf 21 angehoben, als der Arbeitsstand
+    # dazukam. Begründung, damit sie nicht bei jeder Gelegenheit weiterrutscht:
+    # Der Arbeitsstand ist wie Note und Notiz eine **eigene Eingabe** des
+    # Nutzers und genau die Spalte, nach der man eine Kandidatenliste
+    # durchsieht — keine abgeleitete Kennzahl. Für alles Abgeleitete gilt die
+    # Regel unverändert: ab in eine abschaltbare Gruppe.
+    eigene = {"bewertung", "notiz", "stand"}
+    abgeleitet = [c for c in sichtbar if c["key"] not in eigene]
+    assert len(abgeleitet) <= 18, (
+        f"die Vorgabe hat {len(abgeleitet)} abgeleitete Spalten — "
+        "Detailwerte gehören in die abschaltbare Gruppe"
+    )
+    assert len(sichtbar) <= 21, (
+        f"die Vorgabe ist mit {len(sichtbar)} Spalten wieder zu breit geworden"
     )
 
 

@@ -82,7 +82,25 @@ NACHRUESTUNG = [
     ("saved_points", "notiz", "TEXT"),
     ("saved_points", "bewertung", "INTEGER"),
     ("saved_points", "geprueft_am", "REAL"),
+    # Arbeitsstand der Standortsuche. Wer über Monate Adressen prüft, braucht
+    # nicht nur die Zahlen, sondern den Stand der eigenen Arbeit — und beim
+    # abgelehnten Standort den Grund, damit dieselbe Adresse nicht in einem
+    # Jahr noch einmal durchgeprüft wird.
+    ("saved_points", "stand", "TEXT"),
+    ("saved_points", "stand_grund", "TEXT"),
 ]
+
+# Die erlaubten Arbeitsstände. Bewusst eine feste Liste: Freitext wäre in der
+# Vergleichstabelle nicht sortierbar und in der Auswertung wertlos.
+STAENDE = [
+    ("gesichtet", "gesichtet"),
+    ("besichtigt", "besichtigt"),
+    ("angebot", "Angebot eingeholt"),
+    ("verhandlung", "in Verhandlung"),
+    ("abgeschlossen", "abgeschlossen"),
+    ("abgelehnt", "abgelehnt"),
+]
+STAND_SCHLUESSEL = [k for k, _ in STAENDE]
 
 
 def cache_key(source: str, lat: float, lon: float, radius: float | int, *, extra: str = "") -> str:
@@ -223,15 +241,34 @@ class Cache:
             if spalte not in vorhanden:
                 conn.execute(f"ALTER TABLE {tabelle} ADD COLUMN {spalte} {typ}")
 
+    #: Felder, die der Nutzer selbst pflegt — und die einzigen, die dieser
+    #: Weg schreiben darf.
+    EIGENE_FELDER = ("notiz", "bewertung", "stand", "stand_grund")
+
+    def set_point_felder(self, point_id: int, felder: dict[str, Any]) -> bool:
+        """Schreibt **nur** die übergebenen Felder.
+
+        Das ist der Grund für diese Methode: Früher setzte ein Aufruf immer
+        Notiz *und* Note. Sobald ein drittes Feld dazukommt, würde das
+        Ändern des Arbeitsstands die Notiz löschen. Übergeben wird deshalb,
+        was tatsächlich geändert werden soll — der Rest bleibt unberührt.
+        """
+        zu_setzen = {k: v for k, v in felder.items() if k in self.EIGENE_FELDER}
+        if not zu_setzen:
+            return False
+        satz = ", ".join(f"{k} = ?" for k in zu_setzen)
+        with self._connect() as conn:
+            cur = conn.execute(
+                f"UPDATE saved_points SET {satz} WHERE id = ?",
+                (*zu_setzen.values(), point_id),
+            )
+            return cur.rowcount > 0
+
     def set_point_notiz(
         self, point_id: int, notiz: str | None, bewertung: int | None
     ) -> bool:
-        with self._connect() as conn:
-            cur = conn.execute(
-                "UPDATE saved_points SET notiz = ?, bewertung = ? WHERE id = ?",
-                (notiz, bewertung, point_id),
-            )
-            return cur.rowcount > 0
+        return self.set_point_felder(
+            point_id, {"notiz": notiz, "bewertung": bewertung})
 
     def save_point(self, label: str, lat: float, lon: float, radius: int, payload: Any) -> int:
         with self._connect() as conn:
@@ -392,4 +429,9 @@ class AsyncCache:
     async def set_point_notiz(self, point_id, notiz, bewertung):
         return await asyncio.to_thread(
             self.sync.set_point_notiz, point_id, notiz, bewertung
+        )
+
+    async def set_point_felder(self, point_id, felder):
+        return await asyncio.to_thread(
+            self.sync.set_point_felder, point_id, felder
         )

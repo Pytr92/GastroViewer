@@ -21,7 +21,7 @@ from fastapi.responses import FileResponse, JSONResponse, PlainTextResponse, Res
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
-from .cache import AsyncCache
+from .cache import STAENDE, STAND_SCHLUESSEL, AsyncCache
 from .config import Settings, get_settings
 from .http import Outbound
 from .schaetzung import Eingaben, rechne, vorgaben_aus_punkt
@@ -91,6 +91,11 @@ class PunktNotiz(BaseModel):
 
     notiz: str | None = Field(None, max_length=2000)
     bewertung: int | None = Field(None, ge=1, le=5)
+    #: Arbeitsstand der Standortsuche (siehe cache.STAENDE) und, bei einer
+    #: Ablehnung, der Grund. Beides ist Arbeitsstand, keine Bewertung des
+    #: Standorts durch das Werkzeug.
+    stand: str | None = Field(None, max_length=40)
+    stand_grund: str | None = Field(None, max_length=500)
 
 
 class SavePoint(BaseModel):
@@ -783,10 +788,18 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         """Eigene Notiz und Bewertung — die einzige Stelle, an der eine Wertung
         in die Daten kommt, und sie kommt ausdrücklich vom Nutzer."""
         cache: AsyncCache = request.app.state.cache
-        ok = await cache.set_point_notiz(point_id, body.notiz, body.bewertung)
+        # Nur die tatsächlich mitgeschickten Felder schreiben: Wer den
+        # Arbeitsstand ändert, darf damit nicht die Notiz löschen.
+        felder = {k: v for k, v in body.model_dump().items()
+                  if k in body.model_fields_set}
+        if felder.get("stand") not in (None, "", *STAND_SCHLUESSEL):
+            raise HTTPException(
+                422, f"Unbekannter Arbeitsstand: {felder['stand']!r}. "
+                f"Möglich sind: {', '.join(STAND_SCHLUESSEL)}.")
+        ok = await cache.set_point_felder(point_id, felder)
         if not ok:
             raise HTTPException(404, "Punkt nicht gefunden.")
-        return {"id": point_id, "notiz": body.notiz, "bewertung": body.bewertung}
+        return {"id": point_id, **felder}
 
     @app.delete("/api/points/{point_id}")
     async def delete_point(request: Request, point_id: int):
@@ -803,6 +816,9 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         return {
             "spalten": VERGLEICH_SPALTEN,
             "gruppen": VERGLEICH_GRUPPEN,
+            # Die Auswahl kommt aus dem Backend, damit sie nur an einer
+            # Stelle steht — die Oberfläche erfindet keine Arbeitsstände.
+            "staende": [{"key": k, "label": v} for k, v in STAENDE],
             "zeilen": [_row_for(r) for r in rows],
         }
 
@@ -1160,6 +1176,7 @@ VERGLEICH_SPALTEN = [
     # Die einzigen beiden Werte in dieser Tabelle, die nicht aus einer API
     # stammen — sie kommen vom Nutzer und sind so beschriftet.
     {"key": "bewertung", "titel": "Eigene Note (1–5)", "gruppe": "standort"},
+    {"key": "stand", "titel": "Arbeitsstand", "gruppe": "standort"},
     {"key": "notiz", "titel": "Eigene Notiz", "gruppe": "standort"},
     {"key": "adresse", "titel": "Adresse", "gruppe": "standort"},
     {"key": "gemeinde", "titel": "Gemeinde", "gruppe": "standort"},
@@ -1343,6 +1360,8 @@ def _row_for(saved: dict[str, Any]) -> dict[str, Any]:
         "id": saved.get("id"),
         "label": saved.get("label"),
         "bewertung": saved.get("bewertung"),
+        "stand": saved.get("stand"),
+        "stand_grund": saved.get("stand_grund"),
         "notiz": saved.get("notiz"),
         "adresse": punkt.get("adresse"),
         "gemeinde": punkt.get("gemeinde"),
