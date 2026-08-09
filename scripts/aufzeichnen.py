@@ -27,6 +27,7 @@ erreichbar.
 
 from __future__ import annotations
 
+import gzip
 import json
 import sys
 import urllib.error
@@ -255,22 +256,25 @@ def main(argv: list[str]) -> int:
         return 2
 
     ZIEL.mkdir(parents=True, exist_ok=True)
-    datei = ZIEL / "api-antworten.json"
-    vorhanden = (json.loads(datei.read_text(encoding="utf-8"))
+    datei = ZIEL / "api-antworten.json.gz"
+    vorhanden = (json.loads(gzip.decompress(datei.read_bytes()))
                  if datei.exists() else {})
 
     ergebnis = aufzeichnen(basis, vorhanden)
     aufnahme, fehler = ergebnis["aufnahme"], ergebnis["fehler"]
 
-    # Kompakt: Die Datei ist eine Maschinenaufnahme, keine Lektüre —
-    # Einrückung kostete hier gut ein Drittel der Größe.
-    datei.write_text(
-        json.dumps(aufnahme, ensure_ascii=False, sort_keys=True,
-                   separators=(",", ":")),
-        encoding="utf-8")
+    # Kompakt und gepackt: Die Datei ist eine Maschinenaufnahme, keine
+    # Lektüre. Roh sind es knapp 8 MB, gepackt gut 1,3 — und da sie im
+    # Repository liegt, ist das der Unterschied zwischen vertretbar und
+    # lästig. mtime=0, damit ein unveränderter Lauf auch dieselbe Datei
+    # ergibt und nicht als Änderung im Verlauf auftaucht.
+    roh = json.dumps(aufnahme, ensure_ascii=False, sort_keys=True,
+                     separators=(",", ":")).encode("utf-8")
+    datei.write_bytes(gzip.compress(roh, compresslevel=9, mtime=0))
 
     mb = datei.stat().st_size / 1_000_000
-    print(f"{len(aufnahme)} Antworten in {datei} ({mb:.1f} MB)")
+    print(f"{len(aufnahme)} Antworten in {datei} "
+          f"({mb:.2f} MB gepackt, {len(roh)/1_000_000:.1f} MB roh)")
     if fehler:
         print(f"\n{len(fehler)} Abrufe ohne HTTP 200 — mitaufgezeichnet, "
               "denn auch der Fehlerzustand gehört zur Oberfläche:")

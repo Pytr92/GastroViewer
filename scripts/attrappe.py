@@ -30,6 +30,7 @@ Exitcode 4, wenn die Aufzeichnung fehlt — ohne sie ist der Server sinnlos.
 from __future__ import annotations
 
 import argparse
+import gzip
 import json
 import sys
 import tempfile
@@ -40,7 +41,7 @@ from typing import Any
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 AUFNAHME = (Path(__file__).resolve().parent.parent
-            / "tests" / "fixtures" / "ui" / "api-antworten.json")
+            / "tests" / "fixtures" / "ui" / "api-antworten.json.gz")
 
 # Routen mit Zustand laufen echt — sie dürfen nie abgefangen werden.
 ECHT_BELASSEN = ("/api/points",)
@@ -199,7 +200,7 @@ def main(argv: list[str]) -> int:
               "  python scripts/aufzeichnen.py http://127.0.0.1:8031")
         return 4
 
-    roh = json.loads(args.aufnahme.read_text(encoding="utf-8"))
+    roh = json.loads(gzip.decompress(args.aufnahme.read_bytes()))
     aufnahme = Aufnahme(roh)
     netz_sperren()
     punkt_ersatz(aufnahme)

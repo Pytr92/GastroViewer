@@ -11,6 +11,7 @@ Browserprüfung.
 
 from __future__ import annotations
 
+import gzip
 import importlib.util
 import json
 import re
@@ -19,7 +20,8 @@ from pathlib import Path
 import pytest
 
 WURZEL = Path(__file__).resolve().parent.parent
-AUFNAHME_DATEI = WURZEL / "tests" / "fixtures" / "ui" / "api-antworten.json"
+AUFNAHME_DATEI = (WURZEL / "tests" / "fixtures" / "ui"
+                  / "api-antworten.json.gz")
 APP_JS = WURZEL / "gastroviewer" / "static" / "app.js"
 
 # Routen mit Zustand laufen in der Attrappe gegen die echte Anwendung und
@@ -53,7 +55,7 @@ def attrappe():
 def aufnahme_roh():
     if not AUFNAHME_DATEI.exists():
         pytest.skip("Aufzeichnung fehlt — scripts/aufzeichnen.py ausführen.")
-    return json.loads(AUFNAHME_DATEI.read_text(encoding="utf-8"))
+    return json.loads(gzip.decompress(AUFNAHME_DATEI.read_bytes()))
 
 
 # ------------------------------------------------------- Schlüsselbildung
