@@ -14,6 +14,7 @@
 import { NF, NF1, nfFest, zahl } from './format.js';
 import { el, kennzahl, fehlerbox, hinweisZeile } from './dom.js';
 import { ueberlappungen } from './geometrie.js';
+import { kriterienBereich } from './kriterien.js';
 
 let nachPunkteAenderung = () => {};
 
@@ -310,13 +311,20 @@ async function zeigeVergleich() {
 
   // .filter(Boolean): rankingBereich() liefert unter zwei Punkten null, und
   // replaceChildren würde daraus das sichtbare Wort „null" machen.
+  /* Das Standortprofil steht bewusst ÜBER der Tabelle: Die Frage „welche
+     Kandidaten erfülle ich" kommt vor der Frage „wie sieht Kandidat 7 im
+     Detail aus". Der Abschnitt lädt seine Kennzahlenliste selbst nach und
+     wird deshalb nachgereicht. */
+  const profilBox = el('div', {});
   ziel.replaceChildren(...[
     schalter,
+    profilBox,
     pflegeleiste(d.zeilen),
     ueberlappungsBox,
     el('div', { class: 'tabelle-rahmen' }, tab),
     rankingBereich(d),
   ].filter(Boolean));
+  kriterienBereich().then((b) => profilBox.replaceChildren(b));
   // Die Kartenebene „Gemerkte Punkte" spiegelt den Bestand — nach Merken
   // oder Löschen (beides landet hier) wird sie nachgeführt.
   nachPunkteAenderung();

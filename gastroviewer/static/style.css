@@ -728,3 +728,18 @@ details.ranking > summary {
   border-radius: 2px;
   background: #4a7fb5;
 }
+
+/* --- Standortprofil (K.-o.-Prüfung) ------------------------------------ */
+.kriterien-bereich { margin: 0 0 12px; }
+.kriterien > summary { cursor: pointer; font-weight: 600; }
+.kriterium-zeile {
+  display: flex; gap: 6px; align-items: center; flex-wrap: wrap; margin: 4px 0;
+}
+.kriterium-zeile input[type="number"] { width: 8em; }
+.ko-schalter { font-size: 0.9em; white-space: nowrap; }
+.kriterium-punkt { margin: 8px 0; padding: 6px 8px; border-left: 3px solid #ccc; }
+.kriterium-punkt.faellt-durch { border-left-color: #a01c1c; background: #fdf3f3; }
+.kriterium-ja { color: #2f712c; font-weight: 600; }
+.kriterium-nein { color: #a01c1c; font-weight: 600; }
+/* „Offen" ist bewusst nicht grün und nicht rot — es ist eine offene Frage. */
+.kriterium-offen { color: #b8860b; font-weight: 600; }

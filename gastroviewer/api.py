@@ -22,6 +22,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
 from .cache import STAENDE, STAND_SCHLUESSEL, AsyncCache
+from .kriterien import ProfilFehler, moegliche_kriterien, pruefe_profil
 from .config import Settings, get_settings
 from .http import Outbound
 from .schaetzung import Eingaben, rechne, vorgaben_aus_punkt
@@ -79,6 +80,20 @@ class GenesisZugang(BaseModel):
 
     kennung: str = Field(..., min_length=1, max_length=120)
     passwort: str = Field(..., min_length=1, max_length=200)
+
+
+class Kriterium(BaseModel):
+    """Ein Kriterium des eigenen Standortprofils."""
+
+    key: str = Field(..., max_length=60)
+    richtung: str = Field(..., pattern="^(min|max)$")
+    wert: float
+    #: K.-o.-Kriterium: nicht erfüllt heißt, der Standort fällt durch.
+    ko: bool = False
+
+
+class Profil(BaseModel):
+    kriterien: list[Kriterium] = Field(default_factory=list, max_length=40)
 
 
 class PunktNotiz(BaseModel):
@@ -857,6 +872,38 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     # Muss NACH /api/points/vergleich und den festen Pfaden (export/import)
     # registriert sein — sonst finge der Pfadparameter das Wort ab und
     # antwortete mit 422.
+    @app.get("/api/points/kriterien")
+    async def kriterien_auswahl():
+        """Welche Kennzahlen sich als Kriterium eignen.
+
+        Abgeleitet aus den Vergleichsspalten, damit eine neue Kennzahl
+        automatisch zur Verfügung steht statt in einer zweiten Liste zu
+        fehlen."""
+        return {"kriterien": moegliche_kriterien(VERGLEICH_SPALTEN)}
+
+    @app.post("/api/points/kriterien")
+    async def kriterien_pruefen(request: Request, profil: Profil):
+        """Das eigene Standortprofil gegen alle gemerkten Punkte.
+
+        Das Profil kommt mit der Anfrage: Es ist eine Einstellung des
+        Nutzers und liegt in seinem Browser, nicht in der Datenbank des
+        Werkzeugs."""
+        cache: AsyncCache = request.app.state.cache
+        rows = await asyncio.to_thread(cache.sync.list_points)
+        liste = [k.model_dump() for k in profil.kriterien]
+        ergebnisse = []
+        for r in rows:
+            zeile = _row_for(r)
+            try:
+                pruefung = pruefe_profil(zeile, liste)
+            except ProfilFehler as err:
+                raise HTTPException(422, str(err)) from err
+            ergebnisse.append({
+                "id": r["id"], "label": r["label"],
+                "stand": r.get("stand"), **pruefung,
+            })
+        return {"anzahl": len(ergebnisse), "punkte": ergebnisse}
+
     @app.get("/api/points/kannibalisierung")
     async def punkte_kannibalisierung(
         request: Request, a: int = Query(...), b: int = Query(...),
