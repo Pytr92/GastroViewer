@@ -32,3 +32,11 @@ export function zahl(v, nk = 0) {
   if (v === null || v === undefined || Number.isNaN(v)) return null;
   return (nk === 0 ? NF : nk === 1 ? NF1 : NF2).format(v);
 }
+
+/* ISO-Datum (2026-08-09) in die hier übliche Schreibweise (09.08.2026).
+   Reine Formatierung — deshalb hier und nicht bei einem der Blöcke, die
+   sie brauchen. */
+export function fmtIsoDatum(iso) {
+  if (!iso || iso.length !== 10) return iso || '?';
+  return `${iso.slice(8, 10)}.${iso.slice(5, 7)}.${iso.slice(0, 4)}`;
+}
