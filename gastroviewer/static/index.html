@@ -123,6 +123,10 @@
 
 <script src="/static/vendor/leaflet.js"></script>
 <script src="/static/score.js"></script>
-<script src="/static/app.js"></script>
+<!-- app.js ist ein ES-Modul (siehe Kopf der Datei). score.js bleibt bewusst
+     ein klassisches Skript, weil bericht.html es ebenfalls lädt; seine
+     Funktionen sind damit weiterhin globale Namen. Module sind implizit
+     defer — die Reihenfolge bleibt deshalb richtig. -->
+<script type="module" src="/static/app.js"></script>
 </body>
 </html>

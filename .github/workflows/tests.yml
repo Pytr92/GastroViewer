@@ -34,12 +34,18 @@ jobs:
       - name: Testsuite ausführen
         run: python -m pytest -q
 
+      # Achtung: `node --check datei.js` prüft eine Datei mit `import`
+      # stillschweigend NICHT — sie läuft auch mit Syntaxfehlern durch
+      # (geprüft mit Node 22.22). Erst `--input-type=module` über die
+      # Standardeingabe prüft wirklich. Ein Syntaxcheck, der nichts prüft,
+      # ist schlimmer als keiner.
       - name: Oberfläche auf Syntaxfehler prüfen
         run: |
-          node --check gastroviewer/static/app.js
-          node --check gastroviewer/static/bericht.js
-          node --check gastroviewer/static/duell.js
-          node --check gastroviewer/static/score.js
+          for f in gastroviewer/static/*.js gastroviewer/static/js/*.js; do
+            node --input-type=module --check < "$f" || {
+              echo "Syntaxfehler in $f"; exit 1; }
+            echo "ok $f"
+          done
 
   # Die Oberfläche ist mit über 6 000 Zeilen das größte Einzelstück des
   # Projekts und war bisher nur per Syntaxprüfung abgesichert — ein
