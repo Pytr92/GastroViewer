@@ -65,9 +65,22 @@ jobs:
           ./${{ matrix.binaerdatei }} fenster --selbsttest --port 8018
           code=$?
           set -e
-          if [ "$code" = "0" ]; then echo "Startfenster entsteht."
-          elif [ "$code" = "4" ]; then echo "UEBERSPRUNGEN: keine Bildschirmsitzung."
-          else echo "Startfenster fehlgeschlagen (Exitcode $code)"; exit 1; fi
+          # Das Ergebnis gehoert auf die Uebersichtsseite des Laufs, nicht
+          # nur ins Protokoll: Beide Ausgaenge faerben den Schritt gruen, und
+          # ein uebersprungener Selbsttest darf nicht wie ein bestandener
+          # aussehen. Wer auf den Lauf schaut, soll ohne Log-Suche erkennen,
+          # ob das Fenster auf dieser Plattform wirklich entstanden ist.
+          if [ "$code" = "0" ]; then
+            echo "Startfenster entsteht."
+            echo "- **${{ matrix.artefakt }}**: Startfenster entsteht." >> "$GITHUB_STEP_SUMMARY"
+          elif [ "$code" = "4" ]; then
+            echo "UEBERSPRUNGEN: keine Bildschirmsitzung."
+            echo "- **${{ matrix.artefakt }}**: Selbsttest UEBERSPRUNGEN (keine Bildschirmsitzung) — das Fenster ist auf dieser Plattform NICHT geprueft." >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "Startfenster fehlgeschlagen (Exitcode $code)"
+            echo "- **${{ matrix.artefakt }}**: Startfenster FEHLGESCHLAGEN (Exitcode $code)." >> "$GITHUB_STEP_SUMMARY"
+            exit 1
+          fi
         continue-on-error: false
 
       - name: Rauchprobe — Server starten und Startseite abrufen (Unix)
