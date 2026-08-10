@@ -941,6 +941,31 @@ class PointService:
 
         return await self._cached("gehweg", key, laden, refresh=refresh)
 
+    async def fahrzeit_aus_cache(
+        self, lat: float, lon: float
+    ) -> SourceResult | None:
+        """Nur nachsehen, nie laden — wie beim Gehweg.
+
+        Das Autonetz ist die größte Einzelabfrage des Werkzeugs. Wer den
+        Block vorher geöffnet hat, bekommt das Ergebnis in den gemerkten
+        Punkt und damit in den Standortbericht; wer nicht, bekommt es
+        nicht. Ein Bericht darf keine Overpass-Abfrage auslösen.
+        """
+        from .sources import fahrzeit as fz_mod
+
+        for minuten in (fz_mod.MAX_MINUTEN, 8, fz_mod.MIN_MINUTEN):
+            hit = await self.cache.get(cache_key("fahrzeit", lat, lon, minuten))
+            if hit is None:
+                continue
+            payload = dict(hit["payload"])
+            prov = payload.pop("provenance", None)
+            result = SourceResult(**payload)
+            if prov:
+                result.provenance = Provenance(**prov)
+                result.provenance.cached = True
+            return result
+        return None
+
     async def gehweg_aus_cache(
         self, lat: float, lon: float, radius: int
     ) -> SourceResult | None:

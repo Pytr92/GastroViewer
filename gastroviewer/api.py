@@ -799,6 +799,12 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         gw = await service.gehweg_aus_cache(body.lat, body.lon, body.radius)
         if gw is not None:
             payload["bloecke"]["gehweg"] = gw.to_dict()
+        # Dasselbe fürs Fahrzeit-Einzugsgebiet: Es ist die größte Abfrage des
+        # Werkzeugs und läuft nur auf Knopfdruck. Liegt ein Ergebnis vor,
+        # wandert es in den Punkt und damit in den Standortbericht.
+        fz = await service.fahrzeit_aus_cache(body.lat, body.lon)
+        if fz is not None:
+            payload["bloecke"]["fahrzeit"] = fz.to_dict()
         cache: AsyncCache = request.app.state.cache
         pid = await asyncio.to_thread(
             cache.sync.save_point,

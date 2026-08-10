@@ -152,11 +152,100 @@ async function start() {
     + 'ausdrücklich vom Nutzer kommt.'));
 
   /* --- Eigene Einschätzung --- */
-  if (p.bewertung || p.notiz) {
+  const stand = (defs.staende || []).find((s) => s.key === p.stand);
+  if (p.bewertung || p.notiz || p.stand) {
     teile.push(el('div', { class: 'eigene' },
       el('div', { class: 'kennung' }, 'Eigene Einschätzung (keine Datengrundlage)'),
+      /* Der Arbeitsstand steht zuoberst: Wer den Bericht in die Hand bekommt,
+         will zuerst wissen, wie weit die Sache ist — und bei einer Ablehnung
+         warum, damit dieselbe Adresse nicht erneut geprüft wird. */
+      p.stand ? el('div', {}, el('strong', {}, 'Arbeitsstand: '),
+        stand ? stand.label : p.stand,
+        p.stand_grund ? ` — ${p.stand_grund}` : '') : null,
       p.bewertung ? el('div', {}, el('strong', {}, 'Note: '), NOTEN[p.bewertung] || p.bewertung) : null,
       p.notiz ? el('div', {}, el('strong', {}, 'Notiz: '), p.notiz) : null));
+  }
+
+  /* --- Standortprofil ----------------------------------------------
+     Das Profil ist eine Einstellung des Nutzers und liegt in seinem
+     Browser. Der Bericht liest denselben Speicher wie die Anwendung und
+     lässt die Prüfung im Backend rechnen — damit steht in beiden Ansichten
+     dasselbe Ergebnis, statt zweier Rechnungen, die auseinanderlaufen. */
+  const STAND_TEXT = {
+    erfuellt: 'erfüllt',
+    nicht_erfuellt: 'nicht erfüllt',
+    nicht_pruefbar: 'nicht prüfbar',
+  };
+  let profil = [];
+  try {
+    profil = JSON.parse(localStorage.getItem('gastroviewer.standortprofil') || '[]');
+  } catch { profil = []; }
+  if (Array.isArray(profil) && profil.length) {
+    try {
+      const antwort = await fetch('/api/points/kriterien', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ kriterien: profil }),
+      });
+      if (antwort.ok) {
+        const alle = await antwort.json();
+        const meiner = (alle.punkte || []).find((x) => String(x.id) === String(id));
+        if (meiner) {
+          teile.push(el('h2', {}, 'Standortprofil'));
+          teile.push(el('p', { class: 'hinweis' },
+            `${meiner.erfuellt} von ${meiner.gesamt} Kriterien erfüllt, `
+            + `${meiner.nicht_erfuellt} nicht erfüllt, `
+            + `${meiner.nicht_pruefbar} nicht prüfbar.`
+            + (meiner.durchgefallen
+              ? ' Mindestens ein K.-o.-Kriterium ist nicht erfüllt.'
+              : '')
+            + (meiner.offene_ko_kriterien?.length
+              ? ` Offen bleiben ${meiner.offene_ko_kriterien.length} `
+                + 'K.-o.-Kriterien ohne Datengrundlage — sie lassen den '
+                + 'Standort ausdrücklich nicht durchfallen.'
+              : '')));
+          const tab = el('table', { class: 'daten' },
+            el('tr', {}, el('th', {}, 'Kriterium'), el('th', {}, 'Schwelle'),
+              el('th', {}, 'Wert'), el('th', {}, 'Ergebnis')));
+          const titel = Object.fromEntries(
+            (defs.spalten || []).map((c) => [c.key, c.titel]));
+          for (const e of meiner.ergebnisse || []) {
+            tab.append(el('tr', { class: `profil-${e.stand}` },
+              el('td', {}, (titel[e.key] || e.key) + (e.ko ? ' (K. o.)' : '')),
+              el('td', {}, `${e.richtung === 'min' ? 'mind.' : 'höchstens'} `
+                + `${NF.format(e.schwelle)}`),
+              el('td', {}, e.wert === null || e.wert === undefined
+                ? '—' : NF.format(e.wert)),
+              el('td', {}, STAND_TEXT[e.stand] || e.stand)));
+          }
+          teile.push(tab);
+          teile.push(el('p', { class: 'hinweis' },
+            'Nicht aus offenen Daten prüfbar und deshalb Sache des '
+            + 'Ortstermins: '
+            + (meiner.nicht_pruefbar_grundsaetzlich || []).join(', ') + '.'));
+        }
+      }
+    } catch { /* ohne Profil bleibt der Bericht unverändert */ }
+  }
+
+  /* --- Fahrzeit-Einzugsgebiet ---------------------------------------
+     Nur wenn es beim Merken schon berechnet war. Der Bericht löst keine
+     Overpass-Abfrage aus — die größte des Werkzeugs würde beim Öffnen
+     einer Druckansicht niemand erwarten. */
+  const fz = payload.bloecke?.fahrzeit;
+  if (fz?.ok && fz.data) {
+    const f = fz.data;
+    teile.push(el('h2', {}, 'Fahrzeit-Einzugsgebiet (Auto)'));
+    teile.push(el('p', { class: 'hinweis' },
+      `${f.minuten} Minuten Freifluss-Fahrzeit auf dem Hauptstraßennetz: `
+      + `${NF.format(f.erreichte_knoten)} erreichte Netzknoten. `
+      + `Weg bis zur nächsten Hauptstraße: ${NF.format(f.anbindung_m)} m. `
+      + `${NF.format(f.netz.wege)} Wege im Netz, davon `
+      + `${f.netz.tempolimit_anteil ?? '—'} % mit Tempolimit aus `
+      + 'OpenStreetMap.'));
+    teile.push(el('p', { class: 'hinweis' },
+      'Ohne Stau, ohne Ampelphasen, ohne Tageszeit. Einbahnstraßen bleiben '
+      + 'unberücksichtigt; die letzten Meter durchs Wohngebiet fehlen.'));
   }
 
   /* --- Gesamt-Score: dieselbe Logik wie in der Anwendung (score.js) auf dem

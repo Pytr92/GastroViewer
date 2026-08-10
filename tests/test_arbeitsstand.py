@@ -177,3 +177,38 @@ def test_staende_sind_beschriftet():
     for schluessel, text in STAENDE:
         assert schluessel and text
         assert schluessel.islower()
+
+
+# ------------------------------------------------ Standortbericht
+
+
+def _bericht_js() -> str:
+    from pathlib import Path
+
+    return (Path(__file__).resolve().parents[1] / "gastroviewer" / "static"
+            / "bericht.js").read_text(encoding="utf-8")
+
+
+def test_bericht_zeigt_den_arbeitsstand():
+    """Wer den Bericht in die Hand bekommt, will zuerst wissen, wie weit die
+    Sache ist — und bei einer Ablehnung warum."""
+    js = _bericht_js()
+    assert "Arbeitsstand: " in js
+    assert "p.stand_grund" in js
+
+
+def test_bericht_zeigt_das_standortprofil():
+    js = _bericht_js()
+    assert "gastroviewer.standortprofil" in js, "derselbe Speicher wie die Anwendung"
+    assert "/api/points/kriterien" in js, "gerechnet wird im Backend, nicht doppelt"
+    assert "nicht prüfbar" in js
+    assert "nicht_pruefbar_grundsaetzlich" in js, (
+        "was der Ortstermin klären muss, gehört in den Bericht")
+
+
+def test_bericht_loest_keine_overpass_abfrage_aus():
+    """Die Fahrzeit erscheint nur, wenn sie beim Merken schon vorlag."""
+    js = _bericht_js()
+    assert "payload.bloecke?.fahrzeit" in js
+    assert "/api/point/fahrzeit" not in js, (
+        "eine Druckansicht darf die größte Abfrage des Werkzeugs nicht starten")

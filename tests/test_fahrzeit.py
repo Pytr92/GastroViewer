@@ -179,3 +179,15 @@ def test_abfrage_holt_nur_das_hauptnetz():
 def test_minuten_werden_begrenzt():
     """Größere Werte als geprüft werden nicht angeboten."""
     assert fahrzeit.MIN_MINUTEN == 5 and fahrzeit.MAX_MINUTEN == 10
+
+
+def test_fahrzeit_wandert_nur_aus_dem_cache_in_den_punkt():
+    """Merken darf die größte Abfrage des Werkzeugs nicht auslösen — es wird
+    nur nachgesehen, nie geladen."""
+    from pathlib import Path
+
+    quelle = (Path(__file__).resolve().parents[1] / "gastroviewer"
+              / "service.py").read_text(encoding="utf-8")
+    block = quelle.split("async def fahrzeit_aus_cache")[1].split("async def ")[0]
+    assert "self.cache.get" in block
+    assert "fz_mod.load" not in block, "hier darf nichts geladen werden"
