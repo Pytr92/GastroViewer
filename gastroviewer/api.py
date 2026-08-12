@@ -785,8 +785,11 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     @app.get("/api/points")
     async def list_points(request: Request):
+        """Die Liste ohne Datenpakete — den vollen Datenstand eines Punkts
+        liefert ``/api/points/{id}``. Bei dutzenden gemerkten Adressen wären
+        es sonst viele Megabyte je Ebenen-Aktualisierung."""
         cache: AsyncCache = request.app.state.cache
-        rows = await asyncio.to_thread(cache.sync.list_points)
+        rows = await asyncio.to_thread(cache.sync.list_points_kurz)
         return {"anzahl": len(rows), "punkte": rows}
 
     @app.post("/api/points")

@@ -687,11 +687,27 @@ def test_saettigung_wird_nicht_als_hoechstwert_hervorgehoben():
 
 def test_gemerkter_punkt_speichert_keine_rohzellen(client):
     """Sonst wächst die Datei je Punkt um Hunderte Kilobyte."""
-    client.post("/api/points", json={"label": "A", "lat": LAT, "lon": LON, "radius": R})
-    rows = client.get("/api/points").json()["punkte"]
-    z = rows[0]["payload"]["bloecke"]["zensus"]["data"]
+    r = client.post("/api/points", json={"label": "A", "lat": LAT, "lon": LON, "radius": R})
+    punkt = client.get(f"/api/points/{r.json()['id']}").json()
+    z = punkt["payload"]["bloecke"]["zensus"]["data"]
     assert "zellen" not in z
     assert z["zellen_gefunden"] == 118, "Kennzahlen müssen erhalten bleiben"
+
+
+def test_punkteliste_traegt_keine_datenpakete(client):
+    """Ein gemerkter Punkt wiegt im Mittel rund 350 kB; die Karten-Ebene lädt
+    die Liste bei jeder Aktualisierung neu. Bei dutzenden Adressen — dem
+    erklärten Einsatzfall — wären das viele Megabyte je Klick. Die Ebene
+    braucht nur Ort, Beschriftung und die eigenen Angaben."""
+    client.post("/api/points", json={"label": "A", "lat": LAT, "lon": LON, "radius": R})
+    rows = client.get("/api/points").json()["punkte"]
+    assert rows, "die Liste darf dabei nicht leer werden"
+    for r in rows:
+        assert "payload" not in r
+        # Was die Karten-Ebene und die Popups wirklich zeigen, bleibt drin.
+        for feld in ("id", "label", "lat", "lon", "radius",
+                     "notiz", "bewertung", "stand"):
+            assert feld in r, feld
 
 
 # ------------------------------------------------------------------ Export

@@ -289,6 +289,21 @@ class Cache:
             out.append(d)
         return out
 
+    def list_points_kurz(self) -> list[dict[str, Any]]:
+        """Die Liste ohne Datenpakete — für die Karten-Ebene.
+
+        Ein gemerkter Punkt wiegt im Mittel rund 350 kB; bei dutzenden
+        Adressen käme die volle Liste auf viele Megabyte, die der Browser
+        bei jeder Ebenen-Aktualisierung erneut lädt und parst. Die Ebene
+        braucht davon nichts — nur Ort, Beschriftung und eigene Angaben."""
+        with self._connect() as conn:
+            rows = conn.execute(
+                "SELECT id, label, lat, lon, radius, created_at, notiz,"
+                " bewertung, stand, stand_grund"
+                " FROM saved_points ORDER BY created_at"
+            ).fetchall()
+        return [dict(r) for r in rows]
+
     def get_point(self, point_id: int) -> dict[str, Any] | None:
         with self._connect() as conn:
             row = conn.execute(
