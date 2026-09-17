@@ -112,59 +112,186 @@ jobs:
             echo "  - Gatekeeper: \`${urteil//$'\n'/ }\` (nicht notarisiert — beim ersten Start ist die Sicherheitsabfrage zu bestätigen)."
           } >> "$GITHUB_STEP_SUMMARY"
 
-      # Der eigentliche Doppelklick — bis hierher nie ausgeführt. LaunchServices
-      # startet das Paket wie der Finder: ohne Argumente, ohne Terminal, ohne
-      # die Umgebung der Shell, mit Arbeitsverzeichnis "/". Erst wenn danach
-      # /api/health auf dem Standardport antwortet, ist der Weg belegt, den
-      # ein Nutzer wirklich nimmt. Ein Fenster aus der Shell heraus (Selbsttest
-      # unten) sagt darüber nichts.
-      - name: Doppelklick-Probe über LaunchServices (macOS)
+      # Alle Proben bis hierher liefen aus einer Shell: Datei aufrufen, mit
+      # Argumenten, mit der Umgebung der Shell. Ein Doppelklick im Finder ist
+      # etwas anderes — LaunchServices startet das Paket über launchd, ohne
+      # Argumente, ohne Shell-Umgebung, mit Arbeitsverzeichnis "/", und mit
+      # dem Fenster-Bootloader (console=False im Spec) als sichtbarer App.
+      # Genau dieser Weg wird hier nachgestellt ("open"), weil er der einzige
+      # ist, den die Empfänger gehen — und niemand hier einen Mac hat, um ihn
+      # von Hand zu gehen.
+      #
+      # Bewusst OHNE "open --env": Ein echter Doppelklick reicht keine
+      # Umgebung weiter, also muss das Paket mit seinen Vorgaben laufen
+      # (Port 8000 und ~/.gastroviewer, siehe config.py). Eine Probe, die
+      # den Port per --env verbiegt, prüfte etwas, das kein Empfänger je
+      # tut — und ob --env auf dem Runner überhaupt ankommt, ließe sich ohne
+      # Mac nicht nachvollziehen. Ist 8000 auf dem Runner belegt, sagt der
+      # Schritt das und bricht ab, statt stillschweigend auszuweichen.
+      #
+      # Kein pkill nach Namen: Angefasst werden nur die Prozesse, die nach
+      # "open" neu dazukamen (onefile = Bootloader + Kind) — so bleibt jeder
+      # andere GastroViewer-Prozess auf dem Runner unberührt. "open -n"
+      # erzwingt eine neue Instanz, falls LaunchServices eine bereits laufende
+      # Kopie derselben Kennung kennt.
+      #
+      # Was der Schritt NICHT prüft: Gatekeeper. Das hier gebaute Paket trägt
+      # kein Quarantäne-Attribut, also stellt macOS keine Sicherheitsfrage —
+      # der Weg über Download und "Trotzdem öffnen" bleibt Sache des
+      # Release-Textes.
+      - name: Doppelklick-Probe — Programmpaket über LaunchServices starten (macOS)
         if: runner.os == 'macOS'
         shell: bash
         run: |
-          set -euo pipefail
+          set -uo pipefail
+          # Aus der ausgepackten ZIP-Kopie, nicht aus dist/: Der Empfänger startet
+          # ausschließlich, was aus dem Archiv kommt.
           PROBE=$(mktemp -d)
           ditto -x -k "${{ matrix.hochladen }}" "$PROBE"
           APP="$PROBE/GastroViewer.app"
-          START_DATEI="$APP/Contents/MacOS/GastroViewer"
-
           # Architektur muss zum Artefaktnamen passen. Der häufigste Nutzerfehler
           # („welchen Chip habe ich?") darf nicht auch noch aus dem Bau kommen.
-          ARCH=$(lipo -archs "$START_DATEI")
+          ARCH=$(lipo -archs "$APP/Contents/MacOS/GastroViewer")
           case "${{ matrix.artefakt }}" in
-            *AppleSilicon) test "$ARCH" = "arm64" ;;
-            *Intel)        test "$ARCH" = "x86_64" ;;
+            *AppleSilicon) [ "$ARCH" = "arm64" ]  || { echo "Architektur $ARCH passt nicht zu ${{ matrix.artefakt }}" >&2; exit 1; } ;;
+            *Intel)        [ "$ARCH" = "x86_64" ] || { echo "Architektur $ARCH passt nicht zu ${{ matrix.artefakt }}" >&2; exit 1; } ;;
           esac
           echo "Architektur: $ARCH"
+          ADRESSE=http://127.0.0.1:8000
+          ARTEFAKT="${{ matrix.artefakt }}"
+          PROT=$(mktemp -d)
+          NEU=""
 
-          aufraeumen() { pkill -f "$START_DATEI" >/dev/null 2>&1 || true; }
-          trap aufraeumen EXIT
+          # Übersichtszeile und Exitcode kommen aus einer Stelle, damit kein
+          # Ausgang vergessen wird — wie beim Selbsttest oben.
+          ergebnis() {  # ergebnis <exitcode> <text>
+            echo "- **$ARTEFAKT**: Doppelklick-Probe (LaunchServices): $2" >> "$GITHUB_STEP_SUMMARY"
+            echo "$2"
+            exit "$1"
+          }
 
-          # Port 8000 ist die argumentlose Vorgabe. "open" reicht keine
-          # Umgebungsvariablen weiter, also muss genau dieser Port frei sein.
-          if curl -sf http://127.0.0.1:8000/api/health >/dev/null; then
-            echo "Port 8000 ist schon belegt — die Probe wäre nicht aussagekräftig." >&2
-            exit 1
+          # Nur die Prozesse, die seit dem "open" neu sind. Beide Seiten
+          # lexikalisch sortiert, weil comm das verlangt.
+          neue_prozesse() {
+            comm -13 <(printf '%s\n' "$VORHER") <(pgrep -x GastroViewer | sort) | tr '\n' ' '
+          }
+
+          # Alles, was man ohne Mac zum Lesen eines roten Laufs braucht:
+          # Prozesse, Port, Sicht von LaunchServices, die umgeleitete
+          # Ausgabe des Pakets und das Systemlog (dort landen Tracebacks
+          # des Fenster-Bootloaders und Absagen von LaunchServices).
+          diagnose() {
+            echo "::group::Diagnose Doppelklick-Probe"
+            echo "--- Prozesse:"
+            ps -axo pid,ppid,stat,etime,command | grep -i '[G]astroViewer' || echo "(keine)"
+            echo "--- Port 8000:"
+            lsof -nP -iTCP:8000 -sTCP:LISTEN || echo "(niemand lauscht)"
+            echo "--- LaunchServices-Sicht:"
+            lsappinfo info -app de.gastroviewer.standort-datenterminal 2>&1 || true
+            echo "--- open (stderr):"; cat "$PROT/open.err" 2>/dev/null || true
+            echo "--- Paket stdout:"; cat "$PROT/stdout.log" 2>/dev/null || true
+            echo "--- Paket stderr:"; cat "$PROT/stderr.log" 2>/dev/null || true
+            echo "--- Systemlog, Prozess GastroViewer (letzte 3 min):"
+            log show --last 3m --info --style compact \
+              --predicate 'process == "GastroViewer"' 2>&1 | tail -n 300 || true
+            echo "--- Systemlog, LaunchServices/launchd zu GastroViewer (letzte 3 min):"
+            log show --last 3m --info --style compact \
+              --predicate 'eventMessage CONTAINS "GastroViewer" AND (subsystem CONTAINS "launchservices" OR process == "open" OR process == "launchd" OR process == "runningboardd")' 2>&1 | tail -n 200 || true
+            echo "::endgroup::"
+          }
+
+          # SIGTERM an Bootloader und Kind. Der Bootloader reicht Signale
+          # ans Kind weiter (bootloader_ignore_signals=False im Spec) und
+          # räumt danach sein Auspackverzeichnis auf; SIGKILL nur als
+          # letzter Ausweg, damit nichts auf dem Runner liegen bleibt.
+          beenden() {
+            [ -n "$NEU" ] || return 0
+            kill -TERM $NEU 2>/dev/null || true
+            for i in $(seq 1 15); do
+              lebt=""
+              for p in $NEU; do kill -0 "$p" 2>/dev/null && lebt="$lebt $p"; done
+              [ -z "$lebt" ] && return 0
+              sleep 1
+            done
+            echo "Noch am Leben nach 15 s:$lebt — SIGKILL." >&2
+            kill -KILL $NEU 2>/dev/null || true
+            return 1
+          }
+
+          fehlschlag() {
+            diagnose
+            beenden || true
+            ergebnis 1 "FEHLGESCHLAGEN — $1"
+          }
+
+          # 1. Vorbedingung. Antwortet auf 8000 schon etwas, würde das
+          #    Fenster "Port belegt" oder "läuft bereits" zeigen und keinen
+          #    Server starten — die Probe sagte dann nichts über das Paket.
+          if curl --noproxy '*' -sf --max-time 2 -o /dev/null "$ADRESSE/api/health" \
+             || lsof -nP -iTCP:8000 -sTCP:LISTEN >/dev/null 2>&1; then
+            lsof -nP -iTCP:8000 -sTCP:LISTEN || true
+            ergebnis 1 "NICHT AUSSAGEKRÄFTIG — Port 8000 war auf dem Runner schon belegt, bevor das Paket gestartet wurde."
+          fi
+          VORHER=$(pgrep -x GastroViewer | sort)
+          echo "GastroViewer-Prozesse vor dem Start (Rauchprobe 8017): $(echo $VORHER)"
+          echo "Quarantäne-Attribut am Paket (leer = Gatekeeper wird nicht gefragt):"
+          xattr -l "$APP" || true
+
+          # 2. Start wie beim Doppelklick. --stdout/--stderr ändern nichts an
+          #    Umgebung oder Argumenten, fangen aber ab, was das Paket sonst
+          #    ins Leere schriebe.
+          touch "$PROT/stdout.log" "$PROT/stderr.log"
+          if ! open -n --stdout "$PROT/stdout.log" --stderr "$PROT/stderr.log" "$APP" 2>"$PROT/open.err"; then
+            fehlschlag "LaunchServices hat den Start verweigert: $(tr '\n' ' ' < "$PROT/open.err")"
           fi
 
-          START=$(date +%s)
-          open "$APP"
+          # 3. Warten, bis der Server antwortet — großzügig, weil das
+          #    Onefile-Paket erst auspackt (das Fenster selbst gibt sich
+          #    60 s, STARTFENSTER_S). Verschwindet der Prozess vorher, ist
+          #    das Warten sinnlos und der Fehler sofort lesbar.
+          START=$SECONDS
+          gesund=""
+          antwort=""
           for i in $(seq 1 90); do
-            if curl -sf http://127.0.0.1:8000/api/health | grep -q '"status":"ok"'; then
-              DAUER=$(( $(date +%s) - START ))
-              # Der Prozess muss noch da sein — ein Server, dessen Fenster
-              # gleich wieder zugeht, wäre kein Erfolg.
-              pgrep -f "$START_DATEI" >/dev/null
-              echo "Doppelklick: Fenster und Server nach ${DAUER} s bereit."
-              echo "- **${{ matrix.artefakt }}**: Doppelklick über LaunchServices bringt Fenster und Server (${DAUER} s bis zur ersten Antwort, kalter Start)." >> "$GITHUB_STEP_SUMMARY"
-              exit 0
+            NEU=$(neue_prozesse)
+            antwort=$(curl --noproxy '*' -sf --max-time 2 "$ADRESSE/api/health" 2>/dev/null || true)
+            if printf '%s' "$antwort" | grep -Eq '"status" *: *"ok"'; then
+              gesund=1
+              break
+            fi
+            if [ "$i" -ge 10 ] && [ -z "$NEU" ]; then
+              fehlschlag "nach ${i} s läuft kein neuer GastroViewer-Prozess — das Paket ist nie erschienen oder gleich wieder beendet worden."
             fi
             sleep 1
           done
-          echo "Kein Server nach 90 s. Prozesse und Systemprotokoll:" >&2
-          ps -axo pid,ppid,stat,comm | grep -i gastroviewer || true
-          log show --predicate 'process CONTAINS "GastroViewer"' --last 3m --style compact || true
-          exit 1
+          DAUER=$((SECONDS - START))
+          NEU=$(neue_prozesse)
+          [ -n "$gesund" ] || fehlschlag "nach ${DAUER} s keine gültige Antwort auf $ADRESSE/api/health (neue Prozesse: ${NEU:-keine})."
+          echo "Server antwortet nach ${DAUER} s: $antwort"
+
+          # 4. Der Antwortende muss einer der von LaunchServices gestarteten
+          #    Prozesse sein — sonst hätte irgendetwas anderes geantwortet.
+          LAUSCHER=$(lsof -nP -iTCP:8000 -sTCP:LISTEN -Fp 2>/dev/null | sed -n 's/^p//p' | sort -u | tr '\n' ' ')
+          passt=""
+          for p in $LAUSCHER; do
+            case " $NEU " in *" $p "*) passt=1 ;; esac
+          done
+          [ -n "$passt" ] || fehlschlag "auf Port 8000 lauscht PID ${LAUSCHER:-?}, gestartet wurden aber: ${NEU:-keine}."
+          echo "Von LaunchServices gestartete Prozesse (PPID 1 = launchd, nicht die Shell; onefile = Bootloader + Kind):"
+          ps -o pid,ppid,stat,etime,command -p "$(echo $NEU | tr ' ' ',')" || true
+
+          # 5. Sauber beenden und nachsehen, dass der Port wieder frei ist.
+          beenden || fehlschlag "Prozesse ($NEU) haben sich auf SIGTERM nicht binnen 15 s beendet — mit SIGKILL abgeräumt."
+          frei=""
+          for i in $(seq 1 10); do
+            curl --noproxy '*' -sf --max-time 2 -o /dev/null "$ADRESSE/api/health" || { frei=1; break; }
+            sleep 1
+          done
+          [ -n "$frei" ] || fehlschlag "Port 8000 antwortet nach dem Beenden weiter."
+          if curl --noproxy '*' -sf --max-time 2 -o /dev/null http://127.0.0.1:8017/api/health; then
+            echo "Rauchprobe-Prozess auf 8017 unberührt."
+          fi
+          ergebnis 0 "gestartet wie beim Doppelklick (\`open\`, ohne Argumente und Shell-Umgebung), Server antwortete auf Port 8000 nach ${DAUER} s, Bootloader und Kind auf SIGTERM beendet, Port wieder frei."
 
       # Das Startfenster ist der Doppelklick-Weg. Hier wird geprueft, dass
       # es auf der Zielplattform ueberhaupt entsteht — Exitcode 4 heisst
