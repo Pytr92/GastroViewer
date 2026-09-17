@@ -55,7 +55,7 @@ class Settings:
             "GASTROVIEWER_CONTACT", "https://github.com/Pytr92/GastroViewer"
         )
     )
-    version: str = "0.1.0"
+    version: str = "0.2.0"
 
     # --- Overpass ---
     overpass_endpoints: tuple[str, ...] = field(

@@ -31,11 +31,32 @@ Release entsteht mit jedem Versions-Tag):
 - **Windows:** `GastroViewer-Windows.exe` herunterladen, doppelklicken. Beim ersten
   Start warnt der SmartScreen-Filter, weil das Paket nicht signiert ist:
   „Weitere Informationen" → „Trotzdem ausführen".
-- **macOS:** `GastroViewer-macOS-AppleSilicon` (M1–M4) bzw. `…-Intel` laden, im
-  Terminal einmal `chmod +x GastroViewer-…`, dann Rechtsklick → „Öffnen".
-- Es öffnet sich das **Startfenster** (siehe unten) und dahinter ein
-  Konsolenfenster mit dem Abruf-Protokoll. Beim ersten Start dauert das Entpacken
-  ein paar Sekunden.
+- **macOS:** `GastroViewer-macOS-AppleSilicon.zip` (M1–M4) bzw. `…-Intel.zip`
+  laden. Doppelklick entpackt es zu `GastroViewer.app` — am besten in den Ordner
+  „Programme" ziehen, dann doppelklicken. Zum ersten Start siehe den Kasten unten.
+- Es öffnet sich das **Startfenster** (siehe unten). Unter Windows und Linux steht
+  daneben ein Konsolenfenster mit dem Abruf-Protokoll; auf dem Mac gibt es das beim
+  Doppelklick nicht — dort ist das Startfenster die Anzeige. Beim ersten Start
+  dauert das Entpacken ein paar Sekunden.
+
+> **macOS beim allerersten Start.** Das Paket ist **nicht notarisiert** — dafür
+> bräuchte es ein kostenpflichtiges Apple-Entwicklerkonto. macOS meldet deshalb
+> einmalig, die Herkunft sei nicht überprüfbar. Freigeben:
+>
+> - **macOS 15 (Sequoia) und neuer:** doppelklicken, Meldung wegklicken, dann
+>   *Systemeinstellungen → Datenschutz & Sicherheit* ganz nach unten scrollen und
+>   bei „GastroViewer wurde blockiert" auf **„Trotzdem öffnen"**. (Der frühere
+>   Weg über Rechtsklick → „Öffnen" wurde mit Sequoia abgeschafft.)
+> - **macOS 14 und älter:** Rechtsklick (Ctrl-Klick) auf das Programm →
+>   **„Öffnen"** → im Dialog noch einmal „Öffnen".
+> - **Oder einmalig im Terminal:** `xattr -c /Programme/GastroViewer.app`
+>
+> Danach genügt der normale Doppelklick.
+>
+> Bis **v0.1.0** lag hier die nackte PyInstaller-Datei ohne Endung und ohne
+> Programmpaket. Der Finder kannte dafür keine Zuordnung und öffnete sie als
+> Text — man sah den Binärinhalt als Zeichensalat. Das war ein Fehler der
+> Verpackung, nicht des Programms; seit v0.2.0 liegt ein echtes `.app` im ZIP.
 
 #### Das Startfenster
 
@@ -88,10 +109,13 @@ den Weg ohne Fenster — es stürzt nicht ab.
 
 Das Paket kann auch alle Kommandos (in einem Terminal aufrufen):
 `GastroViewer-Windows.exe import-gtfs --region muenchen` importiert z. B. den
-Fahrplan für Block 6b. Zwei ehrliche Grenzen: der **Overture-Import** (Block 4f)
-braucht weiterhin Python (`pip install overturemaps` — das Paket wäre sonst
-hunderte MB groß); und die Dateien sind **nicht signiert** — daher die
-Warnhinweise der Betriebssysteme.
+Fahrplan für Block 6b. Auf dem Mac steckt dieselbe Kommandozeile im
+Programmpaket: `/Programme/GastroViewer.app/Contents/MacOS/GastroViewer
+import-gtfs --region muenchen`. Zwei ehrliche Grenzen: der **Overture-Import**
+(Block 4f) braucht weiterhin Python (`pip install overturemaps` — das Paket wäre
+sonst hunderte MB groß); und die Dateien sind **nicht mit einem Zertifikat
+signiert** (das macOS-Paket trägt nur eine Ad-hoc-Signatur, die Gatekeeper nicht
+genügt) — daher die Warnhinweise der Betriebssysteme.
 
 ### Weg 2: mit Python (alle Kommandos, alle Importe)
 

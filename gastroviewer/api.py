@@ -144,7 +144,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app = FastAPI(
         title="Standort-Datenterminal",
         description="Offene Daten zu einem Punkt in Deutschland. Daten-Browser, kein Prognose-Tool.",
-        version="0.1.0",
+        version="0.2.0",
         lifespan=lifespan,
     )
     app.state.settings = settings or get_settings()

@@ -11,10 +11,20 @@ Entscheidungen:
   Beim Start entpackt PyInstaller nach ``sys._MEIPASS`` — die Oberfläche
   (``gastroviewer/static``) wird dorthin mitgepackt, und zwar unter genau dem
   Pfad, den ``api.STATIC_DIR`` (``Path(__file__).parent / "static"``) erwartet.
-* **Mit Konsolenfenster**: Fehlermeldungen und das Abruf-Protokoll bleiben
-  sichtbar. Seit es das Startfenster gibt, ist die Konsole nicht mehr der
-  Aus-Schalter, sondern nur noch die Protokollansicht — bewusst behalten,
-  weil ein Fehler beim Start sonst spurlos verschwände.
+* **Mit Konsolenfenster** (``console=True``): Fehlermeldungen und das
+  Abruf-Protokoll bleiben sichtbar. Seit es das Startfenster gibt, ist die
+  Konsole nicht mehr der Aus-Schalter, sondern nur noch die Protokollansicht
+  — bewusst behalten, weil ein Fehler beim Start sonst spurlos verschwände.
+  Das gilt für Windows und Linux; auf dem Mac wird die hier gebaute Datei
+  anschließend in ein ``.app``-Bundle gelegt (``packaging/macos_app.sh``),
+  und ein Doppelklick darauf hat naturgemäß keine Konsole. Dort ist das
+  Startfenster die Anzeige — im Terminal aufgerufen schreibt dieselbe Datei
+  weiterhin ihr Protokoll.
+* **Kein eigener macOS-Zweig hier**: Das Bundle entsteht bewusst nicht über
+  PyInstallers ``BUNDLE``, sondern in einem eigenen Shellskript. So bleibt
+  dieser Bauplan für alle drei Systeme derselbe, und jede Entscheidung über
+  Info.plist, Signatur und ZIP steht an einer Stelle, die man ohne
+  PyInstaller lesen und ausführen kann.
 * Die ``uvicorn``-Untermodule stehen explizit hier, weil uvicorn sie zur
   Laufzeit über Strings lädt ("uvicorn.loops.auto" …) — die statische Analyse
   von PyInstaller sieht solche Importe nicht.
