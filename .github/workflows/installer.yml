@@ -143,11 +143,15 @@ jobs:
         if: runner.os == 'macOS'
         shell: bash
         run: |
+          # GitHub startet bash mit -e; hier ausdrücklich aus, weil jeder Ausgang
+          # unten über ergebnis()/fehlschlag() läuft und ein stiller Abbruch
+          # (etwa pgrep ohne Treffer = Exit 1) die Diagnose verschlucken würde.
+          set +e
           set -uo pipefail
           # Aus der ausgepackten ZIP-Kopie, nicht aus dist/: Der Empfänger startet
           # ausschließlich, was aus dem Archiv kommt.
           PROBE=$(mktemp -d)
-          ditto -x -k "${{ matrix.hochladen }}" "$PROBE"
+          ditto -x -k "${{ matrix.hochladen }}" "$PROBE" || { echo "Auspacken fehlgeschlagen." >&2; exit 1; }
           APP="$PROBE/GastroViewer.app"
           # Architektur muss zum Artefaktnamen passen. Der häufigste Nutzerfehler
           # („welchen Chip habe ich?") darf nicht auch noch aus dem Bau kommen.
@@ -173,7 +177,7 @@ jobs:
           # Nur die Prozesse, die seit dem "open" neu sind. Beide Seiten
           # lexikalisch sortiert, weil comm das verlangt.
           neue_prozesse() {
-            comm -13 <(printf '%s\n' "$VORHER") <(pgrep -x GastroViewer | sort) | tr '\n' ' '
+            comm -13 <(printf '%s\n' "$VORHER") <(pgrep -x GastroViewer | sort || true) | tr '\n' ' '
           }
 
           # Alles, was man ohne Mac zum Lesen eines roten Laufs braucht:
@@ -232,7 +236,9 @@ jobs:
             lsof -nP -iTCP:8000 -sTCP:LISTEN || true
             ergebnis 1 "NICHT AUSSAGEKRÄFTIG — Port 8000 war auf dem Runner schon belegt, bevor das Paket gestartet wurde."
           fi
-          VORHER=$(pgrep -x GastroViewer | sort)
+          # pgrep liefert Exit 1 ohne Treffer — vor der Rauchprobe läuft hier
+          # regulär noch kein GastroViewer.
+          VORHER=$(pgrep -x GastroViewer | sort || true)
           echo "GastroViewer-Prozesse vor dem Start (Rauchprobe 8017): $(echo $VORHER)"
           echo "Quarantäne-Attribut am Paket (leer = Gatekeeper wird nicht gefragt):"
           xattr -l "$APP" || true
