@@ -49,7 +49,9 @@ Release entsteht mit jedem Versions-Tag):
 >   Weg über Rechtsklick → „Öffnen" wurde mit Sequoia abgeschafft.)
 > - **macOS 14 und älter:** Rechtsklick (Ctrl-Klick) auf das Programm →
 >   **„Öffnen"** → im Dialog noch einmal „Öffnen".
-> - **Oder einmalig im Terminal:** `xattr -c /Programme/GastroViewer.app`
+> - **Oder einmalig im Terminal:** `xattr -dr com.apple.quarantine /Applications/GastroViewer.app`
+>   (der Ordner „Programme" heißt im Terminal `/Applications`; liegt das Paket noch in
+>   Downloads, das Programmsymbol ins Terminalfenster ziehen — das fügt den Pfad ein)
 >
 > Danach genügt der normale Doppelklick.
 >
@@ -110,7 +112,7 @@ den Weg ohne Fenster — es stürzt nicht ab.
 Das Paket kann auch alle Kommandos (in einem Terminal aufrufen):
 `GastroViewer-Windows.exe import-gtfs --region muenchen` importiert z. B. den
 Fahrplan für Block 6b. Auf dem Mac steckt dieselbe Kommandozeile im
-Programmpaket: `/Programme/GastroViewer.app/Contents/MacOS/GastroViewer
+Programmpaket: `/Applications/GastroViewer.app/Contents/MacOS/GastroViewer
 import-gtfs --region muenchen`. Zwei ehrliche Grenzen: der **Overture-Import**
 (Block 4f) braucht weiterhin Python (`pip install overturemaps` — das Paket wäre
 sonst hunderte MB groß); und die Dateien sind **nicht mit einem Zertifikat
@@ -1242,6 +1244,13 @@ Diese Hinweise stehen auch in der Oberfläche, nicht nur hier:
 ---
 
 ## Konfiguration
+
+> **Doppelklick-Paket:** Umgebungsvariablen aus Shell-Profilen (`~/.zshrc`,
+> `~/.bash_profile`, Windows-Benutzervariablen ausgenommen) gelten beim Start per
+> Doppelklick **nicht** — auf macOS, Linux und Windows gleichermaßen. Das
+> Startfenster zeigt das tatsächlich benutzte Datenverzeichnis an. Wer im Terminal
+> importiert (`import-gtfs`) und per Doppelklick startet, muss deshalb entweder
+> `GASTROVIEWER_DATA_DIR` in beiden Welten gleich setzen oder es ganz weglassen.
 
 Alles über Umgebungsvariablen, alles optional:
 

@@ -37,7 +37,11 @@ jobs:
             binaerdatei: dist/GastroViewer.exe
             # … und was am Ende ins Release geht.
             hochladen: dist/GastroViewer.exe
-          - os: macos-latest
+          # Bewusst eine feste Version statt macos-latest: Der Doppelklick-Test
+          # unten hängt am Verhalten von codesign, ditto, spctl und LaunchServices,
+          # und ein Label-Wechsel (etwa auf macOS 26) soll ein bewusster Schritt
+          # sein, kein stiller.
+          - os: macos-15
             artefakt: GastroViewer-macOS-AppleSilicon
             binaerdatei: dist/GastroViewer.app/Contents/MacOS/GastroViewer
             hochladen: dist/GastroViewer-macOS-AppleSilicon.zip
@@ -108,6 +112,60 @@ jobs:
             echo "  - Gatekeeper: \`${urteil//$'\n'/ }\` (nicht notarisiert — beim ersten Start ist die Sicherheitsabfrage zu bestätigen)."
           } >> "$GITHUB_STEP_SUMMARY"
 
+      # Der eigentliche Doppelklick — bis hierher nie ausgeführt. LaunchServices
+      # startet das Paket wie der Finder: ohne Argumente, ohne Terminal, ohne
+      # die Umgebung der Shell, mit Arbeitsverzeichnis "/". Erst wenn danach
+      # /api/health auf dem Standardport antwortet, ist der Weg belegt, den
+      # ein Nutzer wirklich nimmt. Ein Fenster aus der Shell heraus (Selbsttest
+      # unten) sagt darüber nichts.
+      - name: Doppelklick-Probe über LaunchServices (macOS)
+        if: runner.os == 'macOS'
+        shell: bash
+        run: |
+          set -euo pipefail
+          PROBE=$(mktemp -d)
+          ditto -x -k "${{ matrix.hochladen }}" "$PROBE"
+          APP="$PROBE/GastroViewer.app"
+          START_DATEI="$APP/Contents/MacOS/GastroViewer"
+
+          # Architektur muss zum Artefaktnamen passen. Der häufigste Nutzerfehler
+          # („welchen Chip habe ich?") darf nicht auch noch aus dem Bau kommen.
+          ARCH=$(lipo -archs "$START_DATEI")
+          case "${{ matrix.artefakt }}" in
+            *AppleSilicon) test "$ARCH" = "arm64" ;;
+            *Intel)        test "$ARCH" = "x86_64" ;;
+          esac
+          echo "Architektur: $ARCH"
+
+          aufraeumen() { pkill -f "$START_DATEI" >/dev/null 2>&1 || true; }
+          trap aufraeumen EXIT
+
+          # Port 8000 ist die argumentlose Vorgabe. "open" reicht keine
+          # Umgebungsvariablen weiter, also muss genau dieser Port frei sein.
+          if curl -sf http://127.0.0.1:8000/api/health >/dev/null; then
+            echo "Port 8000 ist schon belegt — die Probe wäre nicht aussagekräftig." >&2
+            exit 1
+          fi
+
+          START=$(date +%s)
+          open "$APP"
+          for i in $(seq 1 90); do
+            if curl -sf http://127.0.0.1:8000/api/health | grep -q '"status":"ok"'; then
+              DAUER=$(( $(date +%s) - START ))
+              # Der Prozess muss noch da sein — ein Server, dessen Fenster
+              # gleich wieder zugeht, wäre kein Erfolg.
+              pgrep -f "$START_DATEI" >/dev/null
+              echo "Doppelklick: Fenster und Server nach ${DAUER} s bereit."
+              echo "- **${{ matrix.artefakt }}**: Doppelklick über LaunchServices bringt Fenster und Server (${DAUER} s bis zur ersten Antwort, kalter Start)." >> "$GITHUB_STEP_SUMMARY"
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "Kein Server nach 90 s. Prozesse und Systemprotokoll:" >&2
+          ps -axo pid,ppid,stat,comm | grep -i gastroviewer || true
+          log show --predicate 'process CONTAINS "GastroViewer"' --last 3m --style compact || true
+          exit 1
+
       # Das Startfenster ist der Doppelklick-Weg. Hier wird geprueft, dass
       # es auf der Zielplattform ueberhaupt entsteht — Exitcode 4 heisst
       # "keine Bildschirmsitzung", das ist uebersprungen und wird als
@@ -173,6 +231,18 @@ jobs:
           if (-not $ok) { Write-Error "Server hat nicht geantwortet."; exit 1 }
           Write-Output "Startseite und Oberfläche antworten."
 
+      - name: Prüfsumme des geprüften Pakets festhalten
+        shell: bash
+        run: |
+          # sha256sum auf Linux und in der Git-Bash von Windows, shasum auf dem Mac.
+          if command -v sha256sum >/dev/null 2>&1; then
+            SUMME=$(sha256sum "${{ matrix.hochladen }}" | cut -d' ' -f1)
+          else
+            SUMME=$(shasum -a 256 "${{ matrix.hochladen }}" | cut -d' ' -f1)
+          fi
+          echo "sha256 ${{ matrix.hochladen }}: $SUMME"
+          echo "- **${{ matrix.artefakt }}**: sha256 \`$SUMME\`" >> "$GITHUB_STEP_SUMMARY"
+
       - name: Artefakt hochladen
         uses: actions/upload-artifact@v4
         with:
@@ -229,7 +299,9 @@ jobs:
               und bei „GastroViewer wurde blockiert" auf **„Trotzdem öffnen"**.
             * **macOS 14 und älter:** Rechtsklick (bzw. Ctrl-Klick) auf das Programm →
               **„Öffnen"** → im Dialog noch einmal „Öffnen".
-            * **Oder im Terminal, einmalig:** `xattr -c /Programme/GastroViewer.app`
+            * **Oder im Terminal, einmalig:** `xattr -dr com.apple.quarantine /Applications/GastroViewer.app`
+              (der Ordner „Programme" heißt im Terminal `/Applications`; liegt das Paket noch
+              in Downloads, das Programmsymbol ins Terminalfenster ziehen — das fügt den Pfad ein)
 
             Danach reicht der normale Doppelklick. Es öffnet sich das **Startfenster**
             mit Statuslampe, Start-/Stopp-Knopf und dem Link zur Oberfläche.
