@@ -277,16 +277,11 @@ function zeigeLuft(d) {
    Kundenprofil passt — und das entscheidet der Tourismus- bzw.
    Studierendenblock, nicht dieser hier. */
 async function ladeKalender(ags, lauf) {
+  // Ohne Gemeindeschlüssel (Österreich) kommt das Bundesland im Backend aus
+  // der Adresse des Punkts — deshalb immer die Koordinaten mitgeben.
   const id = 'kalender';
-  if (!ags) {
-    setStatus(id, 'leer', 'kein Gemeindeschlüssel');
-    setInhalt(id, el('div', { class: 'notiz' },
-      'Ohne Gemeindeschlüssel (aus dem Zensusblock) lässt sich kein '
-      + 'Bundesland zuordnen.'));
-    return;
-  }
   try {
-    const d = await hole('/api/kalender', { ags });
+    const d = await hole('/api/kalender', { ags: ags || '', lat: state.lat, lon: state.lon });
     if (lauf !== state.ladeLauf) return;
     state.daten.kalender = d;
     zeigeKalender(d);

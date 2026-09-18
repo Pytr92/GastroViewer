@@ -47,7 +47,7 @@ import {
 import {
   ladePlanung, zeigeRadzaehlung, zeigeVerkehrsmenge,
 } from './js/bloecke-laender.js';
-import { ebenenSchalter, karte, osmKarte } from './js/karte.js';
+import { ebenenSchalter, karte, osmKarte, passeKartenhintergrundAn } from './js/karte.js';
 import {
   FARBEN, POI_STIL, aktuellerSprungRing, beiPunktWahl, farbe, grenzen,
   ladePunkteEbene, setzePunkt, springeZuPoi, zeichnePois, zeichneZensus,
@@ -98,6 +98,7 @@ function lade(refresh = false) {
     .then((d) => {
       if (aktuell()) {
         state.daten.adresse = d; zeigeKopf(); ladeLinks(lauf);
+        passeKartenhintergrundAn(d.data?.land_code);
         ladeRegister(d.data?.plz, lauf);
       }
     })

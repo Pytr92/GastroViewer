@@ -55,6 +55,12 @@ def nominatim_search():
 
 
 @pytest.fixture(scope="session")
+def nominatim_reverse_wien():
+    """Stephansplatz, live am 18.09.2026 (AT-Probe): kein "state", ISO AT-9."""
+    return load_fixture("raw_nominatim_reverse_wien.json")
+
+
+@pytest.fixture(scope="session")
 def nominatim_reverse():
     return load_fixture("raw_nominatim_reverse.json")
 

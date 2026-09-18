@@ -44,6 +44,7 @@ function zeigeKopf() {
   zeile('PLZ', a?.plz);
   zeile('Gemeindeschlüssel (AGS)', z.ags ? `${z.ags} (${z.ags_quelle})` : null);
   zeile('Bundesland', z.bundesland || a?.bundesland);
+  if (a?.land_code && a.land_code !== 'DE') zeile('Land', `${a.land} (${a.land_code})`);
   zeile('Koordinaten', `${state.lat}, ${state.lon} · Radius ${state.radius} m`);
 
   const knoepfe = el('div', { style: 'margin-top:10px;display:flex;gap:6px;flex-wrap:wrap;' },

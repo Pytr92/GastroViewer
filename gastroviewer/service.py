@@ -18,6 +18,7 @@ from typing import Any, Awaitable, Callable
 from .cache import AsyncCache, cache_key
 from .config import Settings
 from .http import Outbound
+from .laender import DE, Land, land_aus_code, laender_fuer_punkt, quelle_fehlt
 from .sources import (airbnb as airbnb_mod,
                       bast as bast_mod,
                       baurecht as baurecht_mod,
@@ -104,9 +105,39 @@ class PointService:
             await self.cache.set(key, source, result.to_dict(), ttl)
         return result
 
+    # ------------------------------------------------------------ Land
+
+    async def land(self, lat: float, lon: float) -> Land:
+        """Das Land des Punkts. Liegt er in genau einem Landeskasten, ist es
+        das; in der Überlappung (Südbayern/Österreich) entscheidet der
+        Geocoder — die Adresse liegt ohnehin 30 Tage im Cache, das kostet
+        keinen zweiten Abruf."""
+        kandidaten = laender_fuer_punkt(lat, lon)
+        if len(kandidaten) == 1:
+            return kandidaten[0]
+        if not kandidaten:
+            return DE
+        res = await self.adresse(lat, lon)
+        code = (res.data or {}).get("land_code") if res.ok and res.data else None
+        return land_aus_code(code) or kandidaten[0]
+
+    @staticmethod
+    def _nur_in(name: str, land: Land) -> SourceResult | None:
+        """Ehrlich leer statt falscher Zahlen: Für eine Quelle, die es in
+        ``land`` nicht gibt, geht keine Anfrage hinaus."""
+        grund = quelle_fehlt(name, land)
+        if grund is None:
+            return None
+        return SourceResult(name=name, ok=True, data=None, warnings=[grund],
+                            provenance=Provenance(source=f"nicht verfügbar in {land.name}",
+                                                  license=""))
+
     # ------------------------------------------------------------ Quellen
 
     async def zensus(self, lat: float, lon: float, radius: int, refresh: bool = False):
+        land = await self.land(lat, lon)
+        if (leer := self._nur_in("zensus", land)) is not None:
+            return leer
         key = cache_key("zensus", lat, lon, radius)
         return await self._cached(
             "zensus",
@@ -446,6 +477,9 @@ class PointService:
     async def verkehrsmenge(self, lat: float, lon: float, radius: int, refresh: bool = False):
         """In Bayern BAYSIS (9 441 Zählstellen, ganzes klassifiziertes
         Netz), sonst die bundesweiten BASt-Dauerzählstellen."""
+        land = await self.land(lat, lon)
+        if (leer := self._nur_in("verkehrsmenge", land)) is not None:
+            return leer
         if bayern.in_bayern(lat, lon):
             key = cache_key("baysis", lat, lon, radius)
             return await self._cached(
@@ -550,6 +584,9 @@ class PointService:
         return res.data["stationen"]
 
     async def luft(self, lat: float, lon: float, refresh: bool = False):
+        land = await self.land(lat, lon)
+        if (leer := self._nur_in("luft", land)) is not None:
+            return leer
         key = cache_key("luft_punkt", lat, lon, 0)
         return await self._cached(
             "luft_punkt",
@@ -581,6 +618,9 @@ class PointService:
         """Gemessene Passantenfrequenz, falls eine Zählstelle in der Nähe
         steht. Der Schlüssel hängt an der Zählstelle, nicht am Punkt —
         sonst würde für jede Adresse derselbe Tagesgang neu geholt."""
+        land = await self.land(lat, lon)
+        if (leer := self._nur_in("frequenz", land)) is not None:
+            return leer
         z = frequenz_mod.naechste_zaehlstelle(lat, lon)
         if z is None:
             # Ohne Zählstelle gibt es nichts zu cachen und nichts zu holen.
@@ -627,20 +667,32 @@ class PointService:
             refresh=refresh,
         )
 
-    async def kalender(self, ags: str | None, refresh: bool = False):
-        """Feiertage und Schulferien des Bundeslandes — Kontextband."""
+    async def kalender(self, ags: str | None, refresh: bool = False,
+                       lat: float | None = None, lon: float | None = None):
+        """Feiertage und Schulferien des Bundeslandes — Kontextband.
+
+        In Deutschland kommt das Land aus dem Gemeindeschlüssel; ohne AGS
+        (Österreich) aus dem ISO-Code der Adresse des Punkts."""
         jahr = int(now_iso()[:4])
-        land = kalender_mod.land_aus_ags(ags)
+        kennung: str | None = ags
+        if not kennung and lat is not None and lon is not None:
+            res = await self.adresse(lat, lon)
+            if res.ok and res.data:
+                kennung = res.data.get("bundesland_iso")
+        land = kalender_mod.land_aus_kennung(kennung)
         key = f"kalender|{land[0] if land else 'ohne'}|{jahr}"
         return await self._cached(
             "kalender", key,
-            lambda: kalender_mod.load(self.outbound, ags, jahr),
+            lambda: kalender_mod.load(self.outbound, kennung, jahr),
             refresh=refresh,
         )
 
     async def baurecht(self, lat: float, lon: float, refresh: bool = False):
         """Baurechtlicher Rahmen am Punkt (Gebietsart, Plan, Sanierung,
         Denkmal). Bebauungspläne ändern sich selten — lange TTL."""
+        land = await self.land(lat, lon)
+        if (leer := self._nur_in("baurecht", land)) is not None:
+            return leer
         key = cache_key("baurecht", lat, lon, 0)
         return await self._cached(
             "baurecht", key,
@@ -983,6 +1035,9 @@ class PointService:
         Die Box wird auf ein Raster nach außen gerundet — leichtes Schwenken
         trifft so denselben Cache-Eintrag, statt den Dienst erneut zu fragen.
         """
+        land = await self.land((sued + nord) / 2, (west + ost) / 2)
+        if (leer := self._nur_in("gitter", land)) is not None:
+            return leer
         w, s, o, n = zensus.gitter_kachel(ebene, west, sued, ost, nord)
         key = f"zensus_gitter|{ebene}|{w:.2f}|{s:.2f}|{o:.2f}|{n:.2f}"
 
@@ -1182,6 +1237,9 @@ class PointService:
         """Straßenlärm am Punkt (LfU Bayern). Braucht das Bundesland aus dem
         Zensus — außerhalb Bayerns bleibt der Block mit Begründung leer,
         ohne dass eine Anfrage hinausgeht."""
+        land = await self.land(lat, lon)
+        if (leer := self._nur_in("laerm", land)) is not None:
+            return leer
         key = cache_key("laerm", lat, lon, 0) + f"|{bundesland_code or '-'}"
         return await self._cached(
             "laerm",
@@ -1198,6 +1256,9 @@ class PointService:
         nicht der Punkt: dieselben zehn Dateien beantworten jede Anfrage im
         ganzen Land, und die Normalperiode 1991–2020 ändert sich nicht.
         Die Stationswahl je Punkt ist danach reine lokale Rechnung."""
+        land = await self.land(lat, lon)
+        if (leer := self._nur_in("klima", land)) is not None:
+            return leer
         started = time.perf_counter()
 
         async def datei(eintrag: dict) -> SourceResult:
@@ -1248,6 +1309,9 @@ class PointService:
         je 100-m-Zelle. Die Box wird wie beim Übersichtsgitter auf ein Raster
         nach außen gerundet, damit leichtes Schwenken den Cache trifft statt
         Zensus und Overpass erneut zu fragen."""
+        land = await self.land((sued + nord) / 2, (west + ost) / 2)
+        if (leer := self._nur_in("scan", land)) is not None:
+            return leer
         w, s, o, n = scan_mod.scan_kachel(west, sued, ost, nord)
         key = f"scan|{w:.2f}|{s:.2f}|{o:.2f}|{n:.2f}"
         return await self._cached(
@@ -1262,6 +1326,9 @@ class PointService:
         nicht in Stunden — deshalb dieselbe lange Haltbarkeit wie das Wegenetz.
         Der Bundesland-Code wählt den Dienst (Bayern: LfU, sonst BfG) und
         gehört deshalb in den Cache-Schlüssel — wie beim Lärm."""
+        land = await self.land(lat, lon)
+        if (leer := self._nur_in("planung", land)) is not None:
+            return leer
         key = cache_key("planung", lat, lon, radius) + f"|{bundesland_code or '-'}"
         return await self._cached(
             "planung",
@@ -1331,6 +1398,7 @@ class PointService:
         adresse = blocks["adresse"].get("data") or {}
         zensus_data = blocks["zensus"].get("data") or {}
         ags = zensus_data.get("ags")
+        land = await self.land(lat, lon)
 
         # Einkommen und Kreisprofil brauchen den Gemeindeschlüssel aus dem
         # Zensus — deshalb nach dem Sammeln, nicht parallel dazu. Je Kreis
@@ -1362,10 +1430,12 @@ class PointService:
                 "airbnb", SourceError("unknown", f"{type(exc).__name__}: {exc}")
             ).to_dict()
 
-        # Registerumfeld: braucht die Postleitzahl aus der Adresse.
+        # Registerumfeld: braucht die Postleitzahl aus der Adresse — und den
+        # deutschen Registerbestand.
         try:
             blocks["register"] = (
-                await self.register(adresse.get("plz"), refresh)
+                self._nur_in("register", land)
+                or await self.register(adresse.get("plz"), refresh)
             ).to_dict()
         except Exception as exc:  # noqa: BLE001
             blocks["register"] = SourceResult.failed(
@@ -1396,10 +1466,10 @@ class PointService:
         else:
             for name in ("einkommen", "kreisprofil", "pendler", "genesis", "pks",
                          "wahl"):
-                blocks[name] = SourceResult(
+                blocks[name] = (self._nur_in(name, land) or SourceResult(
                     name=name, ok=True, data=None,
                     warnings=["Ohne Gemeindeschlüssel lässt sich kein Kreiswert zuordnen."],
-                ).to_dict()
+                )).to_dict()
             # Der Lärmdienst braucht keinen Gemeindeschlüssel — der
             # UBA-Bundesdienst deckt ganz Deutschland ab.
             try:
@@ -1453,6 +1523,10 @@ class PointService:
                 "ags_quelle": zensus_data.get("ags_quelle"),
                 "bundesland": zensus_data.get("bundesland") or adresse.get("bundesland"),
                 "bundesland_code": bl_code,
+                "bundesland_iso": adresse.get("bundesland_iso"),
+                "land": land.code,
+                "land_name": land.name,
+                "land_hinweis": land.hinweis or None,
             },
             "bloecke": blocks,
             "bodenrichtwerte": boris.links_for(bl_code, gemeinde),

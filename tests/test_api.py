@@ -2163,7 +2163,7 @@ def test_import_prueft_struktur_und_wertebereich(client):
         ({"lat": "abc"}, "muss eine Zahl sein"),
         ({"radius": "abc"}, "ganze Zahl"),
         ({"lat": 999}, "Koordinaten außerhalb"),
-        ({"lat": 48.85, "lon": 2.35}, "außerhalb Deutschlands"),
+        ({"lat": 48.85, "lon": 2.35}, "außerhalb der unterstützten Länder"),
         ({"radius": -5}, "zwischen 50 und 5000"),
         ({"radius": 999999}, "zwischen 50 und 5000"),
     )
@@ -2288,3 +2288,67 @@ def test_pendler_gemeindeliste_404_ist_ein_benannter_fehler(
     # sie in jedem Fall, nie „unknown".
     assert d["ok"] is False and d["error"]["kind"] in ("http_status", "timeout")
     assert "Dienst" in d["error"]["message"]
+
+
+
+# ------------------------------------------------------------ Österreich
+
+
+WIEN = (48.2082, 16.3738)
+
+
+def test_wiener_punkt_bekommt_ehrliche_antwort(client, zensus_600, overpass_combined,
+                                                 nominatim_reverse_wien):
+    """Stephansplatz: Das Land kommt vom Geocoder (Kästen überlappen sich),
+    länderunabhängige Quellen laufen, deutsche Dienste werden nicht
+    gefragt — kein Zensus-Abruf, keine DWD-Station hinter der Grenze."""
+    fake = FakeOutbound(zensus_600, overpass_combined, nominatim_reverse_wien)
+    c2 = client.make(fake)
+    with c2:
+        r = c2.get("/api/point", params={"lat": WIEN[0], "lon": WIEN[1], "r": 600})
+        assert r.status_code == 200
+        d = r.json()
+        assert d["punkt"]["land"] == "AT" and d["punkt"]["land_name"] == "Österreich"
+        assert d["punkt"]["bundesland"] == "Wien" and d["punkt"]["bundesland_iso"] == "AT-9"
+        assert d["punkt"]["ags"] is None
+        assert "Bodenrichtwerte" in d["punkt"]["land_hinweis"]
+        for name in ("zensus", "klima", "luft", "laerm", "planung", "einkommen",
+                     "pks", "wahl", "register"):
+            b = d["bloecke"][name]
+            assert b["ok"] is True and b["data"] is None, name
+            assert any("Nur für Deutschland" in w for w in b["warnings"]), (name, b["warnings"])
+        assert d["bloecke"]["osm"]["ok"] is True, "OSM gilt überall"
+        assert d["bloecke"]["adresse"]["data"]["land_code"] == "AT"
+        assert "zensus" not in fake.calls and "dwd" not in fake.calls
+        for name, kind in (("unknown", None),):
+            assert not [n for n, b in d["bloecke"].items()
+                        if not b["ok"] and (b.get("error") or {}).get("kind") == "unknown"]
+        # Einzelendpunkte gaten genauso — ohne Netzabruf.
+        z = c2.get("/api/point/zensus", params={"lat": WIEN[0], "lon": WIEN[1], "r": 600}).json()
+        assert z["ok"] is True and z["data"] is None
+        assert "zensus" not in fake.calls
+        g = c2.get("/api/gitter", params={"ebene": "1km", "west": 16.3, "sued": 48.15,
+                                          "ost": 16.45, "nord": 48.25}).json()
+        assert g["ok"] is True and g["data"] is None
+
+
+SALZBURG = (47.8095, 13.0550)
+
+
+def test_in_der_ueberlappung_entscheidet_der_geocoder(client, zensus_600, overpass_combined,
+                                                       nominatim_reverse, nominatim_reverse_wien):
+    """Salzburg liegt im deutschen und im österreichischen Kasten. Sagt
+    Nominatim „at", ist es Österreich; sagt er „de", Deutschland — und dann
+    laufen die deutschen Quellen wie gewohnt."""
+    at = FakeOutbound(zensus_600, overpass_combined, nominatim_reverse_wien)
+    with client.make(at) as c2:
+        d = c2.get("/api/point", params={"lat": SALZBURG[0], "lon": SALZBURG[1], "r": 600}).json()
+    assert d["punkt"]["land"] == "AT"
+    assert "zensus" not in at.calls
+    de = FakeOutbound(zensus_600, overpass_combined, nominatim_reverse)
+    with client.make(de) as c3:
+        # Die Adresse liegt 30 Tage im Cache — für die Gegenprobe leeren.
+        c3.delete("/api/cache", params={"quelle": "nominatim_reverse"})
+        d = c3.get("/api/point", params={"lat": SALZBURG[0], "lon": SALZBURG[1], "r": 600}).json()
+    assert d["punkt"]["land"] == "DE"
+    assert "zensus" in de.calls

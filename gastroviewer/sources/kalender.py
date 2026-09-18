@@ -23,6 +23,8 @@ einen wechselnden TYPO3-Hash, und Feiertage führt sie gar nicht.
 
 from __future__ import annotations
 
+import re
+
 import datetime as dt
 from typing import Any
 
@@ -73,6 +75,44 @@ HINWEISE = [
 def land_aus_ags(ags: str | None) -> tuple[str, str] | None:
     ziffern = "".join(c for c in str(ags or "") if c.isdigit())
     return LAND_NACH_AGS.get(ziffern[:2])
+
+
+# OpenHolidaysAPI führt Österreichs Länder mit eigenen Codes (Subdivisions:
+# AT-WI für Wien), nicht mit ISO 3166-2 (AT-9). Nominatim liefert ISO —
+# hier die Brücke. Live belegt am 18.09.2026 (fixtures/at).
+OPENHOLIDAYS_CODE = {
+    "AT-1": "AT-BL", "AT-2": "AT-KÄ", "AT-3": "AT-NÖ", "AT-4": "AT-OÖ",
+    "AT-5": "AT-SB", "AT-6": "AT-SM", "AT-7": "AT-TI", "AT-8": "AT-VA",
+    "AT-9": "AT-WI",
+}
+
+AT_HINWEISE = [
+    "Feiertage und Ferien gelten für das **ganze Bundesland** — sie "
+    "unterscheiden zwei Standorte derselben Stadt nicht. Der Block steht "
+    "hier als Kontext, nicht als Bewertung, und fließt in keine Kennzahl.",
+    "Landespatrone (Leopoldi in Wien und Niederösterreich, Josefi, Florian, "
+    "Rupert, Martini) sind keine gesetzlichen Feiertage nach dem "
+    "Arbeitsruhegesetz — schulfrei ja, Läden offen; die Quelle führt sie "
+    "als regionale Termine.",
+    "Die **Sommerferien** beginnen im Osten (Wien, Niederösterreich, "
+    "Burgenland) eine Woche früher als im Westen; die Semesterferien im "
+    "Februar sind je Land gestaffelt.",
+]
+
+
+def land_aus_kennung(kennung: str | None) -> tuple[str, str] | None:
+    """Gemeindeschlüssel (DE) **oder** ISO-3166-2-Code (``DE-BY``, ``AT-9``)
+    → (ISO-Code, Name). Der Punkt entscheidet, was er hat: in Deutschland
+    liefert der Zensus den AGS, in Österreich Nominatim den ISO-Code."""
+    from ..laender import land_aus_iso
+
+    if not kennung:
+        return None
+    text = str(kennung).strip()
+    if re.match(r"^[A-Za-z]{2}-", text):
+        treffer = land_aus_iso(text)
+        return (text.upper(), treffer[2]) if treffer else None
+    return land_aus_ags(text)
 
 
 def _name(eintrag: dict[str, Any]) -> str | None:
@@ -136,12 +176,12 @@ def auswerten(land: tuple[str, str], jahr: int,
         "sommerferien": sommer,
         "ferien": ferien,
         "feiertage": feiertage,
-        "hinweise": HINWEISE,
+        "hinweise": AT_HINWEISE if land[0].startswith("AT") else HINWEISE,
     }
 
 
-async def load(out: Outbound, ags: str | None, jahr: int) -> SourceResult:
-    land = land_aus_ags(ags)
+async def load(out: Outbound, kennung: str | None, jahr: int) -> SourceResult:
+    land = land_aus_kennung(kennung)
     if land is None:
         return SourceResult(
             name="kalender", ok=True, data=None,
@@ -149,9 +189,10 @@ async def load(out: Outbound, ags: str | None, jahr: int) -> SourceResult:
                       "und damit kein Feiertagskalender zuordnen."],
             provenance=Provenance(source="OpenHolidaysAPI", license=LIZENZ),
         )
+    staat = land[0][:2]
     params = {
-        "countryIsoCode": "DE", "languageIsoCode": "DE",
-        "subdivisionCode": land[0],
+        "countryIsoCode": staat, "languageIsoCode": "DE",
+        "subdivisionCode": OPENHOLIDAYS_CODE.get(land[0], land[0]),
         "validFrom": f"{jahr}-01-01", "validTo": f"{jahr}-12-31",
     }
     feiertage = parse_feiertage(await out.get_json(

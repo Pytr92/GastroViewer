@@ -263,7 +263,7 @@ def test_limiter_registry_kennt_je_dienst_eine_obergrenze():
     (True, 11.5, 600, "Zahl"),
     (48.1, 11.5, 600.0, "ganze Zahl"),
     (91, 11.5, 600, "gültigen Bereichs"),
-    (48.85, 2.35, 600, "Deutschlands"),
+    (48.85, 2.35, 600, "unterstützten Länder"),
     (48.1, 11.5, 49, "50 und 5000"),
     (48.1, 11.5, 5001, "50 und 5000"),
 ])
@@ -280,6 +280,8 @@ def test_pruefe_punkt_nimmt_gueltige_werte():
 
     assert pruefe_punkt(48.1334, 11.5674, 600) is None
     assert pruefe_punkt(48, 11, 50) is None
+    assert pruefe_punkt(48.2082, 16.3738, 600) is None, "Wien"
+    assert pruefe_punkt(46.6247, 14.3050, 600) is None, "Klagenfurt, südlich des deutschen Kastens"
 
 
 def test_import_direkt_prueft_alles_oder_nichts(tmp_path):

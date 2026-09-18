@@ -6,6 +6,7 @@ from __future__ import annotations
 from fastapi import APIRouter, HTTPException, Query, Request
 
 from ..http import Outbound
+from ..laender import GESAMT_BBOX
 from ..sources import genesis as genesis_mod, wms
 from ._gemeinsam import cfg, svc, validiere_punkt as _validate
 from .modelle import GenesisZugang
@@ -102,10 +103,14 @@ async def kreisprofil(
 
 @router.get("/api/kalender")
 async def kalender(request: Request, ags: str = "",
+                   lat: float | None = None, lon: float | None = None,
                    refresh: bool = False):
     """Feiertage und Schulferien des Bundeslandes als Kontext — ohne
-    Verrechnung in irgendeine Kennzahl."""
-    return (await svc(request).kalender(ags or None, refresh)).to_dict()
+    Verrechnung in irgendeine Kennzahl. Ohne Gemeindeschlüssel (außerhalb
+    Deutschlands) kommt das Bundesland aus der Adresse des Punkts."""
+    if lat is not None and lon is not None:
+        _validate(lat, lon, 600)
+    return (await svc(request).kalender(ags or None, refresh, lat=lat, lon=lon)).to_dict()
 
 
 @router.get("/api/wahl")
@@ -177,8 +182,9 @@ async def gitter(
         raise HTTPException(422, "ebene muss 1km oder 10km sein.")
     if not (west < ost and sued < nord):
         raise HTTPException(422, "Box muss west<ost und sued<nord erfüllen.")
-    if not (5.0 <= west and ost <= 16.0 and 46.5 <= sued and nord <= 56.0):
-        raise HTTPException(422, "Box liegt außerhalb Deutschlands.")
+    if not (GESAMT_BBOX[1] - 0.5 <= west and ost <= GESAMT_BBOX[3] + 0.5
+            and GESAMT_BBOX[0] - 0.5 <= sued and nord <= GESAMT_BBOX[2] + 0.5):
+        raise HTTPException(422, "Box liegt außerhalb der unterstützten Länder.")
     max_lon, max_lat = GITTER_EBENEN[ebene]["max_spanne"]
     if (ost - west) > max_lon or (nord - sued) > max_lat:
         raise HTTPException(
@@ -205,8 +211,9 @@ async def scan(
 
     if not (west < ost and sued < nord):
         raise HTTPException(422, "Box muss west<ost und sued<nord erfüllen.")
-    if not (5.0 <= west and ost <= 16.0 and 46.5 <= sued and nord <= 56.0):
-        raise HTTPException(422, "Box liegt außerhalb Deutschlands.")
+    if not (GESAMT_BBOX[1] - 0.5 <= west and ost <= GESAMT_BBOX[3] + 0.5
+            and GESAMT_BBOX[0] - 0.5 <= sued and nord <= GESAMT_BBOX[2] + 0.5):
+        raise HTTPException(422, "Box liegt außerhalb der unterstützten Länder.")
     if (ost - west) > MAX_SPANNE[0] or (nord - sued) > MAX_SPANNE[1]:
         raise HTTPException(
             422,

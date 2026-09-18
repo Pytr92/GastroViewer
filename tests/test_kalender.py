@@ -108,3 +108,30 @@ def test_oertlicher_feiertag_wird_nicht_zum_landesfeiertag(kalender_fixture):
     assert len(lokal) == 1 and lokal[0]["name"] == "Friedensfest"
     assert lokal[0]["gilt_in"] == ["DE-BY-AU"]
     assert not any(x.get("lokal") for x in t if x["name"] == "Allerheiligen")
+
+
+
+def test_land_aus_kennung_versteht_ags_und_iso():
+    assert kalender.land_aus_kennung("09162000") == ("DE-BY", "Bayern")
+    assert kalender.land_aus_kennung("AT-9") == ("AT-9", "Wien")
+    assert kalender.land_aus_kennung("de-by") == ("DE-BY", "Bayern")
+    assert kalender.land_aus_kennung("AT-42") is None
+    assert kalender.land_aus_kennung(None) is None
+
+
+def test_load_wien_fragt_mit_openholidays_code(kalender_fixture):
+    """Nominatim liefert ISO AT-9, OpenHolidaysAPI will AT-WI (Subdivisions
+    live belegt) — und countryIsoCode=AT statt DE."""
+    gesehen = []
+
+    class Fake:
+        async def get_json(self, source, url, params=None, **kw):
+            gesehen.append((url.rsplit("/", 1)[-1], dict(params or {})))
+            return (kalender_fixture["feiertage_by_2026"] if "Public" in url
+                    else kalender_fixture["ferien_by_2026"])
+
+    res = asyncio.run(kalender.load(Fake(), "AT-9", 2026))
+    assert res.ok and res.data["bundesland"] == "Wien" and res.data["code"] == "AT-9"
+    assert gesehen[0][1]["countryIsoCode"] == "AT"
+    assert gesehen[0][1]["subdivisionCode"] == "AT-WI"
+    assert any("Arbeitsruhegesetz" in h for h in res.data["hinweise"])
