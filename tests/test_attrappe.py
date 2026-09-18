@@ -30,6 +30,7 @@ OHNE_AUFZEICHNUNG = {
     "/api/points",          # merken, benoten, löschen, vergleichen, sichern
     "/api/schaetzung",      # POST, rechnet clientnah im Backend ohne Netz
     "/api/export",          # Downloads aus gespeicherten Punkten
+    "/api/import",          # Knopf-Import: Zustand und Start, rein lokal
 }
 
 

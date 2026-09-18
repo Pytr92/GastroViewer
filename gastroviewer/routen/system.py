@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import asyncio
 
-from fastapi import APIRouter, Query, Request
+from fastapi import APIRouter, HTTPException, Query, Request
 
 from ..cache import AsyncCache
 from ..http import Outbound
@@ -53,3 +53,26 @@ async def clear_cache(request: Request, quelle: str | None = None):
     cache: AsyncCache = request.app.state.cache
     n = await asyncio.to_thread(cache.sync.clear, quelle)
     return {"geloescht": n, "quelle": quelle or "alle"}
+
+
+@router.get("/api/import/status")
+async def import_status(request: Request):
+    """Zustand der Einmal-Importe, die die Oberfläche anstoßen kann
+    (Bevölkerungsraster Österreich, Fahrplan Wien): vorhanden, laufend,
+    Fortschritt, Fehler."""
+    return await asyncio.to_thread(request.app.state.importe.zustand)
+
+
+@router.post("/api/import/{art}", status_code=202)
+async def import_starten(request: Request, art: str):
+    """Einen Import im Hintergrund starten. Nichts lädt ungefragt — erst
+    dieser Aufruf (der Knopf in der Oberfläche) holt die Datei."""
+    importe = request.app.state.importe
+    try:
+        lauf = importe.start(art)
+    except KeyError:
+        raise HTTPException(404, f"Unbekannter Import: {art}") from None
+    except RuntimeError as err:
+        raise HTTPException(409, str(err)) from None
+    return {"art": art, "status": lauf.status, "schritt": lauf.schritt}
+

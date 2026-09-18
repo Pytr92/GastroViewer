@@ -15,6 +15,7 @@ import { hole } from './api.js';
 import { POI_STIL, springeZuPoi, zeichnePois } from './karte-ebenen.js';
 import { pflegeleiste } from './vergleich.js';
 import { brwBlock, setzeBrwEbene, setzeZusatzebenen } from './bloecke-laender.js';
+import { importFeld } from './importe.js';
 /* --------------------------- Verfügbares Einkommen (Kreisebene, VGRdL) */
 
 /* Kleinräumige Kaufkraft ist ein kommerzielles Datenprodukt. Was es amtlich
@@ -1952,6 +1953,11 @@ function zeigeGtfs(d) {
   if (!g) {
     setStatus('gtfs', 'leer', 'nicht importiert');
     setInhalt('gtfs', ...warnungen(d.warnings));
+    // Wien: der Fahrplan der Wiener Linien lässt sich per Knopf nachladen.
+    const lauf = state.ladeLauf;
+    importFeld('gtfs_wien', lauf).then((feld) => {
+      if (feld && lauf === state.ladeLauf) document.getElementById('inhalt-gtfs')?.append(feld);
+    });
     setQuelle('gtfs', d.provenance);
     return;
   }

@@ -100,6 +100,9 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         lifespan=lifespan,
     )
     app.state.settings = settings or get_settings()
+    from .importe import Importe
+
+    app.state.importe = Importe(app.state.settings)
 
     @app.middleware("http")
     async def herkunft_pruefen(request: Request, call_next):
