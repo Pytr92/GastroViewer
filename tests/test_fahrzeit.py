@@ -191,3 +191,80 @@ def test_fahrzeit_wandert_nur_aus_dem_cache_in_den_punkt():
     block = quelle.split("async def fahrzeit_aus_cache")[1].split("async def ")[0]
     assert "self.cache.get" in block
     assert "fz_mod.load" not in block, "hier darf nichts geladen werden"
+
+
+# ------------------------------------------------- Verdrahtung bis zum Service
+#
+# Die Tests oben prüfen reine Funktionen. Der Block war trotzdem von seiner
+# Einführung an tot: Der Service übergab ein Attribut, das es nicht gibt, und
+# load() las das run_query-Tupel wie ein dict. 711 grüne Tests sahen das nicht,
+# weil der Service jede Ausnahme in einen Fehlerblock verpackt. Diese beiden
+# Tests rufen deshalb genau den Pfad, der beim Nutzer läuft.
+
+
+class _StubOut:
+    """Nur die Netz-Ebene: liefert das aufgezeichnete Autonetz."""
+
+    def __init__(self, antwort, fehler: SourceError | None = None):
+        self.antwort = antwort
+        self.fehler = fehler
+        self.aufrufe = 0
+
+    async def post_json(self, source, url, **kw):
+        self.aufrufe += 1
+        if self.fehler:
+            raise self.fehler
+        return self.antwort
+
+
+def test_load_rechnet_aus_der_echten_antwort(overpass_auto_muenchen):
+    import asyncio
+
+    from gastroviewer.config import Settings
+
+    out = _StubOut(overpass_auto_muenchen)
+    r = asyncio.run(fahrzeit.load(out, Settings(), *MARIENPLATZ, 10))
+    assert r.ok, r.error
+    assert out.aufrufe == 1
+    assert r.data["erreichte_knoten"] > 100
+    assert r.data["flaeche"]
+    assert r.provenance.endpoint, "der benutzte Spiegel gehört in die Quellenangabe"
+
+
+def test_load_meldet_ausfall_als_fehlerart(overpass_auto_muenchen):
+    """Alle Spiegel weg: ein Fehlerblock mit erkennbarer Art, kein „unknown"."""
+    import asyncio
+
+    from gastroviewer.config import Settings
+
+    out = _StubOut(None, SourceError("http_status", "HTTP 504 — abgebrochen."))
+    r = asyncio.run(fahrzeit.load(out, Settings(), *MARIENPLATZ, 10))
+    assert not r.ok
+    assert r.error["kind"] != "unknown"
+
+
+def test_service_reicht_seinen_outbound_durch(monkeypatch):
+    """Der Service muss das Attribut übergeben, das er wirklich besitzt."""
+    import asyncio
+    from unittest.mock import AsyncMock
+
+    from gastroviewer.config import Settings
+    from gastroviewer.service import PointService
+    from gastroviewer.sources.base import SourceResult
+
+    class _StubCache:
+        async def get(self, key):
+            return None
+
+        async def set(self, *a, **kw):
+            pass
+
+    out = object()
+    svc = PointService(Settings(), _StubCache(), out)
+    ergebnis = SourceResult(name="fahrzeit", ok=True, data={"flaeche": []})
+    laden = AsyncMock(return_value=ergebnis)
+    monkeypatch.setattr(fahrzeit, "load", laden)
+    r = asyncio.run(svc.fahrzeit(*MARIENPLATZ, 10))
+    assert r.ok, r.error
+    assert laden.await_count == 1
+    assert laden.await_args.args[0] is out

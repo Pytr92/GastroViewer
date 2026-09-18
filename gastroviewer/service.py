@@ -1147,7 +1147,7 @@ class PointService:
         key = cache_key("fahrzeit", lat, lon, minuten)
 
         async def laden() -> SourceResult:
-            return await fz_mod.load(self.out, self.settings, lat, lon, minuten)
+            return await fz_mod.load(self.outbound, self.settings, lat, lon, minuten)
 
         return await self._cached("fahrzeit", key, laden)
 

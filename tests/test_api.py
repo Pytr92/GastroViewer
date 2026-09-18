@@ -29,8 +29,11 @@ class FakeOutbound:
                  airbnb=None, messe=None, tourismus=None,
                  uba=None, bfg_hochwasser=None,
                  pks=None, leerstandsmelder=None,
-                 luft_api=None, wahl_dateien=None, gebaeude=None):
+                 luft_api=None, wahl_dateien=None, gebaeude=None,
+                 auto=None):
         self.zensus = zensus
+        # Fahrzeit-Block: das aufgezeichnete Hauptstraßennetz.
+        self.auto = auto
         self.overpass = overpass
         self.gebaeude = gebaeude or {"elements": []}
         self.nominatim = nominatim
@@ -112,6 +115,14 @@ class FakeOutbound:
             # Die Sonnenrechnung fragt denselben Endpunkt, aber nach
             # Gebäudeumrissen — an der Abfrage unterscheidbar.
             abfrage = ((kw or {}).get("data") or {}).get("data", "")
+            # Der Fahrzeit-Block fragt nur das Hauptnetz — am Autobahn-Tag
+            # erkennbar, den keine andere Abfrage des Werkzeugs stellt.
+            if "motorway" in abfrage:
+                self.calls.append("overpass_auto")
+                if "overpass_auto" in self.fehler or self.auto is None:
+                    raise SourceError("http_status",
+                                      "HTTP 504 — der Dienst hat abgebrochen.")
+                return self.auto
             if "building" in abfrage and "out geom" in abfrage:
                 self.calls.append("overpass_gebaeude")
                 if "overpass_gebaeude" in self.fehler:
@@ -295,7 +306,7 @@ def client(tmp_path, monkeypatch, zensus_600, overpass_combined, nominatim_rever
            muenchen_indikatoren, airbnb_muenchen, messe_muenchen,
            tourismus_muenchen, uba_laerm, bfg_hochwasser,
            pks_auszug, lsm_places, uba_luft_api, wahl_btw25,
-           overpass_gebaeude):
+           overpass_gebaeude, overpass_auto_muenchen):
     from gastroviewer.config import Settings
 
     # Der Genesis-Block ist ein Opt-in — die Testumgebung darf keine echte
@@ -319,6 +330,7 @@ def client(tmp_path, monkeypatch, zensus_600, overpass_combined, nominatim_rever
                              "29": uba_laerm["hlq_night"]},
                         bfg_hochwasser=bfg_hochwasser["koeln_rheinufer"],
                         gebaeude=overpass_gebaeude["sendlinger_tor"],
+                        auto=overpass_auto_muenchen,
                         pks=pks_auszug,
                         leerstandsmelder=lsm_places["places"],
                         luft_api=uba_luft_api,
@@ -1818,3 +1830,18 @@ def test_point_sonne_endpunkt(client):
     # Die Abdeckung der Höhenangaben muss mitgeliefert werden.
     assert s["gebaeude_ohne_hoehe"] >= 0
     assert any("Obergrenze" in h for h in s["hinweise"])
+
+
+# ------------------------------------------------------------ Fahrzeit
+
+
+def test_fahrzeit_endpunkt_liefert_ein_gebiet(client):
+    """Der Block war seit seiner Einführung tot (self.out, run_query-Tupel) —
+    kein Test rief den Endpunkt je auf. Jetzt schon."""
+    r = client.get("/api/point/fahrzeit", params={"lat": LAT, "lon": LON, "minuten": 10})
+    assert r.status_code == 200
+    d = r.json()
+    assert d["ok"], d.get("error")
+    assert d["data"]["erreichte_knoten"] > 100
+    assert d["data"]["minuten"] == 10
+    assert "overpass_auto" in client.fake.calls

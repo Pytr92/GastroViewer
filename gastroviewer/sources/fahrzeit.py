@@ -251,8 +251,16 @@ async def load(out: Outbound, settings: Settings, lat: float, lon: float,
     minuten = max(MIN_MINUTEN, min(MAX_MINUTEN, int(minuten)))
     _, gedeckelt = umkreis_m(minuten)
     query = build_query(lat, lon, minuten, timeout=int(settings.overpass_timeout))
-    antwort = await run_query(out, settings, query, "fahrzeit")
-    netz, zaehler = baue_autonetz(antwort.get("elements") or [])
+    # run_query liefert (Antwort, benutzter Spiegel, übersprungene Spiegel) —
+    # dasselbe Muster wie gehweg.load. Ein Fehlschlag aller Spiegel kommt als
+    # SourceError und wird hier zum Fehlerblock mit erkennbarer Art, statt im
+    # Service als „unknown" zu landen.
+    try:
+        payload, endpoint, probleme = await run_query(out, settings, query)
+    except SourceError as err:
+        return SourceResult.failed("fahrzeit", err)
+    elements = payload.get("elements", []) if isinstance(payload, dict) else []
+    netz, zaehler = baue_autonetz(elements)
     if not len(netz):
         raise SourceError(
             "leeres_netz",
@@ -260,9 +268,10 @@ async def load(out: Outbound, settings: Settings, lat: float, lon: float,
     return SourceResult(
         name="fahrzeit", ok=True,
         data=auswerten(netz, zaehler, lat, lon, minuten, gedeckelt),
+        warnings=list(probleme),
         provenance=Provenance(
             source="OpenStreetMap über Overpass (Hauptstraßennetz)",
-            license=LICENSE, retrieved_at=now_iso(),
+            license=LICENSE, endpoint=endpoint, retrieved_at=now_iso(),
             note=("Freifluss-Fahrzeit auf dem Hauptnetz, gerechnet mit "
                   f"{ZUEGIGKEIT:.0%} des Tempolimits.")),
     )
