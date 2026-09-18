@@ -22,6 +22,7 @@ import csv
 import datetime as dt
 import io
 import math
+import os
 import sqlite3
 import time
 import zipfile
@@ -122,9 +123,15 @@ def import_feed(
     """
     settings.ensure_dirs()
     db_path = settings.gtfs_db_path
-    if db_path.exists():
-        db_path.unlink()
-    conn = sqlite3.connect(db_path)
+    # In eine Nebendatei importieren und erst am Ende an die Stelle der
+    # alten setzen: Vorher wurde die alte Datenbank gelöscht, BEVOR das ZIP
+    # geprüft war — ein fehlerhaftes ZIP hinterließ eine leere, „importierte"
+    # Datenbank. Bricht der Import ab, bleibt die alte unangetastet; die
+    # Nebendatei räumt der nächste Lauf weg.
+    tmp_path = db_path.with_name(db_path.name + ".neu")
+    if tmp_path.exists():
+        tmp_path.unlink()
+    conn = sqlite3.connect(tmp_path)
     conn.executescript(SCHEMA)
 
     started = time.perf_counter()
@@ -277,6 +284,7 @@ def import_feed(
     conn.commit()
     conn.execute("PRAGMA journal_mode=WAL")
     conn.close()
+    os.replace(tmp_path, db_path)
 
     stats["dauer_s"] = round(time.perf_counter() - started, 1)
     stats["datenbank"] = str(db_path)

@@ -326,3 +326,29 @@ async def test_ohne_code_laeuft_der_bundesdienst_auch_in_bayern(settings, bfg_ho
 
     res = await planung.load(FakeOut(), settings, 48.1372, 11.5755, 600)
     assert res.ok and res.data["hochwasser"]["dienst"] == "bfg"
+
+
+def test_bund_serviceexception_ist_kein_nicht_betroffen():
+    """Gültiges XML, aber ein Fehlerbericht des Dienstes: Fehler, nicht „kein
+    Hochwasser"."""
+    from gastroviewer.sources.base import SourceError
+
+    xml = (
+        '<?xml version="1.0"?>'
+        '<ServiceExceptionReport version="1.3.0" xmlns="http://www.opengis.net/ogc">'
+        '<ServiceException code="LayerNotDefined">Layer NZ.HazardArea not found</ServiceException>'
+        '</ServiceExceptionReport>'
+    )
+    with pytest.raises(SourceError) as info:
+        planung.bund_hochwasser_aufbereiten(xml)
+    assert info.value.kind == "api_error"
+    assert "LayerNotDefined" in info.value.message and "not found" in info.value.message
+
+
+def test_bund_fremde_wurzel_wird_benannt():
+    from gastroviewer.sources.base import SourceError
+
+    with pytest.raises(SourceError) as info:
+        planung.bund_hochwasser_aufbereiten("<html><body>Wartung</body></html>")
+    assert info.value.kind == "parse"
+    assert "html" in info.value.message

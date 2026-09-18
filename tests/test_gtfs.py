@@ -339,3 +339,20 @@ def test_einzugsgebiet_meldet_den_gerechneten_referenztag(importiert, tmp_path):
     d = gtfs.einzugsgebiet(s, LAT, LON, minuten=30)
     assert d["referenztag"]["date"] == "20250902"
     assert d["referenztag"]["weekday_de"] == "Dienstag"
+
+
+def test_kaputtes_zip_laesst_die_alte_datenbank_stehen(importiert, tmp_path):
+    """Ein fehlerhaftes ZIP darf den vorhandenen Import nicht zerstören."""
+    import zipfile
+
+    s, _ = importiert
+    vorher = gtfs.status(s)
+    assert vorher["importiert"]
+    kaputt = tmp_path / "kaputt.zip"
+    with zipfile.ZipFile(kaputt, "w") as z:
+        z.writestr("stops.txt", "stop_id,stop_name\n")  # trips/stop_times fehlen
+    with pytest.raises(ValueError):
+        gtfs.import_feed(s, kaputt, progress=lambda _m: None)
+    nachher = gtfs.status(s)
+    assert nachher["importiert"] and nachher.get("referenzdatum") == vorher.get("referenzdatum")
+    assert s.gtfs_db_path.exists()

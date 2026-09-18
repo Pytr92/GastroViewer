@@ -622,7 +622,7 @@ class PointService:
         """Die IHK-Datei ist ~125 MB — einmal laden, auf Gastronomie
         reduziert 30 Tage halten."""
         async def laden() -> SourceResult:
-            text = await self.outbound.get_text(
+            text = await self.outbound.get_bytes(
                 "ihk_berlin", ihk_mod.CSV_URL, timeout=600.0,
                 limiter="ihk_berlin", min_interval=1.0)
             betriebe = await asyncio.to_thread(ihk_mod.parse_gastro, text)

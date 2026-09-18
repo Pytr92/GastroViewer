@@ -213,6 +213,13 @@ async def run_query(
                     f"Overpass meldet: {payload['remark']}",
                     detail=endpoint,
                 )
+            if isinstance(payload, dict) and payload.get("remark"):
+                # Teilergebnis: Die POIs stehen schon in der Antwort, der zweite
+                # Teil der Abfrage (Routenrelationen) ist abgebrochen. Ohne
+                # diese Warnung sähe „0 Linien" aus wie „keine Linien".
+                problems.append(
+                    f"{endpoint}: Overpass meldet: {payload['remark']} — "
+                    "Antwort möglicherweise unvollständig")
             return payload, endpoint, problems
         except SourceError as err:
             problems.append(f"{endpoint}: {err.message}")
