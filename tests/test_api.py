@@ -2111,3 +2111,63 @@ def test_kannibalisierung_meldet_zensus_ausfall_statt_500(
                    params={"a": ids["K-A"], "b": ids["K-B"]})
     assert r.status_code == 502
     assert "Zeitüberschreitung" in r.json()["detail"]
+
+
+# ------------------------------------------------- Import: Struktur und Bereich
+
+
+def test_import_prueft_struktur_und_wertebereich(client):
+    """Falsche Struktur war ein TypeError (HTTP 500); Koordinaten und Radius
+    gingen ungeprüft in die Datenbank und von dort an Overpass."""
+    sicherung = client.get("/api/points/export").json()
+    for kaputt in ({"a": 1}, "punkte", ["x"], [{"label": "nur Label"}]):
+        r = client.post("/api/points/import", json={**sicherung, "punkte": kaputt})
+        assert r.status_code == 422, kaputt
+        assert isinstance(r.json()["detail"], str)
+        assert "punkte" in r.json()["detail"], r.json()
+
+    basis = {"label": "Import-Probe", "lat": LAT, "lon": LON, "radius": R,
+             "created_at": 1.0, "payload": {}}
+    faelle = (
+        ({"lat": "abc"}, "muss eine Zahl sein"),
+        ({"radius": "abc"}, "ganze Zahl"),
+        ({"lat": 999}, "Koordinaten außerhalb"),
+        ({"lat": 48.85, "lon": 2.35}, "außerhalb Deutschlands"),
+        ({"radius": -5}, "zwischen 50 und 5000"),
+        ({"radius": 999999}, "zwischen 50 und 5000"),
+    )
+    overpass_vorher = client.fake.calls.count("overpass")
+    for aenderung, erwartet in faelle:
+        r = client.post("/api/points/import",
+                        json={**sicherung, "punkte": [{**basis, **aenderung}]})
+        assert r.status_code == 422, aenderung
+        assert erwartet in r.json()["detail"], (aenderung, r.json())
+    labels = [p["label"] for p in client.get("/api/points").json()["punkte"]]
+    assert "Import-Probe" not in labels, "kein Punkt darf gespeichert sein"
+    assert client.fake.calls.count("overpass") == overpass_vorher
+
+    # Und ein gültiger Punkt geht weiterhin durch — mit Verlauf und Notiz.
+    gut = {**basis, "notiz": "aus Sicherung", "bewertung": 4,
+           "verlauf": [{"ts": 2.0, "payload": {"bloecke": {}}}]}
+    r = client.post("/api/points/import", json={**sicherung, "punkte": [gut]})
+    assert r.status_code == 200 and r.json()["neu"] == 1
+
+
+def test_alter_bestand_ausserhalb_des_bereichs_geht_nicht_an_overpass(client):
+    """Ein vor der Importprüfung eingespielter Punkt mit Radius 99999:
+    „Neu prüfen" und der Wächter weisen ihn ab, statt die größte Abfrage
+    des Werkzeugs auszulösen."""
+    cache = client.app.state.cache.sync
+    with cache._connect() as conn:
+        cur = conn.execute(
+            "INSERT INTO saved_points(label, lat, lon, radius, created_at, payload)"
+            " VALUES (?,?,?,?,?,?)",
+            ("Altbestand", LAT, LON, 99999, 1.0, json.dumps({"bloecke": {}})),
+        )
+        pid = cur.lastrowid
+    overpass_vorher = client.fake.calls.count("overpass")
+    r = client.post(f"/api/points/{pid}/pruefung")
+    assert r.status_code == 422 and "5000" in r.json()["detail"]
+    r = client.get(f"/api/points/{pid}/waechter")
+    assert r.status_code == 422
+    assert client.fake.calls.count("overpass") == overpass_vorher

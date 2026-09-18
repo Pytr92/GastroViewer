@@ -13,6 +13,7 @@ import csv
 import io
 import ipaddress
 import json
+import sqlite3
 import time
 from urllib.parse import urlsplit
 from contextlib import asynccontextmanager
@@ -24,7 +25,7 @@ from fastapi.responses import FileResponse, JSONResponse, PlainTextResponse, Res
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
-from .cache import STAENDE, STAND_SCHLUESSEL, AsyncCache
+from .cache import STAENDE, STAND_SCHLUESSEL, AsyncCache, pruefe_punkt
 from .kriterien import ProfilFehler, moegliche_kriterien, pruefe_kriterium, pruefe_profil
 from .config import Settings, get_settings
 from .http import Outbound
@@ -126,6 +127,40 @@ class SavePoint(BaseModel):
     lat: float
     lon: float
     radius: int = 600
+
+
+class VerlaufEintrag(BaseModel):
+    ts: float
+    payload: dict | None = None
+
+
+class PunktSicherung(BaseModel):
+    """Ein Punkt in einer Sicherung (siehe Cache.export_points). Felder, die
+    das Werkzeug nicht kennt, werden ignoriert — eine spätere Fassung darf
+    mehr schreiben."""
+
+    label: str = Field(..., min_length=1, max_length=120)
+    lat: float
+    lon: float
+    radius: int
+    created_at: float
+    payload: dict | None = None
+    notiz: str | None = None
+    bewertung: int | None = Field(None, ge=1, le=5)
+    geprueft_am: float | None = None
+    stand: str | None = Field(None, max_length=40)
+    stand_grund: str | None = Field(None, max_length=500)
+    verlauf: list[VerlaufEintrag] = []
+
+
+class PunkteSicherung(BaseModel):
+    """Die Sicherung als Ganzes. ``format`` und ``version`` bleiben frei,
+    damit cache.import_points weiter „keine Punkte-Sicherung dieses
+    Werkzeugs" sagen kann statt Pydantic „Feld version: fehlt"."""
+
+    format: str | None = None
+    version: int | None = None
+    punkte: list[PunktSicherung] = []
 
 
 @asynccontextmanager
@@ -268,17 +303,12 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     # ------------------------------------------------------------ Punkte
 
     def _validate(lat: float, lon: float, r: int) -> None:
-        if not (-90 <= lat <= 90) or not (-180 <= lon <= 180):
-            raise HTTPException(422, "Koordinaten außerhalb des gültigen Bereichs.")
-        # Deutschland grob; außerhalb liefern Zensus und BORIS ohnehin nichts.
-        if not (47.0 <= lat <= 55.5 and 5.5 <= lon <= 15.5):
-            raise HTTPException(
-                422,
-                "Punkt liegt außerhalb Deutschlands. Zensus 2022 und die "
-                "Bodenrichtwert-Portale decken nur Deutschland ab.",
-            )
-        if not (50 <= r <= 5000):
-            raise HTTPException(422, "Radius muss zwischen 50 und 5000 Metern liegen.")
+        """Bereichsregel aus cache.pruefe_punkt — eine Stelle für Anfragen
+        und Sicherungen."""
+        try:
+            pruefe_punkt(lat, lon, r)
+        except ValueError as err:
+            raise HTTPException(422, str(err)) from err
 
     @app.get("/api/point")
     async def point(
@@ -949,17 +979,30 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         )
 
     @app.post("/api/points/import")
-    async def import_points(request: Request, daten: dict):
+    async def import_points(request: Request, daten: PunkteSicherung):
         """Spielt eine Sicherung ein. Neue IDs; exakte Dubletten (Label,
-        Koordinaten, Radius, Anlagezeitpunkt) werden übersprungen."""
+        Koordinaten, Radius, Anlagezeitpunkt) werden übersprungen.
+
+        Struktur und Typen prüft das Modell (falsche Struktur war vorher
+        ein TypeError und damit HTTP 500), den Wertebereich jedes Punkts
+        dieselbe Regel wie bei jeder Anfrage — „Neu prüfen" und der Wächter
+        reichen die gespeicherten Werte sonst ungeprüft an Overpass weiter."""
         cache: AsyncCache = request.app.state.cache
+        for i, p in enumerate(daten.punkte):
+            try:
+                pruefe_punkt(p.lat, p.lon, p.radius)
+            except ValueError as err:
+                raise HTTPException(
+                    422, f"Punkt {i + 1} („{p.label}“): {err}") from err
         try:
-            ergebnis = await asyncio.to_thread(cache.sync.import_points, daten)
+            ergebnis = await asyncio.to_thread(
+                cache.sync.import_points, daten.model_dump())
         except ValueError as err:
             raise HTTPException(422, str(err)) from err
-        except KeyError as err:
+        except (KeyError, TypeError, sqlite3.Error) as err:
             raise HTTPException(
-                422, f"Der Sicherung fehlt das Feld {err} — Datei beschädigt?"
+                422, f"Sicherung nicht lesbar ({type(err).__name__}: {err}) — "
+                "Datei beschädigt?"
             ) from err
         return ergebnis
 
@@ -1019,6 +1062,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         row_b = await asyncio.to_thread(cache.sync.get_point, b)
         if row_a is None or row_b is None:
             raise HTTPException(404, "Punkt nicht gefunden.")
+        for row in (row_a, row_b):
+            _validate(row["lat"], row["lon"], row["radius"])
         # Der einzige Endpunkt, der eine Quelle am Block-Mechanismus vorbei
         # aufruft — ein Zensus-Ausfall darf hier kein 500 sein, sondern
         # eine Meldung, die die Ursache nennt.
@@ -1051,6 +1096,9 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         if row is None:
             raise HTTPException(404, "Punkt nicht gefunden.")
 
+        # Bestände, die vor der Importprüfung eingespielt wurden, laufen
+        # hier zum ersten Mal durch die Bereichsregel.
+        _validate(row["lat"], row["lon"], row["radius"])
         service = svc(request)
         neu = await service.point(row["lat"], row["lon"], row["radius"], refresh=True)
         # Gehstrecken werden bewusst NICHT neu geladen (1–3 MB je Punkt) —
@@ -1168,6 +1216,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         if row is None:
             raise HTTPException(404, "Punkt nicht gefunden.")
 
+        _validate(row["lat"], row["lon"], row["radius"])
         osm = await svc(request).osm(row["lat"], row["lon"], row["radius"],
                                      refresh)
         if not osm.ok:

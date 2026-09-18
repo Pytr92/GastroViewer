@@ -253,3 +253,49 @@ def test_limiter_registry_kennt_je_dienst_eine_obergrenze():
     assert reg.get("overpass", 1.0, max_concurrent=1) is a
     with pytest.raises(ValueError):
         reg.get("overpass", 1.0, max_concurrent=2)
+
+
+# ------------------------------------------------------- Bereichsregel
+
+
+@pytest.mark.parametrize("lat, lon, radius, erwartet", [
+    ("48", 11.5, 600, "Zahl"),
+    (True, 11.5, 600, "Zahl"),
+    (48.1, 11.5, 600.0, "ganze Zahl"),
+    (91, 11.5, 600, "gültigen Bereichs"),
+    (48.85, 2.35, 600, "Deutschlands"),
+    (48.1, 11.5, 49, "50 und 5000"),
+    (48.1, 11.5, 5001, "50 und 5000"),
+])
+def test_pruefe_punkt_weist_ab(lat, lon, radius, erwartet):
+    from gastroviewer.cache import pruefe_punkt
+
+    with pytest.raises(ValueError) as info:
+        pruefe_punkt(lat, lon, radius)
+    assert erwartet in str(info.value)
+
+
+def test_pruefe_punkt_nimmt_gueltige_werte():
+    from gastroviewer.cache import pruefe_punkt
+
+    assert pruefe_punkt(48.1334, 11.5674, 600) is None
+    assert pruefe_punkt(48, 11, 50) is None
+
+
+def test_import_direkt_prueft_alles_oder_nichts(tmp_path):
+    """Auch ohne API-Schicht: Typen und Bereich vor dem ersten INSERT —
+    entweder die ganze Sicherung oder nichts davon."""
+    c = Cache(tmp_path / "t.sqlite")
+    basis = {"format": c.EXPORT_FORMAT, "version": c.EXPORT_VERSION}
+    gut = {"label": "gut", "lat": 48.1, "lon": 11.5, "radius": 600,
+           "created_at": 1.0, "payload": {}}
+    with pytest.raises(ValueError, match="Liste"):
+        c.import_points({**basis, "punkte": {"a": 1}})
+    with pytest.raises(ValueError, match="Bezeichnung"):
+        c.import_points({**basis, "punkte": [{**gut, "label": None}]})
+    with pytest.raises(ValueError, match="Anlagezeitpunkt"):
+        c.import_points({**basis, "punkte": [{**gut, "created_at": "gestern"}]})
+    with pytest.raises(ValueError, match="Punkt 2 .*Radius"):
+        c.import_points({**basis, "punkte": [gut, {**gut, "radius": 99999}]})
+    assert c.list_points() == [], "der gültige erste Punkt darf nicht allein landen"
+    assert c.import_points({**basis, "punkte": [gut]}) == {"neu": 1, "uebersprungen": 0}

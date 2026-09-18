@@ -392,9 +392,24 @@ class Cache:
                 f"Unbekannte Sicherungsversion {daten.get('version')!r} — "
                 f"dieses Werkzeug schreibt Version {self.EXPORT_VERSION}."
             )
+        punkte = daten.get("punkte") or []
+        if not isinstance(punkte, list) or not all(isinstance(p, dict) for p in punkte):
+            raise ValueError("„punkte“ muss eine Liste von Punkten sein — Datei beschädigt?")
+        # Vor dem ersten INSERT prüfen: entweder wird die ganze Sicherung
+        # eingespielt oder nichts davon.
+        for i, p in enumerate(punkte):
+            if not isinstance(p.get("label"), str) or not p["label"].strip():
+                raise ValueError(f"Punkt {i + 1}: Bezeichnung fehlt.")
+            if isinstance(p.get("created_at"), bool) or not isinstance(
+                    p.get("created_at"), (int, float)):
+                raise ValueError(f"Punkt {i + 1}: Anlagezeitpunkt fehlt oder ist keine Zahl.")
+            try:
+                pruefe_punkt(p.get("lat"), p.get("lon"), p.get("radius"))
+            except ValueError as err:
+                raise ValueError(f"Punkt {i + 1} („{p['label']}“): {err}") from err
         neu = uebersprungen = 0
         with self._connect() as conn:
-            for p in daten.get("punkte") or []:
+            for p in punkte:
                 vorhanden = conn.execute(
                     "SELECT 1 FROM saved_points WHERE label = ? AND lat = ? "
                     "AND lon = ? AND radius = ? AND created_at = ?",
@@ -425,6 +440,31 @@ class Cache:
                     )
                 neu += 1
         return {"neu": neu, "uebersprungen": uebersprungen}
+
+
+def pruefe_punkt(lat: Any, lon: Any, radius: Any) -> None:
+    """Die eine Bereichsregel für Koordinaten und Radius — für Anfragen
+    (api._validate) und für eingespielte Sicherungen gleichermaßen.
+
+    Der Radius ist die teuerste Stellschraube des Werkzeugs (r=3000 sind
+    4,5 MB Overpass-Antwort); eine manipulierte oder fremde Sicherung darf
+    ihn nicht am Deckel vorbei setzen. Wirft ValueError mit deutscher
+    Meldung."""
+    for name, wert in (("lat", lat), ("lon", lon)):
+        if isinstance(wert, bool) or not isinstance(wert, (int, float)):
+            raise ValueError(f"{name} muss eine Zahl sein.")
+    if isinstance(radius, bool) or not isinstance(radius, int):
+        raise ValueError("Radius muss eine ganze Zahl in Metern sein.")
+    if not (-90 <= lat <= 90) or not (-180 <= lon <= 180):
+        raise ValueError("Koordinaten außerhalb des gültigen Bereichs.")
+    # Deutschland grob; außerhalb liefern Zensus und BORIS ohnehin nichts.
+    if not (47.0 <= lat <= 55.5 and 5.5 <= lon <= 15.5):
+        raise ValueError(
+            "Punkt liegt außerhalb Deutschlands. Zensus 2022 und die "
+            "Bodenrichtwert-Portale decken nur Deutschland ab."
+        )
+    if not (50 <= radius <= 5000):
+        raise ValueError("Radius muss zwischen 50 und 5000 Metern liegen.")
 
 
 class AsyncCache:
