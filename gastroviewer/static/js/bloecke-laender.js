@@ -449,11 +449,16 @@ function zeigePlanung(d) {
     setQuelle(id, d.provenance);
     return;
   }
+  const dienst = (p.hochwasser || {}).dienst;
   setStatus(id, 'ok',
-    (p.hochwasser || {}).dienst === 'bfg' ? 'bundesweit' : 'geladen');
+    dienst === 'bfg' ? 'bundesweit' : dienst === 'lfrz' ? 'Österreich' : 'geladen');
 
   const hw = p.hochwasser || {};
   const bp = p.bebauungsplan;
+  /* Österreich liefert dieselbe Blockform, aber andere Begriffe (Schutzzone
+     statt Erhaltungssatzung, HQ30 statt HQhäufig) — die Texte kommen dann
+     aus dem Block selbst. */
+  const texte = p.texte || {};
   const teile = [];
 
   if (hw.betroffen) {
@@ -480,15 +485,23 @@ function zeigePlanung(d) {
     }
   } else {
     teile.push(el('div', { class: 'notiz' },
-      'Kein Hochwassergefahrengebiet am Punkt (geprüft für HQhäufig, HQ100 und '
-      + 'HQextrem). Das ist eine Aussage über die berechneten Flächen, keine Zusage.'));
+      texte.hochwasser_leer
+      || ('Kein Hochwassergefahrengebiet am Punkt (geprüft für HQhäufig, HQ100 und '
+      + 'HQextrem). Das ist eine Aussage über die berechneten Flächen, keine Zusage.')));
+  }
+  if ((hw.risikogebiete || []).length) {
+    teile.push(el('div', { class: 'warnung' },
+      el('strong', {}, 'Hochwasser-Risikogebiet: '),
+      hw.risikogebiete.map((g) => g.gewaesser || 'ohne Namen').join(', '),
+      ' — ein für das Risikomanagement ausgewiesener Abschnitt, keine berechnete Überflutungsfläche.'));
   }
 
   teile.push(el('h3', { class: 'hinweis-klein' }, 'Bebauungsplan'));
   if (bp === undefined || bp === null) {
     teile.push(el('div', { class: 'notiz' },
-      'Für diesen Punkt nicht abgefragt — die Umgriffe stammen aus dem Geoportal '
-      + 'der Landeshauptstadt München.'));
+      texte.bebauungsplan_leer
+      || ('Für diesen Punkt nicht abgefragt — die Umgriffe stammen aus dem Geoportal '
+      + 'der Landeshauptstadt München.')));
   } else if (bp.vorhanden) {
     teile.push(el('ul', { class: 'liste' }, bp.plaene.map((x) => el('li', {},
       el('span', { class: 'haupt' },
@@ -502,16 +515,21 @@ function zeigePlanung(d) {
   /* Erhaltungssatzung (Milieuschutz, § 172 BauGB) — nur im Stadtgebiet
      München abgefragt; ein Treffer ist für Umnutzung/Umbau entscheidend. */
   const es = p.erhaltungssatzung;
-  teile.push(el('h3', { class: 'hinweis-klein' }, 'Erhaltungssatzung (Milieuschutz)'));
+  teile.push(el('h3', { class: 'hinweis-klein' },
+    (es && es.titel) || texte.erhaltungssatzung_titel || 'Erhaltungssatzung (Milieuschutz)'));
   if (es === undefined || es === null) {
     teile.push(el('div', { class: 'notiz' },
-      'Für diesen Punkt nicht abgefragt — die Gebiete stammen aus dem '
-      + 'Geoportal der Landeshauptstadt München.'));
+      texte.erhaltungssatzung_nicht_abgefragt
+      || ('Für diesen Punkt nicht abgefragt — die Gebiete stammen aus dem '
+      + 'Geoportal der Landeshauptstadt München.')));
   } else if (es.betroffen) {
     teile.push(el('div', { class: 'warnung' },
-      el('strong', {}, 'Der Punkt liegt in einem Erhaltungssatzungsgebiet. '),
-      'Nutzungsänderungen (etwa Wohnung → Gastraum) und Umbauten sind hier '
-      + 'genehmigungspflichtig nach § 172 BauGB.'));
+      el('strong', {}, texte.erhaltungssatzung_titel
+        ? 'Der Punkt liegt in einer Schutzzone. '
+        : 'Der Punkt liegt in einem Erhaltungssatzungsgebiet. '),
+      texte.erhaltungssatzung_treffer
+      || ('Nutzungsänderungen (etwa Wohnung → Gastraum) und Umbauten sind hier '
+      + 'genehmigungspflichtig nach § 172 BauGB.')));
     teile.push(el('ul', { class: 'liste' }, es.gebiete.map((g) => el('li', {},
       el('span', { class: 'haupt' }, `Gebiet „${g.name || 'ohne Namen'}“`,
         g.gueltig_ab ? ` — gültig ab ${g.gueltig_ab}` : ''),
@@ -521,7 +539,7 @@ function zeigePlanung(d) {
           .filter(Boolean).flatMap((a, i) => (i ? [' · ', a] : [a])))))));
   } else {
     teile.push(el('div', { class: 'notiz' },
-      'Der Punkt liegt in keinem Gebiet mit Erhaltungssatzung.'));
+      texte.erhaltungssatzung_leer || 'Der Punkt liegt in keinem Gebiet mit Erhaltungssatzung.'));
   }
 
   teile.push(...(p.hinweise || []).map((h) => {

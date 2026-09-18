@@ -30,7 +30,7 @@ class FakeOutbound:
     def __init__(self, zensus, overpass, nominatim, einkommen=None,
                  kreisprofil=None, dwd=None, pendler=None, ohsome=None,
                  laerm=None, fehler: set[str] | None = None, photon=None,
-                 geosphere=None, laerminfo=None,
+                 geosphere=None, laerminfo=None, lfrz=None, wien=None,
                  baustellen=None, maerkte=None, indikatoren=None,
                  airbnb=None, messe=None, tourismus=None,
                  uba=None, bfg_hochwasser=None,
@@ -49,6 +49,10 @@ class FakeOutbound:
         self.geosphere = geosphere or {"metadata": {"stations": [], "parameters": []},
                                        "daten": {"features": []}}
         self.laerminfo = laerminfo or {"lden": {"features": []}, "lnight": {"features": []}}
+        # LFRZ-Hochwasser (Österreich): eine GeoJSON-Antwort der Sammelabfrage.
+        self.lfrz = lfrz or {"type": "FeatureCollection", "features": []}
+        # Stadt Wien WFS: Antwort je Typname (MAERKTEOGD, BAUSTELLENPKTOGD, …).
+        self.wien = wien or {}
         self.einkommen = einkommen or {"features": []}
         # Fixture je Tabelle — Einkommen und Kreisprofil teilen sich Endpunkt
         # und URL, unterscheiden sich nur im layer-Parameter.
@@ -155,6 +159,17 @@ class FakeOutbound:
             if "geosphere" in self.fehler:
                 raise SourceError("timeout", "Zeitüberschreitung — Dienst antwortet nicht.")
             return self.geosphere["metadata"] if url.endswith("/metadata") else self.geosphere["daten"]
+        if "inspire.lfrz.gv.at/000801" in url:
+            self.calls.append("lfrz_hochwasser")
+            if "lfrz_hochwasser" in self.fehler:
+                raise SourceError("timeout", "Zeitüberschreitung — Dienst antwortet nicht.")
+            return self.lfrz
+        if "data.wien.gv.at" in url:
+            typ = str(((kw or {}).get("params") or {}).get("typeName", "")).split(":")[-1]
+            self.calls.append(f"wien_{typ.lower()}")
+            if "wien" in self.fehler or f"wien_{typ.lower()}" in self.fehler:
+                raise SourceError("timeout", "Zeitüberschreitung — Dienst antwortet nicht.")
+            return self.wien.get(typ) or {"type": "FeatureCollection", "features": []}
         if "gis.lfrz.gv.at" in url:
             self.calls.append("laerminfo")
             if "laerminfo" in self.fehler:
@@ -2316,12 +2331,14 @@ WIEN = (48.2082, 16.3738)
 
 
 def test_wiener_punkt_bekommt_ehrliche_antwort(client, zensus_600, overpass_combined,
-                                                 nominatim_reverse_wien, geosphere_at, laerminfo_at):
+                                                 nominatim_reverse_wien, geosphere_at, laerminfo_at,
+                                                 lfrz_hochwasser_at, wien_wfs):
     """Stephansplatz: Das Land kommt vom Geocoder (Kästen überlappen sich),
     länderunabhängige Quellen laufen, deutsche Dienste werden nicht
     gefragt — kein Zensus-Abruf, keine DWD-Station hinter der Grenze."""
     fake = FakeOutbound(zensus_600, overpass_combined, nominatim_reverse_wien,
-                        geosphere=geosphere_at, laerminfo=laerminfo_at)
+                        geosphere=geosphere_at, laerminfo=laerminfo_at,
+                        lfrz=lfrz_hochwasser_at, wien=wien_wfs)
     c2 = client.make(fake)
     with c2:
         r = c2.get("/api/point", params={"lat": WIEN[0], "lon": WIEN[1], "r": 600})
@@ -2331,7 +2348,27 @@ def test_wiener_punkt_bekommt_ehrliche_antwort(client, zensus_600, overpass_comb
         assert d["punkt"]["bundesland"] == "Wien" and d["punkt"]["bundesland_iso"] == "AT-9"
         assert d["punkt"]["ags"] is None
         assert "Bodenrichtwerte" in d["punkt"]["land_hinweis"]
-        for name in ("luft", "planung", "einkommen", "pks", "wahl", "register"):
+        # Planungsrecht: LFRZ-Hochwasser (leer am Stephansplatz) und Wiener
+        # Schutzzonen; Märkte und Baustellen aus dem Wiener WFS; die Widmung
+        # im Baurecht-Block — alles in den bekannten Blockformen.
+        pl = d["bloecke"]["planung"]
+        assert pl["ok"] and pl["data"]["hochwasser"]["dienst"] == "lfrz"
+        assert pl["data"]["hochwasser"]["betroffen"] is False
+        assert pl["data"]["erhaltungssatzung"]["titel"].startswith("Schutzzone")
+        m = d["bloecke"]["maerkte"]
+        assert m["ok"] and m["data"]["stadt"] == "Wien" and m["data"]["stadtweit"] == 23
+        # Der nächste Markt am Stephansplatz ist der Kunst- und Antiquitätenmarkt
+        # (Am Hof), kein Lebensmittelmarkt — so steht es im Datensatz.
+        assert m["data"]["naechster"]["rubrik"] == "Kunst- und Antiquitätenmarkt"
+        assert "Lebensmittel und Waren aller Art" in m["data"]["nach_rubrik"]
+        bs = d["bloecke"]["baustellen"]
+        # Im 600-m-Radius um den Stephansplatz lag am Stichtag keine der
+        # angemeldeten Baustellen — die Antwort kommt trotzdem aus Wien.
+        assert bs["ok"] and bs["data"]["stadt"] == "Wien" and bs["data"]["radius_m"] == 600
+        assert bs["data"]["gesamt"] == bs["data"]["baumassnahmen"]
+        assert "lfrz_hochwasser" in fake.calls and "wien_maerkteogd" in fake.calls
+        assert "wien_baustellenpktogd" in fake.calls and "wien_baustellenlinogd" in fake.calls
+        for name in ("luft", "einkommen", "pks", "wahl", "register"):
             b = d["bloecke"][name]
             assert b["ok"] is True and b["data"] is None, name
             assert any("Nur für Deutschland" in w for w in b["warnings"]), (name, b["warnings"])

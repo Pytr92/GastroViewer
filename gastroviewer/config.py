@@ -105,6 +105,10 @@ TTL_KLASSEN: dict[str, str | int] = {
     "klima_at": "ttl_zensus",       # GeoSphere-Normalwerte 1991–2020, fest
     "klima_at_stationen": "ttl_zensus",  # Stationsliste, ändert sich in Monaten
     "laerm_at": "ttl_zensus",       # EU-Lärmkartierung, alle fünf Jahre
+    "planung_at": "ttl_gehweg",     # LFRZ-Hochwasser und Wiener Schutzzonen
+    "baurecht_at": "ttl_zensus",    # Wiener Flächenwidmung, Jahre in Kraft
+    "wien_maerkte": "ttl_zensus",   # Wiener Marktliste, selten geändert
+    "wien_baustellen": "ttl_osm",   # angemeldete Baustellen, laufend gepflegt
     # --- Stundenwerte
     "luft_punkt": 3600,             # Luftqualitätsindex, stündlich veröffentlicht
 }

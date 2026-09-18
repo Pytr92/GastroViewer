@@ -71,6 +71,26 @@ def laerminfo_at():
 
 
 @pytest.fixture(scope="session")
+def lfrz_hochwasser_at():
+    """LFRZ-Hochwasser GetFeatureInfo: leere Antwort (Stephansplatz)."""
+    wurzel = Path(__file__).resolve().parent.parent / "fixtures" / "at"
+    return json.loads((wurzel / "hochwasser_gfi_leer.json").read_text("utf-8"))
+
+
+@pytest.fixture(scope="session")
+def wien_wfs():
+    """Stadt Wien WFS, live 18.09.2026: Märkte stadtweit, Baustellen um den
+    Stephansplatz, Schutzzonen (Ausschnitt) und generalisierte Widmung."""
+    wurzel = Path(__file__).resolve().parent.parent / "fixtures" / "at"
+    lies = lambda n: json.loads((wurzel / n).read_text("utf-8"))  # noqa: E731
+    return {"MAERKTEOGD": lies("wien_maerkteogd.json"),
+            "BAUSTELLENPKTOGD": lies("wien_baustellenpktogd.json"),
+            "BAUSTELLENLINOGD": lies("wien_baustellenlinienogd.json"),
+            "SCHUTZZONEOGD": lies("wien_schutzzoneogd.json"),
+            "GENFLWIDMUNGOGD": lies("wien_r2_genflwidmungogd.json")}
+
+
+@pytest.fixture(scope="session")
 def nominatim_reverse_wien():
     """Stephansplatz, live am 18.09.2026 (AT-Probe): kein "state", ISO AT-9."""
     return load_fixture("raw_nominatim_reverse_wien.json")

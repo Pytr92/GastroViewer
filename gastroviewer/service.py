@@ -35,12 +35,14 @@ from .sources import (airbnb as airbnb_mod,
                       klima as klima_mod, kreisprofil as kreisprofil_mod,
                       laerm as laerm_mod, links,
                       maerkte as maerkte_mod,
+                      wien as wien_mod,
                       marke as marke_mod, messe as messe_mod,
                       muenchen, nominatim, overpass,
                       overture as overture_mod,
                       leerstandsmelder as lsm_mod,
                       luft as luft_mod,
                       pendler as pendler_mod, pks as pks_mod, planung,
+                      planung_at as planung_at_mod,
                       register as register_mod, scan as scan_mod,
                       sonne as sonne_mod,
                       tourismus as tourismus_mod, wahl as wahl_mod, zensus)
@@ -393,6 +395,13 @@ class PointService:
         """Städtische Märkte (München oder Hamburg). Außerhalb der
         Stadtgebiete entscheidet die Quelle selbst — dann geht keine
         Anfrage hinaus."""
+        if wien_mod.in_wien(lat, lon):
+            key = cache_key("wien_maerkte", lat, lon, radius)
+            return await self._cached(
+                "wien_maerkte", key,
+                lambda: wien_mod.maerkte_load(self.outbound, lat, lon, radius),
+                refresh=refresh,
+            )
         if hamburg_mod.in_hamburg(lat, lon):
             key = cache_key("hamburg_maerkte", lat, lon, radius)
             return await self._cached(
@@ -414,6 +423,13 @@ class PointService:
         """Baustellen: München (Vier-Wochen-Vorschau), Hamburg
         („Bauweiser"-Steckbriefe) oder Berlin (VIZ). Außerhalb entscheidet
         die Münchner Quelle selbst — dann geht keine Anfrage hinaus."""
+        if wien_mod.in_wien(lat, lon):
+            key = cache_key("wien_baustellen", lat, lon, radius)
+            return await self._cached(
+                "wien_baustellen", key,
+                lambda: wien_mod.baustellen_load(self.outbound, lat, lon, radius),
+                refresh=refresh,
+            )
         if hamburg_mod.in_hamburg(lat, lon):
             key = cache_key("hamburg_baustellen", lat, lon, radius)
             return await self._cached(
@@ -708,6 +724,16 @@ class PointService:
         land = await self.land(lat, lon)
         if (leer := self._nur_in("baurecht", land)) is not None:
             return leer
+        if land.code == "AT":
+            # Flächenwidmung ist Landesrecht — offen und punktgenau nur in Wien.
+            if not wien_mod.in_wien(lat, lon):
+                return planung_at_mod.baurecht_ohne_dienst(land.name)
+            key = cache_key("baurecht_at", lat, lon, 0)
+            return await self._cached(
+                "baurecht_at", key,
+                lambda: wien_mod.baurecht_load(self.outbound, lat, lon),
+                refresh=refresh,
+            )
         key = cache_key("baurecht", lat, lon, 0)
         return await self._cached(
             "baurecht", key,
@@ -1377,6 +1403,15 @@ class PointService:
         land = await self.land(lat, lon)
         if (leer := self._nur_in("planung", land)) is not None:
             return leer
+        if land.code == "AT":
+            # Bundesweiter LFRZ-Dienst plus Wiener Schutzzonen — kein
+            # Bundesland-Code nötig, der Dienst deckt ganz Österreich ab.
+            key = cache_key("planung_at", lat, lon, 0)
+            return await self._cached(
+                "planung_at", key,
+                lambda: planung_at_mod.load(self.outbound, lat, lon),
+                refresh=refresh,
+            )
         key = cache_key("planung", lat, lon, radius) + f"|{bundesland_code or '-'}"
         return await self._cached(
             "planung",

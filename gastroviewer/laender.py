@@ -154,8 +154,10 @@ QUELLEN_NUR: dict[str, tuple[set[str], str]] = {
     # (sources/klima_at.py) und lärminfo.at (sources/laerm_at.py).
     "luft": ({"DE"}, "Das Luftmessnetz kommt vom Umweltbundesamt (Deutschland); der "
                      "europäische Spiegel für Österreich hinkt Monate hinterher (geprüft 18.09.2026)."),
-    "planung": ({"DE"}, "Hochwassergefahr und Bebauungspläne liegen nur für Deutschland vor."),
-    "baurecht": ({"DE"}, "Die Bebauungsplan-Dienste liegen nur für deutsche Städte vor."),
+    # planung und baurecht fehlen hier bewusst: in Österreich antworten der
+    # LFRZ-Hochwasserdienst (sources/planung_at.py) und die Wiener
+    # Flächenwidmung (sources/wien.py); außerhalb Wiens sagt der
+    # Baurecht-Block ehrlich „kein offener Dienst".
     "verkehrsmenge": ({"DE"}, "BAYSIS und BASt zählen nur deutsche Straßen."),
     "frequenz": ({"DE"}, "Gemessene Passantenfrequenz gibt es offen nur in drei deutschen Städten."),
     "register": ({"DE"}, "Das Registerumfeld kommt aus dem deutschen Handelsregister (OffeneRegister)."),
