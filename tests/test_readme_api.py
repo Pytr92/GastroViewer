@@ -8,6 +8,8 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
+from conftest import api_routen
+
 from gastroviewer.api import create_app
 from gastroviewer.config import Settings
 
@@ -34,7 +36,7 @@ def tabellen_pfade() -> set[str]:
 
 def test_jede_route_steht_im_readme():
     app = create_app(Settings())
-    routen = sorted({r.path for r in app.routes if getattr(r, "path", "").startswith("/api")})
+    routen = sorted({r.path for r in api_routen(app) if r.path.startswith("/api")})
     assert len(routen) >= 60
     im_readme = tabellen_pfade()
     fehlt = [r for r in routen if re.sub(r"\{[^}]+\}", "{}", r) not in im_readme]

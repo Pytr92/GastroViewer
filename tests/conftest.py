@@ -271,3 +271,22 @@ def overpass_auto_muenchen():
 
     pfad = FIXTURES / "raw_overpass_auto_muenchen.json.gz"
     return json.loads(gzip.decompress(pfad.read_bytes()))
+
+
+def api_routen(app):
+    """Alle HTTP-Routen der App, flach — unabhängig davon, ob FastAPI
+    eingebundene Router als eigene Einträge in ``app.routes`` führt
+    (ab 0.141 ``_IncludedRouter`` mit ``original_router``) oder ihre
+    Routen direkt einhängt (ältere Fassungen)."""
+    gefunden = []
+
+    def sammeln(routen):
+        for r in routen:
+            original = getattr(r, "original_router", None)
+            if original is not None:
+                sammeln(original.routes)
+            elif hasattr(r, "endpoint") and hasattr(r, "path"):
+                gefunden.append(r)
+
+    sammeln(app.routes)
+    return gefunden

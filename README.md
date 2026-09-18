@@ -1454,7 +1454,9 @@ gastroviewer/
   ratelimit.py       Mindestabstand je Dienst, serialisiert
   http.py            alle ausgehenden Aufrufe, Fehler → benennbare Ursachen
   service.py         führt die Quellen zusammen, isoliert Ausfälle
-  api.py             HTTP-Schnittstelle
+  api.py             App-Aufbau: Lifespan, Host-/Origin-Prüfung, Fehlerformat
+  routen/            HTTP-Routen je Thema (system, punkt, region, schaetzung, punkte)
+  vergleich.py       Vergleichstabelle: Spalten, Zeilen, Verlauf, CSV
   __main__.py        CLI: serve, import-gtfs, clear-cache, status
   sources/
     zensus.py        100-m-Gitter, Paginierung, null-Behandlung, Aggregate
