@@ -1426,6 +1426,13 @@ stillschweigend überspringt.
 
 ---
 
+## Weitere Dokumente
+
+- [`docs/bestandsaufnahme.md`](docs/bestandsaufnahme.md) — Prüfung des gesamten Projekts durch
+  neun unabhängige Blickwinkel, zwölf bestätigte und umgesetzte Funde, 72 ungeprüfte im Anhang.
+- [`docs/oesterreich.md`](docs/oesterreich.md) — Quelle für Quelle: was es für Österreich,
+  die Schweiz und EU-weit an offenen Gegenstücken gibt, und was am Code fest auf Deutschland zeigt.
+
 ## Aufbau
 
 ```

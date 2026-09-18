@@ -6,6 +6,33 @@ Die Rangfolge folgt Nutzen für den Anwender geteilt durch Aufwand: falsche Zahl
 
 **Bestätigt: 12** — 1× Blocker, 10× Hoch, 1× Mittel · widerlegt: 0 · ungeprüft (mittel/niedrig): 72
 
+## Stand der Umsetzung (18. September 2026)
+
+Alle zwölf bestätigten Funde sind umgesetzt, jeder mit Test, in kleinen Schritten auf
+`claude/trusting-gates-t849v6`:
+
+| Rang | Fund | Commit |
+|---|---|---|
+| 1 | Fahrzeit-Block tot (`self.out`, `run_query`-Tupel) — plus Testlücke | `04cec04`, Invariante in `98a8f78` |
+| 2 | Kannibalisierung: eine Zugehörigkeitsregel für Zähler und Nenner | `171c94c` |
+| 3 | Augsburger Friedensfest als bayernweiter Feiertag | `171c94c` |
+| 4 | Sonne: Overpass-`remark` als „keine Gebäude" | `171c94c` |
+| 5 | Datensicherung verwirft Arbeitsstand | `171c94c` |
+| 6 | Hamburger Milieuschutz ohne Punkt-in-Polygon | `171c94c` |
+| 7 | Schätzformular: Vorgaben des vorigen Punktes | `1ad3aa6` |
+| 8 | `NF2` in `karte-ebenen.js` nicht importiert | `1ad3aa6` |
+| 9 | Planungsrecht: Bayern-Rechteck statt Bundesland-Code | `98a8f78` |
+| 10 | „Neu prüfen" überschreibt bei Quellenausfall | `a0ceab9` |
+| 11 | Host-/Origin-Prüfung (DNS-Rebinding, CSRF) | `1ad3aa6` |
+| 12 | Netzrechnung im Event-Loop | `a0ceab9` |
+
+Die 72 ungeprüften Funde mittlerer und niedriger Schwere (Anhang) sind der nächste
+Durchgang: zuerst durch einen Skeptiker prüfen lassen, dann in derselben Reihenfolge
+abarbeiten. Die Struktur-Funde darunter (`api.py` in Router aufteilen, `ttl_for` als
+Tabelle, Versionsnummer an einer Stelle, README in `docs/` aufteilen) sind Umbauten,
+keine Fehler — sie lohnen sich als eigene, verhaltensneutrale Schritte mit der
+Testsuite als Netz.
+
 ## Übergreifende Muster
 
 - **Ausfall einer Quelle wird als Datenstand übernommen** — In 3 von 12 Rangplätzen wird eine gescheiterte oder leere Antwort als Fakt weiterverarbeitet: sonne.py nimmt `elements: []` mit Overpass-`remark` als „keine Gebäude“ und cacht das langlebig; api.py punkt_pruefung ersetzt den gespeicherten Punkt durch Blöcke mit ok=False (alle Betriebe „verschwunden“); service._laden verpackt jede Exception (auch AttributeError/TypeError/AssertionError) als SourceResult.failed(kind="unknown"), wodurch der tote Fahrzeit-Block und drei in der Test-Fixture kaputte Blöcke (radzaehlung, verkehrsmenge, planung) unbemerkt bleiben. Der Wächter (api.py:1036 `if not osm.ok`) und overpass.run_query:210-214 zeigen das vorgesehene Muster. Gemeinsamer Umbau: (a) alle direkten Overpass-Aufrufer über die remark-Prüfung führen (sonne ist der einzige Ausreißer, fahrzeit/gehweg/liefergebiet/marke/scan nutzen run_query), (b) Konsumenten von service.point (Prüfung, Wächter, Bericht) prüfen `bloecke[name]["ok"]` bevor sie Bestand ersetzen oder vergleichen, (c) eine Test-Invariante „kein Block mit error.kind == unknown“ über /api/point, die Verdrahtungsfehler sofort sichtbar macht.
