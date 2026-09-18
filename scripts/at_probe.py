@@ -684,5 +684,97 @@ def main(argv: list[str]) -> int:
     return 0
 
 
+
+
+# ------------------------------------------------------------------ Runde 4
+
+HOCHWASSER_ALLE = ("Hochwasserueberflutungsflaechen HQ30", "Hochwasserueberflutungsflaechen HQ100",
+                   "Hochwasserueberflutungsflaechen HQ300",
+                   "Rote Gefahrenzonen aus der Gefahrenzonenplanung",
+                   "Gelbe Gefahrenzonen aus der Gefahrenzonenplanung",
+                   "Hochwasserrisikogebiete HQ100")
+
+
+def hochwasser_r4(c):
+    """Sammelabfrage: alle sechs Layer in einer GetFeatureInfo-Anfrage —
+    so fragt sources/planung_at.py. Erwartet am Kremser Ufer das
+    Risikogebiet Wachau mit id-Präfix des Layers."""
+    punkte = {"krems_donau": (48.4020, 15.6100), "stephansplatz": WIEN,
+              "handelskai": (48.2450, 16.3920), "linz_donau": (48.3100, 14.2900),
+              "graz_mur": (47.0680, 15.4330), "melk_donau": (48.2290, 15.3330),
+              "schwertberg_aist": (48.2740, 14.5860)}
+    namen = ",".join(HOCHWASSER_ALLE)
+    for ort, (lat, lon) in punkte.items():
+        d = 0.0004
+        hole(c, f"hochwasser_r4_sammel_{ort}", "https://inspire.lfrz.gv.at/000801/ows",
+             params={"service": "WMS", "version": "1.3.0", "request": "GetFeatureInfo",
+                     "layers": namen, "query_layers": namen, "crs": "CRS:84",
+                     "bbox": f"{lon-d},{lat-d},{lon+d},{lat+d}", "width": 101, "height": 101,
+                     "i": 50, "j": 50, "info_format": "application/json", "styles": "",
+                     "feature_count": 10})
+
+
+def wien_r4(c):
+    """Punktkasten (rund 50 m) für Schutzzone und Widmung — so fragt
+    sources/wien.py — an drei Wiener Punkten."""
+    wfs = "https://data.wien.gv.at/daten/geo"
+    punkte = {"stephansplatz": WIEN, "brigittenau": (48.2400, 16.3700),
+              "naschmarkt": (48.1985, 16.3630), "spittelberg": (48.2035, 16.3550)}
+    for ort, (lat, lon) in punkte.items():
+        d = 0.0005
+        bbox = f"{lon-d:.6f},{lat-d:.6f},{lon+d:.6f},{lat+d:.6f},EPSG:4326"
+        for typ in ("SCHUTZZONEOGD", "GENFLWIDMUNGOGD"):
+            hole(c, f"wien_r4_{typ.lower()}_{ort}", wfs,
+                 params={"service": "WFS", "request": "GetFeature", "version": "1.1.0",
+                         "typeName": f"ogdwien:{typ}", "srsName": "EPSG:4326",
+                         "outputFormat": "json", "maxFeatures": 20, "bbox": bbox})
+
+
+def statistik_r4(c):
+    """Nächtigungsstatistik: Klassifikationen vollständig, Daten-CSV als
+    Wien-Ausschnitt ab 2018 (die ganze Datei ist Megabytes groß)."""
+    ds = "OGD_touextsai_Tour_HKL_1"
+    for kl in ("C-SDB_TIT-0", "C-W96-0", "C-C93-2"):
+        hole(c, f"stat_{ds}_{kl}", f"https://data.statistik.gv.at/data/{ds}_{kl}.csv")
+    daten = hole(c, f"stat_{ds}_csv_r4", f"https://data.statistik.gv.at/data/{ds}.csv",
+                 speichern=False)
+    if daten:
+        text = daten.decode("utf-8", "replace")
+        zeilen = text.splitlines()
+        wien = [zeilen[0]] + [z for z in zeilen[1:]
+                              if z.split(";")[1:2] == ["W96-9"] and z[:4] >= "2018"]
+        _speichern(f"stat_{ds}_wien_ab2018.csv", "\n".join(wien).encode("utf-8"))
+        codes = sorted({z.split(";")[2] for z in zeilen[1:] if z.count(";") >= 4})
+        manifest.append({"name": "stat_tour_hkl_1_umfang", "zeilen": len(zeilen),
+                         "bytes": len(daten), "wien_ab2018": len(wien) - 1,
+                         "herkunft_codes": codes, "erste": zeilen[1][:80],
+                         "letzte": zeilen[-1][:80]})
+
+
+def nrw_r4(c):
+    """Nationalratswahl 2024 (BMI über data.gv.at): Ergebnisdatei, GKZ-Liste
+    und Parteienreihung vollständig — als Fixtures für sources/wahl_at.py."""
+    basis = "https://www.data.gv.at/katalog/dataset/e40e3b00-1a98-4338-acb7-42547e6fee55/resource"
+    for name, pfad in (("nrw2024_ergebnisse", "ce85ad5c-e471-42c0-83e5-580dbb627717/download/wahl_20241003_214746.csv"),
+                       ("nrw2024_gkz", "da545c2c-b421-439d-8a8a-144c81b66c2e/download/gkz-liste-.csv"),
+                       ("nrw2024_parteien", "75e5129f-1fe6-4020-8454-22370c279a6a/download/parteien_reihung_nrw2024.csv")):
+        daten = hole(c, name, f"{basis}/{pfad}")
+        if daten:
+            manifest.append({"name": f"{name}_kodierung",
+                             "utf8": _ist_utf8(daten), "zeilen": daten.count(b"\n")})
+
+
+def _ist_utf8(daten: bytes) -> bool:
+    try:
+        daten.decode("utf-8")
+        return True
+    except UnicodeDecodeError:
+        return False
+
+
+TEILE.update({"hochwasser4": hochwasser_r4, "wien4": wien_r4, "statistik4": statistik_r4,
+              "nrw4": nrw_r4})
+
+
 if __name__ == "__main__":
     sys.exit(main(sys.argv))
