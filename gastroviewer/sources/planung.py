@@ -88,7 +88,9 @@ BUND_HOCHWASSER_LIZENZ = (
     "HWRM-Richtlinie. „Es gelten keine Zugriffsbeschränkungen“"
 )
 
-# Bayern grob — außerhalb spart der Check den Netzaufruf.
+# Bayern grob. Nur noch Orientierung für Aufrufer ohne Zensus-Code —
+# die Dienstwahl in load() läuft über den Bundesland-Code, weil der
+# Kasten Stuttgart, Ulm, Konstanz und Fulda einschließt.
 BAYERN_BBOX = (47.20, 8.90, 50.60, 13.90)
 # München grob, für den städtischen Bebauungsplandienst.
 MUENCHEN_BBOX = (48.05, 11.35, 48.25, 11.73)
@@ -310,10 +312,19 @@ def _bund_gfi_params(lat: float, lon: float) -> dict[str, str]:
 
 
 async def load(
-    out: Outbound, settings: Settings, lat: float, lon: float, radius: int
+    out: Outbound, settings: Settings, lat: float, lon: float, radius: int,
+    bundesland_code: str | None = None,
 ) -> SourceResult:
+    """Dienstwahl nach Bundesland-Code (aus dem Zensus), nicht nach Rechteck.
+
+    Der Bayern-Kasten (47,2–50,6 N / 8,9–13,9 O) schloss Stuttgart, Ulm,
+    Konstanz und Fulda ein: Dort wurde das bayerische LfU gefragt, das für
+    Baden-Württemberg und Hessen nichts kennt — und „nicht betroffen"
+    antwortete. Ohne Code (Zensus ausgefallen) läuft der bundesweite
+    BfG-Dienst; der deckt Bayern gröber, aber richtig ab.
+    """
     started = time.perf_counter()
-    if not in_bayern(lat, lon):
+    if bundesland_code != "09":
         # Bundesweite Hochwassergefahrenkarten (BfG/LAWA); Bebauungsplan
         # und Milieuschutz bleiben Stadtdienste — eingebunden für München
         # und Hamburg, sonst ehrlich benannt.

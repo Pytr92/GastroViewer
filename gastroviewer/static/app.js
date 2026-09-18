@@ -45,7 +45,7 @@ import {
   ladeEinkommen, ladeGenesis, ladeKalender, ladeKreisprofil, ladeLaerm, ladePendler, ladePks, ladeWahl, zeigeAirbnb, zeigeBaurecht, zeigeBaustellen, zeigeDynamik, zeigeFrequenz, zeigeGtfs, zeigeIhkAngebot, zeigeIndikatoren, zeigeKlima, zeigeLinks, zeigeLuft, zeigeMaerkte, zeigeMesse, zeigeOverture, zeigeSonne, zeigeTourismus,
 } from './js/bloecke-region.js';
 import {
-  zeigePlanung, zeigeRadzaehlung, zeigeVerkehrsmenge,
+  ladePlanung, zeigeRadzaehlung, zeigeVerkehrsmenge,
 } from './js/bloecke-laender.js';
 import { ebenenSchalter, karte, osmKarte } from './js/karte.js';
 import {
@@ -117,6 +117,7 @@ function lade(refresh = false) {
         ladeKreisprofil(d.data?.ags, lauf);
         ladePendler(d.data?.ags, lauf);
         ladeLaerm(d.data?.bundesland_code, lauf);
+        ladePlanung(d.data?.bundesland_code, lauf);
         ladeGenesis(d.data?.ags, lauf);
         ladePks(d.data?.ags, lauf);
         ladeWahl(d.data?.ags, lauf);
@@ -145,6 +146,7 @@ function lade(refresh = false) {
       // Der Lärmblock braucht keinen Schlüssel — nur der Bundesland-Hinweis
       // entfällt, die Kartierung selbst lädt trotzdem.
       ladeLaerm(null, lauf);
+      ladePlanung(null, lauf);
     });
 
   hole('/api/point/osm', p)
@@ -176,10 +178,6 @@ function lade(refresh = false) {
   hole('/api/point/verkehrsmenge', { lat, lon, r: radius })
     .then((d) => { if (aktuell()) { state.daten.verkehrsmenge = d; zeigeVerkehrsmenge(d); } })
     .catch((e) => aktuell() && zeigeBlockFehler('verkehrsmenge', e));
-
-  hole('/api/point/planung', { lat, lon, r: radius })
-    .then((d) => { if (aktuell()) { state.daten.planung = d; zeigePlanung(d); } })
-    .catch((e) => aktuell() && zeigeBlockFehler('planung', e));
 
   hole('/api/point/klima', { lat, lon })
     .then((d) => { if (aktuell()) { state.daten.klima = d; zeigeKlima(d); } })

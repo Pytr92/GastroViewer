@@ -367,10 +367,15 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         return (await svc(request).marke(lat, lon, r, marke)).to_dict()
 
     @app.get("/api/point/planung")
-    async def point_planung(request: Request, lat: float, lon: float, r: int = 600):
-        """Hochwassergefahr und Bebauungsplan am Punkt."""
+    async def point_planung(
+        request: Request, lat: float, lon: float, r: int = 600,
+        bundesland_code: str | None = None,
+    ):
+        """Hochwassergefahr und Bebauungsplan am Punkt. Der Bundesland-Code
+        aus dem Zensus wählt den Dienst (Bayern: LfU, sonst BfG/LAWA)."""
         _validate(lat, lon, r)
-        return (await svc(request).planung(lat, lon, r)).to_dict()
+        return (await svc(request).planung(
+            lat, lon, r, bundesland_code=bundesland_code)).to_dict()
 
     @app.get("/api/point/klima")
     async def point_klima(request: Request, lat: float, lon: float):

@@ -169,7 +169,7 @@ async def test_ausserhalb_muenchens_nur_hochwasser(settings):
             gesehen.append(source)
             return ECHTE_HOCHWASSER
 
-    res = await planung.load(FakeOut(), settings, 49.4521, 11.0767, 600)  # Nürnberg
+    res = await planung.load(FakeOut(), settings, 49.4521, 11.0767, 600, bundesland_code="09")  # Nürnberg
     assert res.ok
     assert gesehen == ["lfu_hochwasser"], "der Münchner Dienst darf nicht gefragt werden"
     assert "bebauungsplan" not in res.data
@@ -191,7 +191,7 @@ async def test_in_muenchen_werden_alle_drei_dienste_gefragt(
             assert source == "muenchen_erhaltungssatzung"
             return erhaltungssatzung_haidhausen["antwort"]
 
-    res = await planung.load(FakeOut(), settings, 48.1450, 11.4200, 600)
+    res = await planung.load(FakeOut(), settings, 48.1450, 11.4200, 600, bundesland_code="09")
     assert res.ok
     assert gesehen == ["lfu_hochwasser", "muenchen_bplan",
                        "muenchen_erhaltungssatzung"]
@@ -212,7 +212,7 @@ async def test_ausfall_des_staedtischen_dienstes_reisst_den_block_nicht(settings
                 return ECHTE_HOCHWASSER
             raise SourceError("timeout", "Zeitüberschreitung nach 60 s.")
 
-    res = await planung.load(FakeOut(), settings, 48.1450, 11.4200, 600)
+    res = await planung.load(FakeOut(), settings, 48.1450, 11.4200, 600, bundesland_code="09")
     assert res.ok is True
     assert res.data["hochwasser"]["betroffen"] is True
     assert "bebauungsplan" not in res.data
@@ -229,7 +229,7 @@ async def test_ausfall_des_hochwasserdienstes_wird_benannt(settings):
         async def get_json(self, *a, **kw):
             raise SourceError("http_status", "HTTP 503 — Serverfehler beim Dienst.")
 
-    res = await planung.load(FakeOut(), settings, 48.1450, 11.4200, 600)
+    res = await planung.load(FakeOut(), settings, 48.1450, 11.4200, 600, bundesland_code="09")
     assert res.ok is False
     assert res.error["kind"] == "http_status"
 
@@ -290,3 +290,39 @@ async def test_ausserhalb_bayerns_fragt_den_bundesdienst(settings, bfg_hochwasse
     assert res.data["bebauungsplan"] is None if "bebauungsplan" in res.data else True
     assert out.urls == [planung.BUND_HOCHWASSER_URL]
     assert "Natural Risk Zones" in res.provenance.source
+
+
+# --------------------------------------- Dienstwahl nach Bundesland (nicht Kasten)
+
+
+async def test_stuttgart_liegt_im_bayern_kasten_bekommt_aber_den_bund(settings, bfg_hochwasser):
+    """48,78 N / 9,18 O liegt im alten Bayern-Rechteck. Mit Code 08 (BW)
+    darf das bayerische LfU nicht gefragt werden — es kennt Stuttgart nicht
+    und hätte „nicht betroffen" gesagt."""
+    gesehen = []
+
+    class FakeOut:
+        async def get_text(self, source, url, **kw):
+            gesehen.append(source)
+            return bfg_hochwasser["koeln_ring"]
+
+        async def get_json(self, source, url, **kw):  # pragma: no cover
+            raise AssertionError(f"LfU/München für Stuttgart gefragt: {source}")
+
+    assert planung.in_bayern(48.78, 9.18), "Vorbedingung: Stuttgart im alten Kasten"
+    res = await planung.load(FakeOut(), settings, 48.78, 9.18, 600, bundesland_code="08")
+    assert res.ok and res.data["hochwasser"]["dienst"] == "bfg"
+    assert gesehen == ["bfg_hochwasser"]
+
+
+async def test_ohne_code_laeuft_der_bundesdienst_auch_in_bayern(settings, bfg_hochwasser):
+    """Zensus ausgefallen → kein Code → BfG. Gröber, aber richtig."""
+    class FakeOut:
+        async def get_text(self, source, url, **kw):
+            return bfg_hochwasser["koeln_ring"]
+
+        async def get_json(self, source, url, **kw):  # pragma: no cover
+            raise AssertionError("ohne Bundesland-Code kein LfU-Abruf")
+
+    res = await planung.load(FakeOut(), settings, 48.1372, 11.5755, 600)
+    assert res.ok and res.data["hochwasser"]["dienst"] == "bfg"

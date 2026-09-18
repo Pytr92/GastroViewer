@@ -15,6 +15,11 @@ from fastapi.testclient import TestClient
 
 from gastroviewer.api import create_app, point_to_csv
 from gastroviewer.sources.base import SourceError
+# Aufgezeichnete Antworten der Quellentests — damit im Gesamtpunkt kein
+# Block mehr an „unerwartete URL" scheitert und die Invariante unten greift.
+from test_bayern import ECHTE_ANTWORT as BAYSIS_ANTWORT
+from test_muenchen import ECHTE_ANTWORT as RAD_ANTWORT
+from test_planung import ECHTE_BPLAN as BPLAN_ANTWORT, ECHTE_HOCHWASSER as LFU_HOCHWASSER
 
 LAT, LON, R = 48.1334, 11.5674, 600
 
@@ -30,8 +35,10 @@ class FakeOutbound:
                  uba=None, bfg_hochwasser=None,
                  pks=None, leerstandsmelder=None,
                  luft_api=None, wahl_dateien=None, gebaeude=None,
-                 auto=None):
+                 auto=None, erhaltungssatzung=None):
         self.zensus = zensus
+        # Münchner Erhaltungssatzungen (Planungsrecht-Block).
+        self.erhaltungssatzung = erhaltungssatzung
         # Fahrzeit-Block: das aufgezeichnete Hauptstraßennetz.
         self.auto = auto
         self.overpass = overpass
@@ -144,8 +151,35 @@ class FakeOutbound:
             if name.startswith("gemeinden_2024"):
                 return self.pendler["gemeinden"]
             raise SourceError("http_status", f"HTTP 404 — {name} fehlt.")
-        # Genau der Lärmdienst — auch der Hochwasser-Block (planung) läuft
-        # auf lfu.bayern und soll hier weiterhin als „unerwartet" scheitern.
+        if "geoportal.muenchen.de/geoserver/plan/wms" in url:
+            self.calls.append("muenchen_erhaltungssatzung")
+            if self.erhaltungssatzung is None:
+                raise SourceError("timeout", "Zeitüberschreitung — Dienst antwortet nicht.")
+            return self.erhaltungssatzung["antwort"]
+        if "geoportal.muenchen.de/geoserver/gsm_wfs/vagrund_baug_umgriff_opendata/ows" in url:
+            self.calls.append("muenchen_bplan")
+            return BPLAN_ANTWORT
+        if "ueberschwemmungsgebiete" in url:
+            self.calls.append("lfu_hochwasser")
+            if "lfu_hochwasser" in self.fehler:
+                raise SourceError("timeout",
+                                  "Zeitüberschreitung — Dienst antwortet nicht.")
+            return LFU_HOCHWASSER
+        if "BAYSIS_Verkehrsdaten" in url:
+            self.calls.append("verkehrsmenge")
+            if "verkehrsmenge" in self.fehler:
+                raise SourceError("timeout",
+                                  "Zeitüberschreitung — Dienst antwortet nicht.")
+            return BAYSIS_ANTWORT
+        if "mor_wfs" in url and "raddauer" in str(
+            ((kw or {}).get("params") or {}).get("typeName", "")
+        ):
+            self.calls.append("radzaehlung")
+            if "radzaehlung" in self.fehler:
+                raise SourceError("timeout",
+                                  "Zeitüberschreitung — Dienst antwortet nicht.")
+            return RAD_ANTWORT
+        # Genau der Lärmdienst (lfu.bayern hat mehrere).
         if "laerm/hauptverkehrsstrassen" in url:
             self.calls.append("laerm")
             if "laerm" in self.fehler:
@@ -306,7 +340,7 @@ def client(tmp_path, monkeypatch, zensus_600, overpass_combined, nominatim_rever
            muenchen_indikatoren, airbnb_muenchen, messe_muenchen,
            tourismus_muenchen, uba_laerm, bfg_hochwasser,
            pks_auszug, lsm_places, uba_luft_api, wahl_btw25,
-           overpass_gebaeude, overpass_auto_muenchen):
+           overpass_gebaeude, overpass_auto_muenchen, erhaltungssatzung_haidhausen):
     from gastroviewer.config import Settings
 
     # Der Genesis-Block ist ein Opt-in — die Testumgebung darf keine echte
@@ -331,6 +365,7 @@ def client(tmp_path, monkeypatch, zensus_600, overpass_combined, nominatim_rever
                         bfg_hochwasser=bfg_hochwasser["koeln_rheinufer"],
                         gebaeude=overpass_gebaeude["sendlinger_tor"],
                         auto=overpass_auto_muenchen,
+                        erhaltungssatzung=erhaltungssatzung_haidhausen,
                         pks=pks_auszug,
                         leerstandsmelder=lsm_places["places"],
                         luft_api=uba_luft_api,
@@ -402,8 +437,12 @@ def test_zweiter_aufruf_erzeugt_keinen_outbound_traffic(client):
     # es geht nichts hinaus. — Leerstandsmelder (1 Weltbestand) und
     # PKS-Kreistabelle (1 XLSX); das Registerumfeld läuft rein lokal (0).
     # Luft (Stationsliste + Stundenwerte der nächsten Station = 2) und
-    # Wahl (kerg2 + Zuordnung = 2).
-    assert vorher == 55
+    # Wahl (kerg2 + Zuordnung = 2). — Seit die Invariante „kein Block stirbt
+    # still" gilt, laufen auch Planungsrecht (LfU-Hochwasser, Münchner
+    # B-Plan und Erhaltungssatzung = 3), Radzählstellen (1) und BAYSIS-
+    # Verkehrsmengen (1) über den FakeOutbound statt an „unerwartete URL"
+    # zu scheitern: 55 + 5.
+    assert vorher == 60
 
     d = client.get("/api/point", params={"lat": LAT, "lon": LON, "r": R}).json()
     assert len(client.fake.calls) == vorher, "Cache hat nicht gegriffen"
@@ -1929,3 +1968,31 @@ def test_eigener_hostname_per_umgebung(tmp_path, monkeypatch, zensus_600,
         assert c.get("/api/health", headers={"host": "gastro.fritz.box:8000"}).status_code == 200
         assert c.get("/api/health", headers={"host": "Buero-PC"}).status_code == 200
         assert c.get("/api/health", headers={"host": "anderer.fritz.box"}).status_code == 400
+
+
+# ------------------------------------ Invariante: kein Block stirbt still
+
+
+def test_kein_block_scheitert_still(client):
+    """Der Service verpackt jede Ausnahme in einen Fehlerblock mit
+    kind="unknown". Genau so blieb der tote Fahrzeit-Block ein Jahr lang
+    unbemerkt — und mit ihm drei Blöcke, die im Test an „unerwartete URL"
+    scheiterten. Ein Block darf fachlich leer sein oder einen benannten
+    Quellenfehler tragen; ein Programmierfehler ist keins von beidem."""
+    d = client.get("/api/point", params={"lat": LAT, "lon": LON, "r": R}).json()
+    still = {n: b["error"] for n, b in d["bloecke"].items()
+             if (b.get("error") or {}).get("kind") == "unknown"}
+    assert not still, still
+    assert d["bloecke"]["planung"]["ok"], d["bloecke"]["planung"].get("error")
+    assert d["bloecke"]["radzaehlung"]["ok"]
+    assert d["bloecke"]["verkehrsmenge"]["ok"]
+
+
+def test_planung_dienst_folgt_dem_bundesland(client):
+    """München mit Code 09 → LfU; derselbe Punkt mit Code 08 → BfG."""
+    d = client.get("/api/point/planung", params={
+        "lat": LAT, "lon": LON, "r": R, "bundesland_code": "09"}).json()
+    assert d["ok"] and d["data"]["hochwasser"]["dienst"] == "lfu"
+    d = client.get("/api/point/planung", params={
+        "lat": LAT, "lon": LON, "r": R, "bundesland_code": "08"}).json()
+    assert d["ok"] and d["data"]["hochwasser"]["dienst"] == "bfg"
