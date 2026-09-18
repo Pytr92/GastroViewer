@@ -234,7 +234,7 @@ class PointService:
             return SourceResult(
                 name="muenchen_indikatoren", ok=True,
                 data={"kompakt": kompakt, "stand": stand,
-                      "fehlend_warnungen": warn} + lese_warnungen,
+                      "fehlend_warnungen": warn + lese_warnungen},
             )
 
         res = await self._cached(
