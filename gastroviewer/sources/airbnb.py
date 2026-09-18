@@ -48,6 +48,9 @@ LIZENZ = "Creative Commons Attribution 4.0 (CC BY 4.0) · Inside Airbnb (insidea
 STAEDTE = {
     "münchen": ("munich", "München"),
     "berlin": ("berlin", "Berlin"),
+    # Österreich: nur Wien (Datenseite am 18.09.2026 geprüft, Sammellauf
+    # 2026-06-20 unter austria/vienna/vienna/…).
+    "wien": ("vienna", "Wien"),
 }
 
 # room_type der CSV → deutsche Beschriftung. Reihenfolge = Anzeige-Reihenfolge.
@@ -74,7 +77,7 @@ def finde_stadt_urls(html_text: str) -> dict[str, dict[str, str]]:
     URL. Gibt es (unerwartet) mehrere Läufe, gewinnt der jüngste."""
     treffer: dict[str, dict[str, str]] = {}
     muster = re.compile(
-        r"https://data\.insideairbnb\.com/germany/[a-z-]+/([a-z-]+)/"
+        r"https://data\.insideairbnb\.com/(?:germany|austria)/[a-z-]+/([a-z-]+)/"
         r"(\d{4}-\d{2}-\d{2})/visualisations/listings\.csv"
     )
     for m in muster.finditer(html_text):
@@ -212,7 +215,7 @@ async def load(
             ok=True,
             data=None,
             warnings=[
-                "Inside Airbnb führt in Deutschland nur München und Berlin "
+                "Inside Airbnb führt in Deutschland nur München und Berlin, in Österreich nur Wien "
                 f"(Stand der Datenseite). Für „{gemeinde or 'diesen Punkt'}“ "
                 "liegt dort kein Datensatz vor — das ist eine Datenlücke, "
                 "keine Aussage über das Airbnb-Angebot."

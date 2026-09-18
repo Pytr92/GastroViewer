@@ -330,10 +330,14 @@ async def schutzzonen(out: Outbound, lat: float, lon: float) -> dict[str, Any]:
 # ------------------------------------------------------- Flächenwidmung
 
 # Widmungsklasse (Bauordnung für Wien §§ 4–6) → Gastronomie-Einordnung.
+# Live belegte Klassen (Runde 4): WO, WOGV, GB, GBGV; die übrigen nach der
+# Legende des Flächenwidmungsplans.
 WIDMUNG_DEUTUNG: dict[str, str] = {
-    "W": ("Wohngebiet (§ 6 Abs. 6 BO für Wien): Gastgewerbe ist zulässig, soweit "
-          "es keine das ortsübliche Ausmaß übersteigende Belästigung (Lärm, Geruch) "
-          "verursacht — Schanigarten und Nachtbetrieb sind der Prüfpunkt."),
+    "WO": ("Wohngebiet (§ 6 Abs. 6 BO für Wien): Gastgewerbe ist zulässig, soweit "
+           "es keine das ortsübliche Ausmaß übersteigende Belästigung (Lärm, Geruch) "
+           "verursacht — Schanigarten und Nachtbetrieb sind der Prüfpunkt."),
+    "WOGV": ("Geschäftsviertel im Wohngebiet (§ 6 Abs. 7): Erdgeschoß für Handel und "
+             "Gastgewerbe vorgesehen — ein Gastronomiestandort mit Wohnumfeld."),
     "GB": ("Gemischtes Baugebiet (§ 6 Abs. 8): Wohn- und Betriebsgebäude nebeneinander — "
            "Gastronomie ist hier regelmäßig zulässig."),
     "GBGV": ("Geschäftsviertel im gemischten Baugebiet (§ 6 Abs. 9): der klassische "
@@ -357,7 +361,7 @@ WIDMUNG_DEUTUNG: dict[str, str] = {
 def widmung_deuten(klasse: str | None, klasse_text: str | None) -> dict[str, Any] | None:
     if not klasse and not klasse_text:
         return None
-    text = WIDMUNG_DEUTUNG.get(str(klasse or ""))
+    text = WIDMUNG_DEUTUNG.get(str(klasse or "")) or WIDMUNG_DEUTUNG.get({"W": "WO"}.get(str(klasse or ""), ""))
     return {"art": klasse_text or klasse, "kuerzel": klasse,
             "gastronomie": text or "Einordnung nur über das Plandokument (BO für Wien §§ 4–6)."}
 

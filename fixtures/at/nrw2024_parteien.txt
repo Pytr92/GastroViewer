@@ -1,0 +1,13 @@
+XREF;P-Kurz;0-Österreich;1-Burgenland;2-Kärnten;3-Niederösterreich;4-Oberösterreich;5-Salzburg;6-Steiermark;7-Tirol;8-Vorarlberg;9-Wien;P-Lang
+X0;ÖVP;1;1;1;1;1;1;1;1;1;1;Karl Nehammer - Die Volkspartei
+X0;SPÖ;2;2;2;2;2;2;2;2;2;2;Sozialdemokratische Partei Österreichs
+X0;FPÖ;3;3;3;3;3;3;3;3;3;3;Freiheitliche Partei Österreichs
+X0;GRÜNE;4;4;4;4;4;4;4;4;4;4;Die Grünen - Die Grüne Alternative
+X0;NEOS;5;5;5;5;5;5;5;5;5;5;NEOS - Die Reformkraft für dein neues Österreich
+X0;BIER;6;6;6;6;6;6;6;6;6;6;Die Bierpartei
+X0;MFG;7;0;0;10;7;7;10;9;7;10;MFG - Österreich Menschen - Freiheit - Grundrechte
+X0;BGE;8;10;0;0;0;0;0;0;0;0;Die Gelben
+X0;LMP;9;7;8;8;9;9;9;10;9;9;Liste Madeleine Petrovic
+X0;GAZA;10;9;0;9;10;0;8;7;10;8;Liste GAZA - Stimmen gegen den Völkermord
+X0;KPÖ;11;8;7;7;8;8;7;8;8;7;Kommunistische Partei Österreichs - KPÖ Plus
+X0;KEINE;12;11;9;11;11;10;11;11;11;11;Keine von denen 

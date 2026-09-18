@@ -1,0 +1,37 @@
+{
+ "type": "FeatureCollection",
+ "features": [
+  {
+   "type": "Feature",
+   "id": "Hochwasserrisikogebiete HQ100.3856",
+   "geometry": {
+    "type": "MultiPolygon",
+    "coordinates": []
+   },
+   "geometry_name": "the_geom",
+   "properties": {
+    "OBJECTID": 3856,
+    "PK": "3007",
+    "LABEL": "Wachau",
+    "ZUSTAENDIG": "Bundeswasserverwaltung (BWV) / Wildbach- und Lawinenverbauung (WLV) / BMVIT",
+    "BEGINNLIFE": "2013-07-19T00:00:00+02:00",
+    "ENDLIFE": null,
+    "BUNDESLAND": "Niederösterreich",
+    "SZENARIO": "HQ100",
+    "ANMERKUNG": "",
+    "DATENQUELL": "ABU",
+    "INTERNATPK": "AT3007",
+    "PROJEKTID": "NOE-Donau"
+   }
+  }
+ ],
+ "totalFeatures": "unknown",
+ "numberReturned": 1,
+ "timeStamp": "2026-09-18T15:12:44.969Z",
+ "crs": {
+  "type": "name",
+  "properties": {
+   "name": "urn:ogc:def:crs:CRS::84"
+  }
+ }
+}

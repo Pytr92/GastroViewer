@@ -91,6 +91,24 @@ def wien_wfs():
 
 
 @pytest.fixture(scope="session")
+def wahl_at_dateien():
+    """NRW 2024 (BMI, data.gv.at), live 18.09.2026: Ergebnisdatei (cp1252)
+    und GKZ-Liste (UTF-8 mit BOM) als Bytes."""
+    wurzel = Path(__file__).resolve().parent.parent / "fixtures" / "at"
+    return {"ergebnisse": (wurzel / "nrw2024_ergebnisse.txt").read_bytes(),
+            "gkz": (wurzel / "nrw2024_gkz.txt").read_bytes()}
+
+
+@pytest.fixture(scope="session")
+def statistik_at():
+    """Nächtigungsstatistik, live 18.09.2026: Herkunfts-Klassifikation und
+    der Wien-Ausschnitt der Datendatei ab 2018."""
+    wurzel = Path(__file__).resolve().parent.parent / "fixtures" / "at"
+    return {"herkunft": (wurzel / "stat_OGD_touextsai_Tour_HKL_1_C-C93-2.txt").read_text("utf-8"),
+            "daten": (wurzel / "stat_OGD_touextsai_Tour_HKL_1_wien_ab2018.csv").read_text("utf-8")}
+
+
+@pytest.fixture(scope="session")
 def nominatim_reverse_wien():
     """Stephansplatz, live am 18.09.2026 (AT-Probe): kein "state", ISO AT-9."""
     return load_fixture("raw_nominatim_reverse_wien.json")

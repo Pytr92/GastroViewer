@@ -17,8 +17,11 @@ MARIENPLATZ = (48.1374, 11.5755)
 
 def test_finde_stadt_urls_beide_staedte(airbnb_muenchen):
     urls = airbnb.finde_stadt_urls(airbnb_muenchen["index"])
-    assert set(urls) == {"munich", "berlin"}
+    # Die echte Datenseite führt neben München und Berlin auch Wien
+    # (austria/vienna/vienna/…) — seit der Österreich-Erweiterung erkannt.
+    assert set(urls) == {"munich", "berlin", "vienna"}
     assert urls["munich"]["datum"] == "2026-06-29"
+    assert urls["vienna"]["url"].startswith("https://data.insideairbnb.com/austria/vienna/vienna/")
     assert urls["berlin"]["datum"] == "2026-06-26"
     assert urls["munich"]["url"].endswith("/visualisations/listings.csv")
 

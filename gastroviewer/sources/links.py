@@ -57,10 +57,15 @@ def build(
     gemeinde: str | None = None,
     plz: str | None = None,
     ags: str | None = None,
+    land: str = "DE",
 ) -> list[dict]:
     ort = gemeinde or ""
     ort_q = ort or f"{lat:.4f},{lon:.4f}"
     overpass_query = build_query(lat, lon, radius, timeout=60)
+
+    if land == "AT":
+        return build_at(lat, lon, radius, gemeinde=gemeinde, plz=plz,
+                        overpass_query=overpass_query)
 
     gruppen: list[dict] = []
 
@@ -377,3 +382,81 @@ def build(
     )
 
     return gruppen
+
+
+def build_at(
+    lat: float, lon: float, radius: int, *,
+    gemeinde: str | None, plz: str | None, overpass_query: str,
+) -> list[dict]:
+    """Österreich: dieselbe Idee, andere Portale. Deutsche Register, Ämter
+    und Pachtbörsen fehlen hier bewusst — sie würden ins Leere führen."""
+    ort = gemeinde or ""
+    ort_q = ort or f"{lat:.4f},{lon:.4f}"
+    return [
+        {"gruppe": "Statistik & Bevölkerung", "eintraege": [
+            {"titel": "STATatlas (Statistik Austria)",
+             "url": "https://www.statistik.at/atlas/",
+             "beschreibung": "Regionalstatistik als Karte — Bevölkerung, Erwerb, Tourismus je Gemeinde."},
+            {"titel": "data.gv.at — offene Daten Österreichs",
+             "url": f"https://www.data.gv.at/katalog/dataset/?q={quote_plus(ort or 'Gemeinde')}",
+             "beschreibung": "Katalog aller Verwaltungsdaten, nach Ort vorgefiltert."},
+            {"titel": "Statistik Austria — Gemeindedaten (Ein Blick auf die Gemeinde)",
+             "url": "https://www.statistik.at/blickgem/",
+             "beschreibung": "Steckbrief je Gemeinde: Bevölkerung, Haushalte, Arbeitsstätten, Nächtigungen."},
+            {"titel": "Bundeskriminalamt — Kriminalitätsbericht",
+             "url": "https://www.bundeskriminalamt.at/501/",
+             "beschreibung": "Nur als PDF je Jahr und Bundesland; keine offene Tabelle je Bezirk."},
+        ]},
+        {"gruppe": "Passantenfrequenz", "eintraege": [
+            {"titel": "Google Maps — Gastronomie am Punkt (Handkontrolle)",
+             "url": f"https://www.google.com/maps/search/Restaurants/@{lat},{lon},17z",
+             "beschreibung": "Reiner Absprunglink; Google-Daten dürfen nicht übernommen werden."},
+            {"titel": "Mapillary — Straßenfotos am Punkt (virtuelle Begehung)",
+             "url": f"https://www.mapillary.com/app/?lat={lat}&lng={lon}&z=17",
+             "beschreibung": "Ladenfronten, Leerstände, Außenbereiche aus der Straßenperspektive."},
+            {"titel": "Offene Passantenzählung suchen",
+             "url": _dd(f"Open Data {ort_q} Passantenfrequenz Zählung"),
+             "beschreibung": "Österreich hat keine offene Frequenzquelle — hier nur die Suche.",
+             "warnung": "Gemessene Passantenfrequenz gibt es in Österreich nicht als offene Daten."},
+        ]},
+        {"gruppe": "Wettbewerb & Frequenz vor Ort", "eintraege": [
+            {"titel": "Overpass Turbo mit dieser Abfrage öffnen",
+             "url": "https://overpass-turbo.eu/?Q=" + quote_plus(overpass_query) + "&R",
+             "beschreibung": "Dieselbe Gastronomie-Abfrage wie im Werkzeug, live auf der Karte."},
+            {"titel": "Google Maps — Stoßzeiten der Wettbewerber",
+             "url": f"https://www.google.com/maps/search/restaurant/@{lat},{lon},16z",
+             "beschreibung": "Beliebte Zeiten je Betrieb — nur zum Anschauen."},
+            {"titel": "Lieferando im Umfeld",
+             "url": f"https://www.lieferando.at/lieferservice{'/' + quote_plus(plz) if plz else ''}",
+             "beschreibung": "Lieferwettbewerb rund um die Postleitzahl."},
+        ]},
+        {"gruppe": "Gewerbe & Kommune", "eintraege": [
+            {"titel": "GISA — Gewerbeinformationssystem Austria",
+             "url": "https://www.gisa.gv.at/abfrage",
+             "beschreibung": "Amtliche Gewerbeberechtigungen (Gastgewerbe) je Standort — Einzelabfrage, keine offene Liste."},
+            {"titel": "WKO Firmen A–Z",
+             "url": f"https://firmen.wko.at/SearchSimple.aspx?searchterm={quote_plus('Gastronomie ' + ort_q)}",
+             "beschreibung": "Mitgliederverzeichnis der Wirtschaftskammer — Betriebe im Ort."},
+            {"titel": "Firmenbuch (Justiz)",
+             "url": "https://www.justiz.gv.at/firmenbuch",
+             "beschreibung": "Gesellschaften im Firmenbuch; Abfrage kostenpflichtig über Verrechnungsstellen."},
+            {"titel": "Gemeinde / Magistrat — Flächenwidmung",
+             "url": _dd(f"{ort_q} Flächenwidmungsplan"),
+             "beschreibung": "Flächenwidmung ist Landesrecht; außerhalb Wiens gibt die Gemeinde Auskunft."},
+        ]},
+        {"gruppe": "Flächensuche & Übernahme", "eintraege": [
+            {"titel": "willhaben — Gewerbeimmobilien",
+             "url": "https://www.willhaben.at/iad/immobilien/gewerbeimmobilien-angebote",
+             "beschreibung": "Größter Marktplatz Österreichs, Filter „Gastronomie“ vorhanden."},
+            {"titel": "WKO Nachfolgebörse",
+             "url": "https://www.nachfolgeboerse.at/",
+             "beschreibung": "Betriebsübergaben — Gastronomie zum Übernehmen."},
+            {"titel": "ImmoScout24 Österreich — Gewerbe",
+             "url": "https://www.immobilienscout24.at/regional/gewerbeimmobilien",
+             "beschreibung": "Ladenlokale und Gastroflächen zur Miete."},
+            {"titel": "Gastronomie-Fachgruppe der WKO",
+             "url": "https://www.wko.at/branchen/tourismus-freizeitwirtschaft/gastronomie",
+             "beschreibung": "Sperrzeiten, Schanigarten, Kollektivvertrag — die Branchenauskunft."},
+        ]},
+    ]
+

@@ -43,7 +43,8 @@ ERWARTET = {
             "hamburg_rad", "leerstandsmelder", "leerstandsmelder_punkt", "marke_basis",
             "muenchen_baustellen", "muenchen_messe", "muenchen_rad", "muenchen_tourismus", "wien_baustellen",
             "oepnv_einzug", "overpass", "scan", "vorschlaege"},
-    1209600: {"fahrzeit", "gehweg", "liefergebiet", "planung", "planung_at"},
+    1209600: {"fahrzeit", "gehweg", "liefergebiet", "planung", "planung_at",
+              "tourismus_at", "tourismus_at_daten"},
     3600: {"luft_punkt"},
 }
 

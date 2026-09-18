@@ -124,3 +124,19 @@ def test_schutzzone_nur_bei_punkt_in_flaeche():
         assert drin["gebiete"][0]["name"].startswith("Schutzzone 20. Brigittenau")
     draussen = wien.schutzzonen_aufbereiten(features, *STEPHANSPLATZ)
     assert draussen["betroffen"] is False and draussen["gebiete"] == []
+
+
+def test_sammelabfrage_krems_liefert_layerpraefix():
+    """Runde 4: alle sechs Layer in einer Anfrage — GeoServer nennt den Layer
+    im id-Präfix, das Risikogebiet Wachau bleibt getrennt von den
+    Überflutungsflächen (die am Kremser Ufer leer antworten)."""
+    hw = planung_at.hochwasser_aufbereiten(_lies("hochwasser_r4_sammel_krems_kurz.json"))
+    assert hw["betroffen"] is False and [r["gewaesser"] for r in hw["risikogebiete"]] == ["Wachau"]
+    assert planung_at.hochwasser_aufbereiten(_lies("hochwasser_r4_sammel_stephansplatz.json"))["risikogebiete"] == []
+
+
+def test_schutzzone_innere_stadt_am_stephansplatz():
+    sz = wien.schutzzonen_aufbereiten(_lies("wien_r4_schutzzoneogd_stephansplatz.json")["features"], *STEPHANSPLATZ)
+    assert sz["betroffen"] and sz["gebiete"][0]["name"] == "Schutzzone 1. Innere Stadt"
+    assert sz["titel"].startswith("Schutzzone")
+

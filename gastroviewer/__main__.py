@@ -122,6 +122,14 @@ REGIONEN: dict[str, tuple[str, tuple[float, float, float, float]]] = {
     "muenchen-region": ("Region München mit S-Bahn-Umland", (47.80, 11.00, 48.55, 12.10)),
     "oberbayern": ("Regierungsbezirk Oberbayern", (47.27, 10.75, 48.95, 13.20)),
     "bayern": ("Freistaat Bayern", (47.27, 8.97, 50.57, 13.84)),
+    "wien": ("Wien mit Umland (Feed der Wiener Linien)", (48.05, 16.10, 48.40, 16.65)),
+}
+
+# Regionen, die nicht im deutschen Sammel-Feed (gtfs.de) liegen, bringen
+# ihre eigene Quelle mit. Wiener Linien: OGD, CC BY 4.0, rund 90 MB, mit
+# calendar.txt (am 18.09.2026 geprüft).
+REGION_URLS: dict[str, str] = {
+    "wien": "https://www.wienerlinien.at/ogd_realtime/doku/ogd/gtfs/gtfs.zip",
 }
 
 
@@ -160,7 +168,7 @@ def cmd_import_gtfs(args: argparse.Namespace, settings: Settings) -> int:
             return 2
         quelle = str(zip_path)
     else:
-        quelle = args.url or settings.gtfs_url
+        quelle = args.url or REGION_URLS.get(args.region or "") or settings.gtfs_url
         tmpdir = Path(tempfile.mkdtemp(prefix="gastroviewer-gtfs-"))
         zip_path = _download(quelle, tmpdir / "gtfs.zip")
 

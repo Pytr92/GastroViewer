@@ -84,7 +84,8 @@ def test_widmung_gemischtes_baugebiet_am_punkt():
 
 
 def test_widmung_deutung_kennt_wohngebiet_und_unbekanntes():
-    assert "Belästigung" in wien.widmung_deuten("W", "Wohngebiet")["gastronomie"]
+    assert "Belästigung" in wien.widmung_deuten("WO", "Wohngebiet")["gastronomie"]
+    assert "Erdgeschoß" in wien.widmung_deuten("WOGV", "Wohngebiet-Geschäftsviertel")["gastronomie"]
     u = wien.widmung_deuten("XYZ", "Sonstiges")
     assert u["art"] == "Sonstiges" and "Plandokument" in u["gastronomie"]
     assert wien.widmung_deuten(None, None) is None
@@ -132,3 +133,23 @@ def test_maerkte_load_ohne_bbox():
     out = _Out({"MAERKTEOGD": _lies("wien_maerkteogd.json")})
     res = asyncio.run(wien.maerkte_load(out, *STEPHANSPLATZ, 600))
     assert res.ok and res.data["stadtweit"] == 23 and "bbox" not in out.params[0]
+
+
+def test_widmung_und_schutzzone_an_echten_punkten():
+    """Runde 4, Punktkästen: Stephansplatz GB5 in der Schutzzone Innere Stadt,
+    Spittelberg Wohngebiet W2 in der Schutzzone, Naschmarkt Schutzzone ohne
+    Baulandwidmung (Verkehrsfläche), Brigittenau-Ufer nichts von beidem."""
+    faelle = {
+        "stephansplatz": (STEPHANSPLATZ, "GB5", "Schutzzone 1. Innere Stadt"),
+        "spittelberg": ((48.2035, 16.3550), "W2", "Schutzzone 7. Spittelberg"),
+        "naschmarkt": ((48.1985, 16.3630), None, "Schutzzone 6. Laimgrube"),
+        "brigittenau": ((48.2400, 16.3700), None, None),
+    }
+    for ort, ((lat, lon), widmung, schutz) in faelle.items():
+        fl = wien.widmung_aufbereiten(_lies(f"wien_r4_genflwidmungogd_{ort}.json")["features"], lat, lon)
+        assert [f["aufschrift"] for f in fl] == ([widmung] if widmung else []), ort
+        sz = wien.schutzzonen_aufbereiten(_lies(f"wien_r4_schutzzoneogd_{ort}.json")["features"], lat, lon)
+        assert [g["name"] for g in sz["gebiete"]] == ([schutz] if schutz else []), ort
+    fl = wien.widmung_aufbereiten(_lies("wien_r4_genflwidmungogd_spittelberg.json")["features"], 48.2035, 16.3550)
+    assert fl[0]["deutung"]["kuerzel"] == "WO" and "Belästigung" in fl[0]["deutung"]["gastronomie"]
+

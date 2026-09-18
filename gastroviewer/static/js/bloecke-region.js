@@ -193,14 +193,15 @@ function zeigeWahl(d) {
   }
   const wk = (w.wahlkreise || []).map((x) => `${x.nr} ${x.name}`).join(' · ');
   setStatus(id, 'ok', w.mehrere_wahlkreise
-    ? `${w.wahlkreise.length} Wahlkreise` : `WK ${w.wahlkreise[0]?.nr}`);
+    ? `${w.wahlkreise.length} Wahlkreise`
+    : (w.ebene ? `${w.wahlkreise[0]?.name}` : `WK ${w.wahlkreise[0]?.nr}`));
 
   const tab = el('table', { class: 'daten' },
     el('tr', {},
       el('th', {}, 'Partei'),
-      el('th', { class: 'num' }, 'Zweitstimmen'),
+      el('th', { class: 'num' }, w.stimmen_label || 'Zweitstimmen'),
       el('th', { class: 'num' }, 'Anteil'),
-      el('th', { class: 'num' }, 'ggü. 2021')));
+      el('th', { class: 'num' }, w.ebene ? 'Vorwahl' : 'ggü. 2021')));
   for (const p of w.parteien || []) {
     tab.append(el('tr', {},
       el('td', {}, p.partei),
@@ -215,7 +216,7 @@ function zeigeWahl(d) {
 
   setInhalt(id,
     el('div', { class: 'notiz' },
-      `${w.wahl}, ${w.mehrere_wahlkreise ? 'Summe der Wahlkreise' : 'Wahlkreis'} `
+      `${w.wahl}, ${w.mehrere_wahlkreise ? 'Summe der Wahlkreise' : (w.ebene || 'Wahlkreis')} `
       + `${wk}.`
       + (w.beteiligung_prozent !== null && w.beteiligung_prozent !== undefined
         ? ` Wahlbeteiligung ${NF1.format(w.beteiligung_prozent)} %`
@@ -1285,12 +1286,12 @@ function zeigeTourismus(d) {
   }
   const t = d.data;
   if (!t) {
-    setStatus(id, 'leer', 'nur München');
+    setStatus(id, 'leer', 'keine Monatsreihe');
     setInhalt(id, ...warnungen(d.warnings || []));
     setQuelle(id, d.provenance);
     return;
   }
-  setStatus(id, 'ok', `${NF.format(t.uebernachtungen_12m)} Übern./12 M.`);
+  setStatus(id, 'ok', `${t.gebiet ? t.gebiet + ' · ' : ''}${NF.format(t.uebernachtungen_12m)} Übern./12 M.`);
 
   const s = t.saison;
   const kz = el('div', { class: 'kennzahlen' },

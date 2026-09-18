@@ -18,7 +18,7 @@ from typing import Any, Awaitable, Callable
 from .cache import AsyncCache, cache_key
 from .config import Settings
 from .http import Outbound
-from .laender import DE, Land, land_aus_code, laender_fuer_punkt, quelle_fehlt
+from .laender import DE, Land, land_aus_code, land_aus_iso, laender_fuer_punkt, quelle_fehlt
 from .sources import (airbnb as airbnb_mod,
                       bast as bast_mod,
                       baurecht as baurecht_mod,
@@ -42,7 +42,8 @@ from .sources import (airbnb as airbnb_mod,
                       leerstandsmelder as lsm_mod,
                       luft as luft_mod,
                       pendler as pendler_mod, pks as pks_mod, planung,
-                      planung_at as planung_at_mod,
+                      planung_at as planung_at_mod, tourismus_at as tourismus_at_mod,
+                      wahl_at as wahl_at_mod,
                       register as register_mod, scan as scan_mod,
                       sonne as sonne_mod,
                       tourismus as tourismus_mod, wahl as wahl_mod, zensus)
@@ -470,9 +471,46 @@ class PointService:
             refresh=refresh,
         )
 
-    async def tourismus(self, lat: float, lon: float, refresh: bool = False):
-        """Tourismus-Saisonalität München (stadtweite Monatszahlen).
-        Außerhalb des Stadtgebiets entscheidet die Quelle selbst."""
+    async def _tourismus_at_daten(self, refresh: bool = False):
+        """Nächtigungsstatistik Österreich, **einmal** geladen und auf drei
+        Reihen je Bundesland eingedampft (die Datei ist Megabytes groß)."""
+
+        async def laden() -> SourceResult:
+            herkunft = await self.outbound.get_text(
+                "tourismus_at", tourismus_at_mod.HERKUNFT_URL, timeout=60.0,
+                limiter="statistik_at", min_interval=1.0)
+            inland, alle = tourismus_at_mod.herkunft_lesen(herkunft)
+            daten = await self.outbound.get_text(
+                "tourismus_at", tourismus_at_mod.CSV_URL, timeout=180.0,
+                limiter="statistik_at", min_interval=1.0)
+            reihen = await asyncio.to_thread(tourismus_at_mod.reduzieren, daten, inland, alle)
+            return SourceResult(name="tourismus_at_daten", ok=True,
+                                data={"reihen": reihen, "inland": sorted(inland)})
+
+        res = await self._cached("tourismus_at_daten", "tourismus_at|daten", laden,
+                                 refresh=refresh)
+        if not res.ok:
+            raise SourceError(res.error["kind"], res.error["message"])
+        return res.data["reihen"]
+
+    async def tourismus(self, lat: float, lon: float, refresh: bool = False,
+                        adresse: dict[str, Any] | None = None):
+        """Tourismus-Saisonalität: München (stadtweite Monatszahlen) oder in
+        Österreich die Nächtigungsstatistik je Bundesland. Außerhalb
+        entscheidet die Quelle selbst."""
+        land = await self.land(lat, lon)
+        if land.code == "AT":
+            if adresse is None:
+                res = await self.adresse(lat, lon)
+                adresse = (res.data or {}) if res.ok else {}
+            treffer = land_aus_iso(adresse.get("bundesland_iso"))
+            schluessel = treffer[1] if treffer else None
+            name = treffer[2] if treffer else None
+            return await self._cached(
+                "tourismus_at", f"tourismus_at|{schluessel or '-'}",
+                lambda: tourismus_at_mod.load(schluessel, name, self._tourismus_at_daten),
+                refresh=refresh,
+            )
         key = cache_key("muenchen_tourismus", lat, lon, 0)
         return await self._cached(
             "muenchen_tourismus",
@@ -783,6 +821,36 @@ class PointService:
             key,
             lambda: wahl_mod.load(
                 self.outbound, ags, lambda: self._wahl_daten(refresh)),
+            refresh=refresh,
+        )
+
+    async def _wahl_at_daten(self, refresh: bool = False):
+        """NRW-2024-Ergebnisdatei und GKZ-Liste, **einmal** geladen."""
+
+        async def laden() -> SourceResult:
+            ergebnisse = wahl_at_mod.dekodieren(await self.outbound.get_bytes(
+                "wahl_at", wahl_at_mod.ERGEBNIS_URL, timeout=120.0,
+                limiter="datagv", min_interval=1.0))
+            gkz = wahl_at_mod.dekodieren(await self.outbound.get_bytes(
+                "wahl_at", wahl_at_mod.GKZ_URL, timeout=120.0,
+                limiter="datagv", min_interval=1.0))
+            return SourceResult(name="wahl_at_daten", ok=True, data={
+                "ergebnisse": await asyncio.to_thread(wahl_at_mod.parse_ergebnisse, ergebnisse),
+                "gkz": await asyncio.to_thread(wahl_at_mod.parse_gkz, gkz)})
+
+        res = await self._cached("wahl_at_daten", "wahl_at|nrw24", laden, refresh=refresh)
+        if not res.ok:
+            raise SourceError(res.error["kind"], res.error["message"])
+        return res.data["ergebnisse"], res.data["gkz"]
+
+    async def wahl_at(self, adresse: dict[str, Any] | None, refresh: bool = False):
+        """Nationalratswahl 2024 je Gemeinde — Zuordnung über Bundesland und
+        Gemeindename aus der Adresse."""
+        a = adresse or {}
+        key = f"wahl_at|{a.get('bundesland_iso') or '-'}|{(a.get('gemeinde') or '-')[:40]}"
+        return await self._cached(
+            "wahl_at", key,
+            lambda: wahl_at_mod.load(a, lambda: self._wahl_at_daten(refresh)),
             refresh=refresh,
         )
 
@@ -1553,6 +1621,15 @@ class PointService:
                     name=name, ok=True, data=None,
                     warnings=["Ohne Gemeindeschlüssel lässt sich kein Kreiswert zuordnen."],
                 )).to_dict()
+            if land.code == "AT":
+                # Nationalratswahl 2024 braucht keinen Schlüssel — Bundesland
+                # und Gemeindename kommen aus der Adresse.
+                try:
+                    blocks["wahl"] = (await self.wahl_at(adresse, refresh)).to_dict()
+                except Exception as exc:  # noqa: BLE001
+                    blocks["wahl"] = SourceResult.failed(
+                        "wahl", SourceError("unknown", f"{type(exc).__name__}: {exc}")
+                    ).to_dict()
             # Der Lärmdienst braucht keinen Gemeindeschlüssel — der
             # UBA-Bundesdienst deckt ganz Deutschland ab.
             try:
@@ -1614,7 +1691,7 @@ class PointService:
             "bloecke": blocks,
             "bodenrichtwerte": boris.links_for(bl_code, gemeinde),
             "weiterfuehrend": links.build(
-                lat, lon, radius, gemeinde=gemeinde, plz=plz, ags=ags
+                lat, lon, radius, gemeinde=gemeinde, plz=plz, ags=ags, land=land.code
             ),
             "hinweise": hinweise,
             "grenzen": GRENZEN,

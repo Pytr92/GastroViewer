@@ -222,15 +222,21 @@ def test_stunden_ueber_24_werden_auf_den_tag_umgelegt(importiert):
 def test_regionen_sind_plausibel_und_richtig_herum():
     """Die häufigste Fehlbedienung beim Import ist die vertauschte Reihenfolge
     der Bounding-Box. Die Voreinstellungen dürfen den Fehler nicht enthalten."""
-    from gastroviewer.__main__ import REGIONEN
+    from gastroviewer.__main__ import REGIONEN, REGION_URLS
+    from gastroviewer.laender import GESAMT_BBOX, laender_fuer_punkt
 
-    assert "muenchen" in REGIONEN
+    sued, west, nord, ost = GESAMT_BBOX
+    assert "muenchen" in REGIONEN and "wien" in REGIONEN
     for name, (beschreibung, (min_lat, min_lon, max_lat, max_lon)) in REGIONEN.items():
         assert beschreibung, name
         assert min_lat < max_lat, f"{name}: Breitengrade vertauscht"
         assert min_lon < max_lon, f"{name}: Längengrade vertauscht"
-        assert 47.0 < min_lat < max_lat < 55.5, f"{name}: außerhalb Deutschlands"
-        assert 5.5 < min_lon < max_lon < 15.5, f"{name}: außerhalb Deutschlands"
+        assert sued <= min_lat < max_lat <= nord, f"{name}: außerhalb der unterstützten Länder"
+        assert west <= min_lon < max_lon <= ost, f"{name}: außerhalb der unterstützten Länder"
+        assert laender_fuer_punkt((min_lat + max_lat) / 2, (min_lon + max_lon) / 2), name
+    # Regionen außerhalb des deutschen Sammel-Feeds bringen ihre Quelle mit.
+    assert set(REGION_URLS) <= set(REGIONEN)
+    assert REGION_URLS["wien"].startswith("https://www.wienerlinien.at/")
 
 
 def test_muenchen_liegt_in_allen_bayerischen_ausschnitten():
