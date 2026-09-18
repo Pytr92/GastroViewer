@@ -55,6 +55,22 @@ def nominatim_search():
 
 
 @pytest.fixture(scope="session")
+def geosphere_at():
+    """GeoSphere klima-v2-1y: Stationsausschnitt und Jahreswerte 1991–2020 Wien Innere Stadt."""
+    wurzel = Path(__file__).resolve().parent.parent / "fixtures" / "at"
+    return {"metadata": json.loads((wurzel / "geosphere_klima_v2_1y_metadata_kurz.json").read_text("utf-8")),
+            "daten": json.loads((wurzel / "geosphere_klima_v2_1y_wien_1991_2020.json").read_text("utf-8"))}
+
+
+@pytest.fixture(scope="session")
+def laerminfo_at():
+    """lärminfo.at OGC-Features: Straßenlärm-Zonen 2022 am Stephansplatz."""
+    wurzel = Path(__file__).resolve().parent.parent / "fixtures" / "at"
+    return {"lden": json.loads((wurzel / "laerminfo_r2_laerm_2022_strasse_lden_items.json").read_text("utf-8")),
+            "lnight": json.loads((wurzel / "laerminfo_r2_laerm_2022_strasse_lnight_items.json").read_text("utf-8"))}
+
+
+@pytest.fixture(scope="session")
 def nominatim_reverse_wien():
     """Stephansplatz, live am 18.09.2026 (AT-Probe): kein "state", ISO AT-9."""
     return load_fixture("raw_nominatim_reverse_wien.json")

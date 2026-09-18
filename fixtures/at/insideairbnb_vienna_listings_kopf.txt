@@ -1,0 +1,10 @@
+id,name,host_id,host_profile_id,host_name,neighbourhood_group,neighbourhood,latitude,longitude,room_type,price,minimum_nights,number_of_reviews,last_review,reviews_per_month,calculated_host_listings_count,availability_365,number_of_reviews_ltm,license
+30972228,Beautiful Apartment with an  view over Vienna,53270069,1465865078180587013,Vincent,,Ottakring,48.21136,16.32806,Entire home/apt,,5,0,,,2,0,0,
+29863744,Warm und Hell,78540887,1466961589124310870,Kiril,,Margareten,48.18514,16.3472,Entire home/apt,,2,0,,,1,0,0,
+30058773,Artistic central (Secret) Gardens' Flat,2764320,1462607358505251428,Borislav & Aneta,,Leopoldstadt,48.22375,16.40081,Entire home/apt,,30,193,2025-08-22,2.08,3,0,3,
+30267112,Cozy Room in a Big and bright Apartment,224803484,1469193868245578562,Fatemeh,,Penzing,48.19565,16.26702,Private room,,1,5,2020-01-01,0.05,1,0,0,
+30264859,Spacious private apartment near historical center,19574990,1463081809311774720,Sarah,,Alsergrund,48.21557,16.34975,Entire home/apt,,2,6,2020-01-01,0.07,1,0,0,
+30320173,Wanderlust Vienna Apartment,173490555,1468683323847922111,Tina,,Ottakring,48.20876,16.33756,Entire home/apt,,1,9,2019-12-08,0.10,1,0,0,
+30363203,Apartment near the center,225390811,1469197647966255435,Deni,,Leopoldstadt,48.22581,16.38921,Entire home/apt,,2,29,2020-02-16,0.31,1,0,0,
+30456653,SUPER CENTRAL COSY FLAT,40755537,1465606883677950657,Sanda,,Wieden,48.19579,16.36792,Entire home/apt,,1,68,2020-03-13,0.74,2,0,0,
+1457457961703683590,Easy stay.,527460446,1470371698585709485,Lioudmila,,Simmering,48.16854,16.41556,Entire home/apt,62,3,1,2026-05-03,0.61,1,200,1,

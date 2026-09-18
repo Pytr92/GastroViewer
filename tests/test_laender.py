@@ -36,9 +36,10 @@ def test_iso_und_geocoder_codes():
 
 
 def test_quellen_je_land():
-    assert laender.quelle_fehlt("klima", laender.DE) is None
-    assert laender.quelle_fehlt("zensus", laender.AT) is None, "Raster antwortet in Österreich"
-    grund = laender.quelle_fehlt("klima", laender.AT)
+    assert laender.quelle_fehlt("luft", laender.DE) is None
+    for name in ("zensus", "klima", "laerm"):
+        assert laender.quelle_fehlt(name, laender.AT) is None, f"{name} hat ein österreichisches Gegenstück"
+    grund = laender.quelle_fehlt("luft", laender.AT)
     assert grund and "Deutschland" in grund and "Österreich" in grund
     assert laender.quelle_fehlt("osm", laender.AT) is None, "OSM gilt überall"
     assert laender.GESAMT_BBOX == (46.35, 5.5, 55.5, 17.2)

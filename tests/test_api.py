@@ -30,6 +30,7 @@ class FakeOutbound:
     def __init__(self, zensus, overpass, nominatim, einkommen=None,
                  kreisprofil=None, dwd=None, pendler=None, ohsome=None,
                  laerm=None, fehler: set[str] | None = None, photon=None,
+                 geosphere=None, laerminfo=None,
                  baustellen=None, maerkte=None, indikatoren=None,
                  airbnb=None, messe=None, tourismus=None,
                  uba=None, bfg_hochwasser=None,
@@ -45,6 +46,9 @@ class FakeOutbound:
         self.gebaeude = gebaeude or {"elements": []}
         self.nominatim = nominatim
         self.photon = photon or {"reverse": {"features": []}, "search": {"features": []}}
+        self.geosphere = geosphere or {"metadata": {"stations": [], "parameters": []},
+                                       "daten": {"features": []}}
+        self.laerminfo = laerminfo or {"lden": {"features": []}, "lnight": {"features": []}}
         self.einkommen = einkommen or {"features": []}
         # Fixture je Tabelle — Einkommen und Kreisprofil teilen sich Endpunkt
         # und URL, unterscheiden sich nur im layer-Parameter.
@@ -146,6 +150,20 @@ class FakeOutbound:
             if "nominatim" in self.fehler:
                 raise SourceError("http_status", "HTTP 403 — Zugriff abgelehnt.")
             return self.nominatim
+        if "geosphere.at" in url:
+            self.calls.append("geosphere")
+            if "geosphere" in self.fehler:
+                raise SourceError("timeout", "Zeitüberschreitung — Dienst antwortet nicht.")
+            return self.geosphere["metadata"] if url.endswith("/metadata") else self.geosphere["daten"]
+        if "gis.lfrz.gv.at" in url:
+            self.calls.append("laerminfo")
+            if "laerminfo" in self.fehler:
+                raise SourceError("timeout", "Zeitüberschreitung — Dienst antwortet nicht.")
+            if "strasse_lden" in url:
+                return self.laerminfo["lden"]
+            if "strasse_lnight" in url:
+                return self.laerminfo["lnight"]
+            return {"type": "FeatureCollection", "features": []}
         if "photon" in url:
             # Rückfall-Geocoder: ohne diesen Zweig lief der Adressblock bei
             # Nominatim-Ausfall in „unerwartete URL" statt in den Rückfall.
@@ -2298,11 +2316,12 @@ WIEN = (48.2082, 16.3738)
 
 
 def test_wiener_punkt_bekommt_ehrliche_antwort(client, zensus_600, overpass_combined,
-                                                 nominatim_reverse_wien):
+                                                 nominatim_reverse_wien, geosphere_at, laerminfo_at):
     """Stephansplatz: Das Land kommt vom Geocoder (Kästen überlappen sich),
     länderunabhängige Quellen laufen, deutsche Dienste werden nicht
     gefragt — kein Zensus-Abruf, keine DWD-Station hinter der Grenze."""
-    fake = FakeOutbound(zensus_600, overpass_combined, nominatim_reverse_wien)
+    fake = FakeOutbound(zensus_600, overpass_combined, nominatim_reverse_wien,
+                        geosphere=geosphere_at, laerminfo=laerminfo_at)
     c2 = client.make(fake)
     with c2:
         r = c2.get("/api/point", params={"lat": WIEN[0], "lon": WIEN[1], "r": 600})
@@ -2312,11 +2331,17 @@ def test_wiener_punkt_bekommt_ehrliche_antwort(client, zensus_600, overpass_comb
         assert d["punkt"]["bundesland"] == "Wien" and d["punkt"]["bundesland_iso"] == "AT-9"
         assert d["punkt"]["ags"] is None
         assert "Bodenrichtwerte" in d["punkt"]["land_hinweis"]
-        for name in ("klima", "luft", "laerm", "planung", "einkommen",
-                     "pks", "wahl", "register"):
+        for name in ("luft", "planung", "einkommen", "pks", "wahl", "register"):
             b = d["bloecke"][name]
             assert b["ok"] is True and b["data"] is None, name
             assert any("Nur für Deutschland" in w for w in b["warnings"]), (name, b["warnings"])
+        # Klima und Lärm kommen aus den österreichischen Diensten — in derselben Blockform.
+        k = d["bloecke"]["klima"]
+        assert k["ok"] and k["data"]["kennzahlen"][0]["station"]["name"] == "Wien Innere Stadt"
+        assert "GeoSphere" in k["provenance"]["source"]
+        la = d["bloecke"]["laerm"]
+        assert la["ok"] and la["data"]["dienst"] == "laerminfo" and la["data"]["lden"]["kartierung"] == 2022
+        assert "geosphere" in fake.calls and "laerminfo" in fake.calls
         # Bevölkerung: kein Zensus-Dienst, sondern das lokale Eurostat-Raster —
         # ohne Import eine klare Anleitung statt einer deutschen Zahl.
         z = d["bloecke"]["zensus"]

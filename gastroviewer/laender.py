@@ -150,9 +150,10 @@ def iso_aus_schluessel(land: Land, schluessel: str | None) -> str | None:
 # Oberfläche zeigt. Alles, was hier nicht steht, gilt überall (OSM, ohsome,
 # Leerstandsmelder, Overture, Inside Airbnb je Stadt, Besonnung).
 QUELLEN_NUR: dict[str, tuple[set[str], str]] = {
-    "klima": ({"DE"}, "Die Klimanormalwerte kommen vom Deutschen Wetterdienst."),
-    "luft": ({"DE"}, "Das Luftmessnetz kommt vom Umweltbundesamt (Deutschland)."),
-    "laerm": ({"DE"}, "Die Lärmkartierung liegt nur für Deutschland vor."),
+    # klima und laerm fehlen hier bewusst: in Österreich antworten GeoSphere
+    # (sources/klima_at.py) und lärminfo.at (sources/laerm_at.py).
+    "luft": ({"DE"}, "Das Luftmessnetz kommt vom Umweltbundesamt (Deutschland); der "
+                     "europäische Spiegel für Österreich hinkt Monate hinterher (geprüft 18.09.2026)."),
     "planung": ({"DE"}, "Hochwassergefahr und Bebauungspläne liegen nur für Deutschland vor."),
     "baurecht": ({"DE"}, "Die Bebauungsplan-Dienste liegen nur für deutsche Städte vor."),
     "verkehrsmenge": ({"DE"}, "BAYSIS und BASt zählen nur deutsche Straßen."),

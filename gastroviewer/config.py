@@ -102,6 +102,9 @@ TTL_KLASSEN: dict[str, str | int] = {
     "frequenz": "ttl_zensus",       # Passantenfrequenz, Stundenmittel
     "frequenz_augsburg": "ttl_zensus",
     "sonne": "ttl_zensus",          # Besonnung hängt am Gebäudebestand
+    "klima_at": "ttl_zensus",       # GeoSphere-Normalwerte 1991–2020, fest
+    "klima_at_stationen": "ttl_zensus",  # Stationsliste, ändert sich in Monaten
+    "laerm_at": "ttl_zensus",       # EU-Lärmkartierung, alle fünf Jahre
     # --- Stundenwerte
     "luft_punkt": 3600,             # Luftqualitätsindex, stündlich veröffentlicht
 }

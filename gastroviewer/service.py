@@ -1253,6 +1253,13 @@ class PointService:
         Zensus — außerhalb Bayerns bleibt der Block mit Begründung leer,
         ohne dass eine Anfrage hinausgeht."""
         land = await self.land(lat, lon)
+        if land.code == "AT":
+            from .sources import laerm_at
+
+            return await self._cached(
+                "laerm_at", cache_key("laerm_at", lat, lon, 0),
+                lambda: laerm_at.load(self.outbound, lat, lon),
+            )
         if (leer := self._nur_in("laerm", land)) is not None:
             return leer
         key = cache_key("laerm", lat, lon, 0) + f"|{bundesland_code or '-'}"
@@ -1264,6 +1271,24 @@ class PointService:
             ),
         )
 
+    async def _klima_at_stationen(self):
+        """GeoSphere-Stationsliste (370 kB) — landesweit einmal, 30 Tage."""
+        from .sources import klima_at
+
+        async def laden() -> SourceResult:
+            meta = await self.outbound.get_json(
+                "klima_at", f"{klima_at.BASIS}/metadata", timeout=60.0,
+                limiter="geosphere", min_interval=1.0)
+            stationen = klima_at.stationen_aus_metadata(meta if isinstance(meta, dict) else {})
+            if not stationen:
+                raise SourceError("parse", "GeoSphere-Metadaten ohne aktive Stationen.")
+            return SourceResult(name="klima_at_stationen", ok=True, data={"stationen": stationen})
+
+        res = await self._cached("klima_at_stationen", "klima_at|stationen", laden)
+        if not res.ok or not res.data:
+            raise SourceError.aus_dict(res.error, fallback="GeoSphere-Stationsliste nicht ladbar.")
+        return res.data["stationen"]
+
     async def klima(self, lat: float, lon: float) -> SourceResult:
         """Klimanormalwerte der nächsten DWD-Station.
 
@@ -1272,6 +1297,14 @@ class PointService:
         ganzen Land, und die Normalperiode 1991–2020 ändert sich nicht.
         Die Stationswahl je Punkt ist danach reine lokale Rechnung."""
         land = await self.land(lat, lon)
+        if land.code == "AT":
+            from .sources import klima_at
+
+            return await self._cached(
+                "klima_at", cache_key("klima_at", lat, lon, 0),
+                lambda: klima_at.load(self.outbound, self.settings, lat, lon,
+                                      self._klima_at_stationen),
+            )
         if (leer := self._nur_in("klima", land)) is not None:
             return leer
         started = time.perf_counter()

@@ -1,0 +1,95 @@
+{
+  "title":"Nächtigungsstatistik ab November 1973 - Nächtigungen nach Herkunftsländern und Bundesländern",
+  "notes":"Statistik Austria stellt monatlich aktualisierte Daten über Ankünfte und Übernachtungen auf Bundeslandebene getrennt nach Herkunftsländern ab November 1973 zur Verfügung",
+  "tags":[
+    "Tourismus",
+    "Beherbergung",
+    "Nächtigungen",
+    "Wintersaison",
+    "Sommersaison",
+    "Herkunftsländer"
+  ],
+  "maintainer":"Statistik Austria, Guglgasse 13, 1110 Wien, Austria",
+  "license":"Creative Commons Namensnennung 4.0 International",
+  "maintainer_email":"open.data@statistik.gv.at",
+  "resources":[
+    {
+      "url":"https://data.statistik.gv.at/data/OGD_touextsai_Tour_HKL_1.csv",
+      "format":"csv",
+      "name":"OGD_touextsai_Tour_HKL_1",
+      "created":"2014-02-01T10:00:00",
+      "last_modified":"2026-09-04T09:03:36",
+      "size":"",
+      "language":"ger",
+      "characterset":"utf8"
+    },
+    {
+      "url":"https://data.statistik.gv.at/data/OGD_touextsai_Tour_HKL_1_HEADER.csv",
+      "format":"csv",
+      "name":"OGD_touextsai_Tour_HKL_1_HEADER",
+      "created":"2014-02-01T10:00:00",
+      "last_modified":"2026-09-04T09:03:36",
+      "size":"",
+      "language":"ger",
+      "characterset":"utf8"
+    },
+    {
+      "url":"https://data.statistik.gv.at/data/OGD_touextsai_Tour_HKL_1_C-SDB_TIT-0.csv",
+      "format":"csv",
+      "name":"OGD_touextsai_Tour_HKL_1_C-SDB_TIT-0",
+      "created":"2014-02-01T10:00:00",
+      "last_modified":"2026-09-04T09:03:36",
+      "size":"",
+      "language":"ger",
+      "characterset":"utf8"
+    },
+    {
+      "url":"https://data.statistik.gv.at/data/OGD_touextsai_Tour_HKL_1_C-W96-0.csv",
+      "format":"csv",
+      "name":"OGD_touextsai_Tour_HKL_1_C-W96-0",
+      "created":"2014-02-01T10:00:00",
+      "last_modified":"2026-09-04T09:03:36",
+      "size":"",
+      "language":"ger",
+      "characterset":"utf8"
+    },
+    {
+      "url":"https://data.statistik.gv.at/data/OGD_touextsai_Tour_HKL_1_C-C93-2.csv",
+      "format":"csv",
+      "name":"OGD_touextsai_Tour_HKL_1_C-C93-2",
+      "created":"2014-02-01T10:00:00",
+      "last_modified":"2026-09-04T09:03:36",
+      "size":"",
+      "language":"ger",
+      "characterset":"utf8"
+    }
+  ],
+  "extras":{
+    "metadata_identifier":"ef5e41a9-186a-3820-a06b-0be7d89a0f3d",
+    "metadata_modified":"2026-09-04T09:03:36",
+    "metadata_linkage":[
+      "https://statcube.at/statcube/opendatabase?id=detouextsai",
+      "https://www.statistik.at/statistiken/tourismus-und-verkehr/tourismus/beherbergung/ankuenfte-naechtigungen",
+      "https://www.statistik.at/en/statistics/tourism-and-transport/tourism/accommodation/arrivals-overnight-stays"
+    ],
+    "metadata_original_portal":"https://data.statistik.gv.at/web/meta.jsp?dataset=OGD_touextsai_Tour_HKL_1",
+    "begin_datetime":"2014-02-01T10:00:00",
+    "end_datetime":null,
+    "categorization":[
+      "Wirtschaft und Tourismus"
+    ],
+    "schema_name":"OGD Austria Metadata 2.3",
+    "schema_language":"ger",
+    "schema_characterset":"utf8",
+    "attribute_description":"C-SDB_TIT-0:Saison/Tourismusmonat;C-W96-0:Bundesland;C-C93-2:Herkunftsland;F-ANK:Ankünfte;F-UEB:Übernachtungen",
+    "maintainer_link":"https://www.statistik.at/kontakt",
+    "publisher":"Statistik Austria",
+    "geographic_toponym":"",
+    "geographic_bbox":"",
+    "update_frequency":"monatlich",
+    "lineage_quality":"",
+    "en_title_and_desc":"Accomodation statistics as of November 1973 by country of origin and federal provinces",
+    "license_citation":"Datenquelle: Statistik Austria - data.statistik.gv.at"
+  },
+  "state":"active"
+}
