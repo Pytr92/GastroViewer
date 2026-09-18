@@ -422,9 +422,17 @@ async function alleNeuPruefen(zeilen) {
       const r = await fetch(`/api/points/${z.id}/pruefung`, { method: 'POST' });
       if (!r.ok) throw new Error(`HTTP ${r.status}`);
       const d = await r.json();
+      if (d.ok === false) {
+        // Overpass 504 & Co.: kein Befund, kein Nullstand — nur ehrlich benennen.
+        befunde.push(`${z.label}: nicht prüfbar (${(d.nicht_geprueft || [])
+          .map((e) => e.block).join(', ') || 'Quelle ausgefallen'})`);
+        continue;
+      }
       const n = d.veraendert.length + d.neue_betriebe.length
         + d.verschwundene_betriebe.length;
-      befunde.push(`${z.label}: ${n ? `${n} Veränderung(en)` : 'unverändert'}`);
+      const offen = (d.nicht_geprueft || []).length
+        ? ` — ${d.nicht_geprueft.length} Quelle(n) nicht geprüft` : '';
+      befunde.push(`${z.label}: ${n ? `${n} Veränderung(en)` : 'unverändert'}${offen}`);
     } catch (e) {
       befunde.push(`${z.label}: fehlgeschlagen (${e.message})`);
     }
@@ -572,11 +580,29 @@ async function neuPruefen(z) {
   await zeigeVergleich();
 
   const teile = [el('strong', {}, `Neu geprüft: ${d.label}`)];
+  // Quellenausfall ist keine Veränderung: Was nicht geprüft werden konnte,
+  // steht hier — und „keine Veränderung" gilt nur für das, was geprüft wurde.
+  const nichtGeprueft = d.nicht_geprueft || [];
+  if (d.ok === false) {
+    wartebox.replaceChildren(el('div', { class: 'fehlerbox' },
+      el('strong', {}, `${d.label}: nicht prüfbar`), ' ',
+      d.fehler || 'Keine bewegliche Quelle hat geantwortet.',
+      el('ul', { class: 'liste' }, nichtGeprueft.map((e) => el('li', {},
+        el('span', { class: 'haupt' }, `${e.block}: ${e.fehler || 'keine Antwort'}`))))));
+    return;
+  }
   const nichts = !d.veraendert.length && !d.neue_betriebe.length
     && !d.verschwundene_betriebe.length;
   if (nichts) {
     teile.push(el('div', {},
-      'Keine Veränderung bei den beweglichen Kennzahlen (OSM, GTFS, Zählstellen).'));
+      nichtGeprueft.length
+        ? 'Keine Veränderung bei den geprüften Kennzahlen.'
+        : 'Keine Veränderung bei den beweglichen Kennzahlen (OSM, GTFS, Zählstellen).'));
+  }
+  if (nichtGeprueft.length) {
+    teile.push(el('div', { class: 'hinweisbox' },
+      el('strong', {}, 'Nicht geprüft (Quelle ausgefallen, alter Stand behalten): '),
+      nichtGeprueft.map((e) => `${e.block}${e.fehler ? ` — ${e.fehler}` : ''}`).join(' · ')));
   }
   if (d.veraendert.length) {
     const tab = el('table', { class: 'daten' },

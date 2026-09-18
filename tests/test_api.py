@@ -1996,3 +1996,51 @@ def test_planung_dienst_folgt_dem_bundesland(client):
     d = client.get("/api/point/planung", params={
         "lat": LAT, "lon": LON, "r": R, "bundesland_code": "08"}).json()
     assert d["ok"] and d["data"]["hochwasser"]["dienst"] == "bfg"
+
+
+def test_pruefung_bei_quellenausfall_behaelt_den_alten_stand(client):
+    """Overpass 504 beim Neu-Prüfen: kein Betrieb „verschwindet", die
+    Vergleichstabelle behält ihre Zahlen, der Verlauf bekommt keinen
+    Nullstand — und die Antwort sagt, was nicht geprüft wurde."""
+    client.post("/api/points", json={
+        "label": "Ausfalltest", "lat": LAT, "lon": LON, "radius": R})
+    pid = client.get("/api/points").json()["punkte"][-1]["id"]
+    alt_gesamt = client.get(f"/api/points/{pid}").json()["zeile"]["gastro_gesamt"]
+    assert alt_gesamt > 100
+
+    client.fake.fehler.add("overpass")
+    try:
+        d = client.post(f"/api/points/{pid}/pruefung").json()
+    finally:
+        client.fake.fehler.discard("overpass")
+
+    assert d["verschwundene_betriebe"] == [] and d["neue_betriebe"] == []
+    assert any(e["block"] == "osm" for e in d["nicht_geprueft"]), d["nicht_geprueft"]
+    assert not any(v["key"] == "gastro_gesamt" for v in d["veraendert"])
+    zeile = client.get(f"/api/points/{pid}").json()["zeile"]
+    assert zeile["gastro_gesamt"] == alt_gesamt
+    # GTFS/Zählstellen antworteten — der Stand wurde also gespeichert, aber
+    # mit dem alten OSM-Block, nicht mit einem leeren.
+    assert d["gespeichert"] is True
+    v = client.get(f"/api/points/{pid}/verlauf").json()
+    assert v["staende"][-1]["zeile"]["gastro_gesamt"] == alt_gesamt
+
+
+def test_pruefung_ohne_jede_bewegliche_quelle_speichert_nichts(client):
+    """Fallen OSM, GTFS und beide Zählstellen aus, entsteht kein
+    Verlaufseintrag — ein alter Stand mit neuem Datum wäre eine Lüge."""
+    client.post("/api/points", json={
+        "label": "Totalausfall", "lat": LAT, "lon": LON, "radius": R})
+    pid = client.get("/api/points").json()["punkte"][-1]["id"]
+    vorher = client.get(f"/api/points/{pid}/verlauf").json()["anzahl"]
+    for q in ("overpass", "radzaehlung", "verkehrsmenge"):
+        client.fake.fehler.add(q)
+    try:
+        r = client.post(f"/api/points/{pid}/pruefung")
+    finally:
+        for q in ("overpass", "radzaehlung", "verkehrsmenge"):
+            client.fake.fehler.discard(q)
+    assert r.status_code == 200, "kein 5xx — der Pflegelauf soll weiterlaufen"
+    d = r.json()
+    assert d["ok"] is False and d["gespeichert"] is False
+    assert client.get(f"/api/points/{pid}/verlauf").json()["anzahl"] == vorher

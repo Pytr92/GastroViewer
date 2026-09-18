@@ -32,6 +32,7 @@ kleiner, nachts größer. Das steht im Block.
 
 from __future__ import annotations
 
+import asyncio
 import heapq
 import math
 import re
@@ -260,14 +261,21 @@ async def load(out: Outbound, settings: Settings, lat: float, lon: float,
     except SourceError as err:
         return SourceResult.failed("fahrzeit", err)
     elements = payload.get("elements", []) if isinstance(payload, dict) else []
-    netz, zaehler = baue_autonetz(elements)
-    if not len(netz):
-        raise SourceError(
-            "leeres_netz",
-            "Overpass lieferte kein befahrbares Straßennetz für diesen Punkt.")
+
+    # Netzaufbau und Dijkstra über 5–7 MB Hauptstraßennetz sind CPU-Arbeit;
+    # im Event-Loop blockierten sie jeden anderen Abruf. Ein Thread-Aufruf.
+    def _rechne() -> dict[str, Any]:
+        netz, zaehler = baue_autonetz(elements)
+        if not len(netz):
+            raise SourceError(
+                "leeres_netz",
+                "Overpass lieferte kein befahrbares Straßennetz für diesen Punkt.")
+        return auswerten(netz, zaehler, lat, lon, minuten, gedeckelt)
+
+    daten = await asyncio.to_thread(_rechne)
     return SourceResult(
         name="fahrzeit", ok=True,
-        data=auswerten(netz, zaehler, lat, lon, minuten, gedeckelt),
+        data=daten,
         warnings=list(probleme),
         provenance=Provenance(
             source="OpenStreetMap über Overpass (Hauptstraßennetz)",

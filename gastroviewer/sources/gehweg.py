@@ -32,6 +32,7 @@ from __future__ import annotations
 
 import heapq
 import math
+import asyncio
 import time
 from typing import Any, Iterable
 
@@ -412,7 +413,9 @@ async def load(
         )
 
     elements = payload.get("elements", []) if isinstance(payload, dict) else []
-    netz = baue_netz(elements)
+    # Parsen und Netzaufbau (1–3 MB je Punkt) laufen im Thread — im
+    # Event-Loop blockierten sie alle parallelen Blockabrufe.
+    netz = await asyncio.to_thread(baue_netz, elements)
     warnungen = list(problems)
 
     if not len(netz):
@@ -454,7 +457,7 @@ async def load(
         )
 
     t0 = time.perf_counter()
-    dist = gehstrecken(netz, start, float(radius))
+    dist = await asyncio.to_thread(gehstrecken, netz, start, float(radius))
     rechenzeit = int((time.perf_counter() - t0) * 1000)
 
     data: dict[str, Any] = {
