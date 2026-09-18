@@ -55,6 +55,67 @@ def nominatim_search():
 
 
 @pytest.fixture(scope="session")
+def geosphere_at():
+    """GeoSphere klima-v2-1y: Stationsausschnitt und Jahreswerte 1991–2020 Wien Innere Stadt."""
+    wurzel = Path(__file__).resolve().parent.parent / "fixtures" / "at"
+    return {"metadata": json.loads((wurzel / "geosphere_klima_v2_1y_metadata_kurz.json").read_text("utf-8")),
+            "daten": json.loads((wurzel / "geosphere_klima_v2_1y_wien_1991_2020.json").read_text("utf-8"))}
+
+
+@pytest.fixture(scope="session")
+def laerminfo_at():
+    """lärminfo.at OGC-Features: Straßenlärm-Zonen 2022 am Stephansplatz."""
+    wurzel = Path(__file__).resolve().parent.parent / "fixtures" / "at"
+    return {"lden": json.loads((wurzel / "laerminfo_r2_laerm_2022_strasse_lden_items.json").read_text("utf-8")),
+            "lnight": json.loads((wurzel / "laerminfo_r2_laerm_2022_strasse_lnight_items.json").read_text("utf-8"))}
+
+
+@pytest.fixture(scope="session")
+def lfrz_hochwasser_at():
+    """LFRZ-Hochwasser GetFeatureInfo: leere Antwort (Stephansplatz)."""
+    wurzel = Path(__file__).resolve().parent.parent / "fixtures" / "at"
+    return json.loads((wurzel / "hochwasser_gfi_leer.json").read_text("utf-8"))
+
+
+@pytest.fixture(scope="session")
+def wien_wfs():
+    """Stadt Wien WFS, live 18.09.2026: Märkte stadtweit, Baustellen um den
+    Stephansplatz, Schutzzonen (Ausschnitt) und generalisierte Widmung."""
+    wurzel = Path(__file__).resolve().parent.parent / "fixtures" / "at"
+    lies = lambda n: json.loads((wurzel / n).read_text("utf-8"))  # noqa: E731
+    return {"MAERKTEOGD": lies("wien_maerkteogd.json"),
+            "BAUSTELLENPKTOGD": lies("wien_baustellenpktogd.json"),
+            "BAUSTELLENLINOGD": lies("wien_baustellenlinienogd.json"),
+            # Punktkästen am Stephansplatz (Runde 4): Schutzzone Innere Stadt, GB5.
+            "SCHUTZZONEOGD": lies("wien_r4_schutzzoneogd_stephansplatz.json"),
+            "GENFLWIDMUNGOGD": lies("wien_r4_genflwidmungogd_stephansplatz.json")}
+
+
+@pytest.fixture(scope="session")
+def wahl_at_dateien():
+    """NRW 2024 (BMI, data.gv.at), live 18.09.2026: Ergebnisdatei (cp1252)
+    und GKZ-Liste (UTF-8 mit BOM) als Bytes."""
+    wurzel = Path(__file__).resolve().parent.parent / "fixtures" / "at"
+    return {"ergebnisse": (wurzel / "nrw2024_ergebnisse.txt").read_bytes(),
+            "gkz": (wurzel / "nrw2024_gkz.txt").read_bytes()}
+
+
+@pytest.fixture(scope="session")
+def statistik_at():
+    """Nächtigungsstatistik, live 18.09.2026: Herkunfts-Klassifikation und
+    der Wien-Ausschnitt der Datendatei ab 2018."""
+    wurzel = Path(__file__).resolve().parent.parent / "fixtures" / "at"
+    return {"herkunft": (wurzel / "stat_OGD_touextsai_Tour_HKL_1_C-C93-2.txt").read_text("utf-8"),
+            "daten": (wurzel / "stat_OGD_touextsai_Tour_HKL_1_wien_ab2018.csv").read_text("utf-8")}
+
+
+@pytest.fixture(scope="session")
+def nominatim_reverse_wien():
+    """Stephansplatz, live am 18.09.2026 (AT-Probe): kein "state", ISO AT-9."""
+    return load_fixture("raw_nominatim_reverse_wien.json")
+
+
+@pytest.fixture(scope="session")
 def nominatim_reverse():
     return load_fixture("raw_nominatim_reverse.json")
 

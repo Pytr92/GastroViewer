@@ -30,6 +30,8 @@ class FakeOutbound:
     def __init__(self, zensus, overpass, nominatim, einkommen=None,
                  kreisprofil=None, dwd=None, pendler=None, ohsome=None,
                  laerm=None, fehler: set[str] | None = None, photon=None,
+                 geosphere=None, laerminfo=None, lfrz=None, wien=None,
+                 statistik_at=None, wahl_at=None,
                  baustellen=None, maerkte=None, indikatoren=None,
                  airbnb=None, messe=None, tourismus=None,
                  uba=None, bfg_hochwasser=None,
@@ -45,6 +47,17 @@ class FakeOutbound:
         self.gebaeude = gebaeude or {"elements": []}
         self.nominatim = nominatim
         self.photon = photon or {"reverse": {"features": []}, "search": {"features": []}}
+        self.geosphere = geosphere or {"metadata": {"stations": [], "parameters": []},
+                                       "daten": {"features": []}}
+        self.laerminfo = laerminfo or {"lden": {"features": []}, "lnight": {"features": []}}
+        # LFRZ-Hochwasser (Österreich): eine GeoJSON-Antwort der Sammelabfrage.
+        self.lfrz = lfrz or {"type": "FeatureCollection", "features": []}
+        # Stadt Wien WFS: Antwort je Typname (MAERKTEOGD, BAUSTELLENPKTOGD, …).
+        self.wien = wien or {}
+        # Statistik Austria: {"daten": CSV-Text, "herkunft": Klassifikations-CSV}.
+        self.statistik_at = statistik_at
+        # NRW 2024: {"ergebnisse": bytes, "gkz": bytes}.
+        self.wahl_at = wahl_at
         self.einkommen = einkommen or {"features": []}
         # Fixture je Tabelle — Einkommen und Kreisprofil teilen sich Endpunkt
         # und URL, unterscheiden sich nur im layer-Parameter.
@@ -146,6 +159,31 @@ class FakeOutbound:
             if "nominatim" in self.fehler:
                 raise SourceError("http_status", "HTTP 403 — Zugriff abgelehnt.")
             return self.nominatim
+        if "geosphere.at" in url:
+            self.calls.append("geosphere")
+            if "geosphere" in self.fehler:
+                raise SourceError("timeout", "Zeitüberschreitung — Dienst antwortet nicht.")
+            return self.geosphere["metadata"] if url.endswith("/metadata") else self.geosphere["daten"]
+        if "inspire.lfrz.gv.at/000801" in url:
+            self.calls.append("lfrz_hochwasser")
+            if "lfrz_hochwasser" in self.fehler:
+                raise SourceError("timeout", "Zeitüberschreitung — Dienst antwortet nicht.")
+            return self.lfrz
+        if "data.wien.gv.at" in url:
+            typ = str(((kw or {}).get("params") or {}).get("typeName", "")).split(":")[-1]
+            self.calls.append(f"wien_{typ.lower()}")
+            if "wien" in self.fehler or f"wien_{typ.lower()}" in self.fehler:
+                raise SourceError("timeout", "Zeitüberschreitung — Dienst antwortet nicht.")
+            return self.wien.get(typ) or {"type": "FeatureCollection", "features": []}
+        if "gis.lfrz.gv.at" in url:
+            self.calls.append("laerminfo")
+            if "laerminfo" in self.fehler:
+                raise SourceError("timeout", "Zeitüberschreitung — Dienst antwortet nicht.")
+            if "strasse_lden" in url:
+                return self.laerminfo["lden"]
+            if "strasse_lnight" in url:
+                return self.laerminfo["lnight"]
+            return {"type": "FeatureCollection", "features": []}
         if "photon" in url:
             # Rückfall-Geocoder: ohne diesen Zweig lief der Adressblock bei
             # Nominatim-Ausfall in „unerwartete URL" statt in den Rückfall.
@@ -257,6 +295,11 @@ class FakeOutbound:
         return self._dispatch(url, kw)
 
     async def get_text(self, source, url, **kw):
+        if "data.statistik.gv.at" in url:
+            self.calls.append("statistik_at")
+            if "statistik_at" in self.fehler or self.statistik_at is None:
+                raise SourceError("timeout", "Zeitüberschreitung — Dienst antwortet nicht.")
+            return self.statistik_at["herkunft"] if "_C-C93-2" in url else self.statistik_at["daten"]
         if "dwd" in url:
             self.calls.append("dwd")
             if "dwd" in self.fehler:
@@ -322,6 +365,11 @@ class FakeOutbound:
         raise AssertionError(f"unerwartete Text-URL: {url}")
 
     async def get_bytes(self, source, url, **kw):
+        if "e40e3b00-1a98-4338-acb7-42547e6fee55" in url:
+            self.calls.append("wahl_at")
+            if "wahl_at" in self.fehler or self.wahl_at is None:
+                raise SourceError("timeout", "Zeitüberschreitung — Dienst antwortet nicht.")
+            return self.wahl_at["gkz"] if "gkz" in url else self.wahl_at["ergebnisse"]
         if "bka.de" in url:
             self.calls.append("pks")
             if "pks" in self.fehler or self.pks is None:
@@ -2163,7 +2211,7 @@ def test_import_prueft_struktur_und_wertebereich(client):
         ({"lat": "abc"}, "muss eine Zahl sein"),
         ({"radius": "abc"}, "ganze Zahl"),
         ({"lat": 999}, "Koordinaten außerhalb"),
-        ({"lat": 48.85, "lon": 2.35}, "außerhalb Deutschlands"),
+        ({"lat": 48.85, "lon": 2.35}, "außerhalb der unterstützten Länder"),
         ({"radius": -5}, "zwischen 50 und 5000"),
         ({"radius": 999999}, "zwischen 50 und 5000"),
     )
@@ -2288,3 +2336,121 @@ def test_pendler_gemeindeliste_404_ist_ein_benannter_fehler(
     # sie in jedem Fall, nie „unknown".
     assert d["ok"] is False and d["error"]["kind"] in ("http_status", "timeout")
     assert "Dienst" in d["error"]["message"]
+
+
+
+# ------------------------------------------------------------ Österreich
+
+
+WIEN = (48.2082, 16.3738)
+
+
+def test_wiener_punkt_bekommt_ehrliche_antwort(client, zensus_600, overpass_combined,
+                                                 nominatim_reverse_wien, geosphere_at, laerminfo_at,
+                                                 lfrz_hochwasser_at, wien_wfs,
+                                                 wahl_at_dateien, statistik_at):
+    """Stephansplatz: Das Land kommt vom Geocoder (Kästen überlappen sich),
+    länderunabhängige Quellen laufen, deutsche Dienste werden nicht
+    gefragt — kein Zensus-Abruf, keine DWD-Station hinter der Grenze."""
+    fake = FakeOutbound(zensus_600, overpass_combined, nominatim_reverse_wien,
+                        geosphere=geosphere_at, laerminfo=laerminfo_at,
+                        lfrz=lfrz_hochwasser_at, wien=wien_wfs,
+                        wahl_at=wahl_at_dateien, statistik_at=statistik_at)
+    c2 = client.make(fake)
+    with c2:
+        r = c2.get("/api/point", params={"lat": WIEN[0], "lon": WIEN[1], "r": 600})
+        assert r.status_code == 200
+        d = r.json()
+        assert d["punkt"]["land"] == "AT" and d["punkt"]["land_name"] == "Österreich"
+        assert d["punkt"]["bundesland"] == "Wien" and d["punkt"]["bundesland_iso"] == "AT-9"
+        assert d["punkt"]["ags"] is None
+        assert "Bodenrichtwerte" in d["punkt"]["land_hinweis"]
+        # Planungsrecht: LFRZ-Hochwasser (leer am Stephansplatz) und Wiener
+        # Schutzzonen; Märkte und Baustellen aus dem Wiener WFS; die Widmung
+        # im Baurecht-Block — alles in den bekannten Blockformen.
+        pl = d["bloecke"]["planung"]
+        assert pl["ok"] and pl["data"]["hochwasser"]["dienst"] == "lfrz"
+        assert pl["data"]["hochwasser"]["betroffen"] is False
+        assert pl["data"]["erhaltungssatzung"]["titel"].startswith("Schutzzone")
+        assert pl["data"]["erhaltungssatzung"]["gebiete"][0]["name"] == "Schutzzone 1. Innere Stadt"
+        # Baurecht lädt die Oberfläche einzeln — die Wiener Widmung am Punkt.
+        br = c2.get("/api/point/baurecht", params={"lat": WIEN[0], "lon": WIEN[1]}).json()
+        assert br["ok"] and br["data"]["stufe"] == "gebietsart"
+        assert br["data"]["baugebiete"][0]["aufschrift"] == "GB5"
+        # Wahl ohne Schlüssel über Koordinaten — so fragt die Oberfläche.
+        wo = c2.get("/api/wahl", params={"lat": WIEN[0], "lon": WIEN[1]}).json()
+        assert wo["ok"] and wo["data"]["wahlkreise"][0]["nr"] == "G90000"
+        m = d["bloecke"]["maerkte"]
+        assert m["ok"] and m["data"]["stadt"] == "Wien" and m["data"]["stadtweit"] == 23
+        # Der nächste Markt am Stephansplatz ist der Kunst- und Antiquitätenmarkt
+        # (Am Hof), kein Lebensmittelmarkt — so steht es im Datensatz.
+        assert m["data"]["naechster"]["rubrik"] == "Kunst- und Antiquitätenmarkt"
+        assert "Lebensmittel und Waren aller Art" in m["data"]["nach_rubrik"]
+        bs = d["bloecke"]["baustellen"]
+        # Im 600-m-Radius um den Stephansplatz lag am Stichtag keine der
+        # angemeldeten Baustellen — die Antwort kommt trotzdem aus Wien.
+        assert bs["ok"] and bs["data"]["stadt"] == "Wien" and bs["data"]["radius_m"] == 600
+        assert bs["data"]["gesamt"] == bs["data"]["baumassnahmen"]
+        assert "lfrz_hochwasser" in fake.calls and "wien_maerkteogd" in fake.calls
+        assert "wien_baustellenpktogd" in fake.calls and "wien_baustellenlinogd" in fake.calls
+        for name in ("luft", "einkommen", "pks", "register"):
+            b = d["bloecke"][name]
+            assert b["ok"] is True and b["data"] is None, name
+            assert any("Nur für Deutschland" in w for w in b["warnings"]), (name, b["warnings"])
+        # Wahl: Nationalratswahl 2024 für die Gemeinde Wien (ohne Schlüssel,
+        # über Bundesland und Namen); Tourismus: Nächtigungen Wien.
+        w = d["bloecke"]["wahl"]
+        assert w["ok"] and w["data"]["wahl"].startswith("Nationalratswahl")
+        assert w["data"]["wahlkreise"][0] == {"nr": "G90000", "name": "Wien"}
+        assert w["data"]["ebene"] == "Gemeinde" and w["data"]["parteien"][0]["partei"] == "SPÖ"
+        t = d["bloecke"]["tourismus"]
+        assert t["ok"] and t["data"]["gebiet"] == "Wien" and t["data"]["uebernachtungen_12m"] > 15_000_000
+        assert 0 < t["data"]["ausland_anteil_prozent"] < 100
+        assert fake.calls.count("wahl_at") == 2 and fake.calls.count("statistik_at") == 2
+        # Klima und Lärm kommen aus den österreichischen Diensten — in derselben Blockform.
+        k = d["bloecke"]["klima"]
+        assert k["ok"] and k["data"]["kennzahlen"][0]["station"]["name"] == "Wien Innere Stadt"
+        assert "GeoSphere" in k["provenance"]["source"]
+        la = d["bloecke"]["laerm"]
+        assert la["ok"] and la["data"]["dienst"] == "laerminfo" and la["data"]["lden"]["kartierung"] == 2022
+        assert "geosphere" in fake.calls and "laerminfo" in fake.calls
+        # Bevölkerung: kein Zensus-Dienst, sondern das lokale Eurostat-Raster —
+        # ohne Import eine klare Anleitung statt einer deutschen Zahl.
+        z = d["bloecke"]["zensus"]
+        assert z["ok"] is True and z["data"] is None
+        assert any("import-raster-at" in w for w in z["warnings"])
+        assert d["bloecke"]["osm"]["ok"] is True, "OSM gilt überall"
+        assert d["bloecke"]["adresse"]["data"]["land_code"] == "AT"
+        assert "zensus" not in fake.calls and "dwd" not in fake.calls
+        for name, kind in (("unknown", None),):
+            assert not [n for n, b in d["bloecke"].items()
+                        if not b["ok"] and (b.get("error") or {}).get("kind") == "unknown"]
+        # Einzelendpunkte gaten genauso — ohne Netzabruf.
+        z = c2.get("/api/point/zensus", params={"lat": WIEN[0], "lon": WIEN[1], "r": 600}).json()
+        assert z["ok"] is True and z["data"] is None
+        assert "zensus" not in fake.calls
+        g = c2.get("/api/gitter", params={"ebene": "1km", "west": 16.3, "sued": 48.15,
+                                          "ost": 16.45, "nord": 48.25}).json()
+        assert g["ok"] is True and g["data"] is None
+
+
+SALZBURG = (47.8095, 13.0550)
+
+
+def test_in_der_ueberlappung_entscheidet_der_geocoder(client, zensus_600, overpass_combined,
+                                                       nominatim_reverse, nominatim_reverse_wien):
+    """Salzburg liegt im deutschen und im österreichischen Kasten. Sagt
+    Nominatim „at", ist es Österreich; sagt er „de", Deutschland — und dann
+    laufen die deutschen Quellen wie gewohnt."""
+    at = FakeOutbound(zensus_600, overpass_combined, nominatim_reverse_wien)
+    with client.make(at) as c2:
+        d = c2.get("/api/point", params={"lat": SALZBURG[0], "lon": SALZBURG[1], "r": 600}).json()
+    assert d["punkt"]["land"] == "AT"
+    assert "zensus" not in at.calls
+    de = FakeOutbound(zensus_600, overpass_combined, nominatim_reverse)
+    with client.make(de) as c3:
+        # Die Adresse liegt 30 Tage im Cache — für die Gegenprobe leeren.
+        c3.delete("/api/cache", params={"quelle": "nominatim_reverse"})
+        d = c3.get("/api/point", params={"lat": SALZBURG[0], "lon": SALZBURG[1], "r": 600}).json()
+    assert d["punkt"]["land"] == "DE"
+    assert "zensus" in de.calls

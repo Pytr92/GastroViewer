@@ -102,6 +102,17 @@ TTL_KLASSEN: dict[str, str | int] = {
     "frequenz": "ttl_zensus",       # Passantenfrequenz, Stundenmittel
     "frequenz_augsburg": "ttl_zensus",
     "sonne": "ttl_zensus",          # Besonnung hängt am Gebäudebestand
+    "klima_at": "ttl_zensus",       # GeoSphere-Normalwerte 1991–2020, fest
+    "klima_at_stationen": "ttl_zensus",  # Stationsliste, ändert sich in Monaten
+    "laerm_at": "ttl_zensus",       # EU-Lärmkartierung, alle fünf Jahre
+    "planung_at": "ttl_gehweg",     # LFRZ-Hochwasser und Wiener Schutzzonen
+    "baurecht_at": "ttl_zensus",    # Wiener Flächenwidmung, Jahre in Kraft
+    "wien_maerkte": "ttl_zensus",   # Wiener Marktliste, selten geändert
+    "wien_baustellen": "ttl_osm",   # angemeldete Baustellen, laufend gepflegt
+    "tourismus_at": "ttl_gehweg",   # Nächtigungsreihe je Bundesland, monatlich
+    "tourismus_at_daten": "ttl_gehweg",  # die eingedampfte Gesamtdatei
+    "wahl_at": "ttl_zensus",        # NRW 2024, endgültig
+    "wahl_at_daten": "ttl_zensus",  # Ergebnisdatei und GKZ-Liste
     # --- Stundenwerte
     "luft_punkt": 3600,             # Luftqualitätsindex, stündlich veröffentlicht
 }
@@ -269,6 +280,11 @@ class Settings:
     @property
     def register_db_path(self) -> Path:
         return self.data_dir / "register.sqlite"
+
+    @property
+    def raster_at_db_path(self) -> Path:
+        """Eurostat-Bevölkerungsraster (1 km) für Österreich, lokal importiert."""
+        return self.data_dir / "raster_at.sqlite"
 
     @property
     def user_agent(self) -> str:

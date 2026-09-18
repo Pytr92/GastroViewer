@@ -1,0 +1,2445 @@
+﻿LAND;RWK;BEZ;GKZ;NAME
+0;;;G00000;Österreich
+1;;;G10000;Burgenland
+1;;;G10099;Wahlkarten - Burgenland
+1;1A;;G1A000;Burgenland Nord
+1;1A;;G1A099;Wahlkarten - Burgenland Nord
+1;1B;;G1B000;Burgenland Süd
+1;1B;;G1B099;Wahlkarten - Burgenland Süd
+1;1A;101;G10100;Eisenstadt Stadt
+1;1A;101;G10101;Eisenstadt
+1;1A;101;G10199;Wahlkarten - Eisenstadt Stadt
+1;1A;102;G10200;Rust Stadt
+1;1A;102;G10201;Rust
+1;1A;102;G10299;Wahlkarten - Rust Stadt
+1;1A;103;G10300;Eisenstadt - Umgebung
+1;1A;103;G10301;Breitenbrunn am Neusiedler See
+1;1A;103;G10302;Donnerskirchen
+1;1A;103;G10303;Großhöflein
+1;1A;103;G10304;Hornstein
+1;1A;103;G10305;Klingenbach
+1;1A;103;G10306;Leithaprodersdorf
+1;1A;103;G10307;Mörbisch am See
+1;1A;103;G10308;Müllendorf
+1;1A;103;G10309;Neufeld an der Leitha
+1;1A;103;G10310;Oggau am Neusiedler See
+1;1A;103;G10311;Oslip
+1;1A;103;G10312;Purbach am Neusiedler See
+1;1A;103;G10313;Sankt Margarethen im Burgenland
+1;1A;103;G10314;Schützen am Gebirge
+1;1A;103;G10315;Siegendorf
+1;1A;103;G10316;Steinbrunn
+1;1A;103;G10317;Trausdorf an der Wulka
+1;1A;103;G10318;Wimpassing an der Leitha
+1;1A;103;G10319;Wulkaprodersdorf
+1;1A;103;G10320;Loretto
+1;1A;103;G10321;Stotzing
+1;1A;103;G10322;Zillingtal
+1;1A;103;G10323;Zagersdorf
+1;1A;103;G10399;Wahlkarten - Eisenstadt - Umgebung
+1;1B;104;G10400;Güssing
+1;1B;104;G10401;Bocksdorf
+1;1B;104;G10402;Burgauberg-Neudauberg
+1;1B;104;G10403;Eberau
+1;1B;104;G10404;Gerersdorf-Sulz
+1;1B;104;G10405;Güssing
+1;1B;104;G10406;Güttenbach
+1;1B;104;G10407;Heiligenbrunn
+1;1B;104;G10408;Kukmirn
+1;1B;104;G10409;Neuberg im Burgenland
+1;1B;104;G10410;Neustift bei Güssing
+1;1B;104;G10411;Olbendorf
+1;1B;104;G10412;Ollersdorf im Burgenland
+1;1B;104;G10413;Sankt Michael im Burgenland
+1;1B;104;G10414;Stegersbach
+1;1B;104;G10415;Stinatz
+1;1B;104;G10416;Strem
+1;1B;104;G10417;Tobaj
+1;1B;104;G10418;Hackerberg
+1;1B;104;G10419;Wörterberg
+1;1B;104;G10420;Großmürbisch
+1;1B;104;G10421;Inzenhof
+1;1B;104;G10422;Kleinmürbisch
+1;1B;104;G10423;Tschanigraben
+1;1B;104;G10424;Heugraben
+1;1B;104;G10425;Rohr im Burgenland
+1;1B;104;G10426;Bildein
+1;1B;104;G10427;Rauchwart
+1;1B;104;G10428;Moschendorf
+1;1B;104;G10499;Wahlkarten - Güssing
+1;1B;105;G10500;Jennersdorf
+1;1B;105;G10501;Deutsch Kaltenbrunn
+1;1B;105;G10502;Eltendorf
+1;1B;105;G10503;Heiligenkreuz im Lafnitztal
+1;1B;105;G10504;Jennersdorf
+1;1B;105;G10505;Minihof-Liebau
+1;1B;105;G10506;Mogersdorf
+1;1B;105;G10507;Neuhaus am Klausenbach
+1;1B;105;G10508;Rudersdorf
+1;1B;105;G10509;Sankt Martin an der Raab
+1;1B;105;G10510;Weichselbaum
+1;1B;105;G10511;Königsdorf
+1;1B;105;G10512;Mühlgraben
+1;1B;105;G10599;Wahlkarten - Jennersdorf
+1;1A;106;G10600;Mattersburg
+1;1A;106;G10601;Draßburg
+1;1A;106;G10602;Forchtenstein
+1;1A;106;G10603;Hirm
+1;1A;106;G10604;Loipersbach im Burgenland
+1;1A;106;G10605;Marz
+1;1A;106;G10606;Mattersburg
+1;1A;106;G10607;Neudörfl
+1;1A;106;G10608;Pöttelsdorf
+1;1A;106;G10609;Pöttsching
+1;1A;106;G10610;Rohrbach bei Mattersburg
+1;1A;106;G10611;Bad Sauerbrunn
+1;1A;106;G10612;Schattendorf
+1;1A;106;G10613;Sieggraben
+1;1A;106;G10614;Sigleß
+1;1A;106;G10615;Wiesen
+1;1A;106;G10616;Antau
+1;1A;106;G10617;Baumgarten
+1;1A;106;G10618;Zemendorf-Stöttera
+1;1A;106;G10619;Krensdorf
+1;1A;106;G10699;Wahlkarten - Mattersburg
+1;1A;107;G10700;Neusiedl am See
+1;1A;107;G10701;Andau
+1;1A;107;G10702;Apetlon
+1;1A;107;G10703;Bruckneudorf
+1;1A;107;G10704;Deutsch Jahrndorf
+1;1A;107;G10705;Frauenkirchen
+1;1A;107;G10706;Gattendorf
+1;1A;107;G10707;Gols
+1;1A;107;G10708;Halbturn
+1;1A;107;G10709;Illmitz
+1;1A;107;G10710;Jois
+1;1A;107;G10711;Kittsee
+1;1A;107;G10712;Mönchhof
+1;1A;107;G10713;Neusiedl am See
+1;1A;107;G10714;Nickelsdorf
+1;1A;107;G10715;Pama
+1;1A;107;G10716;Pamhagen
+1;1A;107;G10717;Parndorf
+1;1A;107;G10718;Podersdorf am See
+1;1A;107;G10719;Sankt Andrä am Zicksee
+1;1A;107;G10720;Tadten
+1;1A;107;G10721;Wallern im Burgenland
+1;1A;107;G10722;Weiden am See
+1;1A;107;G10723;Winden am See
+1;1A;107;G10724;Zurndorf
+1;1A;107;G10725;Neudorf
+1;1A;107;G10726;Potzneusiedl
+1;1A;107;G10727;Edelstal
+1;1A;107;G10799;Wahlkarten - Neusiedl am See
+1;1B;108;G10800;Oberpullendorf
+1;1B;108;G10801;Deutschkreutz
+1;1B;108;G10802;Draßmarkt
+1;1B;108;G10803;Frankenau-Unterpullendorf
+1;1B;108;G10804;Großwarasdorf
+1;1B;108;G10805;Horitschon
+1;1B;108;G10806;Kaisersdorf
+1;1B;108;G10807;Kobersdorf
+1;1B;108;G10808;Lackenbach
+1;1B;108;G10809;Lockenhaus
+1;1B;108;G10810;Lutzmannsburg
+1;1B;108;G10811;Mannersdorf an der Rabnitz
+1;1B;108;G10812;Markt Sankt Martin
+1;1B;108;G10813;Neckenmarkt
+1;1B;108;G10814;Neutal
+1;1B;108;G10815;Nikitsch
+1;1B;108;G10816;Oberpullendorf
+1;1B;108;G10817;Pilgersdorf
+1;1B;108;G10818;Piringsdorf
+1;1B;108;G10819;Raiding
+1;1B;108;G10820;Ritzing
+1;1B;108;G10821;Steinberg-Dörfl
+1;1B;108;G10822;Stoob
+1;1B;108;G10823;Weppersdorf
+1;1B;108;G10824;Lackendorf
+1;1B;108;G10825;Unterfrauenhaid
+1;1B;108;G10826;Unterrabnitz-Schwendgraben
+1;1B;108;G10827;Weingraben
+1;1B;108;G10828;Oberloisdorf
+1;1B;108;G10899;Wahlkarten - Oberpullendorf
+1;1B;109;G10900;Oberwart
+1;1B;109;G10901;Bad Tatzmannsdorf
+1;1B;109;G10902;Bernstein
+1;1B;109;G10903;Deutsch Schützen-Eisenberg
+1;1B;109;G10904;Grafenschachen
+1;1B;109;G10905;Großpetersdorf
+1;1B;109;G10906;Hannersdorf
+1;1B;109;G10907;Kemeten
+1;1B;109;G10908;Kohfidisch
+1;1B;109;G10909;Litzelsdorf
+1;1B;109;G10910;Loipersdorf-Kitzladen
+1;1B;109;G10911;Mariasdorf
+1;1B;109;G10912;Markt Allhau
+1;1B;109;G10913;Markt Neuhodis
+1;1B;109;G10914;Mischendorf
+1;1B;109;G10915;Oberdorf im Burgenland
+1;1B;109;G10916;Oberschützen
+1;1B;109;G10917;Oberwart
+1;1B;109;G10918;Pinkafeld
+1;1B;109;G10919;Rechnitz
+1;1B;109;G10920;Riedlingsdorf
+1;1B;109;G10921;Rotenturm an der Pinka
+1;1B;109;G10922;Schachendorf
+1;1B;109;G10923;Stadtschlaining
+1;1B;109;G10924;Unterkohlstätten
+1;1B;109;G10925;Unterwart
+1;1B;109;G10926;Weiden bei Rechnitz
+1;1B;109;G10927;Wiesfleck
+1;1B;109;G10928;Wolfau
+1;1B;109;G10929;Neustift an der Lafnitz
+1;1B;109;G10930;Jabing
+1;1B;109;G10931;Badersdorf
+1;1B;109;G10932;Schandorf
+1;1B;109;G10999;Wahlkarten - Oberwart
+2;;;G20000;Kärnten
+2;;;G20099;Wahlkarten - Kärnten
+2;2A;;G2A000;Klagenfurt
+2;2A;;G2A099;Wahlkarten - Klagenfurt
+2;2B;;G2B000;Villach
+2;2B;;G2B099;Wahlkarten - Villach
+2;2C;;G2C000;Kärnten West
+2;2C;;G2C099;Wahlkarten - Kärnten West
+2;2D;;G2D000;Kärnten Ost
+2;2D;;G2D099;Wahlkarten - Kärnten Ost
+2;2A;201;G20100;Klagenfurt Stadt
+2;2A;201;G20101;Klagenfurt am Wörthersee
+2;2A;201;G20199;Wahlkarten - Klagenfurt Stadt
+2;2B;202;G20200;Villach Stadt
+2;2B;202;G20201;Villach
+2;2B;202;G20299;Wahlkarten - Villach Stadt
+2;2C;203;G20300;Hermagor
+2;2C;203;G20302;Dellach
+2;2C;203;G20305;Hermagor-Pressegger See
+2;2C;203;G20306;Kirchbach
+2;2C;203;G20307;Kötschach-Mauthen
+2;2C;203;G20316;St. Stefan im Gailtal
+2;2C;203;G20320;Gitschtal
+2;2C;203;G20321;Lesachtal
+2;2C;203;G20399;Wahlkarten - Hermagor
+2;2A;204;G20400;Klagenfurt-Land
+2;2A;204;G20402;Ebenthal in Kärnten
+2;2A;204;G20403;Feistritz im Rosental
+2;2A;204;G20405;Ferlach
+2;2A;204;G20409;Grafenstein
+2;2A;204;G20412;Keutschach am See
+2;2A;204;G20414;Köttmannsdorf
+2;2A;204;G20415;Krumpendorf am Wörthersee
+2;2A;204;G20416;Ludmannsdorf
+2;2A;204;G20417;Maria Rain
+2;2A;204;G20418;Maria Saal
+2;2A;204;G20419;Maria Wörth
+2;2A;204;G20421;Moosburg
+2;2A;204;G20424;Pörtschach am Wörther See
+2;2A;204;G20425;Poggersdorf
+2;2A;204;G20428;St. Margareten im Rosental
+2;2A;204;G20432;Schiefling am Wörthersee
+2;2A;204;G20435;Techelsberg am Wörther See
+2;2A;204;G20441;Zell
+2;2A;204;G20442;Magdalensberg
+2;2A;204;G20499;Wahlkarten - Klagenfurt-Land
+2;2D;205;G20500;Sankt Veit an der Glan
+2;2D;205;G20501;Althofen
+2;2D;205;G20502;Brückl
+2;2D;205;G20503;Deutsch-Griffen
+2;2D;205;G20504;Eberstein
+2;2D;205;G20505;Friesach
+2;2D;205;G20506;Glödnitz
+2;2D;205;G20508;Gurk
+2;2D;205;G20509;Guttaring
+2;2D;205;G20511;Hüttenberg
+2;2D;205;G20512;Kappel am Krappfeld
+2;2D;205;G20513;Klein St. Paul
+2;2D;205;G20515;Liebenfels
+2;2D;205;G20518;Metnitz
+2;2D;205;G20519;Micheldorf
+2;2D;205;G20520;Mölbling
+2;2D;205;G20523;St. Georgen am Längsee
+2;2D;205;G20527;Sankt Veit an der Glan
+2;2D;205;G20530;Straßburg
+2;2D;205;G20531;Weitensfeld im Gurktal
+2;2D;205;G20534;Frauenstein
+2;2D;205;G20599;Wahlkarten - Sankt Veit an der Glan
+2;2C;206;G20600;Spittal an der Drau
+2;2C;206;G20601;Bad Kleinkirchheim
+2;2C;206;G20602;Baldramsdorf
+2;2C;206;G20603;Berg im Drautal
+2;2C;206;G20604;Dellach im Drautal
+2;2C;206;G20605;Großkirchheim
+2;2C;206;G20607;Flattach
+2;2C;206;G20608;Gmünd in Kärnten
+2;2C;206;G20609;Greifenburg
+2;2C;206;G20610;Heiligenblut am Großglockner
+2;2C;206;G20611;Irschen
+2;2C;206;G20613;Kleblach-Lind
+2;2C;206;G20616;Lendorf
+2;2C;206;G20618;Mallnitz
+2;2C;206;G20619;Malta
+2;2C;206;G20620;Millstatt am See
+2;2C;206;G20622;Mörtschach
+2;2C;206;G20624;Mühldorf
+2;2C;206;G20625;Oberdrauburg
+2;2C;206;G20627;Obervellach
+2;2C;206;G20630;Radenthein
+2;2C;206;G20631;Rangersdorf
+2;2C;206;G20632;Rennweg am Katschberg
+2;2C;206;G20633;Sachsenburg
+2;2C;206;G20634;Seeboden am Millstätter See
+2;2C;206;G20635;Spittal an der Drau
+2;2C;206;G20636;Stall
+2;2C;206;G20637;Steinfeld
+2;2C;206;G20638;Trebesing
+2;2C;206;G20639;Weißensee
+2;2C;206;G20640;Winklern
+2;2C;206;G20642;Krems in Kärnten
+2;2C;206;G20643;Lurnfeld
+2;2C;206;G20644;Reißeck
+2;2C;206;G20699;Wahlkarten - Spittal an der Drau
+2;2B;207;G20700;Villach-Land
+2;2B;207;G20701;Afritz am See
+2;2B;207;G20702;Arnoldstein
+2;2B;207;G20703;Arriach
+2;2B;207;G20705;Bad Bleiberg
+2;2B;207;G20707;Feistritz an der Gail
+2;2B;207;G20708;Feld am See
+2;2B;207;G20710;Ferndorf
+2;2B;207;G20711;Finkenstein am Faaker See
+2;2B;207;G20712;Fresach
+2;2B;207;G20713;Hohenthurn
+2;2B;207;G20719;Nötsch im Gailtal
+2;2B;207;G20720;Paternion
+2;2B;207;G20721;Rosegg
+2;2B;207;G20722;St. Jakob im Rosental
+2;2B;207;G20723;Stockenboi
+2;2B;207;G20724;Treffen am Ossiacher See
+2;2B;207;G20725;Velden am Wörther See
+2;2B;207;G20726;Weißenstein
+2;2B;207;G20727;Wernberg
+2;2B;207;G20799;Wahlkarten - Villach-Land
+2;2D;208;G20800;Völkermarkt
+2;2D;208;G20801;Bleiburg
+2;2D;208;G20802;Diex
+2;2D;208;G20803;Eberndorf
+2;2D;208;G20804;Eisenkappel-Vellach
+2;2D;208;G20805;Feistritz ob Bleiburg
+2;2D;208;G20806;Gallizien
+2;2D;208;G20807;Globasnitz
+2;2D;208;G20808;Griffen
+2;2D;208;G20810;Neuhaus
+2;2D;208;G20812;Ruden
+2;2D;208;G20813;St. Kanzian am Klopeiner See
+2;2D;208;G20815;Sittersdorf
+2;2D;208;G20817;Völkermarkt
+2;2D;208;G20899;Wahlkarten - Völkermarkt
+2;2D;209;G20900;Wolfsberg
+2;2D;209;G20901;Bad St. Leonhard im Lavanttal
+2;2D;209;G20905;Frantschach-St. Gertraud
+2;2D;209;G20909;Lavamünd
+2;2D;209;G20911;Preitenegg
+2;2D;209;G20912;Reichenfels
+2;2D;209;G20913;St. Andrä
+2;2D;209;G20914;St. Georgen im Lavanttal
+2;2D;209;G20918;St. Paul im Lavanttal
+2;2D;209;G20923;Wolfsberg
+2;2D;209;G20999;Wahlkarten - Wolfsberg
+2;2C;210;G21000;Feldkirchen
+2;2C;210;G21001;Albeck
+2;2C;210;G21002;Feldkirchen in Kärnten
+2;2C;210;G21003;Glanegg
+2;2C;210;G21004;Gnesau
+2;2C;210;G21005;Himmelberg
+2;2C;210;G21006;Ossiach
+2;2C;210;G21007;Reichenau
+2;2C;210;G21008;St. Urban
+2;2C;210;G21009;Steindorf am Ossiacher See
+2;2C;210;G21010;Steuerberg
+2;2C;210;G21099;Wahlkarten - Feldkirchen
+3;;;G30000;Niederösterreich
+3;;;G30099;Wahlkarten - Niederösterreich
+3;3A;;G3A000;Weinviertel
+3;3A;;G3A099;Wahlkarten - Weinviertel
+3;3B;;G3B000;Waldviertel
+3;3B;;G3B099;Wahlkarten - Waldviertel
+3;3C;;G3C000;Mostviertel
+3;3C;;G3C099;Wahlkarten - Mostviertel
+3;3D;;G3D000;Niederösterreich Mitte
+3;3D;;G3D099;Wahlkarten - Niederösterreich Mitte
+3;3E;;G3E000;Niederösterreich Süd
+3;3E;;G3E099;Wahlkarten - Niederösterreich Süd
+3;3F;;G3F000;Thermenregion
+3;3F;;G3F099;Wahlkarten - Thermenregion
+3;3G;;G3G000;Niederösterreich Ost
+3;3G;;G3G099;Wahlkarten - Niederösterreich Ost
+3;3B;301;G30100;Krems an der Donau
+3;3B;301;G30101;Krems an der Donau
+3;3B;301;G30199;Wahlkarten - Krems an der Donau
+3;3D;302;G30200;Sankt Pölten Stadt
+3;3D;302;G30201;St. Pölten
+3;3D;302;G30299;Wahlkarten - Sankt Pölten Stadt
+3;3C;303;G30300;Waidhofen an der Ybbs Stadt
+3;3C;303;G30301;Waidhofen an der Ybbs
+3;3C;303;G30399;Wahlkarten - Waidhofen an der Ybbs Stadt
+3;3E;304;G30400;Wiener Neustadt Stadt
+3;3E;304;G30401;Wiener Neustadt
+3;3E;304;G30499;Wahlkarten - Wiener Neustadt Stadt
+3;3C;305;G30500;Amstetten
+3;3C;305;G30501;Allhartsberg
+3;3C;305;G30502;Amstetten
+3;3C;305;G30503;Ardagger
+3;3C;305;G30504;Aschbach-Markt
+3;3C;305;G30506;Behamberg
+3;3C;305;G30507;Biberbach
+3;3C;305;G30508;Ennsdorf
+3;3C;305;G30509;Ernsthofen
+3;3C;305;G30510;Ertl
+3;3C;305;G30511;Euratsfeld
+3;3C;305;G30512;Ferschnitz
+3;3C;305;G30514;Haag
+3;3C;305;G30515;Haidershofen
+3;3C;305;G30516;Hollenstein an der Ybbs
+3;3C;305;G30517;Kematen an der Ybbs
+3;3C;305;G30520;Neuhofen an der Ybbs
+3;3C;305;G30521;Neustadtl an der Donau
+3;3C;305;G30522;Oed-Oehling
+3;3C;305;G30524;Opponitz
+3;3C;305;G30526;St. Georgen am Reith
+3;3C;305;G30527;St. Georgen am Ybbsfelde
+3;3C;305;G30529;St. Pantaleon-Erla
+3;3C;305;G30530;St. Peter in der Au
+3;3C;305;G30531;St. Valentin
+3;3C;305;G30532;Seitenstetten
+3;3C;305;G30533;Sonntagberg
+3;3C;305;G30534;Strengberg
+3;3C;305;G30536;Viehdorf
+3;3C;305;G30538;Wallsee-Sindelburg
+3;3C;305;G30539;Weistrach
+3;3C;305;G30541;Winklarn
+3;3C;305;G30542;Wolfsbach
+3;3C;305;G30543;Ybbsitz
+3;3C;305;G30544;Zeillern
+3;3C;305;G30599;Wahlkarten - Amstetten
+3;3F;306;G30600;Baden
+3;3F;306;G30601;Alland
+3;3F;306;G30602;Altenmarkt an der Triesting
+3;3F;306;G30603;Bad Vöslau
+3;3F;306;G30604;Baden
+3;3F;306;G30605;Berndorf
+3;3F;306;G30607;Ebreichsdorf
+3;3F;306;G30608;Enzesfeld-Lindabrunn
+3;3F;306;G30609;Furth an der Triesting
+3;3F;306;G30612;Günselsdorf
+3;3F;306;G30613;Heiligenkreuz
+3;3F;306;G30614;Hernstein
+3;3F;306;G30615;Hirtenberg
+3;3F;306;G30616;Klausen-Leopoldsdorf
+3;3F;306;G30618;Kottingbrunn
+3;3F;306;G30620;Leobersdorf
+3;3F;306;G30621;Mitterndorf an der Fischa
+3;3F;306;G30623;Oberwaltersdorf
+3;3F;306;G30625;Pfaffstätten
+3;3F;306;G30626;Pottendorf
+3;3F;306;G30627;Pottenstein
+3;3F;306;G30629;Reisenberg
+3;3F;306;G30631;Schönau an der Triesting
+3;3F;306;G30633;Seibersdorf
+3;3F;306;G30635;Sooß
+3;3F;306;G30636;Tattendorf
+3;3F;306;G30637;Teesdorf
+3;3F;306;G30639;Traiskirchen
+3;3F;306;G30641;Trumau
+3;3F;306;G30645;Weissenbach an der Triesting
+3;3F;306;G30646;Blumau-Neurißhof
+3;3F;306;G30699;Wahlkarten - Baden
+3;3G;307;G30700;Bruck an der Leitha
+3;3G;307;G30701;Au am Leithaberge
+3;3G;307;G30702;Bad Deutsch-Altenburg
+3;3G;307;G30703;Berg
+3;3G;307;G30704;Bruck an der Leitha
+3;3G;307;G30706;Enzersdorf an der Fischa
+3;3G;307;G30708;Göttlesbrunn-Arbesthal
+3;3G;307;G30709;Götzendorf an der Leitha
+3;3G;307;G30710;Hainburg a.d. Donau
+3;3G;307;G30711;Haslau-Maria Ellend
+3;3G;307;G30712;Höflein
+3;3G;307;G30713;Hof am Leithaberge
+3;3G;307;G30715;Hundsheim
+3;3G;307;G30716;Mannersdorf am Leithagebirge
+3;3G;307;G30718;Petronell-Carnuntum
+3;3G;307;G30719;Prellenkirchen
+3;3G;307;G30721;Rohrau
+3;3G;307;G30722;Scharndorf
+3;3G;307;G30724;Sommerein
+3;3G;307;G30726;Trautmannsdorf an der Leitha
+3;3G;307;G30728;Wolfsthal
+3;3G;307;G30729;Ebergassing
+3;3G;307;G30730;Fischamend
+3;3G;307;G30731;Gramatneusiedl
+3;3G;307;G30732;Himberg
+3;3G;307;G30733;Klein-Neusiedl
+3;3G;307;G30734;Lanzendorf
+3;3G;307;G30735;Leopoldsdorf
+3;3G;307;G30736;Maria-Lanzendorf
+3;3G;307;G30737;Moosbrunn
+3;3G;307;G30738;Rauchenwarth
+3;3G;307;G30739;Schwadorf
+3;3G;307;G30740;Schwechat
+3;3G;307;G30741;Zwölfaxing
+3;3G;307;G30799;Wahlkarten - Bruck an der Leitha
+3;3G;308;G30800;Gänserndorf
+3;3G;308;G30801;Aderklaa
+3;3G;308;G30802;Andlersdorf
+3;3G;308;G30803;Angern an der March
+3;3G;308;G30804;Auersthal
+3;3G;308;G30805;Bad Pirawarth
+3;3G;308;G30808;Deutsch-Wagram
+3;3G;308;G30810;Drösing
+3;3G;308;G30811;Dürnkrut
+3;3G;308;G30812;Ebenthal
+3;3G;308;G30813;Eckartsau
+3;3G;308;G30814;Engelhartstetten
+3;3G;308;G30817;Gänserndorf
+3;3G;308;G30819;Glinzendorf
+3;3G;308;G30821;Groß-Enzersdorf
+3;3G;308;G30822;Großhofen
+3;3G;308;G30824;Groß-Schweinbarth
+3;3G;308;G30825;Haringsee
+3;3G;308;G30826;Hauskirchen
+3;3G;308;G30827;Hohenau an der March
+3;3G;308;G30828;Hohenruppersdorf
+3;3G;308;G30829;Jedenspeigen
+3;3G;308;G30830;Lassee
+3;3G;308;G30831;Leopoldsdorf im Marchfeld
+3;3G;308;G30834;Mannsdorf an der Donau
+3;3G;308;G30835;Marchegg
+3;3G;308;G30836;Markgrafneusiedl
+3;3G;308;G30838;Matzen-Raggendorf
+3;3G;308;G30841;Neusiedl an der Zaya
+3;3G;308;G30842;Obersiebenbrunn
+3;3G;308;G30844;Orth an der Donau
+3;3G;308;G30845;Palterndorf-Dobermannsdorf
+3;3G;308;G30846;Parbasdorf
+3;3G;308;G30848;Prottes
+3;3G;308;G30849;Raasdorf
+3;3G;308;G30850;Ringelsdorf-Niederabsdorf
+3;3G;308;G30852;Schönkirchen-Reyersdorf
+3;3G;308;G30854;Spannberg
+3;3G;308;G30856;Strasshof an der Nordbahn
+3;3G;308;G30857;Sulz im Weinviertel
+3;3G;308;G30858;Untersiebenbrunn
+3;3G;308;G30859;Velm-Götzendorf
+3;3G;308;G30860;Weikendorf
+3;3G;308;G30863;Zistersdorf
+3;3G;308;G30865;Weiden an der March
+3;3G;308;G30899;Wahlkarten - Gänserndorf
+3;3B;309;G30900;Gmünd
+3;3B;309;G30902;Amaliendorf-Aalfang
+3;3B;309;G30903;Brand-Nagelberg
+3;3B;309;G30904;Eggern
+3;3B;309;G30906;Eisgarn
+3;3B;309;G30908;Gmünd
+3;3B;309;G30909;Großdietmanns
+3;3B;309;G30910;Bad Großpertholz
+3;3B;309;G30912;Großschönau
+3;3B;309;G30913;Moorbad Harbach
+3;3B;309;G30915;Haugschlag
+3;3B;309;G30916;Heidenreichstein
+3;3B;309;G30917;Hirschbach
+3;3B;309;G30920;Hoheneich
+3;3B;309;G30921;Kirchberg am Walde
+3;3B;309;G30925;Litschau
+3;3B;309;G30929;Reingers
+3;3B;309;G30932;St. Martin
+3;3B;309;G30935;Schrems
+3;3B;309;G30939;Unserfrau-Altweitra
+3;3B;309;G30940;Waldenstein
+3;3B;309;G30942;Weitra
+3;3B;309;G30999;Wahlkarten - Gmünd
+3;3A;310;G31000;Hollabrunn
+3;3A;310;G31001;Alberndorf im Pulkautal
+3;3A;310;G31008;Göllersdorf
+3;3A;310;G31009;Grabern
+3;3A;310;G31014;Guntersdorf
+3;3A;310;G31015;Hadres
+3;3A;310;G31016;Hardegg
+3;3A;310;G31018;Haugsdorf
+3;3A;310;G31019;Heldenberg
+3;3A;310;G31021;Hohenwarth-Mühlbach a.M.
+3;3A;310;G31022;Hollabrunn
+3;3A;310;G31025;Mailberg
+3;3A;310;G31026;Maissau
+3;3A;310;G31028;Nappersdorf-Kammersdorf
+3;3A;310;G31033;Pernersdorf
+3;3A;310;G31035;Pulkau
+3;3A;310;G31036;Ravelsbach
+3;3A;310;G31037;Retz
+3;3A;310;G31038;Retzbach
+3;3A;310;G31041;Schrattenthal
+3;3A;310;G31042;Seefeld-Kadolz
+3;3A;310;G31043;Sitzendorf an der Schmida
+3;3A;310;G31051;Wullersdorf
+3;3A;310;G31052;Zellerndorf
+3;3A;310;G31053;Ziersdorf
+3;3A;310;G31099;Wahlkarten - Hollabrunn
+3;3B;311;G31100;Horn
+3;3B;311;G31101;Altenburg
+3;3B;311;G31102;Brunn an der Wild
+3;3B;311;G31103;Burgschleinitz-Kühnring
+3;3B;311;G31104;Drosendorf-Zissersdorf
+3;3B;311;G31105;Eggenburg
+3;3B;311;G31106;Gars am Kamp
+3;3B;311;G31107;Geras
+3;3B;311;G31109;Horn
+3;3B;311;G31110;Irnfritz-Messern
+3;3B;311;G31111;Japons
+3;3B;311;G31113;Langau
+3;3B;311;G31114;Meiseldorf
+3;3B;311;G31117;Pernegg
+3;3B;311;G31119;Röhrenbach
+3;3B;311;G31120;Röschitz
+3;3B;311;G31121;Rosenburg-Mold
+3;3B;311;G31123;St. Bernhard-Frauenhofen
+3;3B;311;G31124;Sigmundsherberg
+3;3B;311;G31129;Weitersfeld
+3;3B;311;G31130;Straning-Grafenberg
+3;3B;311;G31199;Wahlkarten - Horn
+3;3A;312;G31200;Korneuburg
+3;3A;312;G31201;Bisamberg
+3;3A;312;G31202;Enzersfeld im Weinviertel
+3;3A;312;G31203;Ernstbrunn
+3;3A;312;G31204;Großmugl
+3;3A;312;G31205;Großrußbach
+3;3A;312;G31206;Hagenbrunn
+3;3A;312;G31207;Harmannsdorf
+3;3A;312;G31208;Hausleiten
+3;3A;312;G31213;Korneuburg
+3;3A;312;G31214;Langenzersdorf
+3;3A;312;G31215;Leitzersdorf
+3;3A;312;G31216;Leobendorf
+3;3A;312;G31224;Rußbach
+3;3A;312;G31226;Sierndorf
+3;3A;312;G31227;Spillern
+3;3A;312;G31228;Stetteldorf am Wagram
+3;3A;312;G31229;Stetten
+3;3A;312;G31230;Stockerau
+3;3A;312;G31234;Niederhollabrunn
+3;3A;312;G31235;Gerasdorf bei Wien
+3;3A;312;G31299;Wahlkarten - Korneuburg
+3;3B;313;G31300;Krems Land
+3;3B;313;G31301;Aggsbach
+3;3B;313;G31302;Albrechtsberg an der Großen Krems
+3;3B;313;G31303;Bergern im Dunkelsteinerwald
+3;3B;313;G31304;Dürnstein
+3;3B;313;G31308;Grafenegg
+3;3B;313;G31309;Furth bei Göttweig
+3;3B;313;G31310;Gedersdorf
+3;3B;313;G31311;Gföhl
+3;3B;313;G31315;Hadersdorf-Kammern
+3;3B;313;G31319;Jaidhof
+3;3B;313;G31321;Krumau am Kamp
+3;3B;313;G31322;Langenlois
+3;3B;313;G31323;Lengenfeld
+3;3B;313;G31324;Lichtenau im Waldviertel
+3;3B;313;G31326;Maria Laach am Jauerling
+3;3B;313;G31327;Mautern an der Donau
+3;3B;313;G31330;Mühldorf
+3;3B;313;G31333;Paudorf
+3;3B;313;G31336;Rastenfeld
+3;3B;313;G31337;Rohrendorf bei Krems
+3;3B;313;G31338;Rossatz-Arnsdorf
+3;3B;313;G31340;St. Leonhard am Hornerwald
+3;3B;313;G31343;Senftenberg
+3;3B;313;G31344;Spitz
+3;3B;313;G31346;Straß im Straßertale
+3;3B;313;G31347;Stratzing
+3;3B;313;G31350;Weinzierl am Walde
+3;3B;313;G31351;Weißenkirchen in der Wachau
+3;3B;313;G31355;Schönberg am Kamp
+3;3B;313;G31356;Droß
+3;3B;313;G31399;Wahlkarten - Krems Land
+3;3D;314;G31400;Lilienfeld
+3;3D;314;G31401;Annaberg
+3;3D;314;G31402;Eschenau
+3;3D;314;G31403;Hainfeld
+3;3D;314;G31404;Hohenberg
+3;3D;314;G31405;Kaumberg
+3;3D;314;G31406;Kleinzell
+3;3D;314;G31407;Lilienfeld
+3;3D;314;G31408;Mitterbach am Erlaufsee
+3;3D;314;G31409;Ramsau
+3;3D;314;G31410;Rohrbach an der Gölsen
+3;3D;314;G31411;St. Aegyd am Neuwalde
+3;3D;314;G31412;St. Veit an der Gölsen
+3;3D;314;G31413;Traisen
+3;3D;314;G31414;Türnitz
+3;3D;314;G31499;Wahlkarten - Lilienfeld
+3;3C;315;G31500;Melk
+3;3C;315;G31502;Artstetten-Pöbring
+3;3C;315;G31503;Bergland
+3;3C;315;G31504;Bischofstetten
+3;3C;315;G31505;Blindenmarkt
+3;3C;315;G31506;Dorfstetten
+3;3C;315;G31507;Dunkelsteinerwald
+3;3C;315;G31508;Erlauf
+3;3C;315;G31509;Golling an der Erlauf
+3;3C;315;G31511;Hofamt Priel
+3;3C;315;G31513;Hürm
+3;3C;315;G31514;Kilb
+3;3C;315;G31515;Kirnberg an der Mank
+3;3C;315;G31516;Klein-Pöchlarn
+3;3C;315;G31517;Krummnußbaum
+3;3C;315;G31519;Leiben
+3;3C;315;G31520;Loosdorf
+3;3C;315;G31521;Mank
+3;3C;315;G31522;Marbach an der Donau
+3;3C;315;G31523;Maria Taferl
+3;3C;315;G31524;Melk
+3;3C;315;G31525;Münichreith-Laimbach
+3;3C;315;G31527;Neumarkt an der Ybbs
+3;3C;315;G31528;Nöchling
+3;3C;315;G31530;Persenbeug-Gottsdorf
+3;3C;315;G31531;Petzenkirchen
+3;3C;315;G31533;Pöchlarn
+3;3C;315;G31534;Pöggstall
+3;3C;315;G31535;Raxendorf
+3;3C;315;G31537;Ruprechtshofen
+3;3C;315;G31539;St. Leonhard am Forst
+3;3C;315;G31540;St. Martin-Karlsbach
+3;3C;315;G31541;St. Oswald
+3;3C;315;G31542;Schönbühel-Aggsbach
+3;3C;315;G31543;Schollach
+3;3C;315;G31546;Weiten
+3;3C;315;G31549;Ybbs an der Donau
+3;3C;315;G31550;Zelking-Matzleinsdorf
+3;3C;315;G31551;Texingtal
+3;3C;315;G31552;Yspertal
+3;3C;315;G31553;Emmersdorf an der Donau
+3;3C;315;G31599;Wahlkarten - Melk
+3;3A;316;G31600;Mistelbach
+3;3A;316;G31601;Altlichtenwarth
+3;3A;316;G31603;Asparn an der Zaya
+3;3A;316;G31604;Bernhardsthal
+3;3A;316;G31605;Bockfließ
+3;3A;316;G31606;Drasenhofen
+3;3A;316;G31608;Falkenstein
+3;3A;316;G31609;Fallbach
+3;3A;316;G31611;Gaubitsch
+3;3A;316;G31612;Gaweinstal
+3;3A;316;G31613;Gnadendorf
+3;3A;316;G31614;Großebersdorf
+3;3A;316;G31615;Großengersdorf
+3;3A;316;G31616;Großharras
+3;3A;316;G31617;Großkrut
+3;3A;316;G31620;Hausbrunn
+3;3A;316;G31621;Herrnbaumgarten
+3;3A;316;G31622;Hochleithen
+3;3A;316;G31627;Kreuttal
+3;3A;316;G31628;Kreuzstetten
+3;3A;316;G31629;Laa an der Thaya
+3;3A;316;G31630;Ladendorf
+3;3A;316;G31633;Mistelbach
+3;3A;316;G31634;Neudorf im Weinviertel
+3;3A;316;G31636;Niederleis
+3;3A;316;G31642;Pillichsdorf
+3;3A;316;G31644;Poysdorf
+3;3A;316;G31645;Rabensburg
+3;3A;316;G31646;Schrattenberg
+3;3A;316;G31649;Staatz
+3;3A;316;G31650;Stronsdorf
+3;3A;316;G31651;Ulrichskirchen-Schleinbach
+3;3A;316;G31652;Unterstinkenbrunn
+3;3A;316;G31653;Wildendürnbach
+3;3A;316;G31654;Wilfersdorf
+3;3A;316;G31655;Wolkersdorf im Weinviertel
+3;3A;316;G31658;Ottenthal
+3;3A;316;G31699;Wahlkarten - Mistelbach
+3;3F;317;G31700;Mödling
+3;3F;317;G31701;Achau
+3;3F;317;G31702;Biedermannsdorf
+3;3F;317;G31703;Breitenfurt bei Wien
+3;3F;317;G31704;Brunn am Gebirge
+3;3F;317;G31706;Gaaden
+3;3F;317;G31707;Gießhübl
+3;3F;317;G31709;Gumpoldskirchen
+3;3F;317;G31710;Guntramsdorf
+3;3F;317;G31711;Hennersdorf
+3;3F;317;G31712;Hinterbrühl
+3;3F;317;G31713;Kaltenleutgeben
+3;3F;317;G31714;Laab im Walde
+3;3F;317;G31715;Laxenburg
+3;3F;317;G31716;Maria Enzersdorf
+3;3F;317;G31717;Mödling
+3;3F;317;G31718;Münchendorf
+3;3F;317;G31719;Perchtoldsdorf
+3;3F;317;G31723;Vösendorf
+3;3F;317;G31725;Wiener Neudorf
+3;3F;317;G31726;Wienerwald
+3;3F;317;G31799;Wahlkarten - Mödling
+3;3E;318;G31800;Neunkirchen
+3;3E;318;G31801;Altendorf
+3;3E;318;G31802;Aspang-Markt
+3;3E;318;G31803;Aspangberg-St. Peter
+3;3E;318;G31804;Breitenau
+3;3E;318;G31805;Breitenstein
+3;3E;318;G31806;Buchbach
+3;3E;318;G31807;Edlitz
+3;3E;318;G31808;Enzenreith
+3;3E;318;G31809;Feistritz am Wechsel
+3;3E;318;G31810;Gloggnitz
+3;3E;318;G31811;Grafenbach-St. Valentin
+3;3E;318;G31812;Grimmenstein
+3;3E;318;G31813;Grünbach am Schneeberg
+3;3E;318;G31814;Kirchberg am Wechsel
+3;3E;318;G31815;Mönichkirchen
+3;3E;318;G31817;Natschbach-Loipersbach
+3;3E;318;G31818;Neunkirchen
+3;3E;318;G31820;Otterthal
+3;3E;318;G31821;Payerbach
+3;3E;318;G31823;Pitten
+3;3E;318;G31825;Prigglitz
+3;3E;318;G31826;Puchberg am Schneeberg
+3;3E;318;G31827;Raach am Hochgebirge
+3;3E;318;G31829;Reichenau an der Rax
+3;3E;318;G31830;St. Corona am Wechsel
+3;3E;318;G31831;St. Egyden am Steinfeld
+3;3E;318;G31832;Scheiblingkirchen-Thernberg
+3;3E;318;G31833;Schottwien
+3;3E;318;G31834;Schrattenbach
+3;3E;318;G31835;Schwarzau am Steinfeld
+3;3E;318;G31836;Schwarzau im Gebirge
+3;3E;318;G31837;Seebenstein
+3;3E;318;G31838;Semmering
+3;3E;318;G31839;Ternitz
+3;3E;318;G31840;Thomasberg
+3;3E;318;G31841;Trattenbach
+3;3E;318;G31842;Bürg-Vöstenhof
+3;3E;318;G31843;Warth
+3;3E;318;G31844;Wartmannstetten
+3;3E;318;G31845;Willendorf
+3;3E;318;G31846;Wimpassing im Schwarzatale
+3;3E;318;G31847;Würflach
+3;3E;318;G31848;Zöbern
+3;3E;318;G31849;Höflein an der Hohen Wand
+3;3E;318;G31899;Wahlkarten - Neunkirchen
+3;3D;319;G31900;Sankt Pölten Land
+3;3D;319;G31901;Altlengbach
+3;3D;319;G31902;Asperhofen
+3;3D;319;G31903;Böheimkirchen
+3;3D;319;G31904;Brand-Laaben
+3;3D;319;G31905;Eichgraben
+3;3D;319;G31906;Frankenfels
+3;3D;319;G31907;Gerersdorf
+3;3D;319;G31909;Hofstetten-Grünau
+3;3D;319;G31910;Hafnerbach
+3;3D;319;G31911;Haunoldstein
+3;3D;319;G31912;Herzogenburg
+3;3D;319;G31913;Inzersdorf-Getzersdorf
+3;3D;319;G31915;Kapelln
+3;3D;319;G31916;Karlstetten
+3;3D;319;G31917;Kasten bei Böheimkirchen
+3;3D;319;G31918;Kirchberg an der Pielach
+3;3D;319;G31919;Kirchstetten
+3;3D;319;G31920;Loich
+3;3D;319;G31921;Maria-Anzbach
+3;3D;319;G31922;Markersdorf-Haindorf
+3;3D;319;G31923;Michelbach
+3;3D;319;G31925;Neidling
+3;3D;319;G31926;Neulengbach
+3;3D;319;G31927;Neustift-Innermanzing
+3;3D;319;G31928;Nußdorf ob der Traisen
+3;3D;319;G31929;Ober-Grafendorf
+3;3D;319;G31930;Obritzberg-Rust
+3;3D;319;G31932;Prinzersdorf
+3;3D;319;G31934;Pyhra
+3;3D;319;G31935;Rabenstein an der Pielach
+3;3D;319;G31938;St. Margarethen an der Sierning
+3;3D;319;G31939;Schwarzenbach an der Pielach
+3;3D;319;G31940;Statzendorf
+3;3D;319;G31941;Stössing
+3;3D;319;G31943;Traismauer
+3;3D;319;G31945;Weinburg
+3;3D;319;G31946;Perschling
+3;3D;319;G31947;Wilhelmsburg
+3;3D;319;G31948;Wölbling
+3;3D;319;G31949;Gablitz
+3;3D;319;G31950;Mauerbach
+3;3D;319;G31951;Pressbaum
+3;3D;319;G31952;Purkersdorf
+3;3D;319;G31953;Tullnerbach
+3;3D;319;G31954;Wolfsgraben
+3;3D;319;G31999;Wahlkarten - Sankt Pölten Land
+3;3C;320;G32000;Scheibbs
+3;3C;320;G32001;Gaming
+3;3C;320;G32002;Göstling an der Ybbs
+3;3C;320;G32003;Gresten
+3;3C;320;G32004;Gresten-Land
+3;3C;320;G32005;Lunz am See
+3;3C;320;G32006;Oberndorf an der Melk
+3;3C;320;G32007;Puchenstuben
+3;3C;320;G32008;Purgstall an der Erlauf
+3;3C;320;G32009;Randegg
+3;3C;320;G32010;Reinsberg
+3;3C;320;G32011;St. Anton an der Jeßnitz
+3;3C;320;G32012;St. Georgen an der Leys
+3;3C;320;G32013;Scheibbs
+3;3C;320;G32014;Steinakirchen am Forst
+3;3C;320;G32015;Wang
+3;3C;320;G32016;Wieselburg
+3;3C;320;G32017;Wieselburg-Land
+3;3C;320;G32018;Wolfpassing
+3;3C;320;G32099;Wahlkarten - Scheibbs
+3;3D;321;G32100;Tulln
+3;3D;321;G32101;Absdorf
+3;3D;321;G32104;Atzenbrugg
+3;3D;321;G32106;Fels am Wagram
+3;3D;321;G32107;Grafenwörth
+3;3D;321;G32109;Großriedenthal
+3;3D;321;G32110;Großweikersdorf
+3;3D;321;G32112;Judenau-Baumgarten
+3;3D;321;G32114;Kirchberg am Wagram
+3;3D;321;G32115;Königsbrunn am Wagram
+3;3D;321;G32116;Königstetten
+3;3D;321;G32119;Langenrohr
+3;3D;321;G32120;Michelhausen
+3;3D;321;G32131;Sieghartskirchen
+3;3D;321;G32132;Sitzenberg-Reidling
+3;3D;321;G32134;Tulbing
+3;3D;321;G32135;Tulln an der Donau
+3;3D;321;G32139;Würmla
+3;3D;321;G32140;Zeiselmauer-Wolfpassing
+3;3D;321;G32141;Zwentendorf an der Donau
+3;3D;321;G32142;St. Andrä-Wördern
+3;3D;321;G32143;Muckendorf-Wipfing
+3;3D;321;G32144;Klosterneuburg
+3;3D;321;G32199;Wahlkarten - Tulln
+3;3B;322;G32200;Waidhofen an der Thaya
+3;3B;322;G32202;Dietmanns
+3;3B;322;G32203;Dobersberg
+3;3B;322;G32206;Gastern
+3;3B;322;G32207;Groß-Siegharts
+3;3B;322;G32209;Karlstein an der Thaya
+3;3B;322;G32210;Kautzen
+3;3B;322;G32212;Ludweis-Aigen
+3;3B;322;G32214;Pfaffenschlag bei Waidhofen a.d.Thaya
+3;3B;322;G32216;Raabs an der Thaya
+3;3B;322;G32217;Thaya
+3;3B;322;G32219;Vitis
+3;3B;322;G32220;Waidhofen an der Thaya
+3;3B;322;G32221;Waidhofen an der Thaya-Land
+3;3B;322;G32222;Waldkirchen an der Thaya
+3;3B;322;G32223;Windigsteig
+3;3B;322;G32299;Wahlkarten - Waidhofen an der Thaya
+3;3E;323;G32300;Wiener Neustadt Land
+3;3E;323;G32301;Bad Fischau-Brunn
+3;3E;323;G32302;Bad Schönau
+3;3E;323;G32304;Ebenfurth
+3;3E;323;G32305;Eggendorf
+3;3E;323;G32306;Bad Erlach
+3;3E;323;G32307;Felixdorf
+3;3E;323;G32308;Gutenstein
+3;3E;323;G32309;Hochneukirchen-Gschaidt
+3;3E;323;G32310;Hochwolkersdorf
+3;3E;323;G32311;Hohe Wand
+3;3E;323;G32312;Hollenthon
+3;3E;323;G32313;Katzelsdorf
+3;3E;323;G32314;Kirchschlag in der Buckligen Welt
+3;3E;323;G32315;Krumbach
+3;3E;323;G32316;Lanzenkirchen
+3;3E;323;G32317;Lichtenegg
+3;3E;323;G32318;Lichtenwörth
+3;3E;323;G32319;Markt Piesting
+3;3E;323;G32320;Matzendorf-Hölles
+3;3E;323;G32321;Miesenbach
+3;3E;323;G32322;Muggendorf
+3;3E;323;G32323;Pernitz
+3;3E;323;G32324;Rohr im Gebirge
+3;3E;323;G32325;Bromberg
+3;3E;323;G32326;Schwarzenbach
+3;3E;323;G32327;Sollenau
+3;3E;323;G32330;Theresienfeld
+3;3E;323;G32331;Waidmannsfeld
+3;3E;323;G32332;Waldegg
+3;3E;323;G32333;Walpersbach
+3;3E;323;G32334;Weikersdorf am Steinfelde
+3;3E;323;G32335;Wiesmath
+3;3E;323;G32336;Winzendorf-Muthmannsdorf
+3;3E;323;G32337;Wöllersdorf-Steinabrückl
+3;3E;323;G32338;Zillingdorf
+3;3E;323;G32399;Wahlkarten - Wiener Neustadt Land
+3;3B;325;G32500;Zwettl
+3;3B;325;G32501;Allentsteig
+3;3B;325;G32502;Arbesbach
+3;3B;325;G32503;Bärnkopf
+3;3B;325;G32504;Echsenbach
+3;3B;325;G32505;Göpfritz an der Wild
+3;3B;325;G32506;Grafenschlag
+3;3B;325;G32508;Groß Gerungs
+3;3B;325;G32509;Großgöttfritz
+3;3B;325;G32511;Gutenbrunn
+3;3B;325;G32514;Kirchschlag
+3;3B;325;G32515;Kottes-Purk
+3;3B;325;G32516;Langschlag
+3;3B;325;G32517;Martinsberg
+3;3B;325;G32518;Ottenschlag
+3;3B;325;G32519;Altmelon
+3;3B;325;G32520;Pölla
+3;3B;325;G32521;Rappottenstein
+3;3B;325;G32522;Sallingberg
+3;3B;325;G32523;Schönbach
+3;3B;325;G32524;Schwarzenau
+3;3B;325;G32525;Schweiggers
+3;3B;325;G32528;Bad Traunstein
+3;3B;325;G32529;Waldhausen
+3;3B;325;G32530;Zwettl-Niederösterreich
+3;3B;325;G32599;Wahlkarten - Zwettl
+4;;;G40000;Oberösterreich
+4;;;G40099;Wahlkarten - Oberösterreich
+4;4A;;G4A000;Linz und Umgebung
+4;4A;;G4A099;Wahlkarten - Linz und Umgebung
+4;4B;;G4B000;Innviertel
+4;4B;;G4B099;Wahlkarten - Innviertel
+4;4C;;G4C000;Hausruckviertel
+4;4C;;G4C099;Wahlkarten - Hausruckviertel
+4;4D;;G4D000;Traunviertel
+4;4D;;G4D099;Wahlkarten - Traunviertel
+4;4E;;G4E000;Mühlviertel
+4;4E;;G4E099;Wahlkarten - Mühlviertel
+4;4A;401;G40100;Linz Stadt
+4;4A;401;G40101;Linz
+4;4A;401;G40199;Wahlkarten - Linz Stadt
+4;4D;402;G40200;Steyr Stadt
+4;4D;402;G40201;Steyr
+4;4D;402;G40299;Wahlkarten - Steyr Stadt
+4;4C;403;G40300;Wels Stadt
+4;4C;403;G40301;Wels
+4;4C;403;G40399;Wahlkarten - Wels Stadt
+4;4B;404;G40400;Braunau am Inn
+4;4B;404;G40401;Altheim
+4;4B;404;G40402;Aspach
+4;4B;404;G40403;Auerbach
+4;4B;404;G40404;Braunau am Inn
+4;4B;404;G40405;Burgkirchen
+4;4B;404;G40406;Eggelsberg
+4;4B;404;G40407;Feldkirchen bei Mattighofen
+4;4B;404;G40408;Franking
+4;4B;404;G40409;Geretsberg
+4;4B;404;G40410;Gilgenberg am Weilhart
+4;4B;404;G40411;Haigermoos
+4;4B;404;G40412;Handenberg
+4;4B;404;G40413;Helpfau-Uttendorf
+4;4B;404;G40414;Hochburg-Ach
+4;4B;404;G40415;Höhnhart
+4;4B;404;G40416;Jeging
+4;4B;404;G40417;Kirchberg bei Mattighofen
+4;4B;404;G40418;Lengau
+4;4B;404;G40419;Lochen am See
+4;4B;404;G40420;Maria Schmolln
+4;4B;404;G40421;Mattighofen
+4;4B;404;G40422;Mauerkirchen
+4;4B;404;G40423;Mining
+4;4B;404;G40424;Moosbach
+4;4B;404;G40425;Moosdorf
+4;4B;404;G40426;Munderfing
+4;4B;404;G40427;Neukirchen an der Enknach
+4;4B;404;G40428;Ostermiething
+4;4B;404;G40429;Palting
+4;4B;404;G40430;Perwang am Grabensee
+4;4B;404;G40431;Pfaffstätt
+4;4B;404;G40432;Pischelsdorf am Engelbach
+4;4B;404;G40433;Polling im Innkreis
+4;4B;404;G40434;Roßbach
+4;4B;404;G40435;St. Georgen am Fillmannsbach
+4;4B;404;G40436;St. Johann am Walde
+4;4B;404;G40437;St. Pantaleon
+4;4B;404;G40438;St. Peter am Hart
+4;4B;404;G40439;St. Radegund
+4;4B;404;G40440;St. Veit im Innkreis
+4;4B;404;G40441;Schalchen
+4;4B;404;G40442;Schwand im Innkreis
+4;4B;404;G40443;Tarsdorf
+4;4B;404;G40444;Treubach
+4;4B;404;G40445;Überackern
+4;4B;404;G40446;Weng im Innkreis
+4;4B;404;G40499;Wahlkarten - Braunau am Inn
+4;4C;405;G40500;Eferding
+4;4C;405;G40501;Alkoven
+4;4C;405;G40502;Aschach an der Donau
+4;4C;405;G40503;Eferding
+4;4C;405;G40504;Fraham
+4;4C;405;G40505;Haibach ob der Donau
+4;4C;405;G40506;Hartkirchen
+4;4C;405;G40507;Hinzenbach
+4;4C;405;G40508;Prambachkirchen
+4;4C;405;G40509;Pupping
+4;4C;405;G40510;St. Marienkirchen an der Polsenz
+4;4C;405;G40511;Scharten
+4;4C;405;G40512;Stroheim
+4;4C;405;G40599;Wahlkarten - Eferding
+4;4E;406;G40600;Freistadt
+4;4E;406;G40601;Freistadt
+4;4E;406;G40602;Grünbach
+4;4E;406;G40603;Gutau
+4;4E;406;G40604;Hagenberg im Mühlkreis
+4;4E;406;G40605;Hirschbach im Mühlkreis
+4;4E;406;G40606;Kaltenberg
+4;4E;406;G40607;Kefermarkt
+4;4E;406;G40608;Königswiesen
+4;4E;406;G40609;Lasberg
+4;4E;406;G40610;Leopoldschlag
+4;4E;406;G40611;Liebenau
+4;4E;406;G40612;Neumarkt im Mühlkreis
+4;4E;406;G40613;Pierbach
+4;4E;406;G40614;Pregarten
+4;4E;406;G40615;Rainbach im Mühlkreis
+4;4E;406;G40616;Sandl
+4;4E;406;G40617;St. Leonhard bei Freistadt
+4;4E;406;G40618;St. Oswald bei Freistadt
+4;4E;406;G40619;Schönau im Mühlkreis
+4;4E;406;G40620;Tragwein
+4;4E;406;G40621;Unterweißenbach
+4;4E;406;G40622;Unterweitersdorf
+4;4E;406;G40623;Waldburg
+4;4E;406;G40624;Wartberg ob der Aist
+4;4E;406;G40625;Weitersfelden
+4;4E;406;G40626;Windhaag bei Freistadt
+4;4E;406;G40627;Bad Zell
+4;4E;406;G40699;Wahlkarten - Freistadt
+4;4D;407;G40700;Gmunden
+4;4D;407;G40701;Altmünster
+4;4D;407;G40702;Bad Goisern am Hallstättersee
+4;4D;407;G40703;Bad Ischl
+4;4D;407;G40704;Ebensee am Traunsee
+4;4D;407;G40705;Gmunden
+4;4D;407;G40706;Gosau
+4;4D;407;G40707;Grünau im Almtal
+4;4D;407;G40708;Gschwandt
+4;4D;407;G40709;Hallstatt
+4;4D;407;G40710;Kirchham
+4;4D;407;G40711;Laakirchen
+4;4D;407;G40712;Obertraun
+4;4D;407;G40713;Ohlsdorf
+4;4D;407;G40714;Pinsdorf
+4;4D;407;G40715;Roitham am Traunfall
+4;4D;407;G40716;St. Konrad
+4;4D;407;G40717;St. Wolfgang im Salzkammergut
+4;4D;407;G40718;Traunkirchen
+4;4D;407;G40719;Scharnstein
+4;4D;407;G40720;Vorchdorf
+4;4D;407;G40799;Wahlkarten - Gmunden
+4;4C;408;G40800;Grieskirchen
+4;4C;408;G40801;Aistersheim
+4;4C;408;G40802;Bad Schallerbach
+4;4C;408;G40804;Eschenau im Hausruckkreis
+4;4C;408;G40805;Gallspach
+4;4C;408;G40806;Gaspoltshofen
+4;4C;408;G40807;Geboltskirchen
+4;4C;408;G40808;Grieskirchen
+4;4C;408;G40809;Haag am Hausruck
+4;4C;408;G40810;Heiligenberg
+4;4C;408;G40811;Hofkirchen an der Trattnach
+4;4C;408;G40812;Kallham
+4;4C;408;G40813;Kematen am Innbach
+4;4C;408;G40814;Meggenhofen
+4;4C;408;G40815;Michaelnbach
+4;4C;408;G40816;Natternbach
+4;4C;408;G40817;Neukirchen am Walde
+4;4C;408;G40818;Neumarkt im Hausruckkreis
+4;4C;408;G40820;Pötting
+4;4C;408;G40821;Pollham
+4;4C;408;G40822;Pram
+4;4C;408;G40823;Rottenbach
+4;4C;408;G40824;St. Agatha
+4;4C;408;G40825;St. Georgen bei Grieskirchen
+4;4C;408;G40826;St. Thomas
+4;4C;408;G40827;Schlüßlberg
+4;4C;408;G40828;Steegen
+4;4C;408;G40829;Taufkirchen an der Trattnach
+4;4C;408;G40830;Tollet
+4;4C;408;G40831;Waizenkirchen
+4;4C;408;G40832;Wallern an der Trattnach
+4;4C;408;G40833;Weibern
+4;4C;408;G40834;Wendling
+4;4C;408;G40835;Peuerbach
+4;4C;408;G40899;Wahlkarten - Grieskirchen
+4;4D;409;G40900;Kirchdorf an der Krems
+4;4D;409;G40901;Edlbach
+4;4D;409;G40902;Grünburg
+4;4D;409;G40903;Hinterstoder
+4;4D;409;G40904;Inzersdorf im Kremstal
+4;4D;409;G40905;Kirchdorf an der Krems
+4;4D;409;G40906;Klaus an der Pyhrnbahn
+4;4D;409;G40907;Kremsmünster
+4;4D;409;G40908;Micheldorf in Oberösterreich
+4;4D;409;G40909;Molln
+4;4D;409;G40910;Nußbach
+4;4D;409;G40911;Oberschlierbach
+4;4D;409;G40912;Pettenbach
+4;4D;409;G40913;Ried im Traunkreis
+4;4D;409;G40914;Rosenau am Hengstpaß
+4;4D;409;G40915;Roßleithen
+4;4D;409;G40916;St. Pankraz
+4;4D;409;G40917;Schlierbach
+4;4D;409;G40918;Spital am Pyhrn
+4;4D;409;G40919;Steinbach am Ziehberg
+4;4D;409;G40920;Steinbach an der Steyr
+4;4D;409;G40921;Vorderstoder
+4;4D;409;G40922;Wartberg an der Krems
+4;4D;409;G40923;Windischgarsten
+4;4D;409;G40999;Wahlkarten - Kirchdorf an der Krems
+4;4A;410;G41000;Linz-Land
+4;4A;410;G41001;Allhaming
+4;4A;410;G41002;Ansfelden
+4;4A;410;G41003;Asten
+4;4A;410;G41004;Eggendorf im Traunkreis
+4;4A;410;G41005;Enns
+4;4A;410;G41006;Hargelsberg
+4;4A;410;G41007;Hörsching
+4;4A;410;G41008;Hofkirchen im Traunkreis
+4;4A;410;G41009;Kematen an der Krems
+4;4A;410;G41010;Kirchberg-Thening
+4;4A;410;G41011;Kronstorf
+4;4A;410;G41012;Leonding
+4;4A;410;G41013;St. Florian
+4;4A;410;G41014;Neuhofen an der Krems
+4;4A;410;G41015;Niederneukirchen
+4;4A;410;G41016;Oftering
+4;4A;410;G41017;Pasching
+4;4A;410;G41018;Piberbach
+4;4A;410;G41019;Pucking
+4;4A;410;G41020;St. Marien
+4;4A;410;G41021;Traun
+4;4A;410;G41022;Wilhering
+4;4A;410;G41099;Wahlkarten - Linz-Land
+4;4E;411;G41100;Perg
+4;4E;411;G41101;Allerheiligen im Mühlkreis
+4;4E;411;G41102;Arbing
+4;4E;411;G41103;Baumgartenberg
+4;4E;411;G41104;Dimbach
+4;4E;411;G41105;Grein
+4;4E;411;G41106;Katsdorf
+4;4E;411;G41107;Klam
+4;4E;411;G41108;Bad Kreuzen
+4;4E;411;G41109;Langenstein
+4;4E;411;G41110;Luftenberg an der Donau
+4;4E;411;G41111;Mauthausen
+4;4E;411;G41112;Mitterkirchen im Machland
+4;4E;411;G41113;Münzbach
+4;4E;411;G41114;Naarn im Machlande
+4;4E;411;G41115;Pabneukirchen
+4;4E;411;G41116;Perg
+4;4E;411;G41117;Rechberg
+4;4E;411;G41118;Ried in der Riedmark
+4;4E;411;G41119;St. Georgen am Walde
+4;4E;411;G41120;St. Georgen an der Gusen
+4;4E;411;G41121;St. Nikola an der Donau
+4;4E;411;G41122;St. Thomas am Blasenstein
+4;4E;411;G41123;Saxen
+4;4E;411;G41124;Schwertberg
+4;4E;411;G41125;Waldhausen im Strudengau
+4;4E;411;G41126;Windhaag bei Perg
+4;4E;411;G41199;Wahlkarten - Perg
+4;4B;412;G41200;Ried im Innkreis
+4;4B;412;G41201;Andrichsfurt
+4;4B;412;G41202;Antiesenhofen
+4;4B;412;G41203;Aurolzmünster
+4;4B;412;G41204;Eberschwang
+4;4B;412;G41205;Eitzing
+4;4B;412;G41206;Geiersberg
+4;4B;412;G41207;Geinberg
+4;4B;412;G41208;Gurten
+4;4B;412;G41209;Hohenzell
+4;4B;412;G41210;Kirchdorf am Inn
+4;4B;412;G41211;Kirchheim im Innkreis
+4;4B;412;G41212;Lambrechten
+4;4B;412;G41213;Lohnsburg am Kobernaußerwald
+4;4B;412;G41214;Mehrnbach
+4;4B;412;G41215;Mettmach
+4;4B;412;G41216;Mörschwang
+4;4B;412;G41217;Mühlheim am Inn
+4;4B;412;G41218;Neuhofen im Innkreis
+4;4B;412;G41219;Obernberg am Inn
+4;4B;412;G41220;Ort im Innkreis
+4;4B;412;G41221;Pattigham
+4;4B;412;G41222;Peterskirchen
+4;4B;412;G41223;Pramet
+4;4B;412;G41224;Reichersberg
+4;4B;412;G41225;Ried im Innkreis
+4;4B;412;G41226;St. Georgen bei Obernberg am Inn
+4;4B;412;G41227;St. Marienkirchen am Hausruck
+4;4B;412;G41228;St. Martin im Innkreis
+4;4B;412;G41229;Schildorn
+4;4B;412;G41230;Senftenbach
+4;4B;412;G41231;Taiskirchen im Innkreis
+4;4B;412;G41232;Tumeltsham
+4;4B;412;G41233;Utzenaich
+4;4B;412;G41234;Waldzell
+4;4B;412;G41235;Weilbach
+4;4B;412;G41236;Wippenham
+4;4B;412;G41299;Wahlkarten - Ried im Innkreis
+4;4E;413;G41300;Rohrbach
+4;4E;413;G41304;Altenfelden
+4;4E;413;G41305;Arnreit
+4;4E;413;G41306;Atzesberg
+4;4E;413;G41307;Auberg
+4;4E;413;G41309;Haslach an der Mühl
+4;4E;413;G41311;Hörbich
+4;4E;413;G41312;Hofkirchen im Mühlkreis
+4;4E;413;G41313;Julbach
+4;4E;413;G41314;Kirchberg ob der Donau
+4;4E;413;G41315;Klaffer am Hochficht
+4;4E;413;G41316;Kleinzell im Mühlkreis
+4;4E;413;G41317;Kollerschlag
+4;4E;413;G41318;Lembach im Mühlkreis
+4;4E;413;G41319;Lichtenau im Mühlkreis
+4;4E;413;G41320;Nebelberg
+4;4E;413;G41321;Neufelden
+4;4E;413;G41322;Niederkappel
+4;4E;413;G41323;Niederwaldkirchen
+4;4E;413;G41324;Oberkappel
+4;4E;413;G41325;Oepping
+4;4E;413;G41326;Peilstein im Mühlviertel
+4;4E;413;G41327;Pfarrkirchen im Mühlkreis
+4;4E;413;G41328;Putzleinsdorf
+4;4E;413;G41329;Neustift im Mühlkreis
+4;4E;413;G41331;St. Johann am Wimberg
+4;4E;413;G41332;St. Martin im Mühlkreis
+4;4E;413;G41333;St. Oswald bei Haslach
+4;4E;413;G41334;St. Peter am Wimberg
+4;4E;413;G41336;St. Ulrich im Mühlkreis
+4;4E;413;G41337;St. Veit im Mühlkreis
+4;4E;413;G41338;Sarleinsbach
+4;4E;413;G41341;Schwarzenberg am Böhmerwald
+4;4E;413;G41342;Ulrichsberg
+4;4E;413;G41343;Aigen-Schlägl
+4;4E;413;G41344;Rohrbach-Berg
+4;4E;413;G41345;Helfenberg
+4;4E;413;G41346;St. Stefan-Afiesl
+4;4E;413;G41399;Wahlkarten - Rohrbach
+4;4B;414;G41400;Schärding
+4;4B;414;G41401;Altschwendt
+4;4B;414;G41402;Andorf
+4;4B;414;G41403;Brunnenthal
+4;4B;414;G41404;Diersbach
+4;4B;414;G41405;Dorf an der Pram
+4;4B;414;G41406;Eggerding
+4;4B;414;G41407;Engelhartszell
+4;4B;414;G41408;Enzenkirchen
+4;4B;414;G41409;Esternberg
+4;4B;414;G41410;Freinberg
+4;4B;414;G41411;Kopfing im Innkreis
+4;4B;414;G41412;Mayrhof
+4;4B;414;G41413;Münzkirchen
+4;4B;414;G41414;Raab
+4;4B;414;G41415;Rainbach im Innkreis
+4;4B;414;G41416;Riedau
+4;4B;414;G41417;St. Aegidi
+4;4B;414;G41418;St. Florian am Inn
+4;4B;414;G41419;St. Marienkirchen bei Schärding
+4;4B;414;G41420;St. Roman
+4;4B;414;G41421;St. Willibald
+4;4B;414;G41422;Schärding
+4;4B;414;G41423;Schardenberg
+4;4B;414;G41424;Sigharting
+4;4B;414;G41425;Suben
+4;4B;414;G41426;Taufkirchen an der Pram
+4;4B;414;G41427;Vichtenstein
+4;4B;414;G41428;Waldkirchen am Wesen
+4;4B;414;G41429;Wernstein am Inn
+4;4B;414;G41430;Zell an der Pram
+4;4B;414;G41499;Wahlkarten - Schärding
+4;4D;415;G41500;Steyr-Land
+4;4D;415;G41501;Adlwang
+4;4D;415;G41502;Aschach an der Steyr
+4;4D;415;G41503;Bad Hall
+4;4D;415;G41504;Dietach
+4;4D;415;G41505;Gaflenz
+4;4D;415;G41506;Garsten
+4;4D;415;G41507;Großraming
+4;4D;415;G41508;Laussa
+4;4D;415;G41509;Losenstein
+4;4D;415;G41510;Maria Neustift
+4;4D;415;G41511;Pfarrkirchen bei Bad Hall
+4;4D;415;G41512;Reichraming
+4;4D;415;G41513;Rohr im Kremstal
+4;4D;415;G41514;St. Ulrich bei Steyr
+4;4D;415;G41515;Schiedlberg
+4;4D;415;G41516;Sierning
+4;4D;415;G41517;Ternberg
+4;4D;415;G41518;Waldneukirchen
+4;4D;415;G41521;Wolfern
+4;4D;415;G41522;Weyer
+4;4D;415;G41599;Wahlkarten - Steyr-Land
+4;4E;416;G41600;Urfahr-Umgebung
+4;4E;416;G41601;Alberndorf in der Riedmark
+4;4E;416;G41602;Altenberg bei Linz
+4;4E;416;G41603;Bad Leonfelden
+4;4E;416;G41604;Eidenberg
+4;4E;416;G41605;Engerwitzdorf
+4;4E;416;G41606;Feldkirchen an der Donau
+4;4E;416;G41607;Gallneukirchen
+4;4E;416;G41608;Goldwörth
+4;4E;416;G41609;Gramastetten
+4;4E;416;G41610;Haibach im Mühlkreis
+4;4E;416;G41611;Hellmonsödt
+4;4E;416;G41612;Herzogsdorf
+4;4E;416;G41613;Kirchschlag bei Linz
+4;4E;416;G41614;Lichtenberg
+4;4E;416;G41615;Oberneukirchen
+4;4E;416;G41616;Ottenschlag im Mühlkreis
+4;4E;416;G41617;Ottensheim
+4;4E;416;G41618;Puchenau
+4;4E;416;G41619;Reichenau im Mühlkreis
+4;4E;416;G41620;Reichenthal
+4;4E;416;G41621;St. Gotthard im Mühlkreis
+4;4E;416;G41622;Schenkenfelden
+4;4E;416;G41623;Sonnberg im Mühlkreis
+4;4E;416;G41624;Steyregg
+4;4E;416;G41626;Walding
+4;4E;416;G41627;Zwettl an der Rodl
+4;4E;416;G41628;Vorderweißenbach
+4;4E;416;G41699;Wahlkarten - Urfahr-Umgebung
+4;4C;417;G41700;Vöcklabruck
+4;4C;417;G41701;Ampflwang im Hausruckwald
+4;4C;417;G41702;Attersee am Attersee
+4;4C;417;G41703;Attnang-Puchheim
+4;4C;417;G41704;Atzbach
+4;4C;417;G41705;Aurach am Hongar
+4;4C;417;G41706;Berg im Attergau
+4;4C;417;G41707;Desselbrunn
+4;4C;417;G41708;Fornach
+4;4C;417;G41709;Frankenburg am Hausruck
+4;4C;417;G41710;Frankenmarkt
+4;4C;417;G41711;Gampern
+4;4C;417;G41712;Innerschwand am Mondsee
+4;4C;417;G41713;Lenzing
+4;4C;417;G41714;Manning
+4;4C;417;G41715;Mondsee
+4;4C;417;G41716;Neukirchen an der Vöckla
+4;4C;417;G41717;Niederthalheim
+4;4C;417;G41718;Nußdorf am Attersee
+4;4C;417;G41719;Oberhofen am Irrsee
+4;4C;417;G41720;Oberndorf bei Schwanenstadt
+4;4C;417;G41721;Oberwang
+4;4C;417;G41722;Ottnang am Hausruck
+4;4C;417;G41723;Pfaffing
+4;4C;417;G41724;Pilsbach
+4;4C;417;G41725;Pitzenberg
+4;4C;417;G41726;Pöndorf
+4;4C;417;G41727;Puchkirchen am Trattberg
+4;4C;417;G41728;Pühret
+4;4C;417;G41729;Redleiten
+4;4C;417;G41730;Redlham
+4;4C;417;G41731;Regau
+4;4C;417;G41732;Rüstorf
+4;4C;417;G41733;Rutzenham
+4;4C;417;G41734;St. Georgen im Attergau
+4;4C;417;G41735;St. Lorenz
+4;4C;417;G41736;Schlatt
+4;4C;417;G41737;Schörfling am Attersee
+4;4C;417;G41738;Schwanenstadt
+4;4C;417;G41739;Seewalchen am Attersee
+4;4C;417;G41740;Steinbach am Attersee
+4;4C;417;G41741;Straß im Attergau
+4;4C;417;G41742;Tiefgraben
+4;4C;417;G41743;Timelkam
+4;4C;417;G41744;Ungenach
+4;4C;417;G41745;Unterach am Attersee
+4;4C;417;G41746;Vöcklabruck
+4;4C;417;G41747;Vöcklamarkt
+4;4C;417;G41748;Weißenkirchen im Attergau
+4;4C;417;G41749;Weyregg am Attersee
+4;4C;417;G41750;Wolfsegg am Hausruck
+4;4C;417;G41751;Zell am Moos
+4;4C;417;G41752;Zell am Pettenfirst
+4;4C;417;G41799;Wahlkarten - Vöcklabruck
+4;4C;418;G41800;Wels-Land
+4;4C;418;G41801;Aichkirchen
+4;4C;418;G41802;Bachmanning
+4;4C;418;G41803;Bad Wimsbach-Neydharting
+4;4C;418;G41804;Buchkirchen
+4;4C;418;G41805;Eberstalzell
+4;4C;418;G41806;Edt bei Lambach
+4;4C;418;G41807;Fischlham
+4;4C;418;G41808;Gunskirchen
+4;4C;418;G41809;Holzhausen
+4;4C;418;G41810;Krenglbach
+4;4C;418;G41811;Lambach
+4;4C;418;G41812;Marchtrenk
+4;4C;418;G41813;Neukirchen bei Lambach
+4;4C;418;G41814;Offenhausen
+4;4C;418;G41815;Pennewang
+4;4C;418;G41816;Pichl bei Wels
+4;4C;418;G41817;Sattledt
+4;4C;418;G41818;Schleißheim
+4;4C;418;G41819;Sipbachzell
+4;4C;418;G41820;Stadl-Paura
+4;4C;418;G41821;Steinerkirchen an der Traun
+4;4C;418;G41822;Steinhaus
+4;4C;418;G41823;Thalheim bei Wels
+4;4C;418;G41824;Weißkirchen an der Traun
+4;4C;418;G41899;Wahlkarten - Wels-Land
+5;;;G50000;Salzburg
+5;;;G50099;Wahlkarten - Salzburg
+5;5A;;G5A000;Salzburg Stadt
+5;5A;;G5A099;Wahlkarten - Salzburg Stadt
+5;5B;;G5B000;Flachgau/Tennengau
+5;5B;;G5B099;Wahlkarten - Flachgau/Tennengau
+5;5C;;G5C000;Lungau/Pinzgau/Pongau
+5;5C;;G5C099;Wahlkarten - Lungau/Pinzgau/Pongau
+5;5A;501;G50100;Salzburg Stadt
+5;5A;501;G50101;Salzburg
+5;5A;501;G50199;Wahlkarten - Salzburg Stadt
+5;5B;502;G50200;Hallein
+5;5B;502;G50201;Abtenau
+5;5B;502;G50202;Adnet
+5;5B;502;G50203;Annaberg-Lungötz
+5;5B;502;G50204;Golling an der Salzach
+5;5B;502;G50205;Hallein
+5;5B;502;G50206;Krispl
+5;5B;502;G50207;Kuchl
+5;5B;502;G50208;Oberalm
+5;5B;502;G50209;Puch bei Hallein
+5;5B;502;G50210;Rußbach am Paß Gschütt
+5;5B;502;G50211;Sankt Koloman
+5;5B;502;G50212;Scheffau am Tennengebirge
+5;5B;502;G50213;Bad Vigaun
+5;5B;502;G50299;Wahlkarten - Hallein
+5;5B;503;G50300;Salzburg-Umgebung
+5;5B;503;G50301;Anif
+5;5B;503;G50302;Anthering
+5;5B;503;G50303;Bergheim
+5;5B;503;G50304;Berndorf bei Salzburg
+5;5B;503;G50305;Bürmoos
+5;5B;503;G50306;Dorfbeuern
+5;5B;503;G50307;Ebenau
+5;5B;503;G50308;Elixhausen
+5;5B;503;G50309;Elsbethen
+5;5B;503;G50310;Eugendorf
+5;5B;503;G50311;Faistenau
+5;5B;503;G50312;Fuschl am See
+5;5B;503;G50313;Göming
+5;5B;503;G50314;Grödig
+5;5B;503;G50315;Großgmain
+5;5B;503;G50316;Hallwang
+5;5B;503;G50317;Henndorf am Wallersee
+5;5B;503;G50318;Hintersee
+5;5B;503;G50319;Hof bei Salzburg
+5;5B;503;G50320;Köstendorf
+5;5B;503;G50321;Koppl
+5;5B;503;G50322;Lamprechtshausen
+5;5B;503;G50323;Mattsee
+5;5B;503;G50324;Neumarkt am Wallersee
+5;5B;503;G50325;Nußdorf am Haunsberg
+5;5B;503;G50326;Oberndorf bei Salzburg
+5;5B;503;G50327;Obertrum am See
+5;5B;503;G50328;Plainfeld
+5;5B;503;G50329;Sankt Georgen bei Salzburg
+5;5B;503;G50330;Sankt Gilgen
+5;5B;503;G50331;Schleedorf
+5;5B;503;G50332;Seeham
+5;5B;503;G50335;Straßwalchen
+5;5B;503;G50336;Strobl
+5;5B;503;G50337;Thalgau
+5;5B;503;G50338;Wals-Siezenheim
+5;5B;503;G50339;Seekirchen am Wallersee
+5;5B;503;G50399;Wahlkarten - Salzburg-Umgebung
+5;5C;504;G50400;Sankt Johann im Pongau
+5;5C;504;G50401;Altenmarkt im Pongau
+5;5C;504;G50402;Bad Hofgastein
+5;5C;504;G50403;Bad Gastein
+5;5C;504;G50404;Bischofshofen
+5;5C;504;G50405;Dorfgastein
+5;5C;504;G50406;Eben im Pongau
+5;5C;504;G50407;Filzmoos
+5;5C;504;G50408;Flachau
+5;5C;504;G50409;Forstau
+5;5C;504;G50410;Goldegg
+5;5C;504;G50411;Großarl
+5;5C;504;G50412;Hüttau
+5;5C;504;G50413;Hüttschlag
+5;5C;504;G50414;Kleinarl
+5;5C;504;G50415;Mühlbach am Hochkönig
+5;5C;504;G50416;Pfarrwerfen
+5;5C;504;G50417;Radstadt
+5;5C;504;G50418;Sankt Johann im Pongau
+5;5C;504;G50419;Sankt Martin am Tennengebirge
+5;5C;504;G50420;Sankt Veit im Pongau
+5;5C;504;G50421;Schwarzach im Pongau
+5;5C;504;G50422;Untertauern
+5;5C;504;G50423;Wagrain
+5;5C;504;G50424;Werfen
+5;5C;504;G50425;Werfenweng
+5;5C;504;G50499;Wahlkarten - Sankt Johann im Pongau
+5;5C;505;G50500;Tamsweg
+5;5C;505;G50501;Göriach
+5;5C;505;G50502;Lessach
+5;5C;505;G50503;Mariapfarr
+5;5C;505;G50504;Mauterndorf
+5;5C;505;G50505;Muhr
+5;5C;505;G50506;Ramingstein
+5;5C;505;G50507;Sankt Andrä im Lungau
+5;5C;505;G50508;Sankt Margarethen im Lungau
+5;5C;505;G50509;Sankt Michael im Lungau
+5;5C;505;G50510;Tamsweg
+5;5C;505;G50511;Thomatal
+5;5C;505;G50512;Tweng
+5;5C;505;G50513;Unternberg
+5;5C;505;G50514;Weißpriach
+5;5C;505;G50515;Zederhaus
+5;5C;505;G50599;Wahlkarten - Tamsweg
+5;5C;506;G50600;Zell am See
+5;5C;506;G50601;Bramberg am Wildkogel
+5;5C;506;G50602;Bruck an der Großglocknerstraße
+5;5C;506;G50603;Dienten am Hochkönig
+5;5C;506;G50604;Fusch an der Großglocknerstraße
+5;5C;506;G50605;Hollersbach im Pinzgau
+5;5C;506;G50606;Kaprun
+5;5C;506;G50607;Krimml
+5;5C;506;G50608;Lend
+5;5C;506;G50609;Leogang
+5;5C;506;G50610;Lofer
+5;5C;506;G50611;Maishofen
+5;5C;506;G50612;Maria Alm am Steinernen Meer
+5;5C;506;G50613;Mittersill
+5;5C;506;G50614;Neukirchen am Großvenediger
+5;5C;506;G50615;Niedernsill
+5;5C;506;G50616;Piesendorf
+5;5C;506;G50617;Rauris
+5;5C;506;G50618;Saalbach-Hinterglemm
+5;5C;506;G50619;Saalfelden am Steinernen Meer
+5;5C;506;G50620;Sankt Martin bei Lofer
+5;5C;506;G50621;Stuhlfelden
+5;5C;506;G50622;Taxenbach
+5;5C;506;G50623;Unken
+5;5C;506;G50624;Uttendorf
+5;5C;506;G50625;Viehhofen
+5;5C;506;G50626;Wald im Pinzgau
+5;5C;506;G50627;Weißbach bei Lofer
+5;5C;506;G50628;Zell am See
+5;5C;506;G50699;Wahlkarten - Zell am See
+6;;;G60000;Steiermark
+6;;;G60099;Wahlkarten - Steiermark
+6;6A;;G6A000;Graz und Umgebung
+6;6A;;G6A099;Wahlkarten - Graz und Umgebung
+6;6B;;G6B000;Oststeiermark
+6;6B;;G6B099;Wahlkarten - Oststeiermark
+6;6C;;G6C000;Weststeiermark
+6;6C;;G6C099;Wahlkarten - Weststeiermark
+6;6D;;G6D000;Obersteiermark
+6;6D;;G6D099;Wahlkarten - Obersteiermark
+6;6A;601;G60100;Graz Stadt
+6;6A;601;G60101;Graz
+6;6A;601;G60199;Wahlkarten - Graz Stadt
+6;6C;603;G60300;Deutschlandsberg
+6;6C;603;G60305;Frauental an der Laßnitz
+6;6C;603;G60318;Lannach
+6;6C;603;G60323;Pölfing-Brunn
+6;6C;603;G60324;Preding
+6;6C;603;G60326;Sankt Josef (Weststeiermark)
+6;6C;603;G60329;Sankt Peter im Sulmtal
+6;6C;603;G60341;Wettmannstätten
+6;6C;603;G60344;Deutschlandsberg
+6;6C;603;G60345;Eibiswald
+6;6C;603;G60346;Groß Sankt Florian
+6;6C;603;G60347;Sankt Martin im Sulmtal
+6;6C;603;G60348;Sankt Stefan ob Stainz
+6;6C;603;G60349;Bad Schwanberg
+6;6C;603;G60350;Stainz
+6;6C;603;G60351;Wies
+6;6C;603;G60399;Wahlkarten - Deutschlandsberg
+6;6A;606;G60600;Graz-Umgebung
+6;6A;606;G60608;Feldkirchen bei Graz
+6;6A;606;G60611;Gössendorf
+6;6A;606;G60613;Gratkorn
+6;6A;606;G60617;Hart bei Graz
+6;6A;606;G60618;Haselsdorf-Tobelbad
+6;6A;606;G60619;Hausmannstätten
+6;6A;606;G60623;Kainbach bei Graz
+6;6A;606;G60624;Kalsdorf bei Graz
+6;6A;606;G60626;Kumberg
+6;6A;606;G60628;Laßnitzhöhe
+6;6A;606;G60629;Lieboch
+6;6A;606;G60632;Peggau
+6;6A;606;G60639;Sankt Bartholomä
+6;6A;606;G60641;Sankt Oswald bei Plankenwarth
+6;6A;606;G60642;Sankt Radegund bei Graz
+6;6A;606;G60645;Semriach
+6;6A;606;G60646;Stattegg
+6;6A;606;G60647;Stiwoll
+6;6A;606;G60648;Thal
+6;6A;606;G60651;Übelbach
+6;6A;606;G60653;Vasoldsberg
+6;6A;606;G60654;Weinitzen
+6;6A;606;G60655;Werndorf
+6;6A;606;G60656;Wundschuh
+6;6A;606;G60659;Deutschfeistritz
+6;6A;606;G60660;Dobl-Zwaring
+6;6A;606;G60661;Eggersdorf bei Graz
+6;6A;606;G60662;Fernitz-Mellach
+6;6A;606;G60663;Frohnleiten
+6;6A;606;G60664;Gratwein-Straßengel
+6;6A;606;G60665;Hitzendorf
+6;6A;606;G60666;Nestelbach bei Graz
+6;6A;606;G60667;Raaba-Grambach
+6;6A;606;G60668;Sankt Marein bei Graz
+6;6A;606;G60669;Seiersberg-Pirka
+6;6A;606;G60670;Premstätten
+6;6A;606;G60699;Wahlkarten - Graz-Umgebung
+6;6C;610;G61000;Leibnitz
+6;6C;610;G61001;Allerheiligen bei Wildon
+6;6C;610;G61002;Arnfels
+6;6C;610;G61007;Empersdorf
+6;6C;610;G61008;Gabersdorf
+6;6C;610;G61012;Gralla
+6;6C;610;G61013;Großklein
+6;6C;610;G61016;Heimschuh
+6;6C;610;G61017;Hengsberg
+6;6C;610;G61019;Kitzeck im Sausal
+6;6C;610;G61020;Lang
+6;6C;610;G61021;Lebring-Sankt Margarethen
+6;6C;610;G61024;Oberhaag
+6;6C;610;G61027;Ragnitz
+6;6C;610;G61030;Sankt Andrä-Höch
+6;6C;610;G61032;Sankt Johann im Saggautal
+6;6C;610;G61033;Sankt Nikolai im Sausal
+6;6C;610;G61043;Tillmitsch
+6;6C;610;G61045;Wagna
+6;6C;610;G61049;Ehrenhausen an der Weinstraße
+6;6C;610;G61050;Gamlitz
+6;6C;610;G61051;Gleinstätten
+6;6C;610;G61052;Heiligenkreuz am Waasen
+6;6C;610;G61053;Leibnitz
+6;6C;610;G61054;Leutschach an der Weinstraße
+6;6C;610;G61055;Sankt Georgen an der Stiefing
+6;6C;610;G61057;Schwarzautal
+6;6C;610;G61059;Wildon
+6;6C;610;G61060;Sankt Veit in der Südsteiermark
+6;6C;610;G61061;Straß in Steiermark
+6;6C;610;G61099;Wahlkarten - Leibnitz
+6;6D;611;G61100;Leoben
+6;6D;611;G61101;Eisenerz
+6;6D;611;G61105;Kalwang
+6;6D;611;G61106;Kammern im Liesingtal
+6;6D;611;G61107;Kraubath an der Mur
+6;6D;611;G61108;Leoben
+6;6D;611;G61109;Mautern in Steiermark
+6;6D;611;G61110;Niklasdorf
+6;6D;611;G61111;Proleb
+6;6D;611;G61112;Radmer
+6;6D;611;G61113;Sankt Michael in Obersteiermark
+6;6D;611;G61114;Sankt Peter-Freienstein
+6;6D;611;G61115;Sankt Stefan ob Leoben
+6;6D;611;G61116;Traboch
+6;6D;611;G61118;Vordernberg
+6;6D;611;G61119;Wald am Schoberpaß
+6;6D;611;G61120;Trofaiach
+6;6D;611;G61199;Wahlkarten - Leoben
+6;6D;612;G61200;Liezen
+6;6D;612;G61203;Aigen im Ennstal
+6;6D;612;G61204;Altaussee
+6;6D;612;G61205;Altenmarkt bei Sankt Gallen
+6;6D;612;G61206;Ardning
+6;6D;612;G61207;Bad Aussee
+6;6D;612;G61213;Gröbming
+6;6D;612;G61215;Grundlsee
+6;6D;612;G61217;Haus
+6;6D;612;G61222;Lassing
+6;6D;612;G61236;Ramsau am Dachstein
+6;6D;612;G61243;Selzthal
+6;6D;612;G61247;Trieben
+6;6D;612;G61251;Wildalpen
+6;6D;612;G61252;Wörschach
+6;6D;612;G61253;Admont
+6;6D;612;G61254;Aich
+6;6D;612;G61255;Bad Mitterndorf
+6;6D;612;G61256;Gaishorn am See
+6;6D;612;G61257;Irdning-Donnersbachtal
+6;6D;612;G61258;Landl
+6;6D;612;G61259;Liezen
+6;6D;612;G61260;Michaelerberg-Pruggern
+6;6D;612;G61261;Mitterberg-Sankt Martin
+6;6D;612;G61262;Öblarn
+6;6D;612;G61263;Rottenmann
+6;6D;612;G61264;Sankt Gallen
+6;6D;612;G61265;Schladming
+6;6D;612;G61266;Sölk
+6;6D;612;G61267;Stainach-Pürgg
+6;6D;612;G61299;Wahlkarten - Liezen
+6;6D;614;G61400;Murau
+6;6D;614;G61410;Mühlen
+6;6D;614;G61413;Niederwölz
+6;6D;614;G61425;St. Peter am Kammersberg
+6;6D;614;G61428;Schöder
+6;6D;614;G61437;Krakau
+6;6D;614;G61438;Murau
+6;6D;614;G61439;Neumarkt in der Steiermark
+6;6D;614;G61440;Oberwölz
+6;6D;614;G61441;Ranten
+6;6D;614;G61442;Sankt Georgen am Kreischberg
+6;6D;614;G61443;Sankt Lambrecht
+6;6D;614;G61444;Scheifling
+6;6D;614;G61445;Stadl-Predlitz
+6;6D;614;G61446;Teufenbach-Katsch
+6;6D;614;G61499;Wahlkarten - Murau
+6;6C;616;G61600;Voitsberg
+6;6C;616;G61611;Krottendorf-Gaisfeld
+6;6C;616;G61612;Ligist
+6;6C;616;G61615;Mooskirchen
+6;6C;616;G61618;Rosental an der Kainach
+6;6C;616;G61621;Sankt Martin am Wöllmißberg
+6;6C;616;G61624;Stallhofen
+6;6C;616;G61625;Voitsberg
+6;6C;616;G61626;Bärnbach
+6;6C;616;G61627;Edelschrott
+6;6C;616;G61628;Geistthal-Södingberg
+6;6C;616;G61629;Hirschegg-Pack
+6;6C;616;G61630;Kainach bei Voitsberg
+6;6C;616;G61631;Köflach
+6;6C;616;G61632;Maria Lankowitz
+6;6C;616;G61633;Söding-Sankt Johann
+6;6C;616;G61699;Wahlkarten - Voitsberg
+6;6B;617;G61700;Weiz
+6;6B;617;G61701;Albersdorf-Prebuch
+6;6B;617;G61708;Fischbach
+6;6B;617;G61710;Floing
+6;6B;617;G61711;Gasen
+6;6B;617;G61716;Markt Hartmannsdorf
+6;6B;617;G61719;Hofstätten an der Raab
+6;6B;617;G61727;Ludersdorf-Wilfersdorf
+6;6B;617;G61728;Miesenbach bei Birkfeld
+6;6B;617;G61729;Mitterdorf an der Raab
+6;6B;617;G61730;Mortantsch
+6;6B;617;G61731;Naas
+6;6B;617;G61740;Puch bei Weiz
+6;6B;617;G61741;Ratten
+6;6B;617;G61743;Rettenegg
+6;6B;617;G61744;St. Kathrein am Hauenstein
+6;6B;617;G61745;Sankt Kathrein am Offenegg
+6;6B;617;G61746;St. Margarethen an der Raab
+6;6B;617;G61748;Sinabelkirchen
+6;6B;617;G61750;Strallegg
+6;6B;617;G61751;Thannhausen
+6;6B;617;G61756;Anger
+6;6B;617;G61757;Birkfeld
+6;6B;617;G61758;Fladnitz an der Teichalm
+6;6B;617;G61759;Gersdorf an der Feistritz
+6;6B;617;G61760;Gleisdorf
+6;6B;617;G61761;Gutenberg
+6;6B;617;G61762;Ilztal
+6;6B;617;G61763;Passail
+6;6B;617;G61764;Pischelsdorf am Kulm
+6;6B;617;G61765;Sankt Ruprecht an der Raab
+6;6B;617;G61766;Weiz
+6;6B;617;G61799;Wahlkarten - Weiz
+6;6D;620;G62000;Murtal
+6;6D;620;G62007;Fohnsdorf
+6;6D;620;G62008;Gaal
+6;6D;620;G62010;Hohentauern
+6;6D;620;G62014;Kobenz
+6;6D;620;G62021;Pusterwald
+6;6D;620;G62026;Sankt Georgen ob Judenburg
+6;6D;620;G62032;Sankt Peter ob Judenburg
+6;6D;620;G62034;Seckau
+6;6D;620;G62036;Unzmarkt-Frauenburg
+6;6D;620;G62038;Zeltweg
+6;6D;620;G62039;Lobmingtal
+6;6D;620;G62040;Judenburg
+6;6D;620;G62041;Knittelfeld
+6;6D;620;G62042;Obdach
+6;6D;620;G62043;Pöls-Oberkurzheim
+6;6D;620;G62044;Pölstal
+6;6D;620;G62045;Sankt Marein-Feistritz
+6;6D;620;G62046;Sankt Margarethen bei Knittelfeld
+6;6D;620;G62047;Spielberg
+6;6D;620;G62048;Weißkirchen in Steiermark
+6;6D;620;G62099;Wahlkarten - Murtal
+6;6D;621;G62100;Bruck-Mürzzuschlag
+6;6D;621;G62105;Breitenau am Hochlantsch
+6;6D;621;G62115;Krieglach
+6;6D;621;G62116;Langenwang
+6;6D;621;G62125;Pernegg an der Mur
+6;6D;621;G62128;Sankt Lorenzen im Mürztal
+6;6D;621;G62131;Spital am Semmering
+6;6D;621;G62132;Stanz im Mürztal
+6;6D;621;G62135;Turnau
+6;6D;621;G62138;Aflenz
+6;6D;621;G62139;Bruck an der Mur
+6;6D;621;G62140;Kapfenberg
+6;6D;621;G62141;Kindberg
+6;6D;621;G62142;Mariazell
+6;6D;621;G62143;Mürzzuschlag
+6;6D;621;G62144;Neuberg an der Mürz
+6;6D;621;G62145;Sankt Barbara im Mürztal
+6;6D;621;G62146;Sankt Marein im Mürztal
+6;6D;621;G62147;Thörl
+6;6D;621;G62148;Tragöß-Sankt Katharein
+6;6D;621;G62199;Wahlkarten - Bruck-Mürzzuschlag
+6;6B;622;G62200;Hartberg-Fürstenfeld
+6;6B;622;G62202;Bad Blumau
+6;6B;622;G62205;Buch-St. Magdalena
+6;6B;622;G62206;Burgau
+6;6B;622;G62209;Ebersdorf
+6;6B;622;G62211;Friedberg
+6;6B;622;G62214;Greinbach
+6;6B;622;G62216;Großsteinbach
+6;6B;622;G62219;Hartberg
+6;6B;622;G62220;Hartberg Umgebung
+6;6B;622;G62226;Lafnitz
+6;6B;622;G62232;Ottendorf an der Rittschein
+6;6B;622;G62233;Pinggau
+6;6B;622;G62235;Pöllauberg
+6;6B;622;G62242;Sankt Jakob im Walde
+6;6B;622;G62244;Sankt Johann in der Haide
+6;6B;622;G62245;Sankt Lorenzen am Wechsel
+6;6B;622;G62247;Schäffern
+6;6B;622;G62252;Söchau
+6;6B;622;G62256;Stubenberg
+6;6B;622;G62262;Wenigzell
+6;6B;622;G62264;Bad Waltersdorf
+6;6B;622;G62265;Dechantskirchen
+6;6B;622;G62266;Feistritztal
+6;6B;622;G62267;Fürstenfeld
+6;6B;622;G62268;Grafendorf bei Hartberg
+6;6B;622;G62269;Großwilfersdorf
+6;6B;622;G62270;Hartl
+6;6B;622;G62271;Ilz
+6;6B;622;G62272;Kaindorf
+6;6B;622;G62273;Bad Loipersdorf
+6;6B;622;G62274;Neudau
+6;6B;622;G62275;Pöllau
+6;6B;622;G62276;Rohr bei Hartberg
+6;6B;622;G62277;Rohrbach an der Lafnitz
+6;6B;622;G62278;Vorau
+6;6B;622;G62279;Waldbach-Mönichwald
+6;6B;622;G62299;Wahlkarten - Hartberg-Fürstenfeld
+6;6B;623;G62300;Südoststeiermark
+6;6B;623;G62311;Edelsbach bei Feldbach
+6;6B;623;G62314;Eichkögl
+6;6B;623;G62326;Halbenrain
+6;6B;623;G62330;Jagerberg
+6;6B;623;G62332;Kapfenstein
+6;6B;623;G62335;Klöch
+6;6B;623;G62343;Mettersdorf am Saßbach
+6;6B;623;G62368;Tieschen
+6;6B;623;G62372;Unterlamm
+6;6B;623;G62375;Bad Gleichenberg
+6;6B;623;G62376;Bad Radkersburg
+6;6B;623;G62377;Deutsch Goritz
+6;6B;623;G62378;Fehring
+6;6B;623;G62379;Feldbach
+6;6B;623;G62380;Gnas
+6;6B;623;G62381;Kirchbach-Zerlach
+6;6B;623;G62382;Kirchberg an der Raab
+6;6B;623;G62383;Mureck
+6;6B;623;G62384;Paldau
+6;6B;623;G62385;Pirching am Traubenberg
+6;6B;623;G62386;Riegersburg
+6;6B;623;G62387;Sankt Anna am Aigen
+6;6B;623;G62388;Sankt Peter am Ottersbach
+6;6B;623;G62389;Sankt Stefan im Rosental
+6;6B;623;G62390;Straden
+6;6B;623;G62399;Wahlkarten - Südoststeiermark
+7;;;G70000;Tirol
+7;;;G70099;Wahlkarten - Tirol
+7;7A;;G7A000;Innsbruck
+7;7A;;G7A099;Wahlkarten - Innsbruck
+7;7B;;G7B000;Innsbruck-Land
+7;7B;;G7B099;Wahlkarten - Innsbruck-Land
+7;7C;;G7C000;Unterland
+7;7C;;G7C099;Wahlkarten - Unterland
+7;7D;;G7D000;Oberland
+7;7D;;G7D099;Wahlkarten - Oberland
+7;7E;;G7E000;Osttirol
+7;7E;;G7E099;Wahlkarten - Osttirol
+7;7A;701;G70100;Innsbruck Stadt
+7;7A;701;G70101;Innsbruck
+7;7A;701;G70199;Wahlkarten - Innsbruck Stadt
+7;7D;702;G70200;Imst
+7;7D;702;G70201;Arzl im Pitztal
+7;7D;702;G70202;Haiming
+7;7D;702;G70203;Imst
+7;7D;702;G70204;Imsterberg
+7;7D;702;G70205;Jerzens
+7;7D;702;G70206;Karres
+7;7D;702;G70207;Karrösten
+7;7D;702;G70208;Längenfeld
+7;7D;702;G70209;Mieming
+7;7D;702;G70210;Mils bei Imst
+7;7D;702;G70211;Mötz
+7;7D;702;G70212;Nassereith
+7;7D;702;G70213;Obsteig
+7;7D;702;G70214;Oetz
+7;7D;702;G70215;Rietz
+7;7D;702;G70216;Roppen
+7;7D;702;G70217;St. Leonhard im Pitztal
+7;7D;702;G70218;Sautens
+7;7D;702;G70219;Silz
+7;7D;702;G70220;Sölden
+7;7D;702;G70221;Stams
+7;7D;702;G70222;Tarrenz
+7;7D;702;G70223;Umhausen
+7;7D;702;G70224;Wenns
+7;7D;702;G70299;Wahlkarten - Imst
+7;7B;703;G70300;Innsbruck-Land
+7;7B;703;G70301;Absam
+7;7B;703;G70302;Aldrans
+7;7B;703;G70303;Ampass
+7;7B;703;G70304;Axams
+7;7B;703;G70305;Baumkirchen
+7;7B;703;G70306;Birgitz
+7;7B;703;G70307;Ellbögen
+7;7B;703;G70308;Flaurling
+7;7B;703;G70309;Fritzens
+7;7B;703;G70310;Fulpmes
+7;7B;703;G70311;Gnadenwald
+7;7B;703;G70312;Götzens
+7;7B;703;G70313;Gries am Brenner
+7;7B;703;G70314;Gries im Sellrain
+7;7B;703;G70315;Grinzens
+7;7B;703;G70317;Gschnitz
+7;7B;703;G70318;Hatting
+7;7B;703;G70319;Inzing
+7;7B;703;G70320;Kematen in Tirol
+7;7B;703;G70322;Kolsass
+7;7B;703;G70323;Kolsassberg
+7;7B;703;G70325;Lans
+7;7B;703;G70326;Leutasch
+7;7B;703;G70328;Mieders
+7;7B;703;G70329;Mils
+7;7B;703;G70331;Mutters
+7;7B;703;G70332;Natters
+7;7B;703;G70333;Navis
+7;7B;703;G70334;Neustift im Stubaital
+7;7B;703;G70335;Oberhofen im Inntal
+7;7B;703;G70336;Obernberg am Brenner
+7;7B;703;G70337;Oberperfuss
+7;7B;703;G70338;Patsch
+7;7B;703;G70339;Pettnau
+7;7B;703;G70340;Pfaffenhofen
+7;7B;703;G70342;Polling in Tirol
+7;7B;703;G70343;Ranggen
+7;7B;703;G70344;Reith bei Seefeld
+7;7B;703;G70345;Rinn
+7;7B;703;G70346;Rum
+7;7B;703;G70347;St. Sigmund im Sellrain
+7;7B;703;G70348;Scharnitz
+7;7B;703;G70349;Schmirn
+7;7B;703;G70350;Schönberg im Stubaital
+7;7B;703;G70351;Seefeld in Tirol
+7;7B;703;G70352;Sellrain
+7;7B;703;G70353;Sistrans
+7;7B;703;G70354;Hall in Tirol
+7;7B;703;G70355;Steinach am Brenner
+7;7B;703;G70356;Telfes im Stubai
+7;7B;703;G70357;Telfs
+7;7B;703;G70358;Thaur
+7;7B;703;G70359;Trins
+7;7B;703;G70360;Tulfes
+7;7B;703;G70361;Unterperfuss
+7;7B;703;G70362;Vals
+7;7B;703;G70364;Völs
+7;7B;703;G70365;Volders
+7;7B;703;G70366;Wattenberg
+7;7B;703;G70367;Wattens
+7;7B;703;G70368;Wildermieming
+7;7B;703;G70369;Zirl
+7;7B;703;G70370;Matrei am Brenner
+7;7B;703;G70399;Wahlkarten - Innsbruck-Land
+7;7C;704;G70400;Kitzbühel
+7;7C;704;G70401;Aurach bei Kitzbühel
+7;7C;704;G70402;Brixen im Thale
+7;7C;704;G70403;Fieberbrunn
+7;7C;704;G70404;Going am Wilden Kaiser
+7;7C;704;G70405;Hochfilzen
+7;7C;704;G70406;Hopfgarten im Brixental
+7;7C;704;G70407;Itter
+7;7C;704;G70408;Jochberg
+7;7C;704;G70409;Kirchberg in Tirol
+7;7C;704;G70410;Kirchdorf in Tirol
+7;7C;704;G70411;Kitzbühel
+7;7C;704;G70412;Kössen
+7;7C;704;G70413;Oberndorf in Tirol
+7;7C;704;G70414;Reith bei Kitzbühel
+7;7C;704;G70415;St. Jakob in Haus
+7;7C;704;G70416;St. Johann in Tirol
+7;7C;704;G70417;St. Ulrich am Pillersee
+7;7C;704;G70418;Schwendt
+7;7C;704;G70419;Waidring
+7;7C;704;G70420;Westendorf
+7;7C;704;G70499;Wahlkarten - Kitzbühel
+7;7C;705;G70500;Kufstein
+7;7C;705;G70501;Alpbach
+7;7C;705;G70502;Angath
+7;7C;705;G70503;Bad Häring
+7;7C;705;G70504;Brandenberg
+7;7C;705;G70505;Breitenbach am Inn
+7;7C;705;G70506;Brixlegg
+7;7C;705;G70508;Ebbs
+7;7C;705;G70509;Ellmau
+7;7C;705;G70510;Erl
+7;7C;705;G70511;Kirchbichl
+7;7C;705;G70512;Kramsach
+7;7C;705;G70513;Kufstein
+7;7C;705;G70514;Kundl
+7;7C;705;G70515;Langkampfen
+7;7C;705;G70516;Mariastein
+7;7C;705;G70517;Münster
+7;7C;705;G70518;Niederndorf
+7;7C;705;G70519;Niederndorferberg
+7;7C;705;G70520;Radfeld
+7;7C;705;G70521;Rattenberg
+7;7C;705;G70522;Reith im Alpbachtal
+7;7C;705;G70523;Rettenschöss
+7;7C;705;G70524;Scheffau am Wilden Kaiser
+7;7C;705;G70525;Schwoich
+7;7C;705;G70526;Söll
+7;7C;705;G70527;Thiersee
+7;7C;705;G70528;Angerberg
+7;7C;705;G70529;Walchsee
+7;7C;705;G70530;Wildschönau
+7;7C;705;G70531;Wörgl
+7;7C;705;G70599;Wahlkarten - Kufstein
+7;7D;706;G70600;Landeck
+7;7D;706;G70601;Faggen
+7;7D;706;G70602;Fendels
+7;7D;706;G70603;Fiss
+7;7D;706;G70604;Fließ
+7;7D;706;G70605;Flirsch
+7;7D;706;G70606;Galtür
+7;7D;706;G70607;Grins
+7;7D;706;G70608;Ischgl
+7;7D;706;G70609;Kappl
+7;7D;706;G70610;Kaunerberg
+7;7D;706;G70611;Kaunertal
+7;7D;706;G70612;Kauns
+7;7D;706;G70613;Ladis
+7;7D;706;G70614;Landeck
+7;7D;706;G70615;Nauders
+7;7D;706;G70616;Pettneu am Arlberg
+7;7D;706;G70617;Pfunds
+7;7D;706;G70618;Pians
+7;7D;706;G70619;Prutz
+7;7D;706;G70620;Ried im Oberinntal
+7;7D;706;G70621;St. Anton am Arlberg
+7;7D;706;G70622;Schönwies
+7;7D;706;G70623;See
+7;7D;706;G70624;Serfaus
+7;7D;706;G70625;Spiss
+7;7D;706;G70626;Stanz bei Landeck
+7;7D;706;G70627;Strengen
+7;7D;706;G70628;Tobadill
+7;7D;706;G70629;Tösens
+7;7D;706;G70630;Zams
+7;7D;706;G70699;Wahlkarten - Landeck
+7;7E;707;G70700;Lienz
+7;7E;707;G70701;Abfaltersbach
+7;7E;707;G70702;Ainet
+7;7E;707;G70703;Amlach
+7;7E;707;G70704;Anras
+7;7E;707;G70705;Assling
+7;7E;707;G70706;Außervillgraten
+7;7E;707;G70707;Dölsach
+7;7E;707;G70708;Gaimberg
+7;7E;707;G70709;Hopfgarten in Defereggen
+7;7E;707;G70710;Innervillgraten
+7;7E;707;G70711;Iselsberg-Stronach
+7;7E;707;G70712;Kals am Großglockner
+7;7E;707;G70713;Kartitsch
+7;7E;707;G70714;Lavant
+7;7E;707;G70715;Leisach
+7;7E;707;G70716;Lienz
+7;7E;707;G70717;Matrei in Osttirol
+7;7E;707;G70718;Nikolsdorf
+7;7E;707;G70719;Nußdorf-Debant
+7;7E;707;G70720;Oberlienz
+7;7E;707;G70721;Obertilliach
+7;7E;707;G70723;Prägraten am Großvenediger
+7;7E;707;G70724;St. Jakob in Defereggen
+7;7E;707;G70725;St. Johann im Walde
+7;7E;707;G70726;St. Veit in Defereggen
+7;7E;707;G70727;Schlaiten
+7;7E;707;G70728;Sillian
+7;7E;707;G70729;Strassen
+7;7E;707;G70731;Thurn
+7;7E;707;G70732;Tristach
+7;7E;707;G70733;Untertilliach
+7;7E;707;G70734;Virgen
+7;7E;707;G70735;Heinfels
+7;7E;707;G70799;Wahlkarten - Lienz
+7;7D;708;G70800;Reutte
+7;7D;708;G70801;Bach
+7;7D;708;G70802;Berwang
+7;7D;708;G70803;Biberwier
+7;7D;708;G70804;Bichlbach
+7;7D;708;G70805;Breitenwang
+7;7D;708;G70806;Ehenbichl
+7;7D;708;G70807;Ehrwald
+7;7D;708;G70808;Elbigenalp
+7;7D;708;G70809;Elmen
+7;7D;708;G70810;Forchach
+7;7D;708;G70811;Grän
+7;7D;708;G70812;Gramais
+7;7D;708;G70813;Häselgehr
+7;7D;708;G70814;Heiterwang
+7;7D;708;G70815;Hinterhornbach
+7;7D;708;G70816;Höfen
+7;7D;708;G70817;Holzgau
+7;7D;708;G70818;Jungholz
+7;7D;708;G70819;Kaisers
+7;7D;708;G70820;Lechaschau
+7;7D;708;G70821;Lermoos
+7;7D;708;G70822;Musau
+7;7D;708;G70823;Namlos
+7;7D;708;G70824;Nesselwängle
+7;7D;708;G70825;Pfafflar
+7;7D;708;G70826;Pflach
+7;7D;708;G70827;Pinswang
+7;7D;708;G70828;Reutte
+7;7D;708;G70829;Schattwald
+7;7D;708;G70830;Stanzach
+7;7D;708;G70831;Steeg
+7;7D;708;G70832;Tannheim
+7;7D;708;G70833;Vils
+7;7D;708;G70834;Vorderhornbach
+7;7D;708;G70835;Wängle
+7;7D;708;G70836;Weißenbach am Lech
+7;7D;708;G70837;Zöblen
+7;7D;708;G70899;Wahlkarten - Reutte
+7;7B;709;G70900;Schwaz
+7;7B;709;G70901;Achenkirch
+7;7B;709;G70902;Aschau im Zillertal
+7;7B;709;G70903;Brandberg
+7;7B;709;G70904;Bruck am Ziller
+7;7B;709;G70905;Buch in Tirol
+7;7B;709;G70907;Eben am Achensee
+7;7B;709;G70908;Finkenberg
+7;7B;709;G70909;Fügen
+7;7B;709;G70910;Fügenberg
+7;7B;709;G70911;Gallzein
+7;7B;709;G70912;Gerlos
+7;7B;709;G70913;Gerlosberg
+7;7B;709;G70914;Hainzenberg
+7;7B;709;G70915;Hart im Zillertal
+7;7B;709;G70916;Hippach
+7;7B;709;G70917;Jenbach
+7;7B;709;G70918;Kaltenbach
+7;7B;709;G70920;Mayrhofen
+7;7B;709;G70921;Pill
+7;7B;709;G70922;Ramsau im Zillertal
+7;7B;709;G70923;Ried im Zillertal
+7;7B;709;G70924;Rohrberg
+7;7B;709;G70925;Schlitters
+7;7B;709;G70926;Schwaz
+7;7B;709;G70927;Schwendau
+7;7B;709;G70928;Stans
+7;7B;709;G70929;Steinberg am Rofan
+7;7B;709;G70930;Strass im Zillertal
+7;7B;709;G70931;Stumm
+7;7B;709;G70932;Stummerberg
+7;7B;709;G70933;Terfens
+7;7B;709;G70934;Tux
+7;7B;709;G70935;Uderns
+7;7B;709;G70936;Vomp
+7;7B;709;G70937;Weer
+7;7B;709;G70938;Weerberg
+7;7B;709;G70939;Wiesing
+7;7B;709;G70940;Zell am Ziller
+7;7B;709;G70941;Zellberg
+7;7B;709;G70999;Wahlkarten - Schwaz
+8;;;G80000;Vorarlberg
+8;;;G80099;Wahlkarten - Vorarlberg
+8;8A;;G8A000;Vorarlberg Nord
+8;8A;;G8A099;Wahlkarten - Vorarlberg Nord
+8;8B;;G8B000;Vorarlberg Süd
+8;8B;;G8B099;Wahlkarten - Vorarlberg Süd
+8;8B;801;G80100;Bludenz
+8;8B;801;G80101;Bartholomäberg
+8;8B;801;G80102;Blons
+8;8B;801;G80103;Bludenz
+8;8B;801;G80104;Bludesch
+8;8B;801;G80105;Brand
+8;8B;801;G80106;Bürs
+8;8B;801;G80107;Bürserberg
+8;8B;801;G80108;Dalaas
+8;8B;801;G80109;Fontanella
+8;8B;801;G80110;Gaschurn
+8;8B;801;G80111;Innerbraz
+8;8B;801;G80112;Klösterle
+8;8B;801;G80113;Lech
+8;8B;801;G80114;Lorüns
+8;8B;801;G80115;Ludesch
+8;8B;801;G80116;Nenzing
+8;8B;801;G80117;Nüziders
+8;8B;801;G80118;Raggal
+8;8B;801;G80119;St. Anton im Montafon
+8;8B;801;G80120;St. Gallenkirch
+8;8B;801;G80121;St. Gerold
+8;8B;801;G80122;Schruns
+8;8B;801;G80123;Silbertal
+8;8B;801;G80124;Sonntag
+8;8B;801;G80125;Stallehr
+8;8B;801;G80126;Thüringen
+8;8B;801;G80127;Thüringerberg
+8;8B;801;G80128;Tschagguns
+8;8B;801;G80129;Vandans
+8;8B;801;G80199;Wahlkarten - Bludenz
+8;8A;802;G80200;Bregenz
+8;8A;802;G80201;Alberschwende
+8;8A;802;G80202;Andelsbuch
+8;8A;802;G80203;Au
+8;8A;802;G80204;Bezau
+8;8A;802;G80205;Bildstein
+8;8A;802;G80206;Bizau
+8;8A;802;G80207;Bregenz
+8;8A;802;G80208;Buch
+8;8A;802;G80209;Damüls
+8;8A;802;G80210;Doren
+8;8A;802;G80211;Egg
+8;8A;802;G80212;Eichenberg
+8;8A;802;G80213;Fußach
+8;8A;802;G80214;Gaißau
+8;8A;802;G80215;Hard
+8;8A;802;G80216;Hittisau
+8;8A;802;G80217;Höchst
+8;8A;802;G80218;Hörbranz
+8;8A;802;G80219;Hohenweiler
+8;8A;802;G80220;Kennelbach
+8;8A;802;G80221;Krumbach
+8;8A;802;G80222;Langen bei Bregenz
+8;8A;802;G80223;Langenegg
+8;8A;802;G80224;Lauterach
+8;8A;802;G80225;Lingenau
+8;8A;802;G80226;Lochau
+8;8A;802;G80227;Mellau
+8;8A;802;G80228;Mittelberg
+8;8A;802;G80229;Möggers
+8;8A;802;G80230;Reuthe
+8;8A;802;G80231;Riefensberg
+8;8A;802;G80232;Schnepfau
+8;8A;802;G80233;Schoppernau
+8;8A;802;G80234;Schröcken
+8;8A;802;G80235;Schwarzach
+8;8A;802;G80236;Schwarzenberg
+8;8A;802;G80237;Sibratsgfäll
+8;8A;802;G80238;Sulzberg
+8;8A;802;G80239;Warth
+8;8A;802;G80240;Wolfurt
+8;8A;802;G80299;Wahlkarten - Bregenz
+8;8A;803;G80300;Dornbirn
+8;8A;803;G80301;Dornbirn
+8;8A;803;G80302;Hohenems
+8;8A;803;G80303;Lustenau
+8;8A;803;G80399;Wahlkarten - Dornbirn
+8;8B;804;G80400;Feldkirch
+8;8B;804;G80401;Altach
+8;8B;804;G80402;Düns
+8;8B;804;G80403;Dünserberg
+8;8B;804;G80404;Feldkirch
+8;8B;804;G80405;Frastanz
+8;8B;804;G80406;Fraxern
+8;8B;804;G80407;Göfis
+8;8B;804;G80408;Götzis
+8;8B;804;G80409;Klaus
+8;8B;804;G80410;Koblach
+8;8B;804;G80411;Laterns
+8;8B;804;G80412;Mäder
+8;8B;804;G80413;Meiningen
+8;8B;804;G80414;Rankweil
+8;8B;804;G80415;Röns
+8;8B;804;G80416;Röthis
+8;8B;804;G80417;Satteins
+8;8B;804;G80418;Schlins
+8;8B;804;G80419;Schnifis
+8;8B;804;G80420;Sulz
+8;8B;804;G80421;Übersaxen
+8;8B;804;G80422;Viktorsberg
+8;8B;804;G80423;Weiler
+8;8B;804;G80424;Zwischenwasser
+8;8B;804;G80499;Wahlkarten - Feldkirch
+9;;;G90000;Wien
+9;;;G90099;Wahlkarten - Wien
+9;9A;;G9A000;Wien Innen-Süd
+9;9A;;G9A099;Wahlkarten - Wien Innen-Süd
+9;9B;;G9B000;Wien Innen-West
+9;9B;;G9B099;Wahlkarten - Wien Innen-West
+9;9C;;G9C000;Wien Innen-Ost
+9;9C;;G9C099;Wahlkarten - Wien Innen-Ost
+9;9D;;G9D000;Wien Süd
+9;9D;;G9D099;Wahlkarten - Wien Süd
+9;9E;;G9E000;Wien Süd-West
+9;9E;;G9E099;Wahlkarten - Wien Süd-West
+9;9F;;G9F000;Wien Nord-West
+9;9F;;G9F099;Wahlkarten - Wien Nord-West
+9;9G;;G9G000;Wien Nord
+9;9G;;G9G099;Wahlkarten - Wien Nord
+9;9B;901;G90100;Wien  1.,Innere Stadt
+9;9B;901;G90101;Innere Stadt
+9;9B;901;G90199;Wahlkarten - Wien  1.,Innere Stadt
+9;9C;902;G90200;Wien  2.,Leopoldstadt
+9;9C;902;G90201;Leopoldstadt
+9;9C;902;G90299;Wahlkarten - Wien  2.,Leopoldstadt
+9;9A;903;G90300;Wien  3.,Landstraße
+9;9A;903;G90301;Landstraße
+9;9A;903;G90399;Wahlkarten - Wien  3.,Landstraße
+9;9A;904;G90400;Wien  4.,Wieden
+9;9A;904;G90401;Wieden
+9;9A;904;G90499;Wahlkarten - Wien  4.,Wieden
+9;9A;905;G90500;Wien  5.,Margareten
+9;9A;905;G90501;Margareten
+9;9A;905;G90599;Wahlkarten - Wien  5.,Margareten
+9;9B;906;G90600;Wien  6.,Mariahilf
+9;9B;906;G90601;Mariahilf
+9;9B;906;G90699;Wahlkarten - Wien  6.,Mariahilf
+9;9B;907;G90700;Wien  7.,Neubau
+9;9B;907;G90701;Neubau
+9;9B;907;G90799;Wahlkarten - Wien  7.,Neubau
+9;9B;908;G90800;Wien  8.,Josefstadt
+9;9B;908;G90801;Josefstadt
+9;9B;908;G90899;Wahlkarten - Wien  8.,Josefstadt
+9;9B;909;G90900;Wien  9.,Alsergrund
+9;9B;909;G90901;Alsergrund
+9;9B;909;G90999;Wahlkarten - Wien  9.,Alsergrund
+9;9D;910;G91000;Wien 10.,Favoriten
+9;9D;910;G91001;Favoriten
+9;9D;910;G91099;Wahlkarten - Wien 10.,Favoriten
+9;9D;911;G91100;Wien 11.,Simmering
+9;9D;911;G91101;Simmering
+9;9D;911;G91199;Wahlkarten - Wien 11.,Simmering
+9;9D;912;G91200;Wien 12.,Meidling
+9;9D;912;G91201;Meidling
+9;9D;912;G91299;Wahlkarten - Wien 12.,Meidling
+9;9E;913;G91300;Wien 13.,Hietzing
+9;9E;913;G91301;Hietzing
+9;9E;913;G91399;Wahlkarten - Wien 13.,Hietzing
+9;9E;914;G91400;Wien 14.,Penzing
+9;9E;914;G91401;Penzing
+9;9E;914;G91499;Wahlkarten - Wien 14.,Penzing
+9;9E;915;G91500;Wien 15.,Rudolfsheim-Fünfhaus
+9;9E;915;G91501;Rudolfsheim-Fünfhaus
+9;9E;915;G91599;Wahlkarten - Wien 15.,Rudolfsheim-Fünfhaus
+9;9F;916;G91600;Wien 16.,Ottakring
+9;9F;916;G91601;Ottakring
+9;9F;916;G91699;Wahlkarten - Wien 16.,Ottakring
+9;9F;917;G91700;Wien 17.,Hernals
+9;9F;917;G91701;Hernals
+9;9F;917;G91799;Wahlkarten - Wien 17.,Hernals
+9;9F;918;G91800;Wien 18.,Währing
+9;9F;918;G91801;Währing
+9;9F;918;G91899;Wahlkarten - Wien 18.,Währing
+9;9F;919;G91900;Wien 19.,Döbling
+9;9F;919;G91901;Döbling
+9;9F;919;G91999;Wahlkarten - Wien 19.,Döbling
+9;9C;920;G92000;Wien 20.,Brigittenau
+9;9C;920;G92001;Brigittenau
+9;9C;920;G92099;Wahlkarten - Wien 20.,Brigittenau
+9;9G;921;G92100;Wien 21.,Floridsdorf
+9;9G;921;G92101;Floridsdorf
+9;9G;921;G92199;Wahlkarten - Wien 21.,Floridsdorf
+9;9G;922;G92200;Wien 22.,Donaustadt
+9;9G;922;G92201;Donaustadt
+9;9G;922;G92299;Wahlkarten - Wien 22.,Donaustadt
+9;9E;923;G92300;Wien 23.,Liesing
+9;9E;923;G92301;Liesing
+9;9E;923;G92399;Wahlkarten - Wien 23.,Liesing

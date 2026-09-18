@@ -44,6 +44,7 @@ function zeigeKopf() {
   zeile('PLZ', a?.plz);
   zeile('Gemeindeschlüssel (AGS)', z.ags ? `${z.ags} (${z.ags_quelle})` : null);
   zeile('Bundesland', z.bundesland || a?.bundesland);
+  if (a?.land_code && a.land_code !== 'DE') zeile('Land', `${a.land} (${a.land_code})`);
   zeile('Koordinaten', `${state.lat}, ${state.lon} · Radius ${state.radius} m`);
 
   const knoepfe = el('div', { style: 'margin-top:10px;display:flex;gap:6px;flex-wrap:wrap;' },
@@ -75,6 +76,17 @@ function zeigeZensus(d) {
     return;
   }
   const z = d.data;
+  if (!z) {
+    /* Ehrlich leer: kein Gitterdienst für dieses Land oder das lokale
+       Raster (Österreich) ist noch nicht importiert — die Warnung sagt, was
+       zu tun ist. */
+    for (const id of ['bevoelkerung', 'wohnen']) {
+      setStatus(id, 'leer', 'keine Daten');
+      setInhalt(id, ...warnungen(d.warnings || []));
+      setQuelle(id, d.provenance);
+    }
+    return;
+  }
   zeichneZensus(z.zellen);
 
   if (!z.zellen_gefunden) {

@@ -1,0 +1,25 @@
+﻿LAND;RWK;BEZ;GKZ;NAME
+0;;;G00000;Österreich
+1;;;G10000;Burgenland
+1;;;G10099;Wahlkarten - Burgenland
+1;1A;;G1A000;Burgenland Nord
+1;1A;;G1A099;Wahlkarten - Burgenland Nord
+1;1B;;G1B000;Burgenland Süd
+1;1B;;G1B099;Wahlkarten - Burgenland Süd
+1;1A;101;G10100;Eisenstadt Stadt
+1;1A;101;G10101;Eisenstadt
+1;1A;101;G10199;Wahlkarten - Eisenstadt Stadt
+1;1A;102;G10200;Rust Stadt
+1;1A;102;G10201;Rust
+1;1A;102;G10299;Wahlkarten - Rust Stadt
+1;1A;103;G10300;Eisenstadt - Umgebung
+1;1A;103;G10301;Breitenbrunn am Neusiedler See
+1;1A;103;G10302;Donnerskirchen
+1;1A;103;G10303;Großhöflein
+1;1A;103;G10304;Hornstein
+1;1A;103;G10305;Klingenbach
+1;1A;103;G10306;Leithaprodersdorf
+1;1A;103;G10307;Mörbisch am See
+1;1A;103;G10308;Müllendorf
+1;1A;103;G10309;Neufeld an der Leitha
+1;1A;103;G10310;Oggau am Neusiedler See

@@ -44,7 +44,32 @@ const basemapGrau = new BasemapDe('', {
   stil: 'de_basemapde_web_raster_grau', maxZoom: 19, attribution: bkgAttribution,
 });
 
+/* Österreich: basemap.at (geoland.at, Betrieb Stadt Wien), WMTS als
+   XYZ-Kacheln in der Reihenfolge z/y/x, TileMatrixSet google3857. Live
+   belegt am 18.09.2026 (fixtures/at/basemap_at_capabilities.xml). */
+const basemapAtAttribution = '&copy; <a href="https://basemap.at/">basemap.at</a> (CC BY 4.0)';
+const basemapAt = (ebene, endung) => L.tileLayer(
+  `https://mapsneu.wien.gv.at/basemap/${ebene}/normal/google3857/{z}/{y}/{x}.${endung}`,
+  { maxZoom: 19, attribution: basemapAtAttribution });
+const basemapAtFarbe = basemapAt('geolandbasemap', 'png');
+const basemapAtGrau = basemapAt('bmapgrau', 'png');
+const basemapAtOrtho = basemapAt('bmaporthofoto30cm', 'jpeg');
+
 osmKarte.addTo(karte);
+
+/* Nach dem Land des Punkts umschalten — nur zwischen den amtlichen
+   Hintergründen: Wer OpenStreetMap gewählt hat, behält es. */
+const amtlich = { DE: [basemapFarbe, basemapGrau], AT: [basemapAtFarbe, basemapAtGrau] };
+export function passeKartenhintergrundAn(landCode) {
+  const ziel = amtlich[landCode];
+  if (!ziel) return;
+  for (const [code, ebenen] of Object.entries(amtlich)) {
+    if (code === landCode) continue;
+    ebenen.forEach((ebene, i) => {
+      if (karte.hasLayer(ebene)) { karte.removeLayer(ebene); ziel[i].addTo(karte); }
+    });
+  }
+}
 
 for (const name of ['zensus', 'gastronomie', 'frequenzbringer', 'oepnv', 'leerstand',
   'overture', 'maerkte', 'baustellen', 'airbnb']) {
@@ -87,6 +112,9 @@ const ebenenSchalter = L.control.layers({
   'OpenStreetMap': osmKarte,
   'basemap.de (amtlich)': basemapFarbe,
   'basemap.de grau': basemapGrau,
+  'basemap.at (amtlich)': basemapAtFarbe,
+  'basemap.at grau': basemapAtGrau,
+  'basemap.at Luftbild': basemapAtOrtho,
 }, {
   'Übersicht Einwohner (1/10 km)': state.ebenen.uebersicht,
   'Flächen-Scan (Einwohner je Betrieb)': state.ebenen.scan,

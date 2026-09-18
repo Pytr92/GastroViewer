@@ -489,11 +489,15 @@ def pruefe_punkt(lat: Any, lon: Any, radius: Any) -> None:
         raise ValueError("Radius muss eine ganze Zahl in Metern sein.")
     if not (-90 <= lat <= 90) or not (-180 <= lon <= 180):
         raise ValueError("Koordinaten außerhalb des gültigen Bereichs.")
-    # Deutschland grob; außerhalb liefern Zensus und BORIS ohnehin nichts.
-    if not (47.0 <= lat <= 55.5 and 5.5 <= lon <= 15.5):
+    # Grobe Landeskästen aus der Länder-Registry; welches Land es genau
+    # ist, entscheidet später der Geocoder (Kästen überlappen sich).
+    from .laender import LAENDER, unterstuetzt
+
+    if not unterstuetzt(lat, lon):
+        namen = " oder ".join(land.name for land in LAENDER.values())
         raise ValueError(
-            "Punkt liegt außerhalb Deutschlands. Zensus 2022 und die "
-            "Bodenrichtwert-Portale decken nur Deutschland ab."
+            f"Punkt liegt außerhalb der unterstützten Länder ({namen}). "
+            "Die amtlichen Quellen decken nur diese Länder ab."
         )
     if not (50 <= radius <= 5000):
         raise ValueError("Radius muss zwischen 50 und 5000 Metern liegen.")

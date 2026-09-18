@@ -1,0 +1,109 @@
+{
+ "gpkg_contents": [
+  {
+   "table_name": "ESTAT_Census_2011_V1-0",
+   "data_type": "features",
+   "identifier": "ESTAT_Census_2011_V1-0",
+   "description": "",
+   "last_change": "2023-03-28T14:53:32.160Z",
+   "min_x": 942000.0,
+   "min_y": 940000.0,
+   "max_x": 6504999.999999999,
+   "max_y": 5418000.0,
+   "srs_id": 3035
+  }
+ ],
+ "gpkg_geometry_columns": [
+  [
+   "ESTAT_Census_2011_V1-0",
+   "geom",
+   "POLYGON",
+   3035,
+   0,
+   0
+  ]
+ ],
+ "gpkg_spatial_ref_sys": [
+  [
+   -1,
+   "NONE",
+   -1
+  ],
+  [
+   0,
+   "NONE",
+   0
+  ],
+  [
+   3035,
+   "EPSG",
+   3035
+  ],
+  [
+   4326,
+   "EPSG",
+   4326
+  ]
+ ],
+ "tabellen": [
+  "ESTAT_Census_2011_V1-0"
+ ],
+ "spalten_ESTAT_Census_2011_V1-0": [
+  [
+   "fid",
+   "INTEGER"
+  ],
+  [
+   "geom",
+   "POLYGON"
+  ],
+  [
+   "GRD_ID",
+   "TEXT"
+  ],
+  [
+   "OBS_VALUE_T",
+   "REAL"
+  ]
+ ],
+ "anzahl_ESTAT_Census_2011_V1-0": 4688518,
+ "zeilen_ESTAT_Census_2011_V1-0": [
+  {
+   "fid": 3889,
+   "geom": "47500003db0b000000000000e0f73d4100000000c8fb3d410000000080842e4100000000508c2e410103000000010000000500000000000000e0f73d",
+   "GRD_ID": "CRS3035RES1000mN1000000E1964000",
+   "OBS_VALUE_T": 0.0
+  },
+  {
+   "fid": 3890,
+   "geom": "47500003db0b000000000000c8fb3d4100000000b0ff3d410000000080842e4100000000508c2e410103000000010000000500000000000000c8fb3d",
+   "GRD_ID": "CRS3035RES1000mN1000000E1965000",
+   "OBS_VALUE_T": 0.0
+  },
+  {
+   "fid": 3891,
+   "geom": "47500003db0b000000000000b0ff3d410000000098033e410000000080842e4100000000508c2e410103000000010000000500000000000000b0ff3d",
+   "GRD_ID": "CRS3035RES1000mN1000000E1966000",
+   "OBS_VALUE_T": 118.0
+  }
+ ],
+ "wien_treffer_ESTAT_Census_2011_V1-0": 2000,
+ "indizes_ESTAT_Census_2011_V1-0": [],
+ "rtree": [
+  [
+   "rtree_ESTAT_Census_2011_V1-0_geom"
+  ],
+  [
+   "rtree_ESTAT_Census_2011_V1-0_geom_rowid"
+  ],
+  [
+   "rtree_ESTAT_Census_2011_V1-0_geom_node"
+  ],
+  [
+   "rtree_ESTAT_Census_2011_V1-0_geom_parent"
+  ],
+  [
+   "rtree_ESTAT_Census_2011_V1-0_geom_insert"
+  ]
+ ]
+}

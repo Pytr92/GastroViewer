@@ -21,12 +21,27 @@ import { brwBlock, setzeBrwEbene, setzeZusatzebenen } from './bloecke-laender.js
    und frei gibt, ist das verfügbare Einkommen je Einwohner auf Kreisebene —
    der Block sagt beides ehrlich dazu. Braucht den Gemeindeschlüssel aus dem
    Zensus, lädt deshalb erst nach diesem Block. */
+/* Ohne Gemeindeschlüssel: In Deutschland heißt das „Zensus ausgefallen“, in
+   Österreich „diese Quelle gibt es hier nicht“ — der Block soll das zweite
+   sagen, wenn es zutrifft. Die Adresse (mit Landeskennung) lädt parallel;
+   deshalb wird auf sie gewartet statt geraten. */
+export async function ohneSchluessel(id, was, grund, lauf) {
+  setStatus(id, 'leer', 'kein Gemeindeschlüssel');
+  const a = (await (state.adresseLauf || Promise.resolve(null)))?.data;
+  if (lauf !== state.ladeLauf) return;
+  if (a?.land_code && a.land_code !== 'DE') {
+    setStatus(id, 'leer', 'nur Deutschland');
+    setInhalt(id, el('div', { class: 'notiz' },
+      `Nur für Deutschland verfügbar — ${grund} Für ${a.land || a.land_code} bleibt der Block leer.`));
+    return;
+  }
+  setInhalt(id, el('div', { class: 'notiz' },
+    `Ohne Gemeindeschlüssel (aus dem Zensusblock) lässt sich ${was} zuordnen.`));
+}
+
 async function ladeEinkommen(ags, lauf) {
   if (!ags) {
-    setStatus('einkommen', 'leer', 'kein Gemeindeschlüssel');
-    setInhalt('einkommen', el('div', { class: 'notiz' },
-      'Ohne Gemeindeschlüssel (aus dem Zensusblock) lässt sich kein Kreiswert '
-      + 'zuordnen.'));
+    ohneSchluessel('einkommen', 'kein Kreiswert', 'Kreiswerte kommen aus dem deutschen Regionalatlas.', lauf);
     return;
   }
   try {
@@ -85,10 +100,7 @@ function zeigeEinkommen(d) {
    eingeschränkten Vergleichbarkeit steht als Hinweis am Block. */
 async function ladePks(ags, lauf) {
   if (!ags) {
-    setStatus('pks', 'leer', 'kein Gemeindeschlüssel');
-    setInhalt('pks', el('div', { class: 'notiz' },
-      'Ohne Gemeindeschlüssel (aus dem Zensusblock) lässt sich kein '
-      + 'Kreiswert zuordnen.'));
+    ohneSchluessel('pks', 'kein Kreiswert', 'Die Kriminalstatistik je Kreis veröffentlicht nur das BKA.', lauf);
     return;
   }
   try {
@@ -159,15 +171,10 @@ function zeigePks(d) {
 /* Block 3h — Wahlergebnis (BTW 2025) auf Wahlkreisebene. Struktur-Marker
    mit deutlicher Deutungs-Warnung — auf ausdrücklichen Wunsch eingebaut. */
 async function ladeWahl(ags, lauf) {
-  if (!ags) {
-    setStatus('wahl', 'leer', 'kein Gemeindeschlüssel');
-    setInhalt('wahl', el('div', { class: 'notiz' },
-      'Ohne Gemeindeschlüssel (aus dem Zensusblock) lässt sich kein '
-      + 'Wahlkreis zuordnen.'));
-    return;
-  }
+  // Ohne Gemeindeschlüssel (Österreich) ordnet das Backend über die Adresse
+  // des Punkts zu — deshalb dann die Koordinaten statt eines leeren Blocks.
   try {
-    const d = await hole('/api/wahl', { ags });
+    const d = await hole('/api/wahl', ags ? { ags } : { lat: state.lat, lon: state.lon });
     if (lauf !== state.ladeLauf) return;
     state.daten.wahl = d;
     zeigeWahl(d);
@@ -193,14 +200,15 @@ function zeigeWahl(d) {
   }
   const wk = (w.wahlkreise || []).map((x) => `${x.nr} ${x.name}`).join(' · ');
   setStatus(id, 'ok', w.mehrere_wahlkreise
-    ? `${w.wahlkreise.length} Wahlkreise` : `WK ${w.wahlkreise[0]?.nr}`);
+    ? `${w.wahlkreise.length} Wahlkreise`
+    : (w.ebene ? `${w.wahlkreise[0]?.name}` : `WK ${w.wahlkreise[0]?.nr}`));
 
   const tab = el('table', { class: 'daten' },
     el('tr', {},
       el('th', {}, 'Partei'),
-      el('th', { class: 'num' }, 'Zweitstimmen'),
+      el('th', { class: 'num' }, w.stimmen_label || 'Zweitstimmen'),
       el('th', { class: 'num' }, 'Anteil'),
-      el('th', { class: 'num' }, 'ggü. 2021')));
+      el('th', { class: 'num' }, w.ebene ? 'Vorwahl' : 'ggü. 2021')));
   for (const p of w.parteien || []) {
     tab.append(el('tr', {},
       el('td', {}, p.partei),
@@ -215,7 +223,7 @@ function zeigeWahl(d) {
 
   setInhalt(id,
     el('div', { class: 'notiz' },
-      `${w.wahl}, ${w.mehrere_wahlkreise ? 'Summe der Wahlkreise' : 'Wahlkreis'} `
+      `${w.wahl}, ${w.mehrere_wahlkreise ? 'Summe der Wahlkreise' : (w.ebene || 'Wahlkreis')} `
       + `${wk}.`
       + (w.beteiligung_prozent !== null && w.beteiligung_prozent !== undefined
         ? ` Wahlbeteiligung ${NF1.format(w.beteiligung_prozent)} %`
@@ -277,16 +285,12 @@ function zeigeLuft(d) {
    Kundenprofil passt — und das entscheidet der Tourismus- bzw.
    Studierendenblock, nicht dieser hier. */
 async function ladeKalender(ags, lauf) {
+  // Mit Gemeindeschlüssel (Deutschland) reicht der; ohne (Österreich) kommt
+  // das Bundesland im Backend aus der Adresse des Punkts — dann die
+  // Koordinaten mitgeben.
   const id = 'kalender';
-  if (!ags) {
-    setStatus(id, 'leer', 'kein Gemeindeschlüssel');
-    setInhalt(id, el('div', { class: 'notiz' },
-      'Ohne Gemeindeschlüssel (aus dem Zensusblock) lässt sich kein '
-      + 'Bundesland zuordnen.'));
-    return;
-  }
   try {
-    const d = await hole('/api/kalender', { ags });
+    const d = await hole('/api/kalender', ags ? { ags } : { lat: state.lat, lon: state.lon });
     if (lauf !== state.ladeLauf) return;
     state.daten.kalender = d;
     zeigeKalender(d);
@@ -654,10 +658,7 @@ function zeigeSonne(d) {
    Braucht wie 3b/3c den Gemeindeschlüssel aus dem Zensusblock. */
 async function ladePendler(ags, lauf) {
   if (!ags || String(ags).length < 8) {
-    setStatus('pendler', 'leer', 'kein Gemeindeschlüssel');
-    setInhalt('pendler', el('div', { class: 'notiz' },
-      'Ohne 8-stelligen Gemeindeschlüssel (aus dem Zensusblock) lässt sich '
-      + 'keine Gemeinde zuordnen.'));
+    ohneSchluessel('pendler', 'keine Pendlerrechnung', 'Die Pendlerrechnung liegt nur für deutsche Gemeinden vor.', lauf);
     return;
   }
   try {
@@ -1290,12 +1291,12 @@ function zeigeTourismus(d) {
   }
   const t = d.data;
   if (!t) {
-    setStatus(id, 'leer', 'nur München');
+    setStatus(id, 'leer', 'keine Monatsreihe');
     setInhalt(id, ...warnungen(d.warnings || []));
     setQuelle(id, d.provenance);
     return;
   }
-  setStatus(id, 'ok', `${NF.format(t.uebernachtungen_12m)} Übern./12 M.`);
+  setStatus(id, 'ok', `${t.gebiet ? t.gebiet + ' · ' : ''}${NF.format(t.uebernachtungen_12m)} Übern./12 M.`);
 
   const s = t.saison;
   const kz = el('div', { class: 'kennzahlen' },
@@ -1362,10 +1363,7 @@ function zeigeTourismus(d) {
 async function ladeGenesis(ags, lauf) {
   const id = 'genesis';
   if (!ags) {
-    setStatus(id, 'leer', 'kein Gemeindeschlüssel');
-    setInhalt(id, el('p', { class: 'hinweis-klein' },
-      'Ohne Gemeindeschlüssel (aus dem Zensusblock) lässt sich kein '
-      + 'Kreiswert abrufen.'));
+    ohneSchluessel('genesis', 'kein Kreiswert', 'Die Regionaldatenbank ist eine deutsche Quelle.', lauf);
     return;
   }
   try {
@@ -1869,10 +1867,7 @@ function zeigeDynamik(d) {
    Kreiswerte mit je eigenem Datenjahr; Land und Bund als Maßstab daneben. */
 async function ladeKreisprofil(ags, lauf) {
   if (!ags) {
-    setStatus('kreisprofil', 'leer', 'kein Gemeindeschlüssel');
-    setInhalt('kreisprofil', el('div', { class: 'notiz' },
-      'Ohne Gemeindeschlüssel (aus dem Zensusblock) lässt sich kein Kreiswert '
-      + 'zuordnen.'));
+    ohneSchluessel('kreisprofil', 'kein Kreiswert', 'Kreiswerte kommen aus dem deutschen Regionalatlas.', lauf);
     return;
   }
   try {

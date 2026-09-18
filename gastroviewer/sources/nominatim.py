@@ -30,6 +30,7 @@ from typing import Any
 
 from ..config import Settings
 from ..http import Outbound
+from ..laender import LAENDER, land_aus_iso
 from .base import Provenance, SourceError, SourceResult, now_iso
 
 FALLBACK_LICENSE = "Data © OpenStreetMap contributors, ODbL 1.0. http://osm.org/copyright"
@@ -50,6 +51,9 @@ def _first(address: dict[str, Any], keys: list[str]) -> str | None:
 def shape(raw: dict[str, Any]) -> dict[str, Any]:
     address = raw.get("address") or {}
     iso = address.get("ISO3166-2-lvl4")
+    # Wien führt kein "state" (Stadt = Land) — der Name kommt dann aus dem
+    # ISO-Code über die Länder-Registry.
+    aus_iso = land_aus_iso(iso)
     return {
         "display_name": raw.get("display_name"),
         "name": raw.get("name"),
@@ -60,9 +64,10 @@ def shape(raw: dict[str, Any]) -> dict[str, Any]:
         "plz": address.get("postcode"),
         "gemeinde": _first(address, GEMEINDE_KEYS),
         "ortsteil": _first(address, ORTSTEIL_KEYS),
-        "bundesland": address.get("state"),
+        "bundesland": address.get("state") or (aus_iso[2] if aus_iso else None),
         "bundesland_iso": iso,
         "land": address.get("country"),
+        "land_code": (str(address.get("country_code") or "").upper() or None),
         "osm_type": raw.get("osm_type"),
         "osm_id": raw.get("osm_id"),
         "adresse_roh": address,
@@ -74,6 +79,12 @@ def shape(raw: dict[str, Any]) -> dict[str, Any]:
 # Aufrufe (Vorschläge, Rückwärts, Suche): Die Limiter-Registry kennt je
 # Dienst genau einen Abstand und weist abweichende Werte ab.
 PHOTON_MIN_INTERVAL = 0.5
+
+# Länder aus der Registry: Nominatim bekommt sie als countrycodes-Liste,
+# der Photon-Rückfall filtert im Code (er kennt keinen solchen Parameter).
+GEOCODER_LAENDER = ",".join(land.geocoder_code for land in LAENDER.values())
+ERLAUBTE_CODES = {land.code for land in LAENDER.values()} | {""}
+LAENDER_NAMEN = " oder ".join(land.name for land in LAENDER.values())
 
 PHOTON_BASE = "https://photon.komoot.io"
 
@@ -99,6 +110,7 @@ def photon_shape(feature: dict[str, Any]) -> dict[str, Any]:
         "bundesland": p.get("state"),
         "bundesland_iso": None,  # führt Photon nicht
         "land": p.get("country"),
+        "land_code": (str(p.get("countrycode") or "").upper() or None),
         "osm_type": p.get("osm_type"),
         "osm_id": p.get("osm_id"),
         "adresse_roh": p,
@@ -191,7 +203,7 @@ async def search(
     params = {
         "format": "jsonv2",
         "q": query,
-        "countrycodes": "de",
+        "countrycodes": GEOCODER_LAENDER,
         "limit": str(limit),
         "addressdetails": "1",
         "accept-language": "de",
@@ -215,7 +227,7 @@ async def search(
         ok=True,
         data=items,
         duration_ms=int((time.perf_counter() - started) * 1000),
-        warnings=[] if items else [f"Keine Treffer für „{query}“ in Deutschland."],
+        warnings=[] if items else [f"Keine Treffer für „{query}“ in {LAENDER_NAMEN}."],
         provenance=_provenance(settings, url, licence),
     )
 
@@ -312,10 +324,10 @@ async def _photon_search(
             "suche", nominatim_fehler,
             int((time.perf_counter() - started) * 1000))
     features = (raw or {}).get("features") or []
-    # Photon kennt keinen countrycodes-Filter — Deutschland-Filter im Code.
+    # Photon kennt keinen countrycodes-Filter — Länderfilter im Code.
     items = [photon_shape(f) for f in features
              if ((f.get("properties") or {}).get("countrycode") or "").upper()
-             in ("DE", "")]
+             in ERLAUBTE_CODES]
     return SourceResult(
         name="suche",
         ok=True,
@@ -325,6 +337,6 @@ async def _photon_search(
             "Nominatim war nicht erreichbar "
             f"({nominatim_fehler.message}) — die Treffer kommen vom "
             "Photon-Rückfall (gleiche OSM-Datenbasis)."
-        ] + ([] if items else [f"Keine Treffer für „{query}“ in Deutschland."]),
+        ] + ([] if items else [f"Keine Treffer für „{query}“ in {LAENDER_NAMEN}."]),
         provenance=_photon_provenance(url),
     )

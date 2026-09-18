@@ -182,6 +182,8 @@ gastroviewer status                      # Cache- und GTFS-Status
 gastroviewer clear-cache                 # Cache leeren
 gastroviewer clear-cache --quelle zensus # nur eine Quelle
 gastroviewer import-gtfs --region muenchen
+gastroviewer import-gtfs --region wien           # Österreich: Feed der Wiener Linien
+gastroviewer import-raster-at                    # Österreich: Bevölkerungsraster 1 km (Eurostat, einmalig)
 gastroviewer import-overture --region muenchen   # zweite Wettbewerbsquelle (braucht: pip install overturemaps)
 gastroviewer import-register             # Handelsregister-Umfeld (OffeneRegister, Stand 2019; 260 MB einmalig)
 gastroviewer check-wms                   # Bodenrichtwert-Dienste gegenprüfen
@@ -201,6 +203,7 @@ gastroviewer import-gtfs --region muenchen          # Stadt und Umland
 gastroviewer import-gtfs --region muenchen-region   # mit S-Bahn-Umland
 gastroviewer import-gtfs --region oberbayern
 gastroviewer import-gtfs --region bayern
+gastroviewer import-gtfs --region wien              # Österreich: Feed der Wiener Linien (OGD, CC BY 4.0, ~90 MB)
 
 # Oder eigene Bounding-Box (min_lat,min_lon,max_lat,max_lon)
 gastroviewer import-gtfs --bbox 47.9,11.2,48.4,11.9
@@ -478,6 +481,50 @@ untere und obere Annahme. Alle Werte sind Eingabefelder und überschreibbar.
 - **Keine geratenen URLs.** Für Bundesländer ohne bestätigtes Bodenrichtwert-Portal wird
   ein Suchlink erzeugt, kein erfundener Link. Dasselbe gilt für die Kartendienste: nur
   eingebunden, was `GetCapabilities`, `GetMap` **und** `GetFeatureInfo` bestanden hat.
+
+## Österreich
+
+Seit 0.4.0 nimmt das Werkzeug auch Punkte in Österreich an. Deutschland
+und Österreich stehen hinter einer Länder-Registry (`gastroviewer/laender.py`):
+Der Geocoder entscheidet, in welchem Land ein Punkt liegt (die groben
+Kästen überlappen sich in Südbayern/Salzburg), und **jede Quelle sagt, für
+welche Länder sie gilt**. Ein österreichischer Punkt bekommt keine falschen
+Zahlen aus deutschen Diensten — sondern entweder das österreichische
+Gegenstück in derselben Blockform oder eine ehrliche Antwort „Nur für
+Deutschland verfügbar“.
+
+Was in Österreich läuft (alle Formate am 18.09.2026 live abgefragt, die
+Antworten liegen als Fixtures unter `fixtures/at/`):
+
+| Block | Quelle in Österreich | Anmerkung |
+|---|---|---|
+| Adresse, Feiertage, Karte | Nominatim/Photon (`de,at`), OpenHolidaysAPI (`AT-1`…`AT-9`), basemap.at | Kartenhintergrund wechselt automatisch |
+| Bevölkerung | Eurostat GEOSTAT Census Grid 2021, **1 km** | einmalig `gastroviewer import-raster-at`; nur Einwohnerzahl, keine Haushalte/Miete/Baualter |
+| Klima | GeoSphere Austria, Jahreswerte 1991–2020 der nächsten Station | dieselben fünf Kennzahlen wie DWD |
+| Straßenlärm | lärminfo.at (EU-Umgebungslärmkartierung 2022) | 5-dB-Klassen Lden/Lnight, Straße und Schiene |
+| Hochwasser | BML/LFRZ INSPIRE-Dienst (HQ30/100/300, Gefahrenzonen, Risikogebiete) | bundesweit; Risikogebiete getrennt ausgewiesen |
+| Baurecht | Flächenwidmung der Stadt Wien mit Gastronomie-Einordnung nach der Bauordnung für Wien | nur Wien; anderswo „kein offener Dienst“ |
+| Schutzzonen | Stadt Wien (§ 7 BO) — unter dem Schlüssel „Erhaltungssatzung“ | nur Wien |
+| Märkte, Baustellen | Stadt Wien (WFS) | nur Wien; Märkte ohne Öffnungszeiten |
+| Wahl | Nationalratswahl 2024 je Gemeinde (BMI über data.gv.at) | Zuordnung über Bundesland und Gemeindename |
+| Tourismus | Statistik Austria, Nächtigungen je Bundesland | landesweit (für Wien die Stadt) |
+| Kurzzeitvermietung | Inside Airbnb Wien | wie München/Berlin |
+| ÖPNV | Wiener Linien GTFS (`import-gtfs --region wien`) | mit `calendar.txt` |
+| OSM, ohsome, Overture, Leerstandsmelder, Besonnung, Gehweg, Fahrzeit | länderunabhängig | unverändert |
+
+Was in Österreich **leer bleibt**, und warum das so richtig ist: Bodenrichtwerte
+(kein Gutachterausschuss-System), Kriminalstatistik je Bezirk (nur PDF),
+Passantenfrequenz, Handelsregister-Umfeld (OffeneRegister ist deutsch),
+Regionalatlas-Kreiswerte, Pendlerrechnung, Regionaldatenbank, Luftmessnetz
+(der europäische Spiegel hinkt Monate hinterher, geprüft 18.09.2026),
+Verkehrsmengen (BAYSIS/BASt), Übersichtsgitter und Flächen-Scan (rechnen auf
+dem deutschen Zensus-Gitter). Die Blöcke sagen das jeweils selbst.
+
+Die Live-Abfragen laufen über den Workflow `AT-Probe`
+(`.github/workflows/at-probe.yml`, `scripts/at_probe.py`), der die Antworten
+der österreichischen Dienste auf den Branch `claude/at-probe` legt — so lässt
+sich jede Formatannahme jederzeit gegen den echten Dienst prüfen.
+Hintergrund und Recherche: `docs/oesterreich.md`.
 
 ## München und Bayern
 
