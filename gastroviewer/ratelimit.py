@@ -58,6 +58,13 @@ class Limiters:
         if limiter is None:
             limiter = RateLimiter(min_interval)
             self._limiters[name] = limiter
+        elif abs(limiter.min_interval - float(min_interval)) > 1e-9:
+            # Ein Limiter hat genau einen Abstand. Vorher gewann der erste
+            # Aufrufer stillschweigend — Photon lief dann je nach Reihenfolge
+            # mit 0,3 s oder 1,0 s. Ein Programmierfehler soll laut sein.
+            raise ValueError(
+                f"Limiter {name!r} ist mit {limiter.min_interval} s angelegt, "
+                f"jetzt werden {float(min_interval)} s verlangt — ein Abstand je Dienst.")
         return limiter
 
     def stats(self) -> dict[str, dict]:

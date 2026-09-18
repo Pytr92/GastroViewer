@@ -178,3 +178,25 @@ def test_stats_ohne_verkehr_meldet_null_statt_zu_fehlen(tmp_path):
     assert s["outbound_24h"] == 0
     assert s["outbound_24h_je_dienst"] == {}
     assert s["overpass_24h"] == 0
+
+
+def test_limiter_registry_kennt_je_dienst_einen_abstand():
+    """Gleicher Name, anderer Abstand: ein Programmierfehler, kein stilles
+    „der erste gewinnt"."""
+    from gastroviewer.ratelimit import Limiters
+
+    reg = Limiters()
+    a = reg.get("photon", 0.5)
+    assert reg.get("photon", 0.5) is a
+    with pytest.raises(ValueError) as info:
+        reg.get("photon", 1.0)
+    assert "photon" in str(info.value)
+
+
+def test_photon_aufrufe_teilen_einen_abstand():
+    import inspect
+
+    from gastroviewer.sources import nominatim
+
+    quelltext = inspect.getsource(nominatim)
+    assert "min_interval=0.3" not in quelltext and quelltext.count("PHOTON_MIN_INTERVAL") >= 4

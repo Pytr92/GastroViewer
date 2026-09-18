@@ -70,6 +70,11 @@ def shape(raw: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+# Photon nennt kein hartes Limit, nur „fair use". Ein Wert für alle drei
+# Aufrufe (Vorschläge, Rückwärts, Suche): Die Limiter-Registry kennt je
+# Dienst genau einen Abstand und weist abweichende Werte ab.
+PHOTON_MIN_INTERVAL = 0.5
+
 PHOTON_BASE = "https://photon.komoot.io"
 
 
@@ -232,7 +237,7 @@ async def vorschlaege(
             params={"q": query, "limit": str(limit), "lang": "de"},
             timeout=settings.nominatim_timeout,
             limiter="photon",
-            min_interval=0.3,
+            min_interval=PHOTON_MIN_INTERVAL,
         )
     except SourceError as err:
         return SourceResult.failed(
@@ -263,7 +268,7 @@ async def _photon_reverse(
             params={"lat": f"{lat}", "lon": f"{lon}", "lang": "de"},
             timeout=settings.nominatim_timeout,
             limiter="photon",
-            min_interval=1.0,
+            min_interval=PHOTON_MIN_INTERVAL,
         )
     except SourceError:
         # Beide Geocoder tot: der ursprüngliche Nominatim-Fehler zählt.
@@ -300,7 +305,7 @@ async def _photon_search(
             params={"q": query, "limit": str(limit), "lang": "de"},
             timeout=settings.nominatim_timeout,
             limiter="photon",
-            min_interval=1.0,
+            min_interval=PHOTON_MIN_INTERVAL,
         )
     except SourceError:
         return SourceResult.failed(
