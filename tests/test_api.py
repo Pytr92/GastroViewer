@@ -31,7 +31,7 @@ class FakeOutbound:
                  kreisprofil=None, dwd=None, pendler=None, ohsome=None,
                  laerm=None, fehler: set[str] | None = None, photon=None,
                  geosphere=None, laerminfo=None, lfrz=None, wien=None,
-                 statistik_at=None, wahl_at=None,
+                 statistik_at=None, wahl_at=None, starkregen=None, wien_csv=None,
                  baustellen=None, maerkte=None, indikatoren=None,
                  airbnb=None, messe=None, tourismus=None,
                  uba=None, bfg_hochwasser=None,
@@ -58,6 +58,10 @@ class FakeOutbound:
         self.statistik_at = statistik_at
         # NRW 2024: {"ergebnisse": bytes, "gkz": bytes}.
         self.wahl_at = wahl_at
+        # BKG-Starkregen: GetFeatureInfo-Antwort je Layername.
+        self.starkregen = starkregen
+        # Wiener OGD-CSVs (MA 23): Text je URL-Bruchstück.
+        self.wien_csv = wien_csv or {}
         self.einkommen = einkommen or {"features": []}
         # Fixture je Tabelle — Einkommen und Kreisprofil teilen sich Endpunkt
         # und URL, unterscheiden sich nur im layer-Parameter.
@@ -164,6 +168,12 @@ class FakeOutbound:
             if "geosphere" in self.fehler:
                 raise SourceError("timeout", "Zeitüberschreitung — Dienst antwortet nicht.")
             return self.geosphere["metadata"] if url.endswith("/metadata") else self.geosphere["daten"]
+        if "wms_starkregen" in url:
+            self.calls.append("starkregen")
+            if "starkregen" in self.fehler or self.starkregen is None:
+                raise SourceError("timeout", "Zeitüberschreitung — Dienst antwortet nicht.")
+            layer = str(((kw or {}).get("params") or {}).get("layers", ""))
+            return self.starkregen.get(layer) or {"type": "FeatureCollection", "features": []}
         if "inspire.lfrz.gv.at/000801" in url:
             self.calls.append("lfrz_hochwasser")
             if "lfrz_hochwasser" in self.fehler:
@@ -295,6 +305,12 @@ class FakeOutbound:
         return self._dispatch(url, kw)
 
     async def get_text(self, source, url, **kw):
+        if "wien.gv.at/gogv" in url or "wien.gv.at/data/ogd" in url:
+            self.calls.append("wien_csv")
+            for stueck, text in self.wien_csv.items():
+                if stueck in url:
+                    return text
+            raise SourceError("timeout", "Zeitüberschreitung — Dienst antwortet nicht.")
         if "data.statistik.gv.at" in url:
             self.calls.append("statistik_at")
             if "statistik_at" in self.fehler or self.statistik_at is None:

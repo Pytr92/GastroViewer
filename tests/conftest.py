@@ -88,7 +88,14 @@ def wien_wfs():
             "BAUSTELLENLINOGD": lies("wien_baustellenlinienogd.json"),
             # Punktkästen am Stephansplatz (Runde 4): Schutzzone Innere Stadt, GB5.
             "SCHUTZZONEOGD": lies("wien_r4_schutzzoneogd_stephansplatz.json"),
-            "GENFLWIDMUNGOGD": lies("wien_r4_genflwidmungogd_stephansplatz.json")}
+            "GENFLWIDMUNGOGD": lies("wien_r4_genflwidmungogd_stephansplatz.json"),
+            "KURZPARKZONEOGD": lies("wien_r5_kurzparkzoneogd.json"),
+            "FUSSGEHERZONEOGD": lies("wien_r5_fussgeherzoneogd.json"),
+            "BEGEGNUNGSZONEOGD": lies("wien_r5_begegnungszoneogd.json"),
+            "STRUKGESCHSTROGD": lies("wien_r5_strukgeschstrogd.json"),
+            "REALNUT2022OGD": lies("wien_r5_realnut2022ogd.json"),
+            "GEBAEUDEINFOOGD": lies("wien_r5_gebaeudeinfoogd.json"),
+            "ZAEHLBEZIRKOGD": lies("wien_r5_zaehlbezirkogd.json")}
 
 
 @pytest.fixture(scope="session")
@@ -108,6 +115,38 @@ def statistik_at():
     return {"herkunft": (wurzel / "stat_OGD_touextsai_Tour_HKL_1_C-C93-2.txt").read_text("utf-8"),
             "daten": (wurzel / "stat_OGD_touextsai_Tour_HKL_1_wien_ab2018.csv").read_text("utf-8"),
             "gemeinde": (wurzel / "stat_OGDEXT_AEST_GEMTAB_1_auszug.csv").read_text("utf-8")}
+
+
+@pytest.fixture(scope="session")
+def wien_lage_wfs():
+    """Wiener Lage-Layer am Stephansplatz (Runde 5) und der Zählbezirk am Punkt."""
+    wurzel = Path(__file__).resolve().parent.parent / "fixtures" / "at"
+    lies = lambda n: json.loads((wurzel / n).read_text("utf-8"))  # noqa: E731
+    return {"KURZPARKZONEOGD": lies("wien_r5_kurzparkzoneogd.json"),
+            "FUSSGEHERZONEOGD": lies("wien_r5_fussgeherzoneogd.json"),
+            "BEGEGNUNGSZONEOGD": lies("wien_r5_begegnungszoneogd.json"),
+            "STRUKGESCHSTROGD": lies("wien_r5_strukgeschstrogd.json"),
+            "REALNUT2022OGD": lies("wien_r5_realnut2022ogd.json"),
+            "GEBAEUDEINFOOGD": lies("wien_r5_gebaeudeinfoogd.json"),
+            "ZAEHLBEZIRKOGD": lies("wien_r5_zaehlbezirkogd.json")}
+
+
+@pytest.fixture(scope="session")
+def wien_zb_csv():
+    """Zählbezirks-Bevölkerung der MA 23, Auszug (Bezirk 1 komplett, ab 2022 alle)."""
+    wurzel = Path(__file__).resolve().parent.parent / "fixtures" / "at"
+    return {"l9ogdviezbz": (wurzel / "wien_bev_zaehlbezirk_auszug.csv").read_text("utf-8")}
+
+
+@pytest.fixture(scope="session")
+def starkregen_berlin():
+    """BKG-Starkregen am Alexanderplatz (Runde 6): 39 cm im außergewöhnlichen Szenario."""
+    wurzel = Path(__file__).resolve().parent.parent / "fixtures" / "de"
+    lies = lambda n: json.loads((wurzel / n).read_text("utf-8"))  # noqa: E731
+    return {"tiefe_agw": lies("de_starkregen_r6_tiefe_agw_berlin.json"),
+            "tiefe_extrem": lies("de_starkregen_r6_tiefe_extrem_berlin.json"),
+            "geschwindigkeit_agw": lies("de_starkregen_r6_geschwindigkeit_agw_berlin.json"),
+            "geschwindigkeit_extrem": lies("de_starkregen_r6_geschwindigkeit_extrem_berlin.json")}
 
 
 @pytest.fixture(scope="session")

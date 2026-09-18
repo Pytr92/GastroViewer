@@ -42,7 +42,7 @@ import {
   ladeRegister, zeigeKopf, zeigeLeerstandsmelder, zeigeOsm, zeigeZensus,
 } from './js/bloecke-gastro.js';
 import {
-  ladeEinkommen, ladeGenesis, ladeKalender, ladeKreisprofil, ladeLaerm, ladePendler, ladePks, ladeWahl, zeigeAirbnb, zeigeBaurecht, zeigeBaustellen, zeigeDynamik, zeigeFrequenz, zeigeGtfs, zeigeIhkAngebot, zeigeIndikatoren, zeigeKlima, zeigeLinks, zeigeLuft, zeigeMaerkte, zeigeMesse, zeigeOverture, zeigeSonne, zeigeTourismus,
+  ladeEinkommen, ladeGenesis, ladeKalender, ladeKreisprofil, ladeLaerm, ladePendler, ladePks, ladeWahl, zeigeAirbnb, zeigeBaurecht, zeigeBaustellen, zeigeDynamik, zeigeFrequenz, zeigeGtfs, zeigeIhkAngebot, zeigeIndikatoren, zeigeKlima, zeigeLage, zeigeLinks, zeigeLuft, zeigeMaerkte, zeigeMesse, zeigeOverture, zeigeSonne, zeigeTourismus,
 } from './js/bloecke-region.js';
 import {
   ladePlanung, zeigeRadzaehlung, zeigeVerkehrsmenge,
@@ -224,6 +224,10 @@ function lade(refresh = false) {
     .then((d) => { if (aktuell()) { state.daten.indikatoren = d; zeigeIndikatoren(d); } })
     .catch((e) => aktuell() && zeigeBlockFehler('indikatoren', e));
 
+  hole('/api/point/lage', p)
+    .then((d) => { if (aktuell()) { state.daten.lage = d; zeigeLage(d); } })
+    .catch((e) => aktuell() && zeigeBlockFehler('lage', e));
+
   hole('/api/point/airbnb', p)
     .then((d) => { if (aktuell()) { state.daten.airbnb = d; zeigeAirbnb(d); } })
     .catch((e) => aktuell() && zeigeBlockFehler('airbnb', e));
@@ -298,6 +302,7 @@ function baueGeruest() {
     block('gtfs', '6b · Abfahrten (GTFS)'),
     block('radzaehlung', '6c · Gemessene Radverkehrsfrequenz'),
     block('frequenz', '6i · Gemessene Passantenfrequenz (Tagesgang)'),
+    block('lage', '6k · Lage: Parken, Fußgängerzonen, Geschäftsstraßen, Nutzung (Wien)'),
     block('verkehrsmenge', '6d · Verkehrsmenge (DTV)'),
     block('planung', '6e · Planungsrecht und Hochwasser'),
     block('baurecht', '6j · Baurecht am Punkt (BauNVO, Denkmal, Sanierung)'),

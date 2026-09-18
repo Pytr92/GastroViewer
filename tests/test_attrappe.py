@@ -56,7 +56,13 @@ def attrappe():
 def aufnahme_roh():
     if not AUFNAHME_DATEI.exists():
         pytest.skip("Aufzeichnung fehlt — scripts/aufzeichnen.py ausführen.")
-    return json.loads(gzip.decompress(AUFNAHME_DATEI.read_bytes()))
+    roh = json.loads(gzip.decompress(AUFNAHME_DATEI.read_bytes()))
+    # Die Wiener Aufzeichnung (aus der Anwendung über die Live-Fixtures)
+    # gehört dazu — die Attrappe lädt beide.
+    zusatz = AUFNAHME_DATEI.with_name("api-antworten-at.json.gz")
+    if zusatz.exists():
+        roh.update(json.loads(gzip.decompress(zusatz.read_bytes())))
+    return roh
 
 
 # ------------------------------------------------------- Schlüsselbildung

@@ -115,6 +115,9 @@ TTL_KLASSEN: dict[str, str | int] = {
     "wahl_at_daten": "ttl_zensus",  # Ergebnisdatei und GKZ-Liste
     "kreisprofil_at": "ttl_zensus", # Gemeindeprofil, jährliche Tabelle
     "gemeinde_at_daten": "ttl_zensus",  # die eingedampfte Gemeindetabelle
+    "wien_zaehlbezirk": "ttl_zensus",   # Zählbezirks-Steckbrief, jährlich
+    "wien_zb_daten": "ttl_zensus",      # die eingedampfte Zählbezirks-CSV
+    "wien_lage": "ttl_osm",             # Zonen und Nutzung, laufend gepflegt
     # --- Stundenwerte
     "luft_punkt": 3600,             # Luftqualitätsindex, stündlich veröffentlicht
 }

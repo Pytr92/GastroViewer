@@ -35,12 +35,13 @@ def _aufzeichnen_modul():
 def test_wiener_antworten_fuer_die_oberflaeche(client, zensus_600, overpass_combined,
                                                 nominatim_reverse_wien, geosphere_at, laerminfo_at,
                                                 lfrz_hochwasser_at, wien_wfs, wahl_at_dateien,
-                                                statistik_at):
+                                                statistik_at, wien_zb_csv):
     az = _aufzeichnen_modul()
     fake = FakeOutbound(zensus_600, overpass_combined, nominatim_reverse_wien,
                         geosphere=geosphere_at, laerminfo=laerminfo_at,
                         lfrz=lfrz_hochwasser_at, wien=wien_wfs,
-                        wahl_at=wahl_at_dateien, statistik_at=statistik_at)
+                        wahl_at=wahl_at_dateien, statistik_at=statistik_at,
+                        wien_csv=wien_zb_csv)
     lat, lon = WIEN
     aufnahme: dict[str, dict] = {}
     with client.make(fake) as c2:
@@ -59,6 +60,7 @@ def test_wiener_antworten_fuer_die_oberflaeche(client, zensus_600, overpass_comb
         merke("/api/point/laerm", {"lat": lat, "lon": lon})
         merke("/api/kalender", {"lat": lat, "lon": lon})
         merke("/api/wahl", {"lat": lat, "lon": lon})
+        merke("/api/kreisprofil", {"lat": lat, "lon": lon})
         merke("/api/point/links", {"lat": lat, "lon": lon, "r": RADIUS})
         plz = (punkt["bloecke"]["adresse"].get("data") or {}).get("plz")
         merke("/api/register", {"plz": plz or ""})

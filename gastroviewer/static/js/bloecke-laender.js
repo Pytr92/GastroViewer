@@ -496,6 +496,33 @@ function zeigePlanung(d) {
       ' — ein für das Risikomanagement ausgewiesener Abschnitt, keine berechnete Überflutungsfläche.'));
   }
 
+  /* Starkregen (BKG-Hinweiskarte, 13 Länder): Wassertiefe am Punkt in zwei
+     Szenarien — ergänzt das Flusshochwasser, ersetzt es nicht. */
+  const sr = p.starkregen;
+  if (sr) {
+    teile.push(el('h3', { class: 'hinweis-klein' }, 'Starkregen (BKG-Hinweiskarte)'));
+    if (!sr.abgefragt) {
+      teile.push(el('div', { class: 'notiz' }, sr.hinweis || 'nicht abgefragt'));
+    } else if (!sr.kartiert) {
+      teile.push(el('div', { class: 'notiz' }, sr.hinweis || 'kein Wert am Punkt'));
+    } else {
+      const tab = el('table', { class: 'daten' },
+        el('tr', {}, el('th', {}, 'Szenario'), el('th', { class: 'num' }, 'Wassertiefe'),
+          el('th', { class: 'num' }, 'Fließgeschwindigkeit'), el('th', {}, 'Einordnung')));
+      for (const s of Object.values(sr.szenarien || {})) {
+        tab.append(el('tr', {},
+          el('td', {}, s.titel),
+          el('td', { class: 'num' }, s.tiefe_cm === null || s.tiefe_cm === undefined ? '—' : `${NF.format(s.tiefe_cm)} cm`),
+          el('td', { class: 'num' }, s.geschwindigkeit_ms === null || s.geschwindigkeit_ms === undefined ? '—' : `${NF1.format(s.geschwindigkeit_ms)} m/s`),
+          el('td', {}, s.einordnung || '—')));
+      }
+      teile.push((sr.tiefe_max_cm || 0) >= 30
+        ? el('div', { class: 'warnung' }, el('strong', {}, 'Starkregen: '), `bis ${NF.format(sr.tiefe_max_cm)} cm Wasser am Punkt im Modell.`)
+        : el('div', { class: 'notiz' }, `Starkregen: höchstens ${NF.format(sr.tiefe_max_cm || 0)} cm Wassertiefe im Modell.`));
+      teile.push(tab);
+    }
+  }
+
   teile.push(el('h3', { class: 'hinweis-klein' }, 'Bebauungsplan'));
   if (bp === undefined || bp === null) {
     teile.push(el('div', { class: 'notiz' },

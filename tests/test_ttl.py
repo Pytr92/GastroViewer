@@ -41,7 +41,7 @@ def test_jede_quelle_hat_einen_eintrag():
 ERWARTET = {
     86400: {"baysis", "berlin_baustellen", "hamburg_baustellen", "hamburg_maerkte",
             "hamburg_rad", "leerstandsmelder", "leerstandsmelder_punkt", "marke_basis",
-            "muenchen_baustellen", "muenchen_messe", "muenchen_rad", "muenchen_tourismus", "wien_baustellen",
+            "muenchen_baustellen", "muenchen_messe", "muenchen_rad", "muenchen_tourismus", "wien_baustellen", "wien_lage",
             "oepnv_einzug", "overpass", "scan", "vorschlaege"},
     1209600: {"fahrzeit", "gehweg", "liefergebiet", "planung", "planung_at",
               "tourismus_at", "tourismus_at_daten"},

@@ -58,7 +58,7 @@ PUNKT_PFADE_MIT_RADIUS = [
     "/api/point/gtfs", "/api/point/radzaehlung", "/api/point/verkehrsmenge",
     "/api/point/planung", "/api/point/leerstandsmelder",
     "/api/point/dynamik", "/api/point/baustellen", "/api/point/maerkte",
-    "/api/point/airbnb", "/api/point/ihk-berlin",
+    "/api/point/airbnb", "/api/point/ihk-berlin", "/api/point/lage",
     "/api/schaetzung/vorgaben",
 ]
 

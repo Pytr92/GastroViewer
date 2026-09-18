@@ -47,6 +47,20 @@ from ..config import Settings
 from ..http import Outbound
 from .base import Provenance, SourceError, SourceResult, SourceResult as _SR, now_iso
 
+
+async def _starkregen(out: Outbound, lat: float, lon: float, bundesland_code: str | None,
+                      warnungen: list[str]) -> dict[str, Any] | None:
+    """Starkregen-Hinweiskarte des BKG als Teilblock — ein Ausfall nimmt dem
+    Hochwasserblock nichts."""
+    from ..laender import DE, iso_aus_schluessel
+    from . import starkregen as starkregen_mod
+
+    try:
+        return await starkregen_mod.load(out, lat, lon, iso_aus_schluessel(DE, bundesland_code))
+    except SourceError as err:
+        warnungen.append(f"Starkregen-Hinweiskarte (BKG) nicht abrufbar: {err.message}")
+        return None
+
 # --- Hochwassergefahrenflächen, Bayerisches Landesamt für Umwelt ---
 HOCHWASSER_URL = "https://www.lfu.bayern.de/gdi/wms/wasser/ueberschwemmungsgebiete"
 HOCHWASSER_LAYER = "hwgf_hqhaeufig,hwgf_hq100,hwgf_hqextrem"
@@ -372,6 +386,7 @@ async def load(
             )
             data["hochwasser"] = bund_hochwasser_aufbereiten(text)
             data["hochwasser"]["dienst"] = "bfg"
+            data["starkregen"] = await _starkregen(out, lat, lon, bundesland_code, warnungen)
         except SourceError as err:
             return SourceResult.failed(
                 "planung", err, int((time.perf_counter() - started) * 1000)
@@ -429,6 +444,7 @@ async def load(
         )
         data["hochwasser"] = hochwasser_aufbereiten(payload)
         data["hochwasser"]["dienst"] = "lfu"
+        data["starkregen"] = await _starkregen(out, lat, lon, bundesland_code, warnungen)
     except SourceError as err:
         return SourceResult.failed(
             "planung", err, int((time.perf_counter() - started) * 1000)

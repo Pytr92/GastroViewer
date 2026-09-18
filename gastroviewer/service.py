@@ -44,6 +44,7 @@ from .sources import (airbnb as airbnb_mod,
                       pendler as pendler_mod, pks as pks_mod, planung,
                       planung_at as planung_at_mod, tourismus_at as tourismus_at_mod,
                       wahl_at as wahl_at_mod, gemeinde_at as gemeinde_at_mod,
+                      wien_profil as wien_profil_mod,
                       register as register_mod, scan as scan_mod,
                       sonne as sonne_mod,
                       tourismus as tourismus_mod, wahl as wahl_mod, zensus)
@@ -358,11 +359,46 @@ class PointService:
             lambda: genesis_mod.load(self.outbound, self.settings, ags),
         )
 
-    async def indikatoren(self, adresse: dict[str, Any] | None):
+    async def _wien_zb_daten(self, refresh: bool = False):
+        """Zählbezirks-CSV der MA 23, **einmal** geladen und eingedampft."""
+
+        async def laden() -> SourceResult:
+            text = await self.outbound.get_text(
+                "wien_zaehlbezirk", wien_profil_mod.ZB_CSV_URL, timeout=120.0,
+                limiter="wien", min_interval=0.5)
+            return SourceResult(name="wien_zb_daten", ok=True,
+                                data=await asyncio.to_thread(wien_profil_mod.zb_reduzieren, text))
+
+        res = await self._cached("wien_zb_daten", "wien_zb|daten", laden, refresh=refresh)
+        if not res.ok:
+            raise SourceError(res.error["kind"], res.error["message"])
+        return res.data
+
+    async def lage(self, lat: float, lon: float, radius: int, refresh: bool = False):
+        """Lage-Indikatoren (Kurzparkzone, Fußgängerzonen, Geschäftsstraßen,
+        Realnutzung, Gebäudeinfo) — bisher nur Wien; sonst ehrlich leer."""
+        if wien_mod.in_wien(lat, lon):
+            return await self._cached(
+                "wien_lage", cache_key("wien_lage", lat, lon, radius),
+                lambda: wien_profil_mod.lage_load(self.outbound, lat, lon, radius),
+                refresh=refresh,
+            )
+        return SourceResult(name="lage", ok=True, data=None,
+                            warnings=["Lage-Indikatoren (Kurzparkzone, Fußgängerzonen, Geschäftsstraßen, "
+                                      "Realnutzung, Gebäudeinfo) gibt es bisher nur für Wien."])
+
+    async def indikatoren(self, adresse: dict[str, Any] | None,
+                          lat: float | None = None, lon: float | None = None):
         """Viertel-Steckbrief. Braucht Gemeinde und Ortsteil aus der schon
         geladenen Adresse — deshalb nach dem Sammeln, ohne eigene Anfrage
-        außerhalb Münchens."""
+        außerhalb Münchens. In Wien der Zählbezirk am Punkt."""
         a = adresse or {}
+        if lat is not None and lon is not None and wien_mod.in_wien(lat, lon):
+            return await self._cached(
+                "wien_zaehlbezirk", cache_key("wien_zaehlbezirk", lat, lon, 0),
+                lambda: wien_profil_mod.zaehlbezirk_load(
+                    self.outbound, lat, lon, a.get("ortsteil"), self._wien_zb_daten),
+            )
         return await indikatoren_mod.load(
             self.outbound, self.settings,
             a.get("gemeinde"), a.get("ortsteil"),
@@ -1579,11 +1615,12 @@ class PointService:
             self.tourismus(lat, lon, refresh),
             self.leerstandsmelder(lat, lon, radius, refresh),
             self.luft(lat, lon, refresh),
+            self.lage(lat, lon, radius, refresh),
             return_exceptions=True,
         )
         names = ["adresse", "zensus", "osm", "gtfs", "radzaehlung", "verkehrsmenge",
                  "klima", "dynamik", "baustellen", "maerkte",
-                 "messe", "tourismus", "leerstandsmelder", "luft"]
+                 "messe", "tourismus", "leerstandsmelder", "luft", "lage"]
         blocks: dict[str, Any] = {}
         for name, res in zip(names, results):
             if isinstance(res, BaseException):
@@ -1612,7 +1649,7 @@ class PointService:
 
         # Viertel-Steckbrief: braucht Gemeinde/Ortsteil aus der Adresse.
         try:
-            blocks["indikatoren"] = (await self.indikatoren(adresse)).to_dict()
+            blocks["indikatoren"] = (await self.indikatoren(adresse, lat, lon)).to_dict()
         except Exception as exc:  # noqa: BLE001
             blocks["indikatoren"] = SourceResult.failed(
                 "indikatoren", SourceError("unknown", f"{type(exc).__name__}: {exc}")

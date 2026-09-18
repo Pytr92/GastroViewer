@@ -1756,7 +1756,7 @@ function zeigeIndikatoren(d) {
       el('th', {}, 'Kennzahl'),
       el('th', { class: 'num' }, dat.bezirk || 'Bezirk'),
       el('th', { class: 'num' }, 'Trend (~5 J.)'),
-      el('th', { class: 'num' }, 'Stadt München'),
+      el('th', { class: 'num' }, dat.stadt_raum && dat.stadt_raum !== 'Stadt München' ? dat.stadt_raum : 'Stadt München'),
       el('th', { class: 'num' }, 'Jahr')));
   for (const z of zeilen) {
     const t = z.bezirk;
@@ -2075,3 +2075,68 @@ export {
   zeigeTourismus,
   zeigeWahl,
 };
+
+/* Block 6k — Lage (Wien): Kurzparkzone, Fußgänger- und Begegnungszonen,
+   Geschäftsstraßen des Stadtstrukturplans, Realnutzung und Gebäudeinfo.
+   Verkehrsrecht und Planung, keine Frequenz — deshalb ohne Score-Anker. */
+export function zeigeLage(d) {
+  const id = 'lage';
+  if (!d.ok) {
+    setStatus(id, 'fehler', 'nicht erreichbar');
+    setInhalt(id, fehlerbox(d.error));
+    setQuelle(id, d.provenance);
+    return;
+  }
+  const l = d.data;
+  if (!l) {
+    setStatus(id, 'leer', 'nur Wien');
+    setInhalt(id, ...warnungen(d.warnings || []));
+    setQuelle(id, d.provenance);
+    return;
+  }
+  const teile = [];
+  const kp = l.kurzparkzone;
+  teile.push(el('div', { class: kp ? 'notiz' : 'notiz' },
+    el('strong', {}, 'Kurzparkzone: '),
+    kp ? `${kp.zeitraum || ''}${kp.dauer ? `, Höchstparkdauer ${kp.dauer}` : ''}` : 'keine am Punkt'));
+  const fz = l.fussgaengerzonen || [];
+  const fzAm = fz.filter((z) => z.distanz_m === 0);
+  teile.push(el('div', { class: fzAm.length ? 'warnung' : 'notiz' },
+    el('strong', {}, 'Fußgängerzonen: '),
+    fzAm.length
+      ? `Der Punkt liegt in der Fußgängerzone ${fzAm[0].adresse || ''}${fzAm[0].zeitraum ? ` (${fzAm[0].zeitraum})` : ''}. `
+      : '',
+    `${NF.format(fz.filter((z) => z.im_radius).length)} im Radius` + (fz.length && !fzAm.length ? `, nächste ${fz[0].adresse || ''} in ${NF.format(fz[0].distanz_m)} m` : '') + '.'));
+  const bz = l.begegnungszonen || [];
+  if (bz.length) {
+    teile.push(el('div', { class: 'notiz' }, el('strong', {}, 'Begegnungszonen: '),
+      `${NF.format(bz.filter((z) => z.im_radius).length)} im Radius, nächste ${bz[0].adresse || ''} in ${NF.format(bz[0].distanz_m)} m.`));
+  }
+  const gs = l.geschaeftsstrasse || {};
+  teile.push(el('div', { class: 'notiz' }, el('strong', {}, 'Geschäftsstraße (Stadtstrukturplan): '),
+    gs.am_punkt ? `Der Punkt liegt in einer ausgewiesenen Geschäftsstraße (${gs.am_punkt.typ_text || ''}). `
+      : (gs.naechste ? `nächste in ${NF.format(gs.naechste.distanz_m)} m. ` : 'keine im Kasten. '),
+    `${NF.format(gs.im_radius || 0)} Flächen im Radius.`));
+  const rn = l.realnutzung;
+  teile.push(el('div', { class: 'notiz' }, el('strong', {}, 'Realnutzung 2022: '),
+    rn ? `${rn.stufe3 || rn.stufe2 || rn.stufe1}` : 'keine Fläche am Punkt'));
+  const geb = l.gebaeude || [];
+  if (geb.length) {
+    const tab = el('table', { class: 'daten' },
+      el('tr', {}, el('th', {}, 'Gebäude (Inventar)'), el('th', { class: 'num' }, 'Baujahr'),
+        el('th', { class: 'num' }, 'Geschosse'), el('th', {}, 'Nutzung'), el('th', { class: 'num' }, 'm')));
+    for (const g of geb) {
+      tab.append(el('tr', {},
+        el('td', {}, `${g.strasse || ''} ${g.von || ''}${g.bis && g.bis !== g.von ? `–${g.bis}` : ''}${g.name ? ` · ${g.name}` : ''}`),
+        el('td', { class: 'num' }, g.baujahr ?? '—'),
+        el('td', { class: 'num' }, g.geschosse ?? '—'),
+        el('td', {}, g.nutzung || '—'),
+        el('td', { class: 'num' }, NF.format(g.distanz_m))));
+    }
+    teile.push(tab);
+  }
+  setStatus(id, 'ok', fzAm.length ? 'Fußgängerzone' : (kp ? 'Kurzparkzone' : 'geladen'));
+  setInhalt(id, ...teile, ...(l.hinweise || []).map((h) => hinweisZeile(h)), ...warnungen(d.warnings || []));
+  setQuelle(id, d.provenance);
+}
+

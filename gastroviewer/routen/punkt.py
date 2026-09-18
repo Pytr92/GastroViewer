@@ -236,8 +236,16 @@ async def point_indikatoren(request: Request, lat: float, lon: float):
     s = svc(request)
     adresse = await s.adresse(lat, lon)
     return (
-        await s.indikatoren(adresse.data if adresse.ok else None)
+        await s.indikatoren(adresse.data if adresse.ok else None, lat, lon)
     ).to_dict()
+
+
+@router.get("/api/point/lage")
+async def point_lage(request: Request, lat: float, lon: float, r: int = 600, refresh: bool = False):
+    """Lage-Indikatoren am Punkt (Wien): Kurzparkzone, Fußgänger- und
+    Begegnungszonen, Geschäftsstraßen, Realnutzung, Gebäudeinformation."""
+    _validate(lat, lon, r)
+    return (await svc(request).lage(lat, lon, r, refresh)).to_dict()
 
 
 @router.get("/api/point/fahrzeit")
