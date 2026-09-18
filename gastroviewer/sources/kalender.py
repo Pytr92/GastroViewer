@@ -56,6 +56,7 @@ LAND_NACH_AGS = {
 }
 
 HINWEISE = [
+    "Örtliche Feiertage (etwa das Augsburger Friedensfest am 8. August) führt die Quelle beim Bundesland mit; sie zählen hier nicht als Landesfeiertag, sondern stehen gesondert unter feiertage_lokal.",
     "Feiertage und Ferien gelten für das **ganze Bundesland** — sie "
     "unterscheiden zwei Standorte derselben Stadt nicht. Der Block steht "
     "hier als Kontext, nicht als Bewertung, und fließt in keine Kennzahl.",
@@ -86,11 +87,20 @@ def parse_feiertage(antwort: Any) -> list[dict[str, Any]]:
     for e in antwort or []:
         if not e.get("startDate"):
             continue
-        tage.append({
+        eintrag = {
             "datum": e["startDate"],
             "name": _name(e),
             "bundesweit": bool(e.get("nationwide")),
-        })
+        }
+        # Die Quelle führt für Bayern auch das Augsburger Friedensfest mit
+        # (regionalScope "Local", nur DE-BY-AU). Gesetzlicher Feiertag ist es
+        # allein im Stadtgebiet Augsburg — als bayernweiter Tag gezählt wäre
+        # es ein erfundener Ruhetag für den Rest des Landes.
+        if e.get("regionalScope") == "Local":
+            eintrag["lokal"] = True
+            eintrag["gilt_in"] = [
+                s.get("code") for s in (e.get("subdivisions") or []) if s.get("code")]
+        tage.append(eintrag)
     return sorted(tage, key=lambda t: t["datum"])
 
 
@@ -119,9 +129,10 @@ def auswerten(land: tuple[str, str], jahr: int,
         "bundesland": land[1],
         "code": land[0],
         "jahr": jahr,
-        "feiertage_gesamt": len(feiertage),
+        "feiertage_gesamt": sum(1 for t in feiertage if not t.get("lokal")),
         "feiertage_landesspezifisch": sum(
-            1 for t in feiertage if not t["bundesweit"]),
+            1 for t in feiertage if not t["bundesweit"] and not t.get("lokal")),
+        "feiertage_lokal": [t for t in feiertage if t.get("lokal")],
         "sommerferien": sommer,
         "ferien": ferien,
         "feiertage": feiertage,

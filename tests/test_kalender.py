@@ -47,8 +47,12 @@ def test_auswerten_hebt_die_sommerferien_hervor(kalender_fixture):
     f = kalender.parse_ferien(kalender_fixture["ferien_by_2026"])
     r = kalender.auswerten(("DE-BY", "Bayern"), 2026, t, f)
     assert r["bundesland"] == "Bayern"
-    assert r["feiertage_gesamt"] == 14
-    assert r["feiertage_landesspezifisch"] > 0
+    # 14 Einträge in der Antwort, aber nur 13 gelten bayernweit: Das
+    # Augsburger Friedensfest ist ein Feiertag der Stadt Augsburg.
+    assert r["feiertage_gesamt"] == 13
+    assert r["feiertage_landesspezifisch"] == 4
+    assert [t["name"] for t in r["feiertage_lokal"]] == ["Friedensfest"]
+    assert r["feiertage_lokal"][0]["gilt_in"] == ["DE-BY-AU"]
     assert r["sommerferien"]["tage"] == 43
 
 
@@ -95,3 +99,12 @@ def test_kein_score_nur_kontext():
     assert any("keine Bewertung" in h or "keine Kennzahl" in h
                for h in kalender.HINWEISE)
     assert any("Mariä Himmelfahrt" in h for h in kalender.HINWEISE)
+
+
+def test_oertlicher_feiertag_wird_nicht_zum_landesfeiertag(kalender_fixture):
+    """Der Friedensfest-Eintrag bleibt in der Liste — als lokal markiert."""
+    t = kalender.parse_feiertage(kalender_fixture["feiertage_by_2026"])
+    lokal = [x for x in t if x.get("lokal")]
+    assert len(lokal) == 1 and lokal[0]["name"] == "Friedensfest"
+    assert lokal[0]["gilt_in"] == ["DE-BY-AU"]
+    assert not any(x.get("lokal") for x in t if x["name"] == "Allerheiligen")

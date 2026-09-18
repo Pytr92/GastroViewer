@@ -865,9 +865,15 @@ class PointService:
             v = zelle.get("Einwohner")
             return v if isinstance(v, (int, float)) and v > 0 else 0
 
-        def innerhalb(zelle, lat, lon, radius):
-            c = zelle.get("_center")
-            return bool(c) and haversine_m(lat, lon, c[0], c[1]) <= radius
+        # Eine Zugehörigkeitsregel für Zähler und Nenner. Der Zensusdienst
+        # liefert alle Zellen, die den Umkreis berühren (Intersects); ew_a und
+        # ew_b summieren genau diese Mengen — also muss „gemeinsam" der Schnitt
+        # derselben Mengen sein. Vorher zählte der Zähler nach Zellmittelpunkt:
+        # Zwei identische Punkte teilten sich dann nur rund zwei Drittel ihrer
+        # eigenen Einwohner, weil Randzellen im Nenner voll, im Zähler gar
+        # nicht zählten.
+        def schluessel(zelle):
+            return zelle.get("GITTER_ID_100m") or tuple(zelle.get("_center") or ())
 
         zellen_a = build_cells((await fetch_cells(
             self.outbound, self.settings, a["lat"], a["lon"], a["radius"]))[0])
@@ -876,9 +882,8 @@ class PointService:
 
         ew_a = sum(ew(z) for z in zellen_a)
         ew_b = sum(ew(z) for z in zellen_b)
-        gemeinsam = sum(
-            ew(z) for z in zellen_a
-            if innerhalb(z, b["lat"], b["lon"], b["radius"]))
+        ids_b = {schluessel(z) for z in zellen_b}
+        gemeinsam = sum(ew(z) for z in zellen_a if schluessel(z) in ids_b)
 
         return {
             **grunddaten,
@@ -893,8 +898,9 @@ class PointService:
                 "(Stichtag 15.05.2022) — Flüsse, Gleise und Gehstrecken "
                 "sieht die Rechnung nicht; die Gehweg-Auswertung je Punkt "
                 "bleibt der genauere Blick.",
-                "Gezählt werden Zellen, deren Mittelpunkt in beiden "
-                "Umkreisen liegt — Randzellen können leicht abweichen.",
+                "Gezählt werden Zensuszellen, die beide Umkreise berühren — "
+                "Randzellen zählen dadurch voll, wie auch in den "
+                "Einwohnerzahlen der einzelnen Punkte.",
             ],
         }
 

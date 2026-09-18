@@ -1403,7 +1403,9 @@ def test_export_und_import_der_punkte(client):
     client.post("/api/points", json={
         "label": "Sicherungstest", "lat": LAT, "lon": LON, "radius": R})
     pid = client.get("/api/points").json()["punkte"][-1]["id"]
-    client.patch(f"/api/points/{pid}", json={"notiz": "Top-Lage", "bewertung": 2})
+    client.patch(f"/api/points/{pid}", json={"notiz": "Top-Lage", "bewertung": 2,
+                                             "stand": "abgelehnt",
+                                             "stand_grund": "Miete zu hoch"})
     client.post(f"/api/points/{pid}/pruefung")  # legt einen Verlaufseintrag an
 
     r = client.get("/api/points/export")
@@ -1427,6 +1429,10 @@ def test_export_und_import_der_punkte(client):
     zeilen = client.get("/api/points/vergleich").json()["zeilen"]
     wieder = next(z for z in zeilen if z["label"] == "Sicherungstest")
     assert wieder["notiz"] == "Top-Lage"
+    # Arbeitsstand und Ablehnungsgrund gingen beim Einspielen verloren —
+    # ausgerechnet die beiden Felder, die nur der Nutzer selbst weiß.
+    assert wieder["stand"] == "abgelehnt"
+    assert wieder["stand_grund"] == "Miete zu hoch"
     v = client.get(f"/api/points/{wieder['id']}/verlauf").json()
     assert v["anzahl"] == 2
 
@@ -1845,3 +1851,35 @@ def test_fahrzeit_endpunkt_liefert_ein_gebiet(client):
     assert d["data"]["erreichte_knoten"] > 100
     assert d["data"]["minuten"] == 10
     assert "overpass_auto" in client.fake.calls
+
+
+def test_import_verwirft_unbekannten_arbeitsstand(client):
+    """Ein erfundener Stand aus einer fremden Sicherung wird nicht übernommen."""
+    client.post("/api/points", json={
+        "label": "Fremdstand", "lat": LAT, "lon": LON, "radius": R})
+    sicherung = client.get("/api/points/export").json()
+    p = next(x for x in sicherung["punkte"] if x["label"] == "Fremdstand")
+    p["stand"], p["stand_grund"] = "gekauft", "egal"
+    p["label"] = "Fremdstand-Kopie"
+    d = client.post("/api/points/import", json={**sicherung, "punkte": [p]}).json()
+    assert d["neu"] == 1
+    zeile = next(z for z in client.get("/api/points/vergleich").json()["zeilen"]
+                 if z["label"] == "Fremdstand-Kopie")
+    assert zeile["stand"] is None and zeile["stand_grund"] is None
+
+
+# ------------------------------------------------------ Kannibalisierung
+
+
+def test_identische_punkte_teilen_sich_alle_einwohner(client):
+    """Zähler und Nenner müssen dieselbe Zellmenge meinen: derselbe Punkt
+    zweimal gemerkt ergibt 100 %, nicht 68 %."""
+    for label in ("Zwilling A", "Zwilling B"):
+        client.post("/api/points", json={
+            "label": label, "lat": LAT, "lon": LON, "radius": R})
+    ids = {p["label"]: p["id"] for p in client.get("/api/points").json()["punkte"]}
+    d = client.get("/api/points/kannibalisierung",
+                   params={"a": ids["Zwilling A"], "b": ids["Zwilling B"]}).json()
+    assert d["ueberlappung"] is True
+    assert d["einwohner_a"] == d["einwohner_b"] == d["gemeinsame_einwohner"] > 0
+    assert d["anteil_an_a_prozent"] == 100.0
