@@ -531,7 +531,9 @@ Die Live-Abfragen laufen über den Workflow `AT-Probe`
 (`.github/workflows/at-probe.yml`, `scripts/at_probe.py`), der die Antworten
 der österreichischen Dienste auf den Branch `claude/at-probe` legt — so lässt
 sich jede Formatannahme jederzeit gegen den echten Dienst prüfen.
-Hintergrund und Recherche: `docs/oesterreich.md`.
+Hintergrund und Recherche: `docs/oesterreich.md`. Was das Werkzeug für beide
+Länder noch sinnvoll lernen könnte, steht mit Belegen und Reihenfolge in
+`docs/erweiterungen.md`.
 
 ## München und Bayern
 
@@ -1499,6 +1501,9 @@ stillschweigend überspringt.
   neun unabhängige Blickwinkel, zwölf bestätigte und umgesetzte Funde, 72 ungeprüfte im Anhang.
 - [`docs/oesterreich.md`](docs/oesterreich.md) — Quelle für Quelle: was es für Österreich,
   die Schweiz und EU-weit an offenen Gegenstücken gibt, und was am Code fest auf Deutschland zeigt.
+- [`docs/erweiterungen.md`](docs/erweiterungen.md) — was das Werkzeug für Deutschland und
+  Österreich noch lernen könnte: drei Recherchen (Datenquellen Deutschland, Datenquellen
+  Österreich, Funktionen und Methoden) mit Belegen, Konfidenz und einer vorgeschlagenen Reihenfolge.
 
 ## Aufbau
 
