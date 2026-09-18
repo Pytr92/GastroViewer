@@ -587,6 +587,83 @@ TEILE.update({"eurostat_gpkg": eurostat_gpkg, "ckan": ckan_varianten,
               "feiertage2": feiertage_r2})
 
 
+# ------------------------------------------------------------------ Runde 3
+
+HOCHWASSER_LAYER = ("Hochwasserueberflutungsflaechen HQ30", "Hochwasserueberflutungsflaechen HQ100",
+                    "Hochwasserueberflutungsflaechen HQ300", "Hochwasserrisikogebiete HQ100",
+                    "Rote Gefahrenzonen aus der Gefahrenzonenplanung",
+                    "Gelbe Gefahrenzonen aus der Gefahrenzonenplanung")
+
+
+def hochwasser_r3(c):
+    """Layer heißen wie ihre Titel (mit Leerzeichen) — Runde 2 fragte die
+    Kurznamen und bekam LayerNotDefined."""
+    punkte = {"donau_wien": (48.2300, 16.4100), "handelskai": (48.2450, 16.3920),
+              "lobau": (48.1650, 16.5000), "stephansplatz": WIEN,
+              "linz_donau": (48.3100, 14.2900), "krems_donau": (48.4020, 15.6100),
+              "graz_mur": (47.0680, 15.4330)}
+    for name in HOCHWASSER_LAYER:
+        kurz = re.sub(r"[^a-z0-9]+", "_", name.lower())[:36]
+        for ort, (lat, lon) in punkte.items():
+            d = 0.0004
+            hole(c, f"hochwasser_r3_{kurz}_{ort}", "https://inspire.lfrz.gv.at/000801/ows",
+                 params={"service": "WMS", "version": "1.3.0", "request": "GetFeatureInfo",
+                         "layers": name, "query_layers": name, "crs": "CRS:84",
+                         "bbox": f"{lon-d},{lat-d},{lon+d},{lat+d}", "width": 101, "height": 101,
+                         "i": 50, "j": 50, "info_format": "application/json", "styles": "",
+                         "feature_count": 5})
+
+
+def ckan_r3(c):
+    """data.gv.at antwortet unter /katalog/api/action/package_show mit DCAT
+    (JSON-LD): @graph mit dcat:Distribution → dcat:accessURL."""
+    api = "https://www.data.gv.at/katalog/api/action/package_show"
+    pakete = {
+        "nrw2024": "e40e3b00-1a98-4338-acb7-42547e6fee55",
+        "wien_wahlsprengel": "stadt-wien_wahleninwienwahlsprengel",
+        "gisa_gewerbe": "gewerbe-in-osterreich",
+        "bevstand_2024": "stat_bevolkerungsstand-zu-jahresbeginn-2024",
+        "pendler_erwerb": "stat_gemeindeergebnisse-der-abgestimmten-erwerbsstatistik-und-arbeitsstattenzahlung-ab-20-31-10",
+        "wien_bevoelkerung_zaehlbezirk": "9ecf5866-dbe8-4cb2-b156-5097c7eec01f",
+        "salzburg_baustellen": "468dc562-d99c-4ec1-9edd-8fead87c355e",
+        "wien_luftmessnetz": "stadt-wien_luftmessnetzwien",
+        "wien_flaechenwidmung": "stadt-wien_flchenwidmungsundbebauungsplanwien",
+    }
+    for name, pid in pakete.items():
+        daten = hole(c, f"ckan_r3_{name}", api, params={"id": pid})
+        if not daten:
+            continue
+        try:
+            graph = json.loads(daten).get("@graph", [])
+            dist = [g for g in graph if g.get("@type") == "dcat:Distribution"]
+            res = [{"titel": g.get("dct:title"), "format": g.get("dct:format"),
+                    "url": (g.get("dcat:accessURL") or {}).get("@id"),
+                    "download": (g.get("dcat:downloadURL") or {}).get("@id")} for g in dist]
+            ds = [g for g in graph if g.get("@type") == "dcat:Dataset"]
+            manifest.append({"name": f"ckan_r3_{name}_resources", "resources": res[:20],
+                             "titel": (ds[0].get("dct:title") if ds else None),
+                             "lizenz": (ds[0].get("dct:license") if ds else None)})
+            for i, r in enumerate(res[:8]):
+                url = r.get("download") or r.get("url") or ""
+                fmt = (r.get("format") or "").upper()
+                if fmt in ("CSV", "JSON", "TXT") or url.lower().endswith((".csv", ".json")):
+                    roh = hole(c, f"ckan_r3_{name}_{i}", url, speichern=False,
+                               headers={"Range": "bytes=0-300000"})
+                    if roh:
+                        kopf(f"ckan_r3_{name}_{i}_kopf", roh, 25)
+                else:
+                    hole(c, f"ckan_r3_{name}_{i}_head", url, methode="HEAD", speichern=False)
+        except Exception as exc:  # noqa: BLE001
+            manifest.append({"name": f"ckan_r3_{name}_auswertung", "fehler": str(exc)})
+    for q in ("luftgüte wien", "bevölkerungsstand gemeinden", "gemeinden österreich grenzen",
+              "erwerbspendler gemeinde"):
+        hole(c, f"ckan_r3_suche_{re.sub(r'[^a-z]+', '_', q)[:24]}",
+             "https://www.data.gv.at/katalog/api/action/package_search", params={"q": q, "rows": 5})
+
+
+TEILE.update({"hochwasser3": hochwasser_r3, "ckan3": ckan_r3})
+
+
 def main(argv: list[str]) -> int:
     auswahl = argv[1:] or list(TEILE)
     with httpx.Client(headers={"User-Agent": UA, "Accept-Language": "de"},
