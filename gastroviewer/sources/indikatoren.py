@@ -142,19 +142,41 @@ def norm_bezirk(name: Any) -> str:
     return re.sub(r"[^a-zäöüß]", "", str(name or "").lower())
 
 
+PFLICHTSPALTEN = ("Ausprägung", "Raumbezug", "Jahr", "Indikatorwert")
+
+
 def reduzieren(texte: dict[str, str]) -> dict[str, Any]:
     """CSV-Texte → kompakte Reihen ``{schluessel: {raum: [[jahr, wert], …]}}``.
 
     Nur die benötigte Ausprägung je Kennzahl; so bleibt der stadtweite
     Cache-Eintrag klein und jede Punktauswertung reine lokale Rechnung.
     """
+    return reduzieren_mit_warnungen(texte)[0]
+
+
+def reduzieren_mit_warnungen(texte: dict[str, str]) -> tuple[dict[str, Any], list[str]]:
+    """Wie ``reduzieren``, sagt aber, welche Datei sich nicht lesen ließ.
+
+    Eine CSV mit geänderten Spalten oder ohne die gesuchte Ausprägung
+    verschwand vorher still aus dem Block — die Kennzahl fehlte, ohne dass
+    jemand erfuhr, warum."""
     kompakt: dict[str, Any] = {}
+    warnungen: list[str] = []
     for ind in INDIKATOREN:
         text = texte.get(ind["datei"])
         if not text:
             continue
+        leser = csv.DictReader(io.StringIO(text.replace("\ufeff", "")))
+        spalten = [s.strip() for s in (leser.fieldnames or [])]
+        fehlend = [s for s in PFLICHTSPALTEN if s not in spalten]
+        if fehlend:
+            warnungen.append(
+                f"{ind['datei']}: Spalten {', '.join(fehlend)} fehlen "
+                f"(vorhanden: {', '.join(spalten[:8]) or '—'}) — Kennzahl "
+                f"„{ind['schluessel']}“ nicht gelesen.")
+            continue
         raeume: dict[str, list[list[float]]] = {}
-        for row in csv.DictReader(io.StringIO(text.replace("﻿", ""))):
+        for row in leser:
             if (row.get("Ausprägung") or "").strip() != ind["auspraegung"]:
                 continue
             raum = (row.get("Raumbezug") or "").strip()
@@ -171,7 +193,12 @@ def reduzieren(texte: dict[str, str]) -> dict[str, Any]:
             reihe.sort()
         if raeume:
             kompakt[ind["schluessel"]] = raeume
-    return kompakt
+        else:
+            warnungen.append(
+                f"{ind['datei']}: keine Zeile mit Ausprägung "
+                f"„{ind['auspraegung']}“ und gültigem Jahr/Wert — Kennzahl "
+                f"„{ind['schluessel']}“ nicht gelesen.")
+    return kompakt, warnungen
 
 
 def _trend(reihe: list[list[float]]) -> dict[str, Any] | None:

@@ -62,12 +62,21 @@ class ProfilFehler(ValueError):
 
 
 def pruefe_kriterium(zeile: dict[str, Any], kriterium: dict[str, Any],
+                     bekannte_keys: set[str] | None = None,
                      ) -> dict[str, Any]:
-    """Ein einzelnes Kriterium gegen eine Vergleichszeile."""
+    """Ein einzelnes Kriterium gegen eine Vergleichszeile.
+
+    ``bekannte_keys``: die Spalten der Vergleichstabelle. Ein Tippfehler im
+    Key wurde vorher für jeden Standort als „nicht prüfbar" gezählt — das
+    sah aus wie fehlende Daten, nicht wie ein falsches Profil."""
     key = kriterium.get("key")
     richtung = kriterium.get("richtung")
     if not key or key in KEINE_KRITERIEN:
         raise ProfilFehler(f"Unbrauchbares Kriterium: {key!r}")
+    if bekannte_keys is not None and key not in bekannte_keys:
+        raise ProfilFehler(
+            f"Unbekannte Kennzahl {key!r} — es gibt keine Vergleichsspalte "
+            "mit diesem Schlüssel.")
     if richtung not in RICHTUNGEN:
         raise ProfilFehler(
             f"Unbekannte Richtung {richtung!r} — möglich: "
@@ -99,6 +108,7 @@ def pruefe_kriterium(zeile: dict[str, Any], kriterium: dict[str, Any],
 
 
 def pruefe_profil(zeile: dict[str, Any], profil: list[dict[str, Any]],
+                  bekannte_keys: set[str] | None = None,
                   ) -> dict[str, Any]:
     """Alle Kriterien gegen einen Standort.
 
@@ -106,7 +116,7 @@ def pruefe_profil(zeile: dict[str, Any], profil: list[dict[str, Any]],
     **nicht erfüllt** ist — ein nicht prüfbares K.O.-Kriterium lässt den
     Standort ausdrücklich nicht durchfallen, es macht ihn nur offen.
     """
-    ergebnisse = [pruefe_kriterium(zeile, k) for k in profil]
+    ergebnisse = [pruefe_kriterium(zeile, k, bekannte_keys) for k in profil]
     zaehler = {"erfuellt": 0, "nicht_erfuellt": 0, "nicht_pruefbar": 0}
     for e in ergebnisse:
         zaehler[e["stand"]] += 1

@@ -108,9 +108,10 @@ async def load(
 ) -> SourceResult:
     started = time.perf_counter()
     jahr_heute = time.gmtime().tm_year
-    t = zeitraum(jahr_heute)
+    jahr_ende = jahr_heute
+    warnungen: list[str] = []
 
-    async def reihe(filter_: str) -> list[dict[str, int]]:
+    async def reihe(filter_: str, t: str) -> list[dict[str, int]]:
         payload = await out.post_json(
             "dynamik",
             f"{settings.ohsome_base}/elements/count",
@@ -128,15 +129,33 @@ async def load(
             )
         return parse_reihe(payload)
 
+    def _zu_frueh_im_jahr(err: SourceError) -> bool:
+        # ohsome lehnt einen Zeitpunkt jenseits seines Datenstands mit HTTP
+        # 404 ab und nennt im Text "timeframe" und "osh-data". Jeden Januar
+        # (und nach Verzögerungen auch später) ist der 1.1. des laufenden
+        # Jahres noch nicht da — dann endet die Reihe ein Jahr früher.
+        text = f"{err.message} {err.detail or ''}".lower()
+        return err.kind == "http_status" and ("timeframe" in text or "osh-data" in text)
+
     try:
-        gastro = await reihe(GASTRO_FILTER)
-        schnell = await reihe(SCHNELL_FILTER)
+        try:
+            t = zeitraum(jahr_ende)
+            gastro = await reihe(GASTRO_FILTER, t)
+        except SourceError as err:
+            if not _zu_frueh_im_jahr(err):
+                raise
+            jahr_ende = jahr_heute - 1
+            t = zeitraum(jahr_ende)
+            gastro = await reihe(GASTRO_FILTER, t)
+            warnungen.append(
+                f"Die ohsome-Daten reichen noch nicht bis zum 1.1.{jahr_heute}; "
+                f"die Reihe endet am 1.1.{jahr_ende}.")
+        schnell = await reihe(SCHNELL_FILTER, t)
     except SourceError as err:
         return SourceResult.failed(
             "dynamik", err, int((time.perf_counter() - started) * 1000)
         )
 
-    warnungen: list[str] = []
     if not gastro:
         warnungen.append(
             "Die ohsome-API hat keine Zeitreihe geliefert — der Block bleibt leer."
@@ -153,7 +172,7 @@ async def load(
             source="OSM-Historie über die ohsome-API (HeiGIT Heidelberg)",
             license=LIZENZ,
             endpoint=f"{settings.ohsome_base}/elements/count",
-            stand=f"Jahreswerte {t.split('/')[0][:4]}–{jahr_heute}, jeweils 1. Januar",
+            stand=f"Jahreswerte {t.split('/')[0][:4]}–{jahr_ende}, jeweils 1. Januar",
             retrieved_at=now_iso(),
             note=(
                 "Zeitreihe über die OSM-Datenbank, nicht über die Wirklichkeit: "

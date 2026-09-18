@@ -2044,3 +2044,15 @@ def test_pruefung_ohne_jede_bewegliche_quelle_speichert_nichts(client):
     d = r.json()
     assert d["ok"] is False and d["gespeichert"] is False
     assert client.get(f"/api/points/{pid}/verlauf").json()["anzahl"] == vorher
+
+
+def test_profil_mit_unbekannter_kennzahl_wird_abgewiesen(client):
+    """Ein Tippfehler im Kriterien-Key zählte für jeden Standort als
+    „nicht prüfbar" — jetzt 422 mit Namen, auch ohne gemerkte Punkte."""
+    r = client.post("/api/points/kriterien", json={"kriterien": [
+        {"key": "einwohnr", "richtung": "min", "wert": 1000}]})
+    assert r.status_code == 422
+    assert "einwohnr" in r.json()["detail"]
+    r = client.post("/api/points/kriterien", json={"kriterien": [
+        {"key": "einwohner", "richtung": "min", "wert": 1000}]})
+    assert r.status_code == 200

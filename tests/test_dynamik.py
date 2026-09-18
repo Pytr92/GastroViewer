@@ -56,3 +56,46 @@ def test_zeitraum_und_filter():
     # Derselbe Gastronomiebegriff wie im OSM-Block — acht amenity-Typen.
     for typ in ("restaurant", "fast_food", "biergarten", "ice_cream"):
         assert typ in dynamik.GASTRO_FILTER
+
+
+async def test_januar_faellt_auf_das_vorjahr_zurueck(settings, ohsome_dynamik):
+    """Vor dem ersten Datenstand des Jahres lehnt ohsome den 1.1. ab —
+    dann endet die Reihe am 1.1. des Vorjahres, mit Warnung."""
+    import time
+
+    from gastroviewer.sources import dynamik
+    from gastroviewer.sources.base import SourceError
+
+    jahr = time.gmtime().tm_year
+    aufrufe = []
+
+    class FakeOut:
+        async def post_json(self, source, url, **kw):
+            t = kw["data"]["time"]
+            aufrufe.append(t)
+            if t.endswith(f"{jahr}-01-01/P1Y"):
+                raise SourceError(
+                    "http_status", "HTTP 404 — Anfrage abgelehnt.",
+                    detail='{"status":404,"message":"The given time parameter is not '
+                           'completely within the timeframe (2007-10-08 to '
+                           f'{jahr - 1}-12-20) of the underlying osh-data."}}')
+            return ohsome_dynamik["gastro"]
+
+    res = await dynamik.load(FakeOut(), settings, 48.137, 11.575, 600)
+    assert res.ok, res.error
+    assert len(aufrufe) == 3
+    assert aufrufe[1].endswith(f"{jahr - 1}-01-01/P1Y") and aufrufe[2] == aufrufe[1]
+    assert any(f"1.1.{jahr - 1}" in w for w in res.warnings)
+    assert res.provenance.stand.endswith(f"{jahr - 1}, jeweils 1. Januar")
+
+
+async def test_anderer_404_bleibt_ein_fehler(settings):
+    from gastroviewer.sources import dynamik
+    from gastroviewer.sources.base import SourceError
+
+    class FakeOut:
+        async def post_json(self, source, url, **kw):
+            raise SourceError("http_status", "HTTP 404 — Anfrage abgelehnt.", detail="not found")
+
+    res = await dynamik.load(FakeOut(), settings, 48.137, 11.575, 600)
+    assert not res.ok and res.error["kind"] == "http_status"

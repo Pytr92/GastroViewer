@@ -239,7 +239,8 @@ function zeigeRadzaehlung(d) {
   const kz = el('div', { class: 'kennzahlen' },
     kennzahl('Nächste Zählstelle', n.distanz_m, 'm'),
     kennzahl(`Radfahrende ${n.summe_vorjahr_jahr || ''}`.trim(), n.summe_vorjahr),
-    kennzahl('davon je Tag', n.je_tag_vorjahr));
+    kennzahl(n.je_tag_basis === 'messtage' ? 'davon je Messtag' : 'davon je Kalendertag (Summe ÷ 365)',
+      n.je_tag_vorjahr));
 
   const tab = el('table', { class: 'daten' },
     el('tr', {}, el('th', {}, 'Zählstelle'), el('th', { class: 'num' }, 'm'),

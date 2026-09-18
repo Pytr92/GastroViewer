@@ -31,7 +31,7 @@ abgefragt.
 from __future__ import annotations
 
 import time
-from datetime import date
+from datetime import date, datetime, timedelta
 from typing import Any, Awaitable, Callable
 
 from ..http import Outbound
@@ -138,6 +138,16 @@ HINWEISE = [
 ]
 
 
+def _alter_stunden(stand: Any) -> float | None:
+    """Alter eines UBA-Zeitstempels ("YYYY-MM-DD HH:MM:SS", Ortszeit) in
+    Stunden — None, wenn das Format nicht passt."""
+    try:
+        t = datetime.strptime(str(stand), "%Y-%m-%d %H:%M:%S")
+    except (TypeError, ValueError):
+        return None
+    return (datetime.now() - t).total_seconds() / 3600
+
+
 async def load(
     out: Outbound, lat: float, lon: float,
     stationen_laden: Callable[[], Awaitable[list[dict[str, Any]]]],
@@ -163,7 +173,11 @@ async def load(
             provenance=_provenance(),
         )
 
+    # Zwei Tage statt einem: Nach Mitternacht hat der heutige Tag noch
+    # keinen Stundenwert, und ein leerer Block läge dann eine Stunde im
+    # Cache. Der jüngste Wert im Fenster zählt; sein Alter steht unten.
     heute = date.today().isoformat()
+    gestern = (date.today() - timedelta(days=1)).isoformat()
     daten = None
     station = None
     for kandidat in kandidaten:
@@ -171,7 +185,7 @@ async def load(
             antwort = await out.get_json(
                 "luft",
                 f"{BASE}/airquality/json",
-                params={"date_from": heute, "date_to": heute,
+                params={"date_from": gestern, "date_to": heute,
                         "time_from": "1", "time_to": "24",
                         "station": kandidat["id"]},
                 timeout=30.0,
@@ -203,6 +217,11 @@ async def load(
         warnungen.append(
             "Der Stundenwert ist als unvollständig markiert — nicht alle "
             "Komponenten der Station haben schon gemeldet.")
+    alter = _alter_stunden(daten.get("stand"))
+    if alter is not None and alter > 3:
+        warnungen.append(
+            f"Der jüngste Stundenwert der Station ist {alter:.0f} h alt — die "
+            "Station meldet derzeit verzögert oder gar nicht.")
 
     return SourceResult(
         name="luft",

@@ -231,3 +231,69 @@ def test_parse_tageswerte_mit_aufgefuellten_feldern():
 def test_parse_tageswerte_unlesbares_bricht_nicht():
     assert muenchen.parse_tageswerte("") == {}
     assert muenchen.parse_tageswerte("voellig,anderes,format\n1,2,3") == {}
+
+
+# ------------------------------------------ Jahresfelder und Tagesmittel
+
+
+def test_jahresfelder_werden_aus_den_schluesseln_gelesen():
+    """Nach dem Jahreswechsel heißen die Felder anders — fest kodierte Namen
+    lieferten stille Nullen."""
+    import copy
+
+    kopie = copy.deepcopy(ECHTE_ANTWORT)
+    for f in kopie["features"]:
+        p = f["properties"]
+        for alt_k in list(p):
+            if alt_k.endswith("_2025"):
+                p[alt_k.replace("_2025", "_2026")] = p.pop(alt_k)
+            elif alt_k.endswith("_2026"):
+                p[alt_k.replace("_2026", "_2027")] = p.pop(alt_k)
+    d = muenchen.aufbereiten(kopie["features"], LAT, LON, 600)
+    assert d["jahr_summe"] == 2026 and d["jahr_monat"] == 2027
+    erhardt = next(s for s in d["in_reichweite"] if s["kurzname"] == "Erhardt")
+    assert erhardt["summe_vorjahr"] == 1415000 and erhardt["summe_vorjahr_jahr"] == 2026
+    assert erhardt["summe_laufender_monat"] == 115000
+    assert d["schema_warnung"] is None
+
+
+def test_fehlende_jahresfelder_werden_gemeldet():
+    features = [{"geometry": {"type": "Point", "coordinates": [11.58469, 48.13192]},
+                 "properties": {"zaehlstelle": "Erhardt", "zaehlstelle_lang": "Erhardtstr."}}]
+    d = muenchen.aufbereiten(features, LAT, LON, 600)
+    assert d["jahr_summe"] is None
+    assert "Schema" in d["schema_warnung"]
+    assert d["in_reichweite"][0]["summe_vorjahr"] is None
+
+
+async def test_tagesmittel_aus_messtagen_wenn_der_jahresgang_passt(settings):
+    """Eine Station mit 92 Messtagen: Summe ÷ 365 wäre 4× zu niedrig."""
+    class FakeOut:
+        async def get_json(self, source, url, **kw):
+            return ECHTE_ANTWORT
+
+    async def jahresgang():
+        return {"jahr": 2025, "stationen": {
+            "Erhardt": {"messtage": 92, "je_tag_mittel": 15380, "spitzentag": 20000}}}
+
+    res = await muenchen.zaehlstellen(FakeOut(), settings, LAT, LON, 600, jahresgang)
+    assert res.ok
+    erhardt = next(s for s in res.data["in_reichweite"] if s["kurzname"] == "Erhardt")
+    assert erhardt["je_tag_vorjahr"] == 15380 and erhardt["je_tag_basis"] == "messtage"
+    assert res.data["naechste"]["je_tag_vorjahr"] == 15380
+    assert any("92 Messtage" in w for w in res.warnings)
+    assert "2025" in res.provenance.stand and "2026" in res.provenance.stand
+
+
+async def test_tagesmittel_bleibt_kalendertage_bei_anderem_jahr(settings):
+    class FakeOut:
+        async def get_json(self, source, url, **kw):
+            return ECHTE_ANTWORT
+
+    async def jahresgang():
+        return {"jahr": 2026, "stationen": {"Erhardt": {"messtage": 40, "je_tag_mittel": 9}}}
+
+    res = await muenchen.zaehlstellen(FakeOut(), settings, LAT, LON, 600, jahresgang)
+    erhardt = next(s for s in res.data["in_reichweite"] if s["kurzname"] == "Erhardt")
+    assert erhardt["je_tag_vorjahr"] == round(1415000 / 365)
+    assert erhardt["je_tag_basis"] == "kalendertage"

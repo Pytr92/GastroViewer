@@ -85,3 +85,30 @@ def test_load_ohne_station_in_reichweite(stationen):
     res = asyncio.run(luft.load(Nie(), 54.78, 9.43, laden))
     assert res.ok and res.data is None
     assert any("Messnetz" in w for w in res.warnings)
+
+
+async def test_zweitagesfenster_und_alterswarnung(stationen, uba_luft_api):
+    """Nach Mitternacht gibt es heute noch keinen Wert — das Fenster reicht
+    bis gestern, und ein alter Wert wird als alt benannt."""
+    from datetime import datetime, timedelta
+
+    from gastroviewer.sources import luft
+
+    gesehen = []
+
+    class FakeOut:
+        async def get_json(self, source, url, **kw):
+            gesehen.append(dict(kw.get("params") or {}))
+            return uba_luft_api["airquality"]
+
+    async def laden():
+        return stationen
+
+    res = await luft.load(FakeOut(), 48.1339, 11.5667, laden)
+    assert res.ok and res.data
+    assert gesehen and gesehen[0]["date_from"] < gesehen[0]["date_to"]
+    # Die Fixture ist vom August 2026 — ihr Stand ist Wochen alt.
+    assert any("alt" in w and "h" in w for w in res.warnings), res.warnings
+    stand = datetime.strptime(res.data["stand"], "%Y-%m-%d %H:%M:%S")
+    assert datetime.now() - stand > timedelta(hours=3)
+    assert luft._alter_stunden("kein Datum") is None

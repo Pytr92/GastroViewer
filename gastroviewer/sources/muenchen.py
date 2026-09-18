@@ -63,9 +63,37 @@ def _ohne_html(v: Any) -> str | None:
     return text or None
 
 
+_JAHRESFELDER = {
+    "summe": re.compile(r"^gesamt_sum_(\d{4})$"),
+    "monat": re.compile(r"^gesamt_sum_monat_(\d{4})$"),
+    "stoerung": re.compile(r"^zaehler_kaputt_sum_(\d{4})$"),
+}
+
+
+def jahresfelder(features: list[dict[str, Any]]) -> dict[str, int | None]:
+    """Welches Jahr tragen die Summenfelder? Aus den Schlüsseln gelesen, nicht
+    fest eingebaut: Nach dem Jahreswechsel hießen die Felder
+    ``gesamt_sum_2026``/``gesamt_sum_monat_2027``, und fest kodierte Namen
+    lieferten stille Nullen. Bei mehreren Jahresfeldern gilt das jüngste."""
+    gefunden: dict[str, int | None] = {k: None for k in _JAHRESFELDER}
+    for f in features:
+        for schluessel in (f.get("properties") or {}):
+            for art, muster in _JAHRESFELDER.items():
+                m = muster.match(str(schluessel))
+                if m:
+                    jahr = int(m.group(1))
+                    if gefunden[art] is None or jahr > gefunden[art]:
+                        gefunden[art] = jahr
+    return gefunden
+
+
 def aufbereiten(
     features: list[dict[str, Any]], lat: float, lon: float, radius: int
 ) -> dict[str, Any]:
+    jahre = jahresfelder(features)
+    feld_summe = f"gesamt_sum_{jahre['summe']}" if jahre["summe"] else None
+    feld_monat = f"gesamt_sum_monat_{jahre['monat']}" if jahre["monat"] else None
+    feld_stoerung = f"zaehler_kaputt_sum_{jahre['stoerung']}" if jahre["stoerung"] else None
     stellen = []
     for f in features:
         p = f.get("properties") or {}
@@ -75,7 +103,7 @@ def aufbereiten(
             continue
         slon, slat = float(coords[0]), float(coords[1])
         dist = haversine_m(lat, lon, slat, slon)
-        jahr = _zahl(p.get("gesamt_sum_2025"))
+        jahr = _zahl(p.get(feld_summe)) if feld_summe else None
         stellen.append(
             {
                 "name": p.get("zaehlstelle_lang") or p.get("zaehlstelle"),
@@ -89,11 +117,14 @@ def aufbereiten(
                     r for r in (p.get("richtung_1"), p.get("richtung_2")) if r
                 ],
                 "summe_vorjahr": jahr,
-                "summe_vorjahr_jahr": 2025 if jahr is not None else None,
-                "summe_laufender_monat": _zahl(p.get("gesamt_sum_monat_2026")),
+                "summe_vorjahr_jahr": jahre["summe"] if jahr is not None else None,
+                "summe_laufender_monat": _zahl(p.get(feld_monat)) if feld_monat else None,
                 "je_tag_vorjahr": round(jahr / 365) if jahr is not None else None,
+                # Summe ÷ 365 Kalendertage — der Jahresgang ersetzt das unten
+                # durch das Mittel über die Messtage, wenn er zum Jahr passt.
+                "je_tag_basis": "kalendertage" if jahr is not None else None,
                 "besonderheiten": _ohne_html(p.get("besonderheiten")),
-                "stoerung": _ohne_html(p.get("zaehler_kaputt_sum_2025")),
+                "stoerung": _ohne_html(p.get(feld_stoerung)) if feld_stoerung else None,
             }
         )
     stellen.sort(key=lambda s: s["distanz_m"])
@@ -105,6 +136,13 @@ def aufbereiten(
         "im_radius": [s for s in stellen if s["im_radius"]],
         "max_distanz_m": MAX_DISTANZ_M,
         "rohdaten": ROHDATEN,
+        "jahr_summe": jahre["summe"],
+        "jahr_monat": jahre["monat"],
+        "schema_warnung": (
+            "Die Jahressummen-Felder der Zählstellen wurden nicht gefunden — "
+            "hat der Dienst sein Schema geändert? Standorte und Entfernungen "
+            "gelten weiterhin."
+            if features and stellen and jahre["summe"] is None else None),
     }
 
 
@@ -254,11 +292,27 @@ async def zaehlstellen(
             stationen = jg.get("stationen") or {}
             for s in data["in_reichweite"]:
                 s["jahresgang"] = stationen.get(s["kurzname"])
+                # Summe ÷ 365 ist bei einer Station mit Messlücke bis zu 4×
+                # zu niedrig (Kreuther: 92 Messtage). Passt der Jahresgang zum
+                # Jahr der Summe, gilt das Mittel über die Messtage.
+                jgs = s["jahresgang"] or {}
+                if (jg.get("jahr") == s.get("summe_vorjahr_jahr")
+                        and jgs.get("messtage") and jgs.get("je_tag_mittel") is not None):
+                    s["je_tag_vorjahr"] = jgs["je_tag_mittel"]
+                    s["je_tag_basis"] = "messtage"
+                    if jgs["messtage"] < 365:
+                        warnungen.append(
+                            f"{s['kurzname']}: {jg.get('jahr')} nur "
+                            f"{jgs['messtage']} Messtage — Tagesmittel aus den "
+                            "Messtagen, nicht aus 365 Kalendertagen.")
             if data["naechste"]:
-                data["naechste"]["jahresgang"] = stationen.get(
-                    data["naechste"]["kurzname"]
-                )
+                data["naechste"] = next(
+                    (s for s in data["in_reichweite"]
+                     if s["kurzname"] == data["naechste"]["kurzname"]),
+                    data["naechste"])
 
+    if data.get("schema_warnung"):
+        warnungen.append(data["schema_warnung"])
     if not data["in_reichweite"]:
         warnungen.append(
             f"Keine Zählstelle innerhalb von {MAX_DISTANZ_M} m. Die sechs Stellen "
@@ -279,7 +333,9 @@ async def zaehlstellen(
             source="Raddauerzählstellen München (Mobilitätsreferat, WFS)",
             license=LIZENZ,
             endpoint=WFS_URL,
-            stand="Jahressumme 2025, laufender Monat 2026",
+            stand=(f"Jahressumme {data['jahr_summe']}, laufender Monat {data['jahr_monat']}"
+                   if data.get("jahr_summe") and data.get("jahr_monat")
+                   else "Jahressumme und laufender Monat laut Dienst"),
             retrieved_at=now_iso(),
             note=(
                 "Gemessene Radverkehrszahlen an sechs festen Querschnitten. Keine "

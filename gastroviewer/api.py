@@ -24,7 +24,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
 from .cache import STAENDE, STAND_SCHLUESSEL, AsyncCache
-from .kriterien import ProfilFehler, moegliche_kriterien, pruefe_profil
+from .kriterien import ProfilFehler, moegliche_kriterien, pruefe_kriterium, pruefe_profil
 from .config import Settings, get_settings
 from .http import Outbound
 from .schaetzung import Eingaben, rechne, vorgaben_aus_punkt
@@ -983,11 +983,20 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         cache: AsyncCache = request.app.state.cache
         rows = await asyncio.to_thread(cache.sync.list_points)
         liste = [k.model_dump() for k in profil.kriterien]
+        # Unbekannte Kennzahlen vorab abweisen — auch ohne gemerkte Punkte.
+        # Vorher zählte ein Tippfehler im Key für jeden Standort als „nicht
+        # prüfbar", als fehlten die Daten.
+        bekannte = {c["key"] for c in VERGLEICH_SPALTEN}
+        try:
+            for k in liste:
+                pruefe_kriterium({}, k, bekannte)
+        except ProfilFehler as err:
+            raise HTTPException(422, str(err)) from err
         ergebnisse = []
         for r in rows:
             zeile = _row_for(r)
             try:
-                pruefung = pruefe_profil(zeile, liste)
+                pruefung = pruefe_profil(zeile, liste, bekannte)
             except ProfilFehler as err:
                 raise HTTPException(422, str(err)) from err
             ergebnisse.append({

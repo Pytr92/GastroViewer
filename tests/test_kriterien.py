@@ -211,3 +211,17 @@ def test_leeres_profil_liefert_die_offenen_fragen(client):
                 json={"label": "A", "lat": LAT, "lon": LON, "radius": R})
     d = client.post("/api/points/kriterien", json={"kriterien": []}).json()
     assert d["punkte"][0]["nicht_pruefbar_grundsaetzlich"]
+
+
+def test_unbekannte_kennzahl_ist_ein_profilfehler():
+    """Ein Tippfehler im Key ist ein falsches Profil, keine fehlenden Daten."""
+    from gastroviewer.kriterien import ProfilFehler, pruefe_kriterium, pruefe_profil
+
+    krit = {"key": "einwohnr", "richtung": "min", "wert": 1000}
+    with pytest.raises(ProfilFehler) as info:
+        pruefe_kriterium({"einwohner": 5000}, krit, {"einwohner"})
+    assert "einwohnr" in str(info.value)
+    with pytest.raises(ProfilFehler):
+        pruefe_profil({"einwohner": 5000}, [krit], {"einwohner"})
+    # Ohne bekannte Keys bleibt das alte Verhalten (nicht prüfbar).
+    assert pruefe_kriterium({"einwohner": 5000}, krit)["stand"] == "nicht_pruefbar"

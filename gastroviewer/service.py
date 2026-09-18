@@ -215,7 +215,8 @@ class PointService:
                     "muenchen_indikatoren", url, timeout=60.0,
                     limiter="muenchen", min_interval=1.0,
                 )
-            kompakt = await asyncio.to_thread(indikatoren_mod.reduzieren, texte)
+            kompakt, lese_warnungen = await asyncio.to_thread(
+                indikatoren_mod.reduzieren_mit_warnungen, texte)
             if not kompakt:
                 raise SourceError(
                     "parse", "Indikatorenatlas-CSVs ließen sich nicht lesen."
@@ -233,7 +234,7 @@ class PointService:
             return SourceResult(
                 name="muenchen_indikatoren", ok=True,
                 data={"kompakt": kompakt, "stand": stand,
-                      "fehlend_warnungen": warn},
+                      "fehlend_warnungen": warn} + lese_warnungen,
             )
 
         res = await self._cached(
@@ -1171,11 +1172,15 @@ class PointService:
         async def laden() -> SourceResult:
             radius = int(minuten * liefer_mod.RADTEMPO_M_PRO_MIN)
             zellen = None
+            zensus_warnungen: list[str] = []
             zensus_res = await self.zensus(lat, lon, radius)
             if zensus_res.ok and zensus_res.data:
-                zellen = zensus_res.data.get("zellen")
+                zellen = zensus_res.data.get("zellen") or []
+            elif zensus_res.error:
+                zensus_warnungen.append(zensus_res.error.get("message") or "Zensus ohne Antwort")
             return await liefer_mod.load(
-                self.outbound, self.settings, lat, lon, minuten, zellen
+                self.outbound, self.settings, lat, lon, minuten, zellen,
+                zensus_warnungen=zensus_warnungen,
             )
 
         return await self._cached("liefergebiet", key, laden)
