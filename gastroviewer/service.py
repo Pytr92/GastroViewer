@@ -18,7 +18,7 @@ from typing import Any, Awaitable, Callable
 from .cache import AsyncCache, cache_key
 from .config import Settings
 from .http import Outbound
-from .laender import DE, Land, land_aus_code, land_aus_iso, laender_fuer_punkt, quelle_fehlt
+from .laender import AT, DE, Land, land_aus_code, land_aus_iso, laender_fuer_punkt, quelle_fehlt
 from .sources import (airbnb as airbnb_mod,
                       bast as bast_mod,
                       baurecht as baurecht_mod,
@@ -843,6 +843,17 @@ class PointService:
             raise SourceError(res.error["kind"], res.error["message"])
         return res.data["ergebnisse"], res.data["gkz"]
 
+    async def wahl_ohne_schluessel(self, lat: float, lon: float, refresh: bool = False):
+        """Wahl-Block für einen Punkt ohne Gemeindeschlüssel: in Österreich
+        die Nationalratswahl über die Adresse, sonst ehrlich leer."""
+        land = await self.land(lat, lon)
+        if land.code == "AT":
+            res = await self.adresse(lat, lon)
+            return await self.wahl_at((res.data or {}) if res.ok else {}, refresh)
+        return self._nur_in("wahl", land) or SourceResult(
+            name="wahl", ok=True, data=None,
+            warnings=["Ohne Gemeindeschlüssel lässt sich kein Wahlkreis zuordnen."])
+
     async def wahl_at(self, adresse: dict[str, Any] | None, refresh: bool = False):
         """Nationalratswahl 2024 je Gemeinde — Zuordnung über Bundesland und
         Gemeindename aus der Adresse."""
@@ -857,6 +868,9 @@ class PointService:
     async def register(self, plz: str | None, refresh: bool = False):
         """Handelsregister-Umfeld (OffeneRegister, Stand 2019) — rein
         lokal aus der einmal importierten Datenbank."""
+        if plz and len(plz) == 4:
+            # Österreichische Postleitzahl: das Register ist eine deutsche Quelle.
+            return self._nur_in("register", AT) or SourceResult(name="register", ok=True, data=None)
         if not self.settings.register_db_path.exists():
             # Nicht cachen: direkt nach dem Import soll der Block Zahlen
             # zeigen, nicht die 30 Tage alte „bitte importieren"-Antwort.

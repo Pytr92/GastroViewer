@@ -2,6 +2,35 @@
 
 Stand der Recherche: 17. September 2026. Jede Zeile nennt eine URL, die ein Rechercheur in einer Suche gesehen oder abgerufen hat; *Konfidenz* sagt, wie belastbar die Angabe ist. „unbelegt“ heißt: nicht nachgewiesen, nicht geraten. Preise, Lizenzen und Endpunkte ändern sich — vor einer Umsetzung jede Quelle noch einmal selbst aufrufen.
 
+## Umsetzungsstand (18. September 2026, Version 0.4.0)
+
+Die Empfehlung unten wurde so umgesetzt: erst die Länder-Registry
+(`gastroviewer/laender.py`), dann Österreich als Modul. Jede
+Formatannahme ist live belegt — der Workflow `AT-Probe`
+(`scripts/at_probe.py`, vier Runden) hat die Dienste abgefragt, die
+Antworten liegen unter `fixtures/at/`, die Tests rechnen darauf.
+
+| Bereich | Stand | Modul |
+|---|---|---|
+| Geocoder, Bereichsregel, Feiertage, Karte, Land im Kopf | ✅ umgesetzt | `laender.py`, `nominatim.py`, `kalender.py`, `karte.js` |
+| Bevölkerung (Eurostat 1-km-Raster, lokaler Import) | ✅ umgesetzt, gröber als DE | `raster_at.py`, `import-raster-at` |
+| Klima (GeoSphere 1991–2020) | ✅ umgesetzt | `klima_at.py` |
+| Lärm (lärminfo.at 2022) | ✅ umgesetzt | `laerm_at.py` |
+| Hochwasser (LFRZ), Schutzzonen Wien | ✅ umgesetzt | `planung_at.py`, `wien.py` |
+| Flächenwidmung Wien im Baurecht-Block | ✅ umgesetzt, nur Wien | `wien.py` |
+| Märkte, Baustellen Wien | ✅ umgesetzt, nur Wien | `wien.py` |
+| Nationalratswahl 2024 je Gemeinde | ✅ umgesetzt | `wahl_at.py` |
+| Nächtigungsstatistik je Bundesland | ✅ umgesetzt | `tourismus_at.py` |
+| Inside Airbnb Wien, GTFS Wiener Linien, Linkliste | ✅ umgesetzt | `airbnb.py`, `__main__.py`, `links.py` |
+| Luft (SensorThings-Spiegel) | ⬜ bewusst leer — Daten Monate alt (Juni 2026 am 18.09.2026) | `laender.QUELLEN_NUR` |
+| Bodenrichtwerte, PKS je Bezirk, Passantenfrequenz, Handelsregister, Regionalatlas, Pendler, Regionaldatenbank, BAYSIS/BASt, Gitter/Scan | ⬜ bewusst leer, mit Begründung im Block | `laender.QUELLEN_NUR` |
+| Wiener Radzählungen, Wiener Zählbezirks-Steckbrief, GISA-Gewerbe | ⬜ offen (Daten liegen in `fixtures/at/`, noch nicht angebunden) | — |
+
+Browserprüfung: `scripts/uitest.py` prüft einen Wiener Punkt gegen die
+Attrappe (Aufzeichnung `tests/fixtures/ui/api-antworten-at.json.gz`, erzeugt
+aus der Anwendung über die Live-Fixtures). Live-Prüfung:
+`scripts/vollpruefung.py` enthält den Stephansplatz.
+
 ## Kurzfassung
 
 Das Werkzeug nutzt **80 Quellen**; **12** davon sind länderunabhängig (OSM/Overpass, Nominatim, Photon, ohsome, Overture, Leerstandsmelder, Inside Airbnb) und laufen in Österreich ohne neue Quelle.

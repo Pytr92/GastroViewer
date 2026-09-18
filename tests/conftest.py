@@ -86,8 +86,9 @@ def wien_wfs():
     return {"MAERKTEOGD": lies("wien_maerkteogd.json"),
             "BAUSTELLENPKTOGD": lies("wien_baustellenpktogd.json"),
             "BAUSTELLENLINOGD": lies("wien_baustellenlinienogd.json"),
-            "SCHUTZZONEOGD": lies("wien_schutzzoneogd.json"),
-            "GENFLWIDMUNGOGD": lies("wien_r2_genflwidmungogd.json")}
+            # Punktkästen am Stephansplatz (Runde 4): Schutzzone Innere Stadt, GB5.
+            "SCHUTZZONEOGD": lies("wien_r4_schutzzoneogd_stephansplatz.json"),
+            "GENFLWIDMUNGOGD": lies("wien_r4_genflwidmungogd_stephansplatz.json")}
 
 
 @pytest.fixture(scope="session")

@@ -94,7 +94,11 @@ function lade(refresh = false) {
   const aktuell = () => lauf === state.ladeLauf;
 
   // Jede Quelle einzeln — Ausfall der einen hält die andere nicht auf.
-  hole('/api/point/adresse', { lat, lon, ...(refresh ? { refresh: 'true' } : {}) })
+  // Die Adresse trägt die Landeskennung — Blöcke ohne Gemeindeschlüssel
+  // warten darauf, um „nur Deutschland" von „Zensus ausgefallen" zu trennen.
+  const adresseLauf = hole('/api/point/adresse', { lat, lon, ...(refresh ? { refresh: 'true' } : {}) });
+  state.adresseLauf = adresseLauf.catch(() => null);
+  adresseLauf
     .then((d) => {
       if (aktuell()) {
         state.daten.adresse = d; zeigeKopf(); ladeLinks(lauf);

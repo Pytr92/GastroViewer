@@ -76,6 +76,17 @@ function zeigeZensus(d) {
     return;
   }
   const z = d.data;
+  if (!z) {
+    /* Ehrlich leer: kein Gitterdienst für dieses Land oder das lokale
+       Raster (Österreich) ist noch nicht importiert — die Warnung sagt, was
+       zu tun ist. */
+    for (const id of ['bevoelkerung', 'wohnen']) {
+      setStatus(id, 'leer', 'keine Daten');
+      setInhalt(id, ...warnungen(d.warnings || []));
+      setQuelle(id, d.provenance);
+    }
+    return;
+  }
   zeichneZensus(z.zellen);
 
   if (!z.zellen_gefunden) {

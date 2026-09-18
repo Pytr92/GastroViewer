@@ -116,13 +116,21 @@ async def kalender(request: Request, ags: str = "",
 @router.get("/api/wahl")
 async def wahl(
     request: Request,
-    ags: str = Query(..., min_length=5, max_length=8),
+    ags: str = Query("", max_length=8),
+    lat: float | None = None, lon: float | None = None,
 ):
     """Zweitstimmen der Bundestagswahl 2025 auf Wahlkreisebene für die
-    Gemeinde des Schlüssels — Struktur-Marker mit Deutungs-Warnung."""
-    if not ags.isdigit():
-        raise HTTPException(422, "Der Gemeindeschlüssel besteht aus Ziffern.")
-    return (await svc(request).wahl(ags)).to_dict()
+    Gemeinde des Schlüssels — Struktur-Marker mit Deutungs-Warnung. Ohne
+    Schlüssel, mit Koordinaten (Österreich): Nationalratswahl 2024 über
+    Bundesland und Gemeindename aus der Adresse des Punkts."""
+    if ags:
+        if not ags.isdigit() or len(ags) < 5:
+            raise HTTPException(422, "Der Gemeindeschlüssel besteht aus 5 bis 8 Ziffern.")
+        return (await svc(request).wahl(ags)).to_dict()
+    if lat is None or lon is None:
+        raise HTTPException(422, "Gemeindeschlüssel oder Koordinaten angeben.")
+    _validate(lat, lon, 600)
+    return (await svc(request).wahl_ohne_schluessel(lat, lon)).to_dict()
 
 
 @router.get("/api/pks")
@@ -141,7 +149,9 @@ async def pks(
 @router.get("/api/register")
 async def register(
     request: Request,
-    plz: str | None = Query(None, min_length=5, max_length=5),
+    # Vier Stellen: österreichische Postleitzahl — der Block antwortet
+    # dann ehrlich „nur Deutschland" statt mit einem Eingabefehler.
+    plz: str | None = Query(None, min_length=4, max_length=5),
 ):
     """Handelsregister-Umfeld der Standort-PLZ aus dem einmal
     importierten OffeneRegister-Bestand (Stand 2019)."""

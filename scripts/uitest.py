@@ -44,6 +44,7 @@ ISARAUEN = (48.1050, 11.5530)   # liegt im Hochwassergebiet HQ 100
 FREIHAM = (48.1450, 11.4200)    # dort gilt ein Bebauungsplan
 GIESING = (48.1114, 11.5859)
 KOELN = (50.9413, 6.9583)       # Nordrhein-Westfalen: Bodenrichtwert-Ebene
+WIEN = (48.2082, 16.3738)       # Stephansplatz: Österreich, eigene Quellen
 
 # Playwright bringt Chromium normalerweise selbst mit; in vorbereiteten
 # Umgebungen liegt es an einem festen Pfad.
@@ -1093,6 +1094,43 @@ def pruefe_bodenrichtwert_ebene(page) -> str:
     return f"Ebene vorhanden: {treffer[0]}"
 
 
+
+def pruefe_wien(page) -> str:
+    """Ein Wiener Punkt: Land im Kopf, österreichische Quellen in denselben
+    Blöcken, deutsche Quellen ehrlich leer — nichts hängt, nichts lügt."""
+    setze_punkt(page, *WIEN)
+    kopf = text(page, "#inhalt-kopf")
+    fordere("Österreich (AT)" in kopf, f"Land fehlt im Kopf: {kopf[:120]}")
+    fordere("Wien" in kopf, "Bundesland Wien fehlt im Kopf")
+    st = status(page, "planung")
+    fordere(st == "Österreich", f"Planungsblock nicht aus dem LFRZ-Dienst: {st}")
+    pl = text(page, "#inhalt-planung")
+    fordere("Schutzzone" in pl and "Innere Stadt" in pl,
+            f"Schutzzone Innere Stadt fehlt im Planungsblock: {pl[:120]}")
+    fordere("Erhaltungssatzung" not in pl.split("Schutzzone")[0],
+            "deutsche Begriffe vor dem Schutzzonen-Abschnitt")
+    fordere(status(page, "baurecht") == "Gebietsart bekannt",
+            f"Widmung nicht erkannt: {status(page, 'baurecht')}")
+    fordere("Gemischtes Baugebiet" in text(page, "#inhalt-baurecht"),
+            "Widmungsklasse fehlt im Baurecht-Block")
+    w = text(page, "#inhalt-wahl")
+    fordere("Nationalratswahl" in w and "SPÖ" in w, f"Wahlblock ohne NRW 2024: {w[:100]}")
+    fordere("Zweitstimmen" not in w, "österreichische Wahl mit deutschem Etikett")
+    fordere("Wien" in status(page, "tourismus"), f"Tourismus ohne Gebiet: {status(page, 'tourismus')}")
+    fordere("Wien Innere Stadt" in text(page, "#inhalt-klima"), "GeoSphere-Station fehlt im Klimablock")
+    la = text(page, "#inhalt-laerm")
+    fordere("dB" in la and "2022" in la, f"Lärmblock ohne lärminfo-Klasse: {la[:100]}")
+    fordere("Wien" in text(page, "#inhalt-maerkte"), "Wiener Märkte fehlen")
+    z = text(page, "#inhalt-bevoelkerung")
+    fordere("import-raster-at" in z, "der Zensus-Block nennt den Rasterimport nicht")
+    for block in ("luft", "einkommen", "pks", "register", "verkehrsmenge"):
+        t = text(page, f"#inhalt-{block}")
+        fordere("Nur für Deutschland" in t, f"{block}: deutsche Quelle nicht ehrlich leer: {t[:80]}")
+    fordere(page.eval_on_selector_all(".status.laedt", "e=>e.length") == 0,
+            "Blöcke bleiben in Wien im Ladezustand")
+    setze_punkt(page, *MARIENPLATZ)
+    return "Stephansplatz: Land, Schutzzone, Widmung GB, NRW 2024, GeoSphere, lärminfo — deutsche Blöcke ehrlich leer"
+
 PRUEFUNGEN = [
     ("Grundgerüst und Blöcke", pruefe_grundgeruest),
     ("Quelle, Stand, Lizenz je Block", pruefe_quellenangaben),
@@ -1141,6 +1179,7 @@ PRUEFUNGEN = [
     ("Vergleichstabelle", pruefe_vergleich),
     ("Gewichtetes Ranking", pruefe_ranking),
     ("Bodenrichtwert-Ebene (NRW)", pruefe_bodenrichtwert_ebene),
+    ("Österreich: Wiener Punkt", pruefe_wien),
 ]
 
 

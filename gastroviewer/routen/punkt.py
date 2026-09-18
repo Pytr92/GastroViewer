@@ -281,7 +281,7 @@ async def point_links(
         "bodenrichtwerte": boris.links_for(bundesland_code, gemeinde),
         "weiterfuehrend": links.build(
             lat, lon, r, gemeinde=gemeinde, plz=plz, ags=ags,
-            land=(await svc.land(lat, lon)).code,
+            land=(await svc(request).land(lat, lon)).code,
         ),
         "grenzen": GRENZEN,
     }

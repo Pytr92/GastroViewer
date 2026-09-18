@@ -36,6 +36,7 @@ BASIS = (sys.argv[1] if len(sys.argv) > 1 else "http://127.0.0.1:8000").rstrip("
 M = (48.1372, 11.5755)     # Marienplatz
 ISARAUEN = (48.1050, 11.5530)
 KOELN = (50.9413, 6.9583)
+WIEN = (48.2082, 16.3738)      # Stephansplatz
 
 befunde = []
 geprueft = 0
@@ -783,6 +784,23 @@ def t_cache_wirkt():
     return "zweiter Aufruf: 0 ausgehende Abrufe"
 
 
+
+def t_wien():
+    d, _, _ = hole("/api/point", {"lat": WIEN[0], "lon": WIEN[1], "r": 600})
+    assert d["punkt"]["land"] == "AT" and d["punkt"]["bundesland_iso"] == "AT-9", d["punkt"]
+    b = d["bloecke"]
+    assert b["planung"]["ok"] and b["planung"]["data"]["hochwasser"]["dienst"] == "lfrz"
+    assert b["planung"]["data"]["erhaltungssatzung"]["betroffen"] is True, "Innere Stadt ist Schutzzone"
+    assert b["baurecht"]["data"]["stufe"] == "gebietsart", b["baurecht"]
+    assert b["klima"]["ok"] and "GeoSphere" in b["klima"]["provenance"]["source"]
+    assert b["laerm"]["ok"] and b["laerm"]["data"]["dienst"] == "laerminfo"
+    assert b["wahl"]["ok"] and b["wahl"]["data"]["wahlkreise"][0]["nr"] == "G90000"
+    assert b["tourismus"]["ok"] and b["tourismus"]["data"]["gebiet"] == "Wien"
+    assert b["maerkte"]["ok"] and b["maerkte"]["data"]["stadt"] == "Wien"
+    for name in ("luft", "einkommen", "pks", "register"):
+        assert b[name]["data"] is None and "Nur für Deutschland" in b[name]["warnings"][0], name
+    return "Stephansplatz live: LFRZ, Schutzzone, Widmung, GeoSphere, lärminfo, NRW 2024, Nächtigungen, Märkte"
+
 ALLE = [
     ("GET /api/health", t_health),
     ("GET /api/stats", t_stats),
@@ -838,6 +856,7 @@ ALLE = [
     ("GET /api/point/baustellen — Stadt München live", t_baustellen),
     ("GET /api/point/maerkte — Stadtliste live", t_maerkte),
     ("GET /api/point/indikatoren — Viertel-Steckbrief live", t_indikatoren),
+    ("GET /api/point — Wien, österreichische Quellen live", t_wien),
     ("GET /api/point/airbnb — Inside Airbnb live", t_airbnb),
     ("GET /api/genesis — Opt-in-Verhalten ohne Kennung", t_genesis_opt_in),
     ("GET /api/point/messe — Messe-Kalender live", t_messe),

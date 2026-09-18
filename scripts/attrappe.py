@@ -201,6 +201,12 @@ def main(argv: list[str]) -> int:
         return 4
 
     roh = json.loads(gzip.decompress(args.aufnahme.read_bytes()))
+    # Wien: aus der Anwendung über die Live-Fixtures der österreichischen
+    # Dienste aufgezeichnet (tests/test_ui_aufnahme_at.py), weil die CI die
+    # Datenhosts nicht erreicht. Gleiche Schlüssel, eigene Datei.
+    zusatz = args.aufnahme.with_name("api-antworten-at.json.gz")
+    if zusatz.exists():
+        roh.update(json.loads(gzip.decompress(zusatz.read_bytes())))
     aufnahme = Aufnahme(roh)
     netz_sperren()
     punkt_ersatz(aufnahme)

@@ -2372,6 +2372,14 @@ def test_wiener_punkt_bekommt_ehrliche_antwort(client, zensus_600, overpass_comb
         assert pl["ok"] and pl["data"]["hochwasser"]["dienst"] == "lfrz"
         assert pl["data"]["hochwasser"]["betroffen"] is False
         assert pl["data"]["erhaltungssatzung"]["titel"].startswith("Schutzzone")
+        assert pl["data"]["erhaltungssatzung"]["gebiete"][0]["name"] == "Schutzzone 1. Innere Stadt"
+        # Baurecht lädt die Oberfläche einzeln — die Wiener Widmung am Punkt.
+        br = c2.get("/api/point/baurecht", params={"lat": WIEN[0], "lon": WIEN[1]}).json()
+        assert br["ok"] and br["data"]["stufe"] == "gebietsart"
+        assert br["data"]["baugebiete"][0]["aufschrift"] == "GB5"
+        # Wahl ohne Schlüssel über Koordinaten — so fragt die Oberfläche.
+        wo = c2.get("/api/wahl", params={"lat": WIEN[0], "lon": WIEN[1]}).json()
+        assert wo["ok"] and wo["data"]["wahlkreise"][0]["nr"] == "G90000"
         m = d["bloecke"]["maerkte"]
         assert m["ok"] and m["data"]["stadt"] == "Wien" and m["data"]["stadtweit"] == 23
         # Der nächste Markt am Stephansplatz ist der Kunst- und Antiquitätenmarkt
