@@ -2312,11 +2312,16 @@ def test_wiener_punkt_bekommt_ehrliche_antwort(client, zensus_600, overpass_comb
         assert d["punkt"]["bundesland"] == "Wien" and d["punkt"]["bundesland_iso"] == "AT-9"
         assert d["punkt"]["ags"] is None
         assert "Bodenrichtwerte" in d["punkt"]["land_hinweis"]
-        for name in ("zensus", "klima", "luft", "laerm", "planung", "einkommen",
+        for name in ("klima", "luft", "laerm", "planung", "einkommen",
                      "pks", "wahl", "register"):
             b = d["bloecke"][name]
             assert b["ok"] is True and b["data"] is None, name
             assert any("Nur für Deutschland" in w for w in b["warnings"]), (name, b["warnings"])
+        # Bevölkerung: kein Zensus-Dienst, sondern das lokale Eurostat-Raster —
+        # ohne Import eine klare Anleitung statt einer deutschen Zahl.
+        z = d["bloecke"]["zensus"]
+        assert z["ok"] is True and z["data"] is None
+        assert any("import-raster-at" in w for w in z["warnings"])
         assert d["bloecke"]["osm"]["ok"] is True, "OSM gilt überall"
         assert d["bloecke"]["adresse"]["data"]["land_code"] == "AT"
         assert "zensus" not in fake.calls and "dwd" not in fake.calls

@@ -135,7 +135,22 @@ class PointService:
     # ------------------------------------------------------------ Quellen
 
     async def zensus(self, lat: float, lon: float, radius: int, refresh: bool = False):
+        """Bevölkerung im Umkreis: in Deutschland der Zensus-2022-Gitterdienst
+        (100 m, 49 Felder), in Österreich das lokal importierte Eurostat-
+        Raster (1 km, nur Einwohner) — derselbe Block, dieselbe Zellenform."""
         land = await self.land(lat, lon)
+        if land.code == "AT":
+            from .sources import raster_at
+
+            if not self.settings.raster_at_db_path.exists():
+                # Nicht cachen — direkt nach dem Import soll der Block rechnen.
+                return await raster_at.load(self.settings, lat, lon, radius)
+            key = cache_key("zensus", lat, lon, radius) + "|at"
+            return await self._cached(
+                "zensus", key,
+                lambda: raster_at.load(self.settings, lat, lon, radius),
+                refresh=refresh,
+            )
         if (leer := self._nur_in("zensus", land)) is not None:
             return leer
         key = cache_key("zensus", lat, lon, radius)

@@ -150,7 +150,6 @@ def iso_aus_schluessel(land: Land, schluessel: str | None) -> str | None:
 # Oberfläche zeigt. Alles, was hier nicht steht, gilt überall (OSM, ohsome,
 # Leerstandsmelder, Overture, Inside Airbnb je Stadt, Besonnung).
 QUELLEN_NUR: dict[str, tuple[set[str], str]] = {
-    "zensus": ({"DE"}, "Der Zensus-2022-Gitterdienst deckt nur Deutschland ab."),
     "klima": ({"DE"}, "Die Klimanormalwerte kommen vom Deutschen Wetterdienst."),
     "luft": ({"DE"}, "Das Luftmessnetz kommt vom Umweltbundesamt (Deutschland)."),
     "laerm": ({"DE"}, "Die Lärmkartierung liegt nur für Deutschland vor."),
@@ -165,6 +164,8 @@ QUELLEN_NUR: dict[str, tuple[set[str], str]] = {
     "genesis": ({"DE"}, "Die Regionaldatenbank ist eine deutsche Quelle."),
     "pks": ({"DE"}, "Die Kriminalstatistik je Kreis veröffentlicht nur das BKA."),
     "wahl": ({"DE"}, "Das Wahlergebnis kommt von der Bundeswahlleiterin."),
+    # zensus fehlt hier bewusst: in Österreich antwortet das lokal importierte
+    # Eurostat-Raster (sources/raster_at.py) unter demselben Blocknamen.
     "gitter": ({"DE"}, "Das Übersichtsgitter kommt aus dem Zensus-2022-Gitterdienst."),
     "scan": ({"DE"}, "Der Flächen-Scan rechnet auf dem Zensus-2022-Gitter."),
     "bodenrichtwert": ({"DE"}, "Bodenrichtwerte kennen nur die deutschen Gutachterausschüsse."),

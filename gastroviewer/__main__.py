@@ -180,6 +180,39 @@ def cmd_import_gtfs(args: argparse.Namespace, settings: Settings) -> int:
     return 0
 
 
+def cmd_import_raster_at(args: argparse.Namespace, settings: Settings) -> int:
+    """Eurostat-Bevölkerungsraster (1 km) einmalig importieren — nur die
+    österreichischen Zellen bleiben (Deutschland hat den Zensus-Dienst)."""
+    from .sources import raster_at
+
+    tmpdir: Path | None = None
+    if args.file:
+        pfad = Path(args.file).expanduser()
+        if not pfad.exists():
+            print(f"Datei nicht gefunden: {pfad}", file=sys.stderr)
+            return 2
+        quelle = str(pfad)
+    else:
+        quelle = args.url or raster_at.QUELLE_URL
+        tmpdir = Path(tempfile.mkdtemp(prefix="gastroviewer-raster-"))
+        print(f"Lade {quelle} (rund 186 MB) …")
+        pfad = _download(quelle, tmpdir / "census.zip")
+    try:
+        if pfad.suffix.lower() == ".gpkg":
+            stats = raster_at.import_gpkg(settings, pfad, quelle=quelle, progress=print)
+        else:
+            stats = raster_at.import_zip(settings, pfad, quelle=quelle, progress=print)
+    except Exception as exc:  # noqa: BLE001 — CLI soll die Ursache zeigen
+        print(f"Import fehlgeschlagen: {type(exc).__name__}: {exc}", file=sys.stderr)
+        return 1
+    finally:
+        if tmpdir and not args.keep:
+            shutil.rmtree(tmpdir, ignore_errors=True)
+    for k, v in stats.items():
+        print(f"  {k}: {v}")
+    return 0
+
+
 def cmd_import_register(args: argparse.Namespace, settings: Settings) -> int:
     """OffeneRegister-Datenspende (Handelsregister, Stand 05.02.2019) einmalig
     importieren. Wie der GTFS-Import: 260 MB laden, streamen, danach
@@ -438,6 +471,15 @@ def build_parser() -> argparse.ArgumentParser:
     )
     g.add_argument("--keep", action="store_true", help="ZIP nach dem Import behalten")
     g.set_defaults(func=cmd_import_gtfs)
+
+    ra = sub.add_parser(
+        "import-raster-at",
+        help="Bevölkerungsraster Österreich (Eurostat, 1 km) einmalig importieren",
+    )
+    ra.add_argument("--url", help="abweichende ZIP-URL")
+    ra.add_argument("--file", help="bereits geladenes ZIP oder GeoPackage verwenden")
+    ra.add_argument("--keep", action="store_true", help="Download nach dem Import behalten")
+    ra.set_defaults(func=cmd_import_raster_at)
 
     ov = sub.add_parser(
         "import-overture",

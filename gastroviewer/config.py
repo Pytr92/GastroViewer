@@ -271,6 +271,11 @@ class Settings:
         return self.data_dir / "register.sqlite"
 
     @property
+    def raster_at_db_path(self) -> Path:
+        """Eurostat-Bevölkerungsraster (1 km) für Österreich, lokal importiert."""
+        return self.data_dir / "raster_at.sqlite"
+
+    @property
     def user_agent(self) -> str:
         return f"gastroviewer/{self.version} ({self.contact})"
 
