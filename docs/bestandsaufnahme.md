@@ -26,12 +26,55 @@ Alle zwölf bestätigten Funde sind umgesetzt, jeder mit Test, in kleinen Schrit
 | 11 | Host-/Origin-Prüfung (DNS-Rebinding, CSRF) | `1ad3aa6` |
 | 12 | Netzrechnung im Event-Loop | `a0ceab9` |
 
-Die 72 ungeprüften Funde mittlerer und niedriger Schwere (Anhang) sind der nächste
-Durchgang: zuerst durch einen Skeptiker prüfen lassen, dann in derselben Reihenfolge
-abarbeiten. Die Struktur-Funde darunter (`api.py` in Router aufteilen, `ttl_for` als
-Tabelle, Versionsnummer an einer Stelle, README in `docs/` aufteilen) sind Umbauten,
-keine Fehler — sie lohnen sich als eigene, verhaltensneutrale Schritte mit der
-Testsuite als Netz.
+## Runde 2 (18. September 2026): die 41 mittleren Funde
+
+Zweiter Durchgang mit derselben Methode: jeden der 41 ungeprüften Funde mittlerer
+Schwere hat ein eigener Skeptiker am aktuellen Code geprüft (39 bestätigt, 2
+widerlegt — davon einer bereits durch Runde 1 erledigt), danach eine Rangfolge nach
+Nutzen und Aufwand. Alle 37 verbliebenen Ränge sind umgesetzt, jeder mit Test, in
+kleinen Commits auf `claude/trusting-gates-t849v6`; 804 Tests und die Browserprüfung
+(44 Schritte) sind grün.
+
+| Rang | Fund | Commit |
+|---|---|---|
+| 1 | Zensus: alle den Kreis berührenden 100-m-Zellen zählten voll (+55 % bei r=300) — jetzt anteilig nach überdeckter Fläche, in Punkt, Kannibalisierung und Gehweg-Nenner | `ec85918` |
+| 2 | `ladeLinks` ohne Laufprüfung: Portale und Bodenrichtwert-Block des alten Punkts im neuen Gerüst | `e9991fe` |
+| 3 | FastAPI-Validierungsfehler als Liste → „[object Object]“; jetzt ein deutscher Satz | `4465815` |
+| 4 | Übersichtsgitter: `moveend` während eines Abrufs ging verloren | `e9991fe` |
+| 5 | Gewichtsregler im Score-Block wurde bei jedem Schritt ersetzt | `e9991fe` |
+| 6 | Import einer Sicherung: falsche Struktur → 500, Koordinaten/Radius ungeprüft | `9aefdb5` |
+| 7 | Leaflet-Tooltips mit unmaskierten OSM-/GTFS-Namen (innerHTML) | `e9991fe` |
+| 8 | GENESIS-Kennung ging bei Weiterleitung an fremde Hosts mit | `ff7da47` |
+| 9 | Kannibalisierung: zwei Live-Abrufe statt Cache, Zensus-Fehler als 500 | `4465815`, `e6d2b34` |
+| 10 | „Höchstens eine Overpass-Abfrage gleichzeitig“ war nicht umgesetzt | `ff7da47` |
+| 11 | ÖPNV-Einwohner-Näherung: Zellen × Halte im Event-Loop | `e6d2b34` |
+| 12 | `gtfs.load`: Service-Filter erst in Python | `e6d2b34` |
+| 13 | Cache wuchs unbegrenzt, Protokoll nie beschnitten | `e6d2b34` |
+| 14 | Runden-Router las je Halt alle Abfahrten aller Tage | `e6d2b34` |
+| 15 | `vergleich.js` benutzte `state` ohne Import — plus ESLint in der Pipeline | `e9991fe` |
+| 16 | Echter Netzpfad (`Outbound.request`, `_json_or_raise`) ungetestet | `ff7da47`, `0d962b4` |
+| 17 | `vollpruefung.py` mit fest verdrahtetem Monat, veralteter WMS-Liste, Jahreszahl | `0d962b4` |
+| 18 | `ttl_for`: 30 Präfix-Zweige, 16 Quellen still im Default — jetzt Tabelle mit AST-Test | `0d962b4` |
+| 19 | Elfmal derselbe Re-raise-Block in `service.py` — `SourceError.aus_dict` | `0d962b4` |
+| 20 | Versionsnummer an vier Stellen — jetzt eine Quelle (`__init__.py`) | `0d962b4` |
+| 21 | Stadt-Boxen dreifach kopiert, toter `planung.in_bayern` | `0d962b4` |
+| 22 | README: 20 Routen fehlten in der API-Tabelle, veraltete Zählungen — plus Test | `0d962b4` |
+| 23 | Fehlerpfade auf API-Ebene ungetestet (Zensus, Nominatim→Photon, DWD, Pendler) | `0d962b4` |
+| 24 | Kein wiederholbarer Live-Gegencheck — `scripts/kontrakt_check.py`, monatlicher Workflow | `52f94a7` |
+| 25 | `create_app`: 74 Endpunkte in einer Funktion — Router je Thema, verhaltensneutral | `c84fb67` |
+| 26–37 | Batch A/B der Runde 2 (Overpass-`remark`, BfG-Fehlerbericht, GTFS-Import, IHK-Datei, Radzählstellen, Indikatoren, Dynamik, Luft, Liefergebiet, Kriterien-Key, Photon-Abstand) | `02a44fa`, `ad5d666`, `9e639fc`, `edd71b4` |
+
+Widerlegt: „Gehweg-Rechnung im Event-Loop“ (bereits in `a0ceab9` erledigt) und
+„base.py trägt die Quellen-Boilerplate nicht“ (Zählung stimmt, aber kein Fehler —
+ein Umbau ohne Nutzen für den Nutzer, bewusst nicht angefasst).
+
+Bewusst anders als vorgeschlagen: Das README bleibt ein Dokument (Spec §7.9 und
+`scripts/abnahme.py` lesen es), nur die veralteten Stellen sind korrigiert und die
+API-Tabelle ist vollständig; die Stadtmodule bekommen keine Registry, nur die
+Kopien sind weg.
+
+Die 31 Funde niedriger Schwere aus dem Anhang bleiben ungeprüft — sie sind nach
+den zwei Runden der einzige offene Rest.
 
 ## Übergreifende Muster
 
@@ -229,7 +272,10 @@ build_query nutzt `minuten * 250 * NETZ_PUFFER(1.8)`: bei MAX_MINUTEN=15 (api.py
 
 *Rang:* Einziger Leistungsfund: spürbar (1-3 s Loop-Stillstand, 504 beim Hauptspiegel, große Last auf dem Spendendienst), aber umgehbar (kleinere Minutenzahl) und ohne falsche Zahlen. Aufwand M inklusive Messung, daher am Ende.
 
-## Anhang: ungeprüfte Funde (mittel und niedrig)
+## Anhang: Funde der ersten Runde ohne Skeptiker-Prüfung (mittel und niedrig)
+
+Die mittleren Funde dieser Liste sind in Runde 2 geprüft und umgesetzt (siehe oben);
+die niedrigen sind weiterhin ungeprüft.
 
 Nicht vom Skeptiker geprüft — Beschreibung und Fix stammen unverändert vom jeweiligen Prüfer.
 
