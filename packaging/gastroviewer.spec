@@ -11,10 +11,20 @@ Entscheidungen:
   Beim Start entpackt PyInstaller nach ``sys._MEIPASS`` — die Oberfläche
   (``gastroviewer/static``) wird dorthin mitgepackt, und zwar unter genau dem
   Pfad, den ``api.STATIC_DIR`` (``Path(__file__).parent / "static"``) erwartet.
-* **Mit Konsolenfenster**: Fehlermeldungen und das Abruf-Protokoll bleiben
-  sichtbar. Seit es das Startfenster gibt, ist die Konsole nicht mehr der
-  Aus-Schalter, sondern nur noch die Protokollansicht — bewusst behalten,
-  weil ein Fehler beim Start sonst spurlos verschwände.
+* **Mit Konsolenfenster** (``console=True``): Fehlermeldungen und das
+  Abruf-Protokoll bleiben sichtbar. Seit es das Startfenster gibt, ist die
+  Konsole nicht mehr der Aus-Schalter, sondern nur noch die Protokollansicht
+  — bewusst behalten, weil ein Fehler beim Start sonst spurlos verschwände.
+  Das gilt für Windows und Linux. Auf dem Mac ist ``console`` aus (siehe
+  Kommentar an der Stelle): Die Datei kommt in ein ``.app``-Bundle
+  (``packaging/macos_app.sh``), und nur der Fenster-Bootloader verhält sich
+  unter LaunchServices wie ein Programm. Im Terminal aufgerufen schreibt
+  dieselbe Datei weiterhin ihr Protokoll.
+* **Kein eigener macOS-Zweig hier**: Das Bundle entsteht bewusst nicht über
+  PyInstallers ``BUNDLE``, sondern in einem eigenen Shellskript. So bleibt
+  dieser Bauplan für alle drei Systeme derselbe, und jede Entscheidung über
+  Info.plist, Signatur und ZIP steht an einer Stelle, die man ohne
+  PyInstaller lesen und ausführen kann.
 * Die ``uvicorn``-Untermodule stehen explizit hier, weil uvicorn sie zur
   Laufzeit über Strings lädt ("uvicorn.loops.auto" …) — die statische Analyse
   von PyInstaller sieht solche Importe nicht.
@@ -22,6 +32,7 @@ Entscheidungen:
   MB); der Overture-Import bleibt ein optionaler Schritt mit Python.
 """
 
+import sys
 from pathlib import Path
 
 WURZEL = Path(SPECPATH).parent
@@ -79,7 +90,16 @@ exe = EXE(
     bootloader_ignore_signals=False,
     strip=False,
     upx=False,
-    console=True,
+    # Windows/Linux: Konsole als Protokollansicht. macOS: bewusst NICHT —
+    # console=True wählt dort den Bootloader ohne Fenster-Unterstützung:
+    # Der Onefile-Elternprozess bliebe für LaunchServices die sichtbare
+    # App (hüpfendes Dock-Symbol, „reagiert nicht", zweite Dock-Kachel für
+    # das Tk-Kind), Apple-Events kämen nie beim Fenster an, und ein Absturz
+    # vor dem Fenster ginge nach /dev/null statt in die Console.app. Der
+    # Fenster-Bootloader macht den Elternprozess zur Hintergrund-App,
+    # reicht Events ans Kind weiter und schreibt Tracebacks ins Systemlog.
+    # Im Terminal aufgerufen bleibt stdout/stderr davon unberührt.
+    console=(sys.platform != "darwin"),
     disable_windowed_traceback=False,
     argv_emulation=False,
     target_arch=None,

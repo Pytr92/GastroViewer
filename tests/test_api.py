@@ -15,6 +15,11 @@ from fastapi.testclient import TestClient
 
 from gastroviewer.api import create_app, point_to_csv
 from gastroviewer.sources.base import SourceError
+# Aufgezeichnete Antworten der Quellentests — damit im Gesamtpunkt kein
+# Block mehr an „unerwartete URL" scheitert und die Invariante unten greift.
+from test_bayern import ECHTE_ANTWORT as BAYSIS_ANTWORT
+from test_muenchen import ECHTE_ANTWORT as RAD_ANTWORT
+from test_planung import ECHTE_BPLAN as BPLAN_ANTWORT, ECHTE_HOCHWASSER as LFU_HOCHWASSER
 
 LAT, LON, R = 48.1334, 11.5674, 600
 
@@ -29,8 +34,13 @@ class FakeOutbound:
                  airbnb=None, messe=None, tourismus=None,
                  uba=None, bfg_hochwasser=None,
                  pks=None, leerstandsmelder=None,
-                 luft_api=None, wahl_dateien=None, gebaeude=None):
+                 luft_api=None, wahl_dateien=None, gebaeude=None,
+                 auto=None, erhaltungssatzung=None):
         self.zensus = zensus
+        # Münchner Erhaltungssatzungen (Planungsrecht-Block).
+        self.erhaltungssatzung = erhaltungssatzung
+        # Fahrzeit-Block: das aufgezeichnete Hauptstraßennetz.
+        self.auto = auto
         self.overpass = overpass
         self.gebaeude = gebaeude or {"elements": []}
         self.nominatim = nominatim
@@ -112,6 +122,14 @@ class FakeOutbound:
             # Die Sonnenrechnung fragt denselben Endpunkt, aber nach
             # Gebäudeumrissen — an der Abfrage unterscheidbar.
             abfrage = ((kw or {}).get("data") or {}).get("data", "")
+            # Der Fahrzeit-Block fragt nur das Hauptnetz — am Autobahn-Tag
+            # erkennbar, den keine andere Abfrage des Werkzeugs stellt.
+            if "motorway" in abfrage:
+                self.calls.append("overpass_auto")
+                if "overpass_auto" in self.fehler or self.auto is None:
+                    raise SourceError("http_status",
+                                      "HTTP 504 — der Dienst hat abgebrochen.")
+                return self.auto
             if "building" in abfrage and "out geom" in abfrage:
                 self.calls.append("overpass_gebaeude")
                 if "overpass_gebaeude" in self.fehler:
@@ -133,8 +151,35 @@ class FakeOutbound:
             if name.startswith("gemeinden_2024"):
                 return self.pendler["gemeinden"]
             raise SourceError("http_status", f"HTTP 404 — {name} fehlt.")
-        # Genau der Lärmdienst — auch der Hochwasser-Block (planung) läuft
-        # auf lfu.bayern und soll hier weiterhin als „unerwartet" scheitern.
+        if "geoportal.muenchen.de/geoserver/plan/wms" in url:
+            self.calls.append("muenchen_erhaltungssatzung")
+            if self.erhaltungssatzung is None:
+                raise SourceError("timeout", "Zeitüberschreitung — Dienst antwortet nicht.")
+            return self.erhaltungssatzung["antwort"]
+        if "geoportal.muenchen.de/geoserver/gsm_wfs/vagrund_baug_umgriff_opendata/ows" in url:
+            self.calls.append("muenchen_bplan")
+            return BPLAN_ANTWORT
+        if "ueberschwemmungsgebiete" in url:
+            self.calls.append("lfu_hochwasser")
+            if "lfu_hochwasser" in self.fehler:
+                raise SourceError("timeout",
+                                  "Zeitüberschreitung — Dienst antwortet nicht.")
+            return LFU_HOCHWASSER
+        if "BAYSIS_Verkehrsdaten" in url:
+            self.calls.append("verkehrsmenge")
+            if "verkehrsmenge" in self.fehler:
+                raise SourceError("timeout",
+                                  "Zeitüberschreitung — Dienst antwortet nicht.")
+            return BAYSIS_ANTWORT
+        if "mor_wfs" in url and "raddauer" in str(
+            ((kw or {}).get("params") or {}).get("typeName", "")
+        ):
+            self.calls.append("radzaehlung")
+            if "radzaehlung" in self.fehler:
+                raise SourceError("timeout",
+                                  "Zeitüberschreitung — Dienst antwortet nicht.")
+            return RAD_ANTWORT
+        # Genau der Lärmdienst (lfu.bayern hat mehrere).
         if "laerm/hauptverkehrsstrassen" in url:
             self.calls.append("laerm")
             if "laerm" in self.fehler:
@@ -295,7 +340,7 @@ def client(tmp_path, monkeypatch, zensus_600, overpass_combined, nominatim_rever
            muenchen_indikatoren, airbnb_muenchen, messe_muenchen,
            tourismus_muenchen, uba_laerm, bfg_hochwasser,
            pks_auszug, lsm_places, uba_luft_api, wahl_btw25,
-           overpass_gebaeude):
+           overpass_gebaeude, overpass_auto_muenchen, erhaltungssatzung_haidhausen):
     from gastroviewer.config import Settings
 
     # Der Genesis-Block ist ein Opt-in — die Testumgebung darf keine echte
@@ -319,6 +364,8 @@ def client(tmp_path, monkeypatch, zensus_600, overpass_combined, nominatim_rever
                              "29": uba_laerm["hlq_night"]},
                         bfg_hochwasser=bfg_hochwasser["koeln_rheinufer"],
                         gebaeude=overpass_gebaeude["sendlinger_tor"],
+                        auto=overpass_auto_muenchen,
+                        erhaltungssatzung=erhaltungssatzung_haidhausen,
                         pks=pks_auszug,
                         leerstandsmelder=lsm_places["places"],
                         luft_api=uba_luft_api,
@@ -331,7 +378,9 @@ def client(tmp_path, monkeypatch, zensus_600, overpass_combined, nominatim_rever
         import gastroviewer.api as api_mod
 
         monkeypatch.setattr(api_mod, "Outbound", lambda *a, **k: fake_outbound)
-        return TestClient(create_app(settings))
+        # base_url: Der Server nimmt nur Host-Header an, die „dieser Rechner"
+        # bedeuten — „testserver" ist keiner.
+        return TestClient(create_app(settings), base_url="http://127.0.0.1")
 
     original_lifespan_state["make"] = make_client
     c = make_client()
@@ -388,8 +437,12 @@ def test_zweiter_aufruf_erzeugt_keinen_outbound_traffic(client):
     # es geht nichts hinaus. — Leerstandsmelder (1 Weltbestand) und
     # PKS-Kreistabelle (1 XLSX); das Registerumfeld läuft rein lokal (0).
     # Luft (Stationsliste + Stundenwerte der nächsten Station = 2) und
-    # Wahl (kerg2 + Zuordnung = 2).
-    assert vorher == 55
+    # Wahl (kerg2 + Zuordnung = 2). — Seit die Invariante „kein Block stirbt
+    # still" gilt, laufen auch Planungsrecht (LfU-Hochwasser, Münchner
+    # B-Plan und Erhaltungssatzung = 3), Radzählstellen (1) und BAYSIS-
+    # Verkehrsmengen (1) über den FakeOutbound statt an „unerwartete URL"
+    # zu scheitern: 55 + 5.
+    assert vorher == 60
 
     d = client.get("/api/point", params={"lat": LAT, "lon": LON, "r": R}).json()
     assert len(client.fake.calls) == vorher, "Cache hat nicht gegriffen"
@@ -1391,7 +1444,9 @@ def test_export_und_import_der_punkte(client):
     client.post("/api/points", json={
         "label": "Sicherungstest", "lat": LAT, "lon": LON, "radius": R})
     pid = client.get("/api/points").json()["punkte"][-1]["id"]
-    client.patch(f"/api/points/{pid}", json={"notiz": "Top-Lage", "bewertung": 2})
+    client.patch(f"/api/points/{pid}", json={"notiz": "Top-Lage", "bewertung": 2,
+                                             "stand": "abgelehnt",
+                                             "stand_grund": "Miete zu hoch"})
     client.post(f"/api/points/{pid}/pruefung")  # legt einen Verlaufseintrag an
 
     r = client.get("/api/points/export")
@@ -1415,6 +1470,10 @@ def test_export_und_import_der_punkte(client):
     zeilen = client.get("/api/points/vergleich").json()["zeilen"]
     wieder = next(z for z in zeilen if z["label"] == "Sicherungstest")
     assert wieder["notiz"] == "Top-Lage"
+    # Arbeitsstand und Ablehnungsgrund gingen beim Einspielen verloren —
+    # ausgerechnet die beiden Felder, die nur der Nutzer selbst weiß.
+    assert wieder["stand"] == "abgelehnt"
+    assert wieder["stand_grund"] == "Miete zu hoch"
     v = client.get(f"/api/points/{wieder['id']}/verlauf").json()
     assert v["anzahl"] == 2
 
@@ -1818,3 +1877,170 @@ def test_point_sonne_endpunkt(client):
     # Die Abdeckung der Höhenangaben muss mitgeliefert werden.
     assert s["gebaeude_ohne_hoehe"] >= 0
     assert any("Obergrenze" in h for h in s["hinweise"])
+
+
+# ------------------------------------------------------------ Fahrzeit
+
+
+def test_fahrzeit_endpunkt_liefert_ein_gebiet(client):
+    """Der Block war seit seiner Einführung tot (self.out, run_query-Tupel) —
+    kein Test rief den Endpunkt je auf. Jetzt schon."""
+    r = client.get("/api/point/fahrzeit", params={"lat": LAT, "lon": LON, "minuten": 10})
+    assert r.status_code == 200
+    d = r.json()
+    assert d["ok"], d.get("error")
+    assert d["data"]["erreichte_knoten"] > 100
+    assert d["data"]["minuten"] == 10
+    assert "overpass_auto" in client.fake.calls
+
+
+def test_import_verwirft_unbekannten_arbeitsstand(client):
+    """Ein erfundener Stand aus einer fremden Sicherung wird nicht übernommen."""
+    client.post("/api/points", json={
+        "label": "Fremdstand", "lat": LAT, "lon": LON, "radius": R})
+    sicherung = client.get("/api/points/export").json()
+    p = next(x for x in sicherung["punkte"] if x["label"] == "Fremdstand")
+    p["stand"], p["stand_grund"] = "gekauft", "egal"
+    p["label"] = "Fremdstand-Kopie"
+    d = client.post("/api/points/import", json={**sicherung, "punkte": [p]}).json()
+    assert d["neu"] == 1
+    zeile = next(z for z in client.get("/api/points/vergleich").json()["zeilen"]
+                 if z["label"] == "Fremdstand-Kopie")
+    assert zeile["stand"] is None and zeile["stand_grund"] is None
+
+
+# ------------------------------------------------------ Kannibalisierung
+
+
+def test_identische_punkte_teilen_sich_alle_einwohner(client):
+    """Zähler und Nenner müssen dieselbe Zellmenge meinen: derselbe Punkt
+    zweimal gemerkt ergibt 100 %, nicht 68 %."""
+    for label in ("Zwilling A", "Zwilling B"):
+        client.post("/api/points", json={
+            "label": label, "lat": LAT, "lon": LON, "radius": R})
+    ids = {p["label"]: p["id"] for p in client.get("/api/points").json()["punkte"]}
+    d = client.get("/api/points/kannibalisierung",
+                   params={"a": ids["Zwilling A"], "b": ids["Zwilling B"]}).json()
+    assert d["ueberlappung"] is True
+    assert d["einwohner_a"] == d["einwohner_b"] == d["gemeinsame_einwohner"] > 0
+    assert d["anteil_an_a_prozent"] == 100.0
+
+
+# --------------------------------------------------- Herkunftsprüfung
+
+
+def test_fremder_host_header_wird_abgewiesen(client):
+    """DNS-Rebinding: ein fremder Name zeigt auf 127.0.0.1 — der Server
+    antwortet nur unter seiner eigenen Adresse."""
+    r = client.get("/api/health", headers={"host": "angreifer.example"})
+    assert r.status_code == 400
+    assert "DNS-Rebinding" in r.json()["detail"]
+    for host in ("127.0.0.1:8000", "localhost", "[::1]:8000", "192.168.1.20:8000"):
+        assert client.get("/api/health", headers={"host": host}).status_code == 200, host
+
+
+def test_schreiben_von_fremder_seite_wird_abgewiesen(client):
+    """CSRF: POST aus dem Browser mit fremdem Origin — 403; ohne Origin
+    (curl, Testsuite) und mit eigenem Origin — angenommen."""
+    body = {"label": "CSRF-Probe", "lat": LAT, "lon": LON, "radius": R}
+    r = client.post("/api/points", json=body, headers={"origin": "http://angreifer.example"})
+    assert r.status_code == 403
+    r = client.post("/api/points", json=body, headers={"origin": "null"})
+    assert r.status_code == 403
+    r = client.post("/api/points", json=body, headers={"origin": "http://127.0.0.1:8000"})
+    assert r.status_code < 300, r.text
+    # Lesen mit fremdem Origin bleibt erlaubt — das ist kein CSRF.
+    assert client.get("/api/health", headers={"origin": "http://angreifer.example"}).status_code == 200
+
+
+def test_eigener_hostname_per_umgebung(tmp_path, monkeypatch, zensus_600,
+                                        overpass_combined, nominatim_reverse):
+    """Wer den Server im LAN unter einem Namen erreicht, trägt ihn ein."""
+    from gastroviewer.config import Settings
+
+    monkeypatch.setenv("GASTROVIEWER_ERLAUBTE_HOSTS", "gastro.fritz.box, Buero-PC")
+    monkeypatch.setenv("GASTROVIEWER_DATA_DIR", str(tmp_path))
+    settings = Settings()
+    assert settings.erlaubte_hosts == ("gastro.fritz.box", "buero-pc")
+    fake = FakeOutbound(zensus_600, overpass_combined, nominatim_reverse)
+    monkeypatch.setattr("gastroviewer.api.Outbound", lambda *a, **kw: fake)
+    with TestClient(create_app(settings), base_url="http://127.0.0.1") as c:
+        assert c.get("/api/health", headers={"host": "gastro.fritz.box:8000"}).status_code == 200
+        assert c.get("/api/health", headers={"host": "Buero-PC"}).status_code == 200
+        assert c.get("/api/health", headers={"host": "anderer.fritz.box"}).status_code == 400
+
+
+# ------------------------------------ Invariante: kein Block stirbt still
+
+
+def test_kein_block_scheitert_still(client):
+    """Der Service verpackt jede Ausnahme in einen Fehlerblock mit
+    kind="unknown". Genau so blieb der tote Fahrzeit-Block ein Jahr lang
+    unbemerkt — und mit ihm drei Blöcke, die im Test an „unerwartete URL"
+    scheiterten. Ein Block darf fachlich leer sein oder einen benannten
+    Quellenfehler tragen; ein Programmierfehler ist keins von beidem."""
+    d = client.get("/api/point", params={"lat": LAT, "lon": LON, "r": R}).json()
+    still = {n: b["error"] for n, b in d["bloecke"].items()
+             if (b.get("error") or {}).get("kind") == "unknown"}
+    assert not still, still
+    assert d["bloecke"]["planung"]["ok"], d["bloecke"]["planung"].get("error")
+    assert d["bloecke"]["radzaehlung"]["ok"]
+    assert d["bloecke"]["verkehrsmenge"]["ok"]
+
+
+def test_planung_dienst_folgt_dem_bundesland(client):
+    """München mit Code 09 → LfU; derselbe Punkt mit Code 08 → BfG."""
+    d = client.get("/api/point/planung", params={
+        "lat": LAT, "lon": LON, "r": R, "bundesland_code": "09"}).json()
+    assert d["ok"] and d["data"]["hochwasser"]["dienst"] == "lfu"
+    d = client.get("/api/point/planung", params={
+        "lat": LAT, "lon": LON, "r": R, "bundesland_code": "08"}).json()
+    assert d["ok"] and d["data"]["hochwasser"]["dienst"] == "bfg"
+
+
+def test_pruefung_bei_quellenausfall_behaelt_den_alten_stand(client):
+    """Overpass 504 beim Neu-Prüfen: kein Betrieb „verschwindet", die
+    Vergleichstabelle behält ihre Zahlen, der Verlauf bekommt keinen
+    Nullstand — und die Antwort sagt, was nicht geprüft wurde."""
+    client.post("/api/points", json={
+        "label": "Ausfalltest", "lat": LAT, "lon": LON, "radius": R})
+    pid = client.get("/api/points").json()["punkte"][-1]["id"]
+    alt_gesamt = client.get(f"/api/points/{pid}").json()["zeile"]["gastro_gesamt"]
+    assert alt_gesamt > 100
+
+    client.fake.fehler.add("overpass")
+    try:
+        d = client.post(f"/api/points/{pid}/pruefung").json()
+    finally:
+        client.fake.fehler.discard("overpass")
+
+    assert d["verschwundene_betriebe"] == [] and d["neue_betriebe"] == []
+    assert any(e["block"] == "osm" for e in d["nicht_geprueft"]), d["nicht_geprueft"]
+    assert not any(v["key"] == "gastro_gesamt" for v in d["veraendert"])
+    zeile = client.get(f"/api/points/{pid}").json()["zeile"]
+    assert zeile["gastro_gesamt"] == alt_gesamt
+    # GTFS/Zählstellen antworteten — der Stand wurde also gespeichert, aber
+    # mit dem alten OSM-Block, nicht mit einem leeren.
+    assert d["gespeichert"] is True
+    v = client.get(f"/api/points/{pid}/verlauf").json()
+    assert v["staende"][-1]["zeile"]["gastro_gesamt"] == alt_gesamt
+
+
+def test_pruefung_ohne_jede_bewegliche_quelle_speichert_nichts(client):
+    """Fallen OSM, GTFS und beide Zählstellen aus, entsteht kein
+    Verlaufseintrag — ein alter Stand mit neuem Datum wäre eine Lüge."""
+    client.post("/api/points", json={
+        "label": "Totalausfall", "lat": LAT, "lon": LON, "radius": R})
+    pid = client.get("/api/points").json()["punkte"][-1]["id"]
+    vorher = client.get(f"/api/points/{pid}/verlauf").json()["anzahl"]
+    for q in ("overpass", "radzaehlung", "verkehrsmenge"):
+        client.fake.fehler.add(q)
+    try:
+        r = client.post(f"/api/points/{pid}/pruefung")
+    finally:
+        for q in ("overpass", "radzaehlung", "verkehrsmenge"):
+            client.fake.fehler.discard(q)
+    assert r.status_code == 200, "kein 5xx — der Pflegelauf soll weiterlaufen"
+    d = r.json()
+    assert d["ok"] is False and d["gespeichert"] is False
+    assert client.get(f"/api/points/{pid}/verlauf").json()["anzahl"] == vorher

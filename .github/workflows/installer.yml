@@ -7,6 +7,11 @@
 #
 # Jedes Paket wird nach dem Bau gestartet und die Startseite abgerufen —
 # ein Build, der nicht antwortet, wird nicht veröffentlicht.
+#
+# macOS bekommt seit v0.2.0 ein echtes Programmpaket (.app) im ZIP statt
+# der nackten PyInstaller-Datei: Die lag ohne Endung und ohne Paket im
+# Release, der Finder kannte dafür keine Zuordnung, und ein Doppelklick
+# zeigte den Binärinhalt als Zeichensalat. Siehe packaging/macos_app.sh.
 
 name: Installer bauen
 
@@ -14,7 +19,7 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: "Versions-Tag für ein Release (z. B. v0.1.0). Leer = nur bauen."
+        description: "Versions-Tag für ein Release (z. B. v0.2.0). Leer = nur bauen."
         required: false
         default: ""
   push:
@@ -28,16 +33,26 @@ jobs:
         include:
           - os: windows-latest
             artefakt: GastroViewer-Windows
+            # Womit die Proben laufen …
             binaerdatei: dist/GastroViewer.exe
-          - os: macos-latest
+            # … und was am Ende ins Release geht.
+            hochladen: dist/GastroViewer.exe
+          # Bewusst eine feste Version statt macos-latest: Der Doppelklick-Test
+          # unten hängt am Verhalten von codesign, ditto, spctl und LaunchServices,
+          # und ein Label-Wechsel (etwa auf macOS 26) soll ein bewusster Schritt
+          # sein, kein stiller.
+          - os: macos-15
             artefakt: GastroViewer-macOS-AppleSilicon
-            binaerdatei: dist/GastroViewer
+            binaerdatei: dist/GastroViewer.app/Contents/MacOS/GastroViewer
+            hochladen: dist/GastroViewer-macOS-AppleSilicon.zip
           - os: macos-15-intel
             artefakt: GastroViewer-macOS-Intel
-            binaerdatei: dist/GastroViewer
+            binaerdatei: dist/GastroViewer.app/Contents/MacOS/GastroViewer
+            hochladen: dist/GastroViewer-macOS-Intel.zip
           - os: ubuntu-latest
             artefakt: GastroViewer-Linux
             binaerdatei: dist/GastroViewer
+            hochladen: dist/GastroViewer
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
@@ -54,10 +69,242 @@ jobs:
       - name: Paket bauen
         run: pyinstaller --clean --noconfirm packaging/gastroviewer.spec
 
+      # Aus der losen Datei wird ein doppelklickbares .app-Bundle, ad hoc
+      # signiert und mit ditto gepackt. Alle Entscheidungen dazu stehen im
+      # Skript, damit sich dasselbe Ergebnis auch von Hand erzeugen lässt.
+      - name: Programmpaket bauen (macOS)
+        if: runner.os == 'macOS'
+        run: packaging/macos_app.sh dist/GastroViewer dist "${{ matrix.artefakt }}"
+
+      # Der Fehler von v0.1.0 war kein Programmfehler, sondern ein
+      # Verpackungsfehler — und genau der wird hier geprüft: Struktur,
+      # Signatur, und vor allem, ob das Paket den Weg durch das ZIP
+      # überlebt. Ein .app ohne Ausführungsrecht beim Empfänger wäre
+      # derselbe Zeichensalat wie vorher.
+      - name: Programmpaket prüfen (macOS)
+        if: runner.os == 'macOS'
+        shell: bash
+        run: |
+          set -euo pipefail
+          APP=dist/GastroViewer.app
+          START=$(/usr/libexec/PlistBuddy -c "Print :CFBundleExecutable" "$APP/Contents/Info.plist")
+          test -x "$APP/Contents/MacOS/$START"
+          echo "Startdatei laut Info.plist vorhanden und ausführbar: $START"
+          codesign --verify --strict --verbose=2 "$APP"
+
+          # ZIP-Runde: auspacken wie beim Empfänger und die ausgepackte
+          # Datei wirklich starten.
+          PROBE=$(mktemp -d)
+          ditto -x -k "${{ matrix.hochladen }}" "$PROBE"
+          test -x "$PROBE/GastroViewer.app/Contents/MacOS/GastroViewer" \
+            || { echo "Nach dem Auspacken fehlt das Ausführungsrecht." >&2; exit 1; }
+          "$PROBE/GastroViewer.app/Contents/MacOS/GastroViewer" status >/dev/null
+          echo "Ausgepacktes Paket startet."
+
+          # Gatekeeper wird das Paket abweisen, solange es nicht notarisiert
+          # ist. Das ist bekannt und kein Fehler — es gehört aber sichtbar
+          # auf die Übersichtsseite, damit niemand die Warnung am Mac für
+          # einen kaputten Build hält.
+          urteil=$(spctl --assess --type execute --verbose=4 "$APP" 2>&1 || true)
+          echo "$urteil"
+          {
+            echo "- **${{ matrix.artefakt }}**: Programmpaket gebaut und nach dem Auspacken gestartet."
+            echo "  - Gatekeeper: \`${urteil//$'\n'/ }\` (nicht notarisiert — beim ersten Start ist die Sicherheitsabfrage zu bestätigen)."
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      # Alle Proben bis hierher liefen aus einer Shell: Datei aufrufen, mit
+      # Argumenten, mit der Umgebung der Shell. Ein Doppelklick im Finder ist
+      # etwas anderes — LaunchServices startet das Paket über launchd, ohne
+      # Argumente, ohne Shell-Umgebung, mit Arbeitsverzeichnis "/", und mit
+      # dem Fenster-Bootloader (console=False im Spec) als sichtbarer App.
+      # Genau dieser Weg wird hier nachgestellt ("open"), weil er der einzige
+      # ist, den die Empfänger gehen — und niemand hier einen Mac hat, um ihn
+      # von Hand zu gehen.
+      #
+      # Bewusst OHNE "open --env": Ein echter Doppelklick reicht keine
+      # Umgebung weiter, also muss das Paket mit seinen Vorgaben laufen
+      # (Port 8000 und ~/.gastroviewer, siehe config.py). Eine Probe, die
+      # den Port per --env verbiegt, prüfte etwas, das kein Empfänger je
+      # tut — und ob --env auf dem Runner überhaupt ankommt, ließe sich ohne
+      # Mac nicht nachvollziehen. Ist 8000 auf dem Runner belegt, sagt der
+      # Schritt das und bricht ab, statt stillschweigend auszuweichen.
+      #
+      # Kein pkill nach Namen: Angefasst werden nur die Prozesse, die nach
+      # "open" neu dazukamen (onefile = Bootloader + Kind) — so bleibt jeder
+      # andere GastroViewer-Prozess auf dem Runner unberührt. "open -n"
+      # erzwingt eine neue Instanz, falls LaunchServices eine bereits laufende
+      # Kopie derselben Kennung kennt.
+      #
+      # Was der Schritt NICHT prüft: Gatekeeper. Das hier gebaute Paket trägt
+      # kein Quarantäne-Attribut, also stellt macOS keine Sicherheitsfrage —
+      # der Weg über Download und "Trotzdem öffnen" bleibt Sache des
+      # Release-Textes.
+      - name: Doppelklick-Probe — Programmpaket über LaunchServices starten (macOS)
+        if: runner.os == 'macOS'
+        shell: bash
+        run: |
+          # GitHub startet bash mit -e; hier ausdrücklich aus, weil jeder Ausgang
+          # unten über ergebnis()/fehlschlag() läuft und ein stiller Abbruch
+          # (etwa pgrep ohne Treffer = Exit 1) die Diagnose verschlucken würde.
+          set +e
+          set -uo pipefail
+          # Aus der ausgepackten ZIP-Kopie, nicht aus dist/: Der Empfänger startet
+          # ausschließlich, was aus dem Archiv kommt.
+          PROBE=$(mktemp -d)
+          ditto -x -k "${{ matrix.hochladen }}" "$PROBE" || { echo "Auspacken fehlgeschlagen." >&2; exit 1; }
+          APP="$PROBE/GastroViewer.app"
+          # Architektur muss zum Artefaktnamen passen. Der häufigste Nutzerfehler
+          # („welchen Chip habe ich?") darf nicht auch noch aus dem Bau kommen.
+          ARCH=$(lipo -archs "$APP/Contents/MacOS/GastroViewer")
+          case "${{ matrix.artefakt }}" in
+            *AppleSilicon) [ "$ARCH" = "arm64" ]  || { echo "Architektur $ARCH passt nicht zu ${{ matrix.artefakt }}" >&2; exit 1; } ;;
+            *Intel)        [ "$ARCH" = "x86_64" ] || { echo "Architektur $ARCH passt nicht zu ${{ matrix.artefakt }}" >&2; exit 1; } ;;
+          esac
+          echo "Architektur: $ARCH"
+          ADRESSE=http://127.0.0.1:8000
+          ARTEFAKT="${{ matrix.artefakt }}"
+          PROT=$(mktemp -d)
+          NEU=""
+
+          # Übersichtszeile und Exitcode kommen aus einer Stelle, damit kein
+          # Ausgang vergessen wird — wie beim Selbsttest oben.
+          ergebnis() {  # ergebnis <exitcode> <text>
+            echo "- **$ARTEFAKT**: Doppelklick-Probe (LaunchServices): $2" >> "$GITHUB_STEP_SUMMARY"
+            echo "$2"
+            exit "$1"
+          }
+
+          # Nur die Prozesse, die seit dem "open" neu sind. Beide Seiten
+          # lexikalisch sortiert, weil comm das verlangt.
+          neue_prozesse() {
+            comm -13 <(printf '%s\n' "$VORHER") <(pgrep -x GastroViewer | sort || true) | tr '\n' ' '
+          }
+
+          # Alles, was man ohne Mac zum Lesen eines roten Laufs braucht:
+          # Prozesse, Port, Sicht von LaunchServices, die umgeleitete
+          # Ausgabe des Pakets und das Systemlog (dort landen Tracebacks
+          # des Fenster-Bootloaders und Absagen von LaunchServices).
+          diagnose() {
+            echo "::group::Diagnose Doppelklick-Probe"
+            echo "--- Prozesse:"
+            ps -axo pid,ppid,stat,etime,command | grep -i '[G]astroViewer' || echo "(keine)"
+            echo "--- Port 8000:"
+            lsof -nP -iTCP:8000 -sTCP:LISTEN || echo "(niemand lauscht)"
+            echo "--- LaunchServices-Sicht:"
+            lsappinfo info -app de.gastroviewer.standort-datenterminal 2>&1 || true
+            echo "--- open (stderr):"; cat "$PROT/open.err" 2>/dev/null || true
+            echo "--- Paket stdout:"; cat "$PROT/stdout.log" 2>/dev/null || true
+            echo "--- Paket stderr:"; cat "$PROT/stderr.log" 2>/dev/null || true
+            echo "--- Systemlog, Prozess GastroViewer (letzte 3 min):"
+            log show --last 3m --info --style compact \
+              --predicate 'process == "GastroViewer"' 2>&1 | tail -n 300 || true
+            echo "--- Systemlog, LaunchServices/launchd zu GastroViewer (letzte 3 min):"
+            log show --last 3m --info --style compact \
+              --predicate 'eventMessage CONTAINS "GastroViewer" AND (subsystem CONTAINS "launchservices" OR process == "open" OR process == "launchd" OR process == "runningboardd")' 2>&1 | tail -n 200 || true
+            echo "::endgroup::"
+          }
+
+          # SIGTERM an Bootloader und Kind. Der Bootloader reicht Signale
+          # ans Kind weiter (bootloader_ignore_signals=False im Spec) und
+          # räumt danach sein Auspackverzeichnis auf; SIGKILL nur als
+          # letzter Ausweg, damit nichts auf dem Runner liegen bleibt.
+          beenden() {
+            [ -n "$NEU" ] || return 0
+            kill -TERM $NEU 2>/dev/null || true
+            for i in $(seq 1 15); do
+              lebt=""
+              for p in $NEU; do kill -0 "$p" 2>/dev/null && lebt="$lebt $p"; done
+              [ -z "$lebt" ] && return 0
+              sleep 1
+            done
+            echo "Noch am Leben nach 15 s:$lebt — SIGKILL." >&2
+            kill -KILL $NEU 2>/dev/null || true
+            return 1
+          }
+
+          fehlschlag() {
+            diagnose
+            beenden || true
+            ergebnis 1 "FEHLGESCHLAGEN — $1"
+          }
+
+          # 1. Vorbedingung. Antwortet auf 8000 schon etwas, würde das
+          #    Fenster "Port belegt" oder "läuft bereits" zeigen und keinen
+          #    Server starten — die Probe sagte dann nichts über das Paket.
+          if curl --noproxy '*' -sf --max-time 2 -o /dev/null "$ADRESSE/api/health" \
+             || lsof -nP -iTCP:8000 -sTCP:LISTEN >/dev/null 2>&1; then
+            lsof -nP -iTCP:8000 -sTCP:LISTEN || true
+            ergebnis 1 "NICHT AUSSAGEKRÄFTIG — Port 8000 war auf dem Runner schon belegt, bevor das Paket gestartet wurde."
+          fi
+          # pgrep liefert Exit 1 ohne Treffer — vor der Rauchprobe läuft hier
+          # regulär noch kein GastroViewer.
+          VORHER=$(pgrep -x GastroViewer | sort || true)
+          echo "GastroViewer-Prozesse vor dem Start (Rauchprobe 8017): $(echo $VORHER)"
+          echo "Quarantäne-Attribut am Paket (leer = Gatekeeper wird nicht gefragt):"
+          xattr -l "$APP" || true
+
+          # 2. Start wie beim Doppelklick. --stdout/--stderr ändern nichts an
+          #    Umgebung oder Argumenten, fangen aber ab, was das Paket sonst
+          #    ins Leere schriebe.
+          touch "$PROT/stdout.log" "$PROT/stderr.log"
+          if ! open -n --stdout "$PROT/stdout.log" --stderr "$PROT/stderr.log" "$APP" 2>"$PROT/open.err"; then
+            fehlschlag "LaunchServices hat den Start verweigert: $(tr '\n' ' ' < "$PROT/open.err")"
+          fi
+
+          # 3. Warten, bis der Server antwortet — großzügig, weil das
+          #    Onefile-Paket erst auspackt (das Fenster selbst gibt sich
+          #    60 s, STARTFENSTER_S). Verschwindet der Prozess vorher, ist
+          #    das Warten sinnlos und der Fehler sofort lesbar.
+          START=$SECONDS
+          gesund=""
+          antwort=""
+          for i in $(seq 1 90); do
+            NEU=$(neue_prozesse)
+            antwort=$(curl --noproxy '*' -sf --max-time 2 "$ADRESSE/api/health" 2>/dev/null || true)
+            if printf '%s' "$antwort" | grep -Eq '"status" *: *"ok"'; then
+              gesund=1
+              break
+            fi
+            if [ "$i" -ge 10 ] && [ -z "$NEU" ]; then
+              fehlschlag "nach ${i} s läuft kein neuer GastroViewer-Prozess — das Paket ist nie erschienen oder gleich wieder beendet worden."
+            fi
+            sleep 1
+          done
+          DAUER=$((SECONDS - START))
+          NEU=$(neue_prozesse)
+          [ -n "$gesund" ] || fehlschlag "nach ${DAUER} s keine gültige Antwort auf $ADRESSE/api/health (neue Prozesse: ${NEU:-keine})."
+          echo "Server antwortet nach ${DAUER} s: $antwort"
+
+          # 4. Der Antwortende muss einer der von LaunchServices gestarteten
+          #    Prozesse sein — sonst hätte irgendetwas anderes geantwortet.
+          LAUSCHER=$(lsof -nP -iTCP:8000 -sTCP:LISTEN -Fp 2>/dev/null | sed -n 's/^p//p' | sort -u | tr '\n' ' ')
+          passt=""
+          for p in $LAUSCHER; do
+            case " $NEU " in *" $p "*) passt=1 ;; esac
+          done
+          [ -n "$passt" ] || fehlschlag "auf Port 8000 lauscht PID ${LAUSCHER:-?}, gestartet wurden aber: ${NEU:-keine}."
+          echo "Von LaunchServices gestartete Prozesse (PPID 1 = launchd, nicht die Shell; onefile = Bootloader + Kind):"
+          ps -o pid,ppid,stat,etime,command -p "$(echo $NEU | tr ' ' ',')" || true
+
+          # 5. Sauber beenden und nachsehen, dass der Port wieder frei ist.
+          beenden || fehlschlag "Prozesse ($NEU) haben sich auf SIGTERM nicht binnen 15 s beendet — mit SIGKILL abgeräumt."
+          frei=""
+          for i in $(seq 1 10); do
+            curl --noproxy '*' -sf --max-time 2 -o /dev/null "$ADRESSE/api/health" || { frei=1; break; }
+            sleep 1
+          done
+          [ -n "$frei" ] || fehlschlag "Port 8000 antwortet nach dem Beenden weiter."
+          if curl --noproxy '*' -sf --max-time 2 -o /dev/null http://127.0.0.1:8017/api/health; then
+            echo "Rauchprobe-Prozess auf 8017 unberührt."
+          fi
+          ergebnis 0 "gestartet wie beim Doppelklick (\`open\`, ohne Argumente und Shell-Umgebung), Server antwortete auf Port 8000 nach ${DAUER} s, Bootloader und Kind auf SIGTERM beendet, Port wieder frei."
+
       # Das Startfenster ist der Doppelklick-Weg. Hier wird geprueft, dass
       # es auf der Zielplattform ueberhaupt entsteht — Exitcode 4 heisst
       # "keine Bildschirmsitzung", das ist uebersprungen und wird als
-      # solches gemeldet, nicht als bestanden.
+      # solches gemeldet, nicht als bestanden. Auf dem Mac laeuft die Probe
+      # bewusst ueber die Datei IM Programmpaket, also ueber genau den Weg,
+      # den ein Doppelklick nimmt.
       - name: Startfenster — Selbsttest
         shell: bash
         run: |
@@ -117,11 +364,23 @@ jobs:
           if (-not $ok) { Write-Error "Server hat nicht geantwortet."; exit 1 }
           Write-Output "Startseite und Oberfläche antworten."
 
+      - name: Prüfsumme des geprüften Pakets festhalten
+        shell: bash
+        run: |
+          # sha256sum auf Linux und in der Git-Bash von Windows, shasum auf dem Mac.
+          if command -v sha256sum >/dev/null 2>&1; then
+            SUMME=$(sha256sum "${{ matrix.hochladen }}" | cut -d' ' -f1)
+          else
+            SUMME=$(shasum -a 256 "${{ matrix.hochladen }}" | cut -d' ' -f1)
+          fi
+          echo "sha256 ${{ matrix.hochladen }}: $SUMME"
+          echo "- **${{ matrix.artefakt }}**: sha256 \`$SUMME\`" >> "$GITHUB_STEP_SUMMARY"
+
       - name: Artefakt hochladen
         uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.artefakt }}
-          path: ${{ matrix.binaerdatei }}
+          path: ${{ matrix.hochladen }}
           if-no-files-found: error
 
   release:
@@ -142,8 +401,8 @@ jobs:
         run: |
           mkdir release
           cp pakete/GastroViewer-Windows/GastroViewer.exe release/GastroViewer-Windows.exe
-          cp pakete/GastroViewer-macOS-AppleSilicon/GastroViewer release/GastroViewer-macOS-AppleSilicon
-          cp pakete/GastroViewer-macOS-Intel/GastroViewer release/GastroViewer-macOS-Intel
+          cp pakete/GastroViewer-macOS-AppleSilicon/GastroViewer-macOS-AppleSilicon.zip release/
+          cp pakete/GastroViewer-macOS-Intel/GastroViewer-macOS-Intel.zip release/
           cp pakete/GastroViewer-Linux/GastroViewer release/GastroViewer-Linux
           ls -l release
 
@@ -159,10 +418,32 @@ jobs:
             Beim ersten Start warnt der SmartScreen-Filter („unbekannter Herausgeber",
             das Paket ist nicht signiert): „Weitere Informationen" → „Trotzdem ausführen".
 
-            **macOS:** Passende Datei laden (Apple Silicon = M1/M2/M3/M4, sonst Intel),
-            im Terminal einmal `chmod +x GastroViewer-…` ausführen, dann per
-            Rechtsklick → „Öffnen" starten (Gatekeeper-Abfrage bestätigen).
+            **macOS:** Passendes ZIP laden — `GastroViewer-macOS-AppleSilicon.zip`
+            für M1/M2/M3/M4, sonst `GastroViewer-macOS-Intel.zip`. Doppelklick
+            entpackt es zu `GastroViewer.app`; die am besten in den Ordner
+            „Programme" ziehen und dann doppelklicken.
 
-            Es öffnet sich ein Konsolenfenster (der Server) und der Browser mit der
-            Karte. Konsolenfenster schließen beendet das Programm. Die Daten liegen
-            im Ordner `.gastroviewer` im Benutzerverzeichnis.
+            Beim **ersten** Start meldet macOS, die Herkunft sei nicht überprüfbar —
+            das Paket ist nicht notarisiert (dafür braucht es ein kostenpflichtiges
+            Apple-Entwicklerkonto). Einmalig freigeben:
+
+            * **macOS 15 (Sequoia) und neuer:** Doppelklick, Meldung wegklicken, dann
+              *Systemeinstellungen → Datenschutz & Sicherheit* ganz nach unten scrollen
+              und bei „GastroViewer wurde blockiert" auf **„Trotzdem öffnen"**.
+            * **macOS 14 und älter:** Rechtsklick (bzw. Ctrl-Klick) auf das Programm →
+              **„Öffnen"** → im Dialog noch einmal „Öffnen".
+            * **Oder im Terminal, einmalig:** `xattr -dr com.apple.quarantine /Applications/GastroViewer.app`
+              (der Ordner „Programme" heißt im Terminal `/Applications`; liegt das Paket noch
+              in Downloads, das Programmsymbol ins Terminalfenster ziehen — das fügt den Pfad ein)
+
+            Danach reicht der normale Doppelklick. Es öffnet sich das **Startfenster**
+            mit Statuslampe, Start-/Stopp-Knopf und dem Link zur Oberfläche.
+            Fenster zu heißt Server aus. Die Daten liegen im Ordner `.gastroviewer`
+            im Benutzerverzeichnis.
+
+            Die Kommandozeile steckt im selben Paket:
+            `GastroViewer.app/Contents/MacOS/GastroViewer import-gtfs --region muenchen`
+
+            **Linux:** `GastroViewer-Linux` laden, `chmod +x GastroViewer-Linux`,
+            dann starten. Das Startfenster braucht `python3-tk`; ohne das Paket
+            läuft `./GastroViewer-Linux serve --browser`.

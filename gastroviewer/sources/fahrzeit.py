@@ -32,6 +32,7 @@ kleiner, nachts größer. Das steht im Block.
 
 from __future__ import annotations
 
+import asyncio
 import heapq
 import math
 import re
@@ -251,18 +252,34 @@ async def load(out: Outbound, settings: Settings, lat: float, lon: float,
     minuten = max(MIN_MINUTEN, min(MAX_MINUTEN, int(minuten)))
     _, gedeckelt = umkreis_m(minuten)
     query = build_query(lat, lon, minuten, timeout=int(settings.overpass_timeout))
-    antwort = await run_query(out, settings, query, "fahrzeit")
-    netz, zaehler = baue_autonetz(antwort.get("elements") or [])
-    if not len(netz):
-        raise SourceError(
-            "leeres_netz",
-            "Overpass lieferte kein befahrbares Straßennetz für diesen Punkt.")
+    # run_query liefert (Antwort, benutzter Spiegel, übersprungene Spiegel) —
+    # dasselbe Muster wie gehweg.load. Ein Fehlschlag aller Spiegel kommt als
+    # SourceError und wird hier zum Fehlerblock mit erkennbarer Art, statt im
+    # Service als „unknown" zu landen.
+    try:
+        payload, endpoint, probleme = await run_query(out, settings, query)
+    except SourceError as err:
+        return SourceResult.failed("fahrzeit", err)
+    elements = payload.get("elements", []) if isinstance(payload, dict) else []
+
+    # Netzaufbau und Dijkstra über 5–7 MB Hauptstraßennetz sind CPU-Arbeit;
+    # im Event-Loop blockierten sie jeden anderen Abruf. Ein Thread-Aufruf.
+    def _rechne() -> dict[str, Any]:
+        netz, zaehler = baue_autonetz(elements)
+        if not len(netz):
+            raise SourceError(
+                "leeres_netz",
+                "Overpass lieferte kein befahrbares Straßennetz für diesen Punkt.")
+        return auswerten(netz, zaehler, lat, lon, minuten, gedeckelt)
+
+    daten = await asyncio.to_thread(_rechne)
     return SourceResult(
         name="fahrzeit", ok=True,
-        data=auswerten(netz, zaehler, lat, lon, minuten, gedeckelt),
+        data=daten,
+        warnings=list(probleme),
         provenance=Provenance(
             source="OpenStreetMap über Overpass (Hauptstraßennetz)",
-            license=LICENSE, retrieved_at=now_iso(),
+            license=LICENSE, endpoint=endpoint, retrieved_at=now_iso(),
             note=("Freifluss-Fahrzeit auf dem Hauptnetz, gerechnet mit "
                   f"{ZUEGIGKEIT:.0%} des Tempolimits.")),
     )

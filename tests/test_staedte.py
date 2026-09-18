@@ -135,3 +135,18 @@ def test_berlin_load_ende_zu_ende(berlin_baustellen, settings):
     assert res.ok
     assert res.data["gesamt"] >= 2
     assert "Verkehrsinformationszentrale" in res.provenance.source
+
+
+def test_hh_milieuschutz_nur_im_gebiet(hamburg_stadt):
+    """Der Dienst liefert Treffer nach Rechteck — ein Punkt 250 m neben
+    St. Georg darf nicht „betroffen" sein."""
+    import asyncio
+
+    class _Out:
+        async def get_json(self, source, url, **kw):
+            return hamburg_stadt["milieuschutz"]
+
+    drin = asyncio.run(hamburg.milieuschutz(_Out(), 53.5566, 10.0137))
+    assert drin["betroffen"] is True and drin["gebiete"][0]["name"] == "St.Georg"
+    draussen = asyncio.run(hamburg.milieuschutz(_Out(), 53.5629, 10.0137))
+    assert draussen["betroffen"] is False and draussen["gebiete"] == []

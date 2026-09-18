@@ -11,8 +11,10 @@ from __future__ import annotations
 import asyncio
 import csv
 import io
+import ipaddress
 import json
 import time
+from urllib.parse import urlsplit
 from contextlib import asynccontextmanager
 from typing import Any
 
@@ -140,14 +142,78 @@ async def lifespan(app: FastAPI):
         await outbound.aclose()
 
 
+def _name_erlaubt(name: str, erlaubte: tuple[str, ...]) -> bool:
+    """Nur Namen, die im Browser wirklich „dieser Rechner" bedeuten.
+
+    DNS-Rebinding braucht zwingend einen DNS-Namen — eine IP-Adresse kann
+    niemand umbiegen. Deshalb sind IP-Literale (127.0.0.1, ::1, jede
+    LAN-Adresse bei --host 0.0.0.0) und localhost immer erlaubt, alles
+    andere nur, wenn es ausdrücklich in GASTROVIEWER_ERLAUBTE_HOSTS steht.
+    """
+    name = (name or "").strip().lower().rstrip(".")
+    if not name:
+        return False
+    if name == "localhost" or name.endswith(".localhost"):
+        return True
+    try:
+        ipaddress.ip_address(name)
+        return True
+    except ValueError:
+        pass
+    return name in erlaubte
+
+
+def _host_erlaubt(host_header: str, erlaubte: tuple[str, ...]) -> bool:
+    """Host-Header ohne Port — auch für IPv6-Literale wie [::1]:8000."""
+    try:
+        name = urlsplit("//" + (host_header or "").strip()).hostname or ""
+    except ValueError:
+        return False
+    return _name_erlaubt(name, erlaubte)
+
+
 def create_app(settings: Settings | None = None) -> FastAPI:
     app = FastAPI(
         title="Standort-Datenterminal",
         description="Offene Daten zu einem Punkt in Deutschland. Daten-Browser, kein Prognose-Tool.",
-        version="0.1.0",
+        version="0.2.0",
         lifespan=lifespan,
     )
     app.state.settings = settings or get_settings()
+
+    @app.middleware("http")
+    async def herkunft_pruefen(request: Request, call_next):
+        """Host- und Origin-Prüfung — siehe Settings.erlaubte_hosts.
+
+        Der Host-Header muss zu diesem Rechner passen (sonst 400: das ist
+        DNS-Rebinding). Schreibende Anfragen aus einem Browser tragen einen
+        Origin-Header; stammt er von einer fremden Seite, ist es CSRF (403).
+        Anfragen ohne Origin (curl, die Testsuite, das Startfenster) sind
+        keine Browser-Anfragen und bleiben unberührt.
+        """
+        erlaubte = request.app.state.settings.erlaubte_hosts
+        if not _host_erlaubt(request.headers.get("host", ""), erlaubte):
+            return JSONResponse(
+                {"detail": "Unerwarteter Host-Header — der Server antwortet nur "
+                           "unter seiner eigenen Adresse (Schutz gegen "
+                           "DNS-Rebinding). Eigene Hostnamen über "
+                           "GASTROVIEWER_ERLAUBTE_HOSTS freigeben."},
+                status_code=400,
+            )
+        if request.method not in ("GET", "HEAD", "OPTIONS"):
+            origin = request.headers.get("origin")
+            if origin is not None:
+                try:
+                    herkunft = urlsplit(origin).hostname or ""
+                except ValueError:
+                    herkunft = ""
+                if not _name_erlaubt(herkunft, erlaubte):
+                    return JSONResponse(
+                        {"detail": "Schreibende Anfrage von einer fremden Seite "
+                                   "abgelehnt (Schutz gegen CSRF)."},
+                        status_code=403,
+                    )
+        return await call_next(request)
 
     def svc(request: Request) -> PointService:
         service = getattr(request.app.state, "service", None)
@@ -301,10 +367,15 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         return (await svc(request).marke(lat, lon, r, marke)).to_dict()
 
     @app.get("/api/point/planung")
-    async def point_planung(request: Request, lat: float, lon: float, r: int = 600):
-        """Hochwassergefahr und Bebauungsplan am Punkt."""
+    async def point_planung(
+        request: Request, lat: float, lon: float, r: int = 600,
+        bundesland_code: str | None = None,
+    ):
+        """Hochwassergefahr und Bebauungsplan am Punkt. Der Bundesland-Code
+        aus dem Zensus wählt den Dienst (Bayern: LfU, sonst BfG/LAWA)."""
         _validate(lat, lon, r)
-        return (await svc(request).planung(lat, lon, r)).to_dict()
+        return (await svc(request).planung(
+            lat, lon, r, bundesland_code=bundesland_code)).to_dict()
 
     @app.get("/api/point/klima")
     async def point_klima(request: Request, lat: float, lon: float):
@@ -970,6 +1041,46 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         if gw is not None:
             neu["bloecke"]["gehweg"] = gw.to_dict()
 
+        # Ein Quellenausfall ist kein neuer Datenstand. Overpass antwortet
+        # laut eigener Messung in 3 von 7 Fällen mit 504 — vorher wurde dann
+        # der leere Block gespeichert: alle Betriebe „verschwunden", die
+        # Vergleichstabelle leer, und der Nullstand blieb für immer im
+        # Verlauf. Jetzt behält jeder ausgefallene Block den alten Stand
+        # und wird als „nicht geprüft" ausgewiesen.
+        alte_bloecke = (row.get("payload") or {}).get("bloecke") or {}
+        nicht_geprueft = []
+        for name, block in list(neu["bloecke"].items()):
+            if block.get("ok"):
+                continue
+            fehler = (block.get("error") or {}).get("message")
+            nicht_geprueft.append({"block": name, "fehler": fehler})
+            if name in alte_bloecke:
+                neu["bloecke"][name] = alte_bloecke[name]
+        osm_frisch = bool((neu["bloecke"].get("osm") or {}).get("ok")) and not any(
+            e["block"] == "osm" for e in nicht_geprueft)
+        beweglich = ("osm", "gtfs", "radzaehlung", "verkehrsmenge")
+        # „Frisch" heißt: geantwortet UND etwas geliefert — ein nicht
+        # importierter Fahrplan ist ok=True mit data=None und kein Beleg.
+        frisch = [n for n in beweglich
+                  if n not in {e["block"] for e in nicht_geprueft}
+                  and (neu["bloecke"].get(n) or {}).get("ok")
+                  and (neu["bloecke"].get(n) or {}).get("data") is not None]
+        if not frisch:
+            # Nichts Bewegliches ist neu — ein Verlaufseintrag wäre nur der
+            # alte Stand mit neuem Datum, im Bericht ein falscher Zeitpunkt.
+            return {
+                "id": point_id,
+                "label": row.get("label"),
+                "ok": False,
+                "gespeichert": False,
+                "nicht_geprueft": nicht_geprueft,
+                "veraendert": [], "neue_betriebe": [], "verschwundene_betriebe": [],
+                "fehler": "Keine der beweglichen Quellen (OSM, GTFS, Zählstellen) "
+                          "hat geantwortet — der gespeicherte Stand bleibt unverändert.",
+                "hinweise": ["Später noch einmal prüfen; Overpass ist ein "
+                             "Spendendienst und zeitweise überlastet."],
+            }
+
         alt_zeile = _row_for(row)
         neu_kompakt = _compact(neu)
         neu_zeile = _row_for({**row, "payload": neu_kompakt})
@@ -992,8 +1103,13 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             return {"name": g.get("name"), "typ": g.get("typ_label"),
                     "distanz_m": g.get("distanz_m")}
 
-        neue = [_kurz(g) for gid, g in neu_g.items() if gid not in alt_g]
-        weg = [_kurz(g) for gid, g in alt_g.items() if gid not in neu_g]
+        # Der Betriebsvergleich braucht den frischen OSM-Block — ist er
+        # ausgefallen, gibt es keinen Vergleich, nicht „alle verschwunden".
+        if osm_frisch:
+            neue = [_kurz(g) for gid, g in neu_g.items() if gid not in alt_g]
+            weg = [_kurz(g) for gid, g in alt_g.items() if gid not in neu_g]
+        else:
+            neue, weg = [], []
         neue.sort(key=lambda g: g.get("distanz_m") or 0)
         weg.sort(key=lambda g: g.get("distanz_m") or 0)
 
@@ -1006,7 +1122,10 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         return {
             "id": point_id,
             "label": row.get("label"),
+            "ok": True,
+            "gespeichert": True,
             "geprueft_am": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+            "nicht_geprueft": nicht_geprueft,
             "veraendert": veraendert,
             "neue_betriebe": neue,
             "verschwundene_betriebe": weg,

@@ -232,3 +232,42 @@ def test_kennzeichen_steht_in_den_hintergrundangaben():
     zeilen = dict(hintergrund_fakten(
         {"user_agent": "gastroviewer/0.1.0 (wirt@example.de)"}, None))
     assert zeilen["Kennzeichen der Abrufe"].endswith("(wirt@example.de)")
+
+
+# ------------------------------------------------- Zweiter Doppelklick
+
+
+def test_belegter_port_wird_vor_dem_start_erkannt():
+    """Der zweite Doppelklick: Port schon belegt, Fehler muss sichtbar werden.
+
+    uvicorn meldet einen belegten Port nur ins Log und beendet sich mit
+    ``sys.exit(1)`` — im Faden verschwände das lautlos, das Fenster zeigte
+    „Nicht gestartet" ohne Grund. Deshalb bindet ``Serverlauf.starten()`` den
+    Port vorab selbst und stellt den echten Fehlertext ins Fenster, bevor
+    ein Faden existiert.
+    """
+    import socket
+
+    from gastroviewer.config import Settings
+    from gastroviewer.startfenster import Serverlauf
+
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as belegt:
+        belegt.bind(("127.0.0.1", 0))
+        belegt.listen(1)
+        port = belegt.getsockname()[1]
+        lauf = Serverlauf(Settings(), "127.0.0.1", port)
+        lauf.starten()
+        assert lauf.fehler is not None
+        assert str(port) in lauf.fehler
+        # Kein Faden, kein Server — nur die Meldung.
+        assert not lauf.laeuft
+        assert lauf._server is None
+
+
+def test_zweites_fenster_hat_einen_eigenen_wortlaut():
+    """Ein zweites Fenster ist kein Fehler des Nutzers — der Text sagt das."""
+    from gastroviewer.startfenster import ZWEITES_FENSTER
+
+    text = ZWEITES_FENSTER.format(port=8000)
+    assert "8000" in text
+    assert "geschlossen" in text

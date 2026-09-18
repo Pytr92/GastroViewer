@@ -403,13 +403,18 @@ class Cache:
                 if vorhanden:
                     uebersprungen += 1
                     continue
+                # Arbeitsstand nur, wenn er ein bekannter Schlüssel ist — eine
+                # fremde Sicherung darf keinen erfundenen Stand einschleusen.
+                stand = p.get("stand") if p.get("stand") in STAND_SCHLUESSEL else None
                 cur = conn.execute(
                     "INSERT INTO saved_points(label, lat, lon, radius, created_at,"
-                    " payload, notiz, bewertung, geprueft_am) VALUES (?,?,?,?,?,?,?,?,?)",
+                    " payload, notiz, bewertung, geprueft_am, stand, stand_grund)"
+                    " VALUES (?,?,?,?,?,?,?,?,?,?,?)",
                     (
                         p["label"], p["lat"], p["lon"], p["radius"], p["created_at"],
                         json.dumps(p["payload"], ensure_ascii=False),
                         p.get("notiz"), p.get("bewertung"), p.get("geprueft_am"),
+                        stand, p.get("stand_grund") if stand else None,
                     ),
                 )
                 pid = int(cur.lastrowid or 0)

@@ -8,7 +8,7 @@
 
 import { NF, NF1 } from './format.js';
 import { state } from './state.js';
-import { block, el, fehlerbox, hinweisZeile, kennzahl, liste, setInhalt, setQuelle, setStatus, warnungen } from './dom.js';
+import { block, el, fehlerbox, hinweisZeile, kennzahl, liste, setInhalt, setQuelle, setStatus, warnungen, zeigeBlockFehler } from './dom.js';
 import { hole } from './api.js';
 import { ebenenSchalter, karte } from './karte.js';
 import { farbe } from './karte-ebenen.js';
@@ -415,6 +415,24 @@ function zeigeGehweg(d) {
 /* Zwei Fragen, die eine Standortentscheidung kippen: liegt die Flaeche im
    Hochwassergebiet, und gilt ein Bebauungsplan. Beides sind Auskuenfte zum
    Nachgehen, keine Entscheidungen — die Hinweise sagen das. */
+// Wie ladeLaerm: Der Dienst hängt am Bundesland-Code aus dem Zensus, deshalb
+// lädt der Block erst, wenn der Zensus geantwortet hat — oder ausgefallen ist
+// (dann ohne Code, und der Server nimmt den Bundesdienst).
+async function ladePlanung(bundeslandCode, lauf) {
+  try {
+    const d = await hole('/api/point/planung', {
+      lat: state.lat, lon: state.lon, r: state.radius,
+      bundesland_code: bundeslandCode || '',
+    });
+    if (lauf !== state.ladeLauf) return;
+    state.daten.planung = d;
+    zeigePlanung(d);
+  } catch (e) {
+    if (lauf !== state.ladeLauf) return;
+    zeigeBlockFehler('planung', e);
+  }
+}
+
 function zeigePlanung(d) {
   const id = 'planung';
   if (!d.ok) {
@@ -582,6 +600,7 @@ export {
   setzeBrwEbene,
   setzeZusatzebenen,
   zeichneGehflaeche,
+  ladePlanung,
   zeigeGehweg,
   zeigePlanung,
   zeigeRadzaehlung,

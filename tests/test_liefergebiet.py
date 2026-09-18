@@ -63,3 +63,38 @@ def test_radnetz_traegt_weiter_als_das_fussnetz(elemente):
 
 def test_minuten_grenzen():
     assert (MIN_MINUTEN, MAX_MINUTEN) == (5, 15)
+
+
+# ------------------------------------------------------ load: Thread-Rechnung
+
+
+async def test_load_rechnet_im_thread_und_liefert_ein_gebiet(elemente, settings):
+    """Der Rechenteil läuft seit der Bestandsaufnahme außerhalb des
+    Event-Loops — load() muss trotzdem dasselbe Ergebnis liefern."""
+    from gastroviewer.sources import liefergebiet
+
+    class FakeOut:
+        async def post_json(self, source, url, **kw):
+            return {"elements": elemente, "osm3s": {"timestamp_osm_base": "2026-08-01T00:00:00Z"}}
+
+    zellen = [{"_center": [ISAR[0] + 0.002, ISAR[1]], "Einwohner": 120},
+              {"_center": [ISAR[0] + 0.5, ISAR[1]], "Einwohner": 9999}]  # 55 km weit weg
+    res = await liefergebiet.load(FakeOut(), settings, *ISAR, 10, zellen)
+    assert res.ok, res.error
+    assert res.data["minuten"] == 10
+    assert res.data["erreichbare_knoten"] > 10
+    assert res.data["einwohner_liefergebiet"] == 120
+    assert res.data["zellen_im_liefergebiet"] == 1
+    assert res.data["flaeche"]
+
+
+async def test_load_ohne_netz_ist_ein_befund_kein_absturz(settings):
+    from gastroviewer.sources import liefergebiet
+
+    class FakeOut:
+        async def post_json(self, source, url, **kw):
+            return {"elements": []}
+
+    res = await liefergebiet.load(FakeOut(), settings, *ISAR, 10, None)
+    assert res.ok and res.data is None
+    assert any("kein befahrbares Wegenetz" in w for w in res.warnings)

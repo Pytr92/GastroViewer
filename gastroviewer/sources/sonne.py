@@ -360,8 +360,19 @@ async def load(
                 limiter="overpass",
                 min_interval=settings.overpass_min_interval,
             )
+            # Ein überlasteter Spiegel antwortet mit HTTP 200, leerer
+            # Elementliste und einer "remark" („Query timed out"). Als
+            # „keine Gebäude" gelesen ergäbe das volle Sonne — und der
+            # Wert läge 30 Tage im Cache. Wie in overpass.run_query: nächster
+            # Spiegel, sonst Fehler.
+            if (isinstance(antwort, dict) and "remark" in antwort
+                    and not antwort.get("elements")):
+                raise SourceError(
+                    "api_error", f"Overpass meldet: {antwort['remark']}",
+                    detail=endpunkt)
             break
         except SourceError as err:
+            antwort = None
             letzter_fehler = err
     if antwort is None:
         raise letzter_fehler or SourceError(

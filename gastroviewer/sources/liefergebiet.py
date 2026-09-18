@@ -28,6 +28,7 @@ Stichtag 15.05.2022) — Zellmittelpunkt-Näherung wie beim Gehweg-Block.
 
 from __future__ import annotations
 
+import asyncio
 import time
 from typing import Any
 
@@ -108,60 +109,18 @@ HINWEISE = [
 ]
 
 
-async def load(
-    out: Outbound,
-    settings: Settings,
-    lat: float,
-    lon: float,
-    minuten: int,
-    zellen: list[dict[str, Any]] | None,
-) -> SourceResult:
-    started = time.perf_counter()
-    minuten = max(MIN_MINUTEN, min(MAX_MINUTEN, int(minuten)))
-    radius = minuten * RADTEMPO_M_PRO_MIN
-
-    query = build_query(lat, lon, minuten, timeout=int(settings.overpass_timeout))
-    try:
-        payload, endpoint, problems = await run_query(out, settings, query)
-    except SourceError as err:
-        return SourceResult.failed(
-            "liefergebiet", err, int((time.perf_counter() - started) * 1000)
-        )
-
-    elements = payload.get("elements", []) if isinstance(payload, dict) else []
+def _rechne(elements: list[dict[str, Any]], lat: float, lon: float,
+            radius: float, zellen: list[dict[str, Any]] | None) -> dict[str, Any]:
+    """Der synchrone Rechenteil — ohne Netz, ohne Loop, in einem Stück."""
     netz = baue_radnetz(elements)
-    warnungen = list(problems)
-
     if not len(netz):
-        return SourceResult(
-            name="liefergebiet", ok=True, data=None,
-            duration_ms=int((time.perf_counter() - started) * 1000),
-            warnings=warnungen + [
-                "Im Umfeld ist kein befahrbares Wegenetz erfasst."
-            ],
-            provenance=Provenance(
-                source="OpenStreetMap Wegenetz über Overpass", license=LICENSE,
-                endpoint=endpoint,
-            ),
-        )
-
+        return {"leer": "Im Umfeld ist kein befahrbares Wegenetz erfasst."}
     start, anbindung = netz.naechster_knoten(lat, lon)
     if start is None:
-        return SourceResult(
-            name="liefergebiet", ok=True, data=None,
-            duration_ms=int((time.perf_counter() - started) * 1000),
-            warnings=warnungen + [
-                f"Der Punkt liegt mehr als {MAX_ANBINDUNG_M:.0f} m vom nächsten "
-                "erfassten Weg entfernt."
-            ],
-            provenance=Provenance(
-                source="OpenStreetMap Wegenetz über Overpass", license=LICENSE,
-                endpoint=endpoint,
-            ),
-        )
-
+        return {"leer": (f"Der Punkt liegt mehr als {MAX_ANBINDUNG_M:.0f} m vom nächsten "
+                         "erfassten Weg entfernt.")}
     t0 = time.perf_counter()
-    dist = gehstrecken(netz, start, float(radius))
+    dist = gehstrecken(netz, start, radius)
     rechenzeit = int((time.perf_counter() - t0) * 1000)
 
     # Einwohner im erreichten Gebiet — Zellmittelpunkt-Näherung.
@@ -183,12 +142,7 @@ async def load(
                 drin += 1
         einwohner = round(summe)
         zellen_drin = drin
-
-    data: dict[str, Any] = {
-        "minuten": minuten,
-        "tempo_m_pro_min": RADTEMPO_M_PRO_MIN,
-        "tempo_kmh": round(RADTEMPO_M_PRO_MIN * 60 / 1000, 1),
-        "radius_m": round(radius),
+    return {"data": {
         "knoten": len(netz),
         "wege_gesperrt": netz.uebersprungen,
         "anbindung_m": round(anbindung),
@@ -197,6 +151,52 @@ async def load(
         "einwohner_liefergebiet": einwohner,
         "zellen_im_liefergebiet": zellen_drin,
         "flaeche": erreichbare_flaeche(dist, anbindung, int(radius)),
+    }}
+
+
+async def load(
+    out: Outbound,
+    settings: Settings,
+    lat: float,
+    lon: float,
+    minuten: int,
+    zellen: list[dict[str, Any]] | None,
+) -> SourceResult:
+    started = time.perf_counter()
+    minuten = max(MIN_MINUTEN, min(MAX_MINUTEN, int(minuten)))
+    radius = minuten * RADTEMPO_M_PRO_MIN
+
+    query = build_query(lat, lon, minuten, timeout=int(settings.overpass_timeout))
+    try:
+        payload, endpoint, problems = await run_query(out, settings, query)
+    except SourceError as err:
+        return SourceResult.failed(
+            "liefergebiet", err, int((time.perf_counter() - started) * 1000)
+        )
+
+    elements = payload.get("elements", []) if isinstance(payload, dict) else []
+    warnungen = list(problems)
+    # Parsen, Netzaufbau, Dijkstra und Zellenschleife sind CPU-Arbeit — bei
+    # 15 Minuten über 100 000 Knoten. Im Event-Loop blockierten sie jeden
+    # anderen Abruf; deshalb ein einziger Thread-Aufruf (nicht drei), damit
+    # das Netz nicht zwischen Loop und Thread hin- und herwandert.
+    ergebnis = await asyncio.to_thread(_rechne, elements, lat, lon, float(radius), zellen)
+    if ergebnis.get("leer"):
+        return SourceResult(
+            name="liefergebiet", ok=True, data=None,
+            duration_ms=int((time.perf_counter() - started) * 1000),
+            warnings=warnungen + [ergebnis["leer"]],
+            provenance=Provenance(
+                source="OpenStreetMap Wegenetz über Overpass", license=LICENSE,
+                endpoint=endpoint,
+            ),
+        )
+    data: dict[str, Any] = {
+        "minuten": minuten,
+        "tempo_m_pro_min": RADTEMPO_M_PRO_MIN,
+        "tempo_kmh": round(RADTEMPO_M_PRO_MIN * 60 / 1000, 1),
+        "radius_m": round(radius),
+        **ergebnis["data"],
         "hinweise": HINWEISE,
     }
     return SourceResult(

@@ -172,14 +172,22 @@ async function zeigeSchaetzung() {
     ziel.replaceChildren(el('div', { class: 'block' },
       el('div', { class: 'laden' }),
       el('div', { class: 'block-inhalt' }, 'Vorgaben werden aus den Punktdaten geholt …')));
+    let vorgaben;
     try {
-      schaetzState.vorgaben = await hole('/api/schaetzung/vorgaben',
+      vorgaben = await hole('/api/schaetzung/vorgaben',
         { lat: state.lat, lon: state.lon, r: state.radius });
-      schaetzState.fuerPunkt = kennung;
     } catch (e) {
+      if (kennung !== `${state.lat}|${state.lon}|${state.radius}`) return;
       ziel.replaceChildren(fehlerbox({ message: e.message }));
       return;
     }
+    // Während des Abrufs kann der Punkt gewechselt haben — dann gehören
+    // diese Vorgaben zum alten Punkt und dürfen weder Formular noch
+    // Zustand des neuen überschreiben. Dieselbe Regel wie ladeLauf in
+    // den Blockmodulen, hier an der Punktkennung festgemacht.
+    if (kennung !== `${state.lat}|${state.lon}|${state.radius}`) return;
+    schaetzState.vorgaben = vorgaben;
+    schaetzState.fuerPunkt = kennung;
   }
   baueSchaetzFormular();
   rechneSchaetzung();

@@ -203,3 +203,33 @@ def test_abdeckung_wird_ehrlich_ausgewiesen(overpass_gebaeude):
     assert d["gebaeude_mit_hoehe"] + d["gebaeude_ohne_hoehe"] == d["gebaeude_gesamt"]
     assert 70 <= d["hoehen_abdeckung_prozent"] <= 80
     assert any("Obergrenze" in h for h in d["hinweise"])
+
+
+# ---------------------------------------------------- Überlasteter Spiegel
+
+
+def test_remark_ohne_elemente_ist_kein_freier_horizont():
+    """HTTP 200, leere Liste, „Query timed out": ein Fehler, keine volle Sonne."""
+    import asyncio
+
+    import pytest
+
+    from gastroviewer.config import Settings
+    from gastroviewer.sources import sonne as sonne_mod
+    from gastroviewer.sources.base import SourceError
+
+    class _Out:
+        def __init__(self):
+            self.aufrufe = 0
+
+        async def post_json(self, source, url, **kw):
+            self.aufrufe += 1
+            return {"elements": [], "remark": "runtime error: Query timed out in \"query\""}
+
+    out = _Out()
+    settings = Settings()
+    with pytest.raises(SourceError) as info:
+        asyncio.run(sonne_mod.load(out, settings, 48.1372, 11.5755, 2026))
+    assert "Query timed out" in info.value.message
+    # Jeder Spiegel wurde versucht, keiner als „keine Gebäude" gewertet.
+    assert out.aufrufe == len(settings.overpass_endpoints)

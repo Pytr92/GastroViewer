@@ -416,4 +416,10 @@ async def milieuschutz(
     features = await _items(
         out, "soz_erh_vo", "sozerhvo_inkraft",
         _bbox_um(lat, lon, 0), limit=20)
-    return milieuschutz_aufbereiten(features)
+    # Der Dienst filtert nach Rechteck, nicht nach Fläche: Ein Punkt knapp
+    # außerhalb eines Gebiets bekäme dessen Verordnung zugeschrieben. Erst
+    # der Punkt-in-Polygon-Test macht aus dem Treffer eine Aussage.
+    from .baurecht import enthaelt_punkt
+
+    drin = [f for f in features if enthaelt_punkt(f.get("geometry"), lat, lon)]
+    return milieuschutz_aufbereiten(drin)

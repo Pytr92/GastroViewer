@@ -27,7 +27,7 @@ s.overpass_endpoints = ("http://127.0.0.1:9/tot",)  # Port 9 = discard, nimmt ni
 s.overpass_timeout = 3
 
 # Der Lifespan muss laufen, sonst gibt es keinen initialisierten Dienst.
-with TestClient(create_app(s)) as c:
+with TestClient(create_app(s), base_url="http://127.0.0.1") as c:
     d = c.get("/api/point", params={"lat": 48.1334, "lon": 11.5674, "r": 600}).json()
 
 print(

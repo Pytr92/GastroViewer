@@ -42,6 +42,11 @@ from .config import Settings, kontakt_gueltig, speichere_kontakt
 STARTFENSTER_S = 60.0
 TAKT_S = 1.5
 
+# Wortlaut, wenn auf dem Port bereits dieses Werkzeug antwortet — aus einem
+# anderen Fenster. Eigene Konstante, damit die Testsuite den Fall erkennt.
+ZWEITES_FENSTER = ("Läuft bereits in einem anderen Fenster (Port {port}). "
+                   "Dieses Fenster kann geschlossen werden.")
+
 
 class Zustand:
     """Die Zustände, die das Fenster unterscheidet. Keiner wird geraten."""
@@ -199,6 +204,19 @@ class Serverlauf:
         from .api import create_app
 
         self.fehler = None
+        # Den Port vorab selbst binden. uvicorn meldet einen belegten Port
+        # nur ins Log und beendet sich mit sys.exit(1) — das ist SystemExit,
+        # kein Exception, und im Faden würde es lautlos verschwinden. Hier
+        # landet stattdessen der echte Fehlertext des Betriebssystems im
+        # Fenster, bevor überhaupt ein Faden gestartet ist.
+        import socket
+        try:
+            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+                s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+                s.bind((self.host, self.port))
+        except OSError as err:
+            self.fehler = f"Port {self.port} nicht belegbar: {err}"
+            return
         config = uvicorn.Config(
             create_app(self.settings), host=self.host, port=self.port,
             log_level="warning")
@@ -207,6 +225,10 @@ class Serverlauf:
         def lauf() -> None:
             try:
                 self._server.run()
+            except SystemExit as err:
+                # Zwischen Vorabprüfung und Start kann der Port trotzdem
+                # weg sein; uvicorn sagt dann nur sys.exit(1).
+                self.fehler = f"Server hat sich beim Start beendet (Code {err.code})."
             except Exception as err:                      # noqa: BLE001
                 self.fehler = f"{type(err).__name__}: {err}"
 
@@ -340,6 +362,14 @@ def _fenster_bauen(lauf: Serverlauf, selbsttest: bool = False):
                                "Programm. Bitte einen anderen Port wählen.")
                 aktualisieren()
                 return
+            if antwortet and unser:
+                # Der typische zweite Doppelklick, weil das erste Fenster
+                # beim Entpacken ein paar Sekunden brauchte. Ein zweiter
+                # Server auf demselben Port kann nur scheitern — und das
+                # Fenster sagt, was los ist, statt es zu versuchen.
+                lauf.fehler = ZWEITES_FENSTER.format(port=lauf.port)
+                aktualisieren()
+                return
             lauf.starten()
         aktualisieren()
 
@@ -378,6 +408,11 @@ def _fenster_bauen(lauf: Serverlauf, selbsttest: bool = False):
         wurzel.destroy()
 
     wurzel.protocol("WM_DELETE_WINDOW", schliessen)
+    # macOS: Cmd-Q und „Beenden" im Dock-Menü kommen als Apple-Event an und
+    # laufen an WM_DELETE_WINDOW vorbei — ohne diese Bindung stürbe das
+    # Fenster, ohne den Server geordnet zu beenden. Auf anderen Plattformen
+    # wird der Befehl nie aufgerufen.
+    wurzel.createcommand("::tk::mac::Quit", schliessen)
     return wurzel, aktualisieren, umschalten
 
 

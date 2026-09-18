@@ -31,11 +31,34 @@ Release entsteht mit jedem Versions-Tag):
 - **Windows:** `GastroViewer-Windows.exe` herunterladen, doppelklicken. Beim ersten
   Start warnt der SmartScreen-Filter, weil das Paket nicht signiert ist:
   „Weitere Informationen" → „Trotzdem ausführen".
-- **macOS:** `GastroViewer-macOS-AppleSilicon` (M1–M4) bzw. `…-Intel` laden, im
-  Terminal einmal `chmod +x GastroViewer-…`, dann Rechtsklick → „Öffnen".
-- Es öffnet sich das **Startfenster** (siehe unten) und dahinter ein
-  Konsolenfenster mit dem Abruf-Protokoll. Beim ersten Start dauert das Entpacken
-  ein paar Sekunden.
+- **macOS:** `GastroViewer-macOS-AppleSilicon.zip` (M1–M4) bzw. `…-Intel.zip`
+  laden. Doppelklick entpackt es zu `GastroViewer.app` — am besten in den Ordner
+  „Programme" ziehen, dann doppelklicken. Zum ersten Start siehe den Kasten unten.
+- Es öffnet sich das **Startfenster** (siehe unten). Unter Windows und Linux steht
+  daneben ein Konsolenfenster mit dem Abruf-Protokoll; auf dem Mac gibt es das beim
+  Doppelklick nicht — dort ist das Startfenster die Anzeige. Beim ersten Start
+  dauert das Entpacken ein paar Sekunden.
+
+> **macOS beim allerersten Start.** Das Paket ist **nicht notarisiert** — dafür
+> bräuchte es ein kostenpflichtiges Apple-Entwicklerkonto. macOS meldet deshalb
+> einmalig, die Herkunft sei nicht überprüfbar. Freigeben:
+>
+> - **macOS 15 (Sequoia) und neuer:** doppelklicken, Meldung wegklicken, dann
+>   *Systemeinstellungen → Datenschutz & Sicherheit* ganz nach unten scrollen und
+>   bei „GastroViewer wurde blockiert" auf **„Trotzdem öffnen"**. (Der frühere
+>   Weg über Rechtsklick → „Öffnen" wurde mit Sequoia abgeschafft.)
+> - **macOS 14 und älter:** Rechtsklick (Ctrl-Klick) auf das Programm →
+>   **„Öffnen"** → im Dialog noch einmal „Öffnen".
+> - **Oder einmalig im Terminal:** `xattr -dr com.apple.quarantine /Applications/GastroViewer.app`
+>   (der Ordner „Programme" heißt im Terminal `/Applications`; liegt das Paket noch in
+>   Downloads, das Programmsymbol ins Terminalfenster ziehen — das fügt den Pfad ein)
+>
+> Danach genügt der normale Doppelklick.
+>
+> Bis **v0.1.0** lag hier die nackte PyInstaller-Datei ohne Endung und ohne
+> Programmpaket. Der Finder kannte dafür keine Zuordnung und öffnete sie als
+> Text — man sah den Binärinhalt als Zeichensalat. Das war ein Fehler der
+> Verpackung, nicht des Programms; seit v0.2.0 liegt ein echtes `.app` im ZIP.
 
 #### Das Startfenster
 
@@ -88,10 +111,13 @@ den Weg ohne Fenster — es stürzt nicht ab.
 
 Das Paket kann auch alle Kommandos (in einem Terminal aufrufen):
 `GastroViewer-Windows.exe import-gtfs --region muenchen` importiert z. B. den
-Fahrplan für Block 6b. Zwei ehrliche Grenzen: der **Overture-Import** (Block 4f)
-braucht weiterhin Python (`pip install overturemaps` — das Paket wäre sonst
-hunderte MB groß); und die Dateien sind **nicht signiert** — daher die
-Warnhinweise der Betriebssysteme.
+Fahrplan für Block 6b. Auf dem Mac steckt dieselbe Kommandozeile im
+Programmpaket: `/Applications/GastroViewer.app/Contents/MacOS/GastroViewer
+import-gtfs --region muenchen`. Zwei ehrliche Grenzen: der **Overture-Import**
+(Block 4f) braucht weiterhin Python (`pip install overturemaps` — das Paket wäre
+sonst hunderte MB groß); und die Dateien sind **nicht mit einem Zertifikat
+signiert** (das macOS-Paket trägt nur eine Ad-hoc-Signatur, die Gatekeeper nicht
+genügt) — daher die Warnhinweise der Betriebssysteme.
 
 ### Weg 2: mit Python (alle Kommandos, alle Importe)
 
@@ -1219,12 +1245,20 @@ Diese Hinweise stehen auch in der Oberfläche, nicht nur hier:
 
 ## Konfiguration
 
+> **Doppelklick-Paket:** Umgebungsvariablen aus Shell-Profilen (`~/.zshrc`,
+> `~/.bash_profile`, Windows-Benutzervariablen ausgenommen) gelten beim Start per
+> Doppelklick **nicht** — auf macOS, Linux und Windows gleichermaßen. Das
+> Startfenster zeigt das tatsächlich benutzte Datenverzeichnis an. Wer im Terminal
+> importiert (`import-gtfs`) und per Doppelklick startet, muss deshalb entweder
+> `GASTROVIEWER_DATA_DIR` in beiden Welten gleich setzen oder es ganz weglassen.
+
 Alles über Umgebungsvariablen, alles optional:
 
 | Variable | Vorgabe |
 |---|---|
 | `GASTROVIEWER_CONTACT` | Projekt-URL — **auf eine eigene Adresse setzen** |
 | `GASTROVIEWER_HOST` / `GASTROVIEWER_PORT` | `127.0.0.1` / `8000` |
+| `GASTROVIEWER_ERLAUBTE_HOSTS` | *(leer)* — Hostnamen, unter denen der Server außer IP-Adressen und `localhost` antworten darf (Komma-Liste, z. B. `gastro.fritz.box`). Fremde Host-Header werden mit 400 abgewiesen (Schutz gegen DNS-Rebinding), schreibende Browser-Anfragen mit fremdem `Origin` mit 403 (Schutz gegen CSRF). |
 | `GASTROVIEWER_DATA_DIR` | `~/.gastroviewer` |
 | `GASTROVIEWER_OVERPASS_ENDPOINTS` | overpass-api.de, kumi.systems, private.coffee |
 | `GASTROVIEWER_NOMINATIM_MIN_INTERVAL` | `1.0` — nicht ohne Grund verringern |
@@ -1391,6 +1425,13 @@ bekommt einen roten Test — statt einer Browserprüfung, die den neuen Block
 stillschweigend überspringt.
 
 ---
+
+## Weitere Dokumente
+
+- [`docs/bestandsaufnahme.md`](docs/bestandsaufnahme.md) — Prüfung des gesamten Projekts durch
+  neun unabhängige Blickwinkel, zwölf bestätigte und umgesetzte Funde, 72 ungeprüfte im Anhang.
+- [`docs/oesterreich.md`](docs/oesterreich.md) — Quelle für Quelle: was es für Österreich,
+  die Schweiz und EU-weit an offenen Gegenstücken gibt, und was am Code fest auf Deutschland zeigt.
 
 ## Aufbau
 

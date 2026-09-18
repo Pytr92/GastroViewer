@@ -865,9 +865,15 @@ class PointService:
             v = zelle.get("Einwohner")
             return v if isinstance(v, (int, float)) and v > 0 else 0
 
-        def innerhalb(zelle, lat, lon, radius):
-            c = zelle.get("_center")
-            return bool(c) and haversine_m(lat, lon, c[0], c[1]) <= radius
+        # Eine Zugehörigkeitsregel für Zähler und Nenner. Der Zensusdienst
+        # liefert alle Zellen, die den Umkreis berühren (Intersects); ew_a und
+        # ew_b summieren genau diese Mengen — also muss „gemeinsam" der Schnitt
+        # derselben Mengen sein. Vorher zählte der Zähler nach Zellmittelpunkt:
+        # Zwei identische Punkte teilten sich dann nur rund zwei Drittel ihrer
+        # eigenen Einwohner, weil Randzellen im Nenner voll, im Zähler gar
+        # nicht zählten.
+        def schluessel(zelle):
+            return zelle.get("GITTER_ID_100m") or tuple(zelle.get("_center") or ())
 
         zellen_a = build_cells((await fetch_cells(
             self.outbound, self.settings, a["lat"], a["lon"], a["radius"]))[0])
@@ -876,9 +882,8 @@ class PointService:
 
         ew_a = sum(ew(z) for z in zellen_a)
         ew_b = sum(ew(z) for z in zellen_b)
-        gemeinsam = sum(
-            ew(z) for z in zellen_a
-            if innerhalb(z, b["lat"], b["lon"], b["radius"]))
+        ids_b = {schluessel(z) for z in zellen_b}
+        gemeinsam = sum(ew(z) for z in zellen_a if schluessel(z) in ids_b)
 
         return {
             **grunddaten,
@@ -893,8 +898,9 @@ class PointService:
                 "(Stichtag 15.05.2022) — Flüsse, Gleise und Gehstrecken "
                 "sieht die Rechnung nicht; die Gehweg-Auswertung je Punkt "
                 "bleibt der genauere Blick.",
-                "Gezählt werden Zellen, deren Mittelpunkt in beiden "
-                "Umkreisen liegt — Randzellen können leicht abweichen.",
+                "Gezählt werden Zensuszellen, die beide Umkreise berühren — "
+                "Randzellen zählen dadurch voll, wie auch in den "
+                "Einwohnerzahlen der einzelnen Punkte.",
             ],
         }
 
@@ -1147,7 +1153,7 @@ class PointService:
         key = cache_key("fahrzeit", lat, lon, minuten)
 
         async def laden() -> SourceResult:
-            return await fz_mod.load(self.out, self.settings, lat, lon, minuten)
+            return await fz_mod.load(self.outbound, self.settings, lat, lon, minuten)
 
         return await self._cached("fahrzeit", key, laden)
 
@@ -1264,14 +1270,18 @@ class PointService:
             lambda: scan_mod.load(self.outbound, self.settings, w, s, o, n),
         )
 
-    async def planung(self, lat: float, lon: float, radius: int, refresh: bool = False):
+    async def planung(self, lat: float, lon: float, radius: int, refresh: bool = False,
+                      bundesland_code: str | None = None):
         """Planungsrecht und Hochwasserrisiko. Beides aendert sich in Jahren,
-        nicht in Stunden — deshalb dieselbe lange Haltbarkeit wie das Wegenetz."""
-        key = cache_key("planung", lat, lon, radius)
+        nicht in Stunden — deshalb dieselbe lange Haltbarkeit wie das Wegenetz.
+        Der Bundesland-Code wählt den Dienst (Bayern: LfU, sonst BfG) und
+        gehört deshalb in den Cache-Schlüssel — wie beim Lärm."""
+        key = cache_key("planung", lat, lon, radius) + f"|{bundesland_code or '-'}"
         return await self._cached(
             "planung",
             key,
-            lambda: planung.load(self.outbound, self.settings, lat, lon, radius),
+            lambda: planung.load(self.outbound, self.settings, lat, lon, radius,
+                                 bundesland_code),
             refresh=refresh,
         )
 
@@ -1310,7 +1320,6 @@ class PointService:
             self.gtfs(lat, lon, radius),
             self.radzaehlung(lat, lon, radius, refresh),
             self.verkehrsmenge(lat, lon, radius, refresh),
-            self.planung(lat, lon, radius, refresh),
             self.klima(lat, lon),
             self.dynamik(lat, lon, radius, refresh),
             self.baustellen(lat, lon, radius, refresh),
@@ -1322,7 +1331,7 @@ class PointService:
             return_exceptions=True,
         )
         names = ["adresse", "zensus", "osm", "gtfs", "radzaehlung", "verkehrsmenge",
-                 "planung", "klima", "dynamik", "baustellen", "maerkte",
+                 "klima", "dynamik", "baustellen", "maerkte",
                  "messe", "tourismus", "leerstandsmelder", "luft"]
         blocks: dict[str, Any] = {}
         for name, res in zip(names, results):
@@ -1378,6 +1387,10 @@ class PointService:
             ).to_dict()
 
         bl_code = zensus_data.get("bundesland_code")
+        # Planungsrecht/Hochwasser wählt den Dienst nach Bundesland — deshalb
+        # erst jetzt, parallel zu den Kreisquellen, nicht in der ersten Runde.
+        planung_lauf = asyncio.create_task(
+            self.planung(lat, lon, radius, refresh, bl_code))
         if ags:
             kreis_results = await asyncio.gather(
                 self.einkommen(ags), self.kreisprofil(ags), self.pendler(ags),
@@ -1416,6 +1429,13 @@ class PointService:
         # Gegenprobe: Bundesland aus AGS gegen ISO-Code von Nominatim.
         hinweise: list[str] = []
         iso = adresse.get("bundesland_iso")
+        try:
+            blocks["planung"] = (await planung_lauf).to_dict()
+        except Exception as exc:  # noqa: BLE001
+            blocks["planung"] = SourceResult.failed(
+                "planung", SourceError("unknown", f"{type(exc).__name__}: {exc}")
+            ).to_dict()
+
         if iso and bl_code:
             from .sources.zensus import BUNDESLAENDER
 
