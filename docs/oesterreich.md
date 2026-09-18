@@ -8,7 +8,7 @@ Das Werkzeug nutzt **80 Quellen**; **12** davon sind länderunabhängig (OSM/Ove
 
 Für die deutschlandspezifischen Quellen ergab die Recherche über 98 geprüfte Einträge: **42× ein offenes Gegenstück**, **28× ein teilweises** (gröbere Auflösung, nur einzelne Länder oder nur Download statt API), **15× keines** (nicht offen oder nicht vorhanden).
 
-### Die drei Dinge, die den Unterschied machen
+### Die vier Dinge, die den Unterschied machen
 
 1. **Bevölkerungsraster.** Der deutsche Zensus-2022-Gitterdienst (100 m, 49 Felder, ArcGIS-REST mit Geometriefilter) ist das Rückgrat von Block 2, 3, Scan, Liefergebiet und Fahrzeit. Statistik Austria hat Rasterdaten der Registerzählung (100 m/250 m/1 km), aber als Download-Geometrie plus Tabellen — keine punktgenaue Abfrage-API. Für Österreich hieße das: einmaliger Import in eine lokale SQLite, wie beim GTFS-Import. Aufwand L, aber danach schneller und offline.
 2. **Bodenrichtwerte gibt es nicht.** Österreich kennt kein Gutachterausschuss-System. Was es offen gibt, ist gröber (Statistik Austria: Durchschnittspreise je Gemeinde; Häuserpreisindex national); die transaktionsgenauen Quellen (IMMOunited, Grundbuch, WKÖ-Preisspiegel) sind kostenpflichtig oder Print.
