@@ -47,6 +47,22 @@ class Settings:
     # --- Ablage ---
     data_dir: Path = field(default_factory=default_data_dir)
 
+    # --- Herkunftsprüfung ---
+    # Der Server läuft ohne Anmeldung auf dem eigenen Rechner. Zwei Angriffe
+    # brauchen trotzdem keine Anmeldung: DNS-Rebinding (eine fremde Webseite
+    # lässt ihren Namen auf 127.0.0.1 zeigen und liest die API aus) und CSRF
+    # (eine fremde Seite schickt POST /api/points oder POST
+    # /api/genesis/zugang aus dem Browser des Nutzers). Beides erkennt man am
+    # Host- bzw. Origin-Header. Erlaubt sind IP-Adressen und localhost — und
+    # was hier ausdrücklich eingetragen ist (etwa ein Hostname im LAN).
+    erlaubte_hosts: tuple[str, ...] = field(
+        default_factory=lambda: tuple(
+            h.strip().lower()
+            for h in _env("GASTROVIEWER_ERLAUBTE_HOSTS", "").split(",")
+            if h.strip()
+        )
+    )
+
     # --- Identifikation gegenüber den Diensten ---
     # Nominatim antwortet ohne User-Agent mit HTTP 403 (in Phase 0 geprüft).
     # Kontaktadresse laut Nutzungsbedingungen Pflicht -> per Env setzbar.

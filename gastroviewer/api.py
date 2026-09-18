@@ -11,8 +11,10 @@ from __future__ import annotations
 import asyncio
 import csv
 import io
+import ipaddress
 import json
 import time
+from urllib.parse import urlsplit
 from contextlib import asynccontextmanager
 from typing import Any
 
@@ -140,6 +142,36 @@ async def lifespan(app: FastAPI):
         await outbound.aclose()
 
 
+def _name_erlaubt(name: str, erlaubte: tuple[str, ...]) -> bool:
+    """Nur Namen, die im Browser wirklich „dieser Rechner" bedeuten.
+
+    DNS-Rebinding braucht zwingend einen DNS-Namen — eine IP-Adresse kann
+    niemand umbiegen. Deshalb sind IP-Literale (127.0.0.1, ::1, jede
+    LAN-Adresse bei --host 0.0.0.0) und localhost immer erlaubt, alles
+    andere nur, wenn es ausdrücklich in GASTROVIEWER_ERLAUBTE_HOSTS steht.
+    """
+    name = (name or "").strip().lower().rstrip(".")
+    if not name:
+        return False
+    if name == "localhost" or name.endswith(".localhost"):
+        return True
+    try:
+        ipaddress.ip_address(name)
+        return True
+    except ValueError:
+        pass
+    return name in erlaubte
+
+
+def _host_erlaubt(host_header: str, erlaubte: tuple[str, ...]) -> bool:
+    """Host-Header ohne Port — auch für IPv6-Literale wie [::1]:8000."""
+    try:
+        name = urlsplit("//" + (host_header or "").strip()).hostname or ""
+    except ValueError:
+        return False
+    return _name_erlaubt(name, erlaubte)
+
+
 def create_app(settings: Settings | None = None) -> FastAPI:
     app = FastAPI(
         title="Standort-Datenterminal",
@@ -148,6 +180,40 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         lifespan=lifespan,
     )
     app.state.settings = settings or get_settings()
+
+    @app.middleware("http")
+    async def herkunft_pruefen(request: Request, call_next):
+        """Host- und Origin-Prüfung — siehe Settings.erlaubte_hosts.
+
+        Der Host-Header muss zu diesem Rechner passen (sonst 400: das ist
+        DNS-Rebinding). Schreibende Anfragen aus einem Browser tragen einen
+        Origin-Header; stammt er von einer fremden Seite, ist es CSRF (403).
+        Anfragen ohne Origin (curl, die Testsuite, das Startfenster) sind
+        keine Browser-Anfragen und bleiben unberührt.
+        """
+        erlaubte = request.app.state.settings.erlaubte_hosts
+        if not _host_erlaubt(request.headers.get("host", ""), erlaubte):
+            return JSONResponse(
+                {"detail": "Unerwarteter Host-Header — der Server antwortet nur "
+                           "unter seiner eigenen Adresse (Schutz gegen "
+                           "DNS-Rebinding). Eigene Hostnamen über "
+                           "GASTROVIEWER_ERLAUBTE_HOSTS freigeben."},
+                status_code=400,
+            )
+        if request.method not in ("GET", "HEAD", "OPTIONS"):
+            origin = request.headers.get("origin")
+            if origin is not None:
+                try:
+                    herkunft = urlsplit(origin).hostname or ""
+                except ValueError:
+                    herkunft = ""
+                if not _name_erlaubt(herkunft, erlaubte):
+                    return JSONResponse(
+                        {"detail": "Schreibende Anfrage von einer fremden Seite "
+                                   "abgelehnt (Schutz gegen CSRF)."},
+                        status_code=403,
+                    )
+        return await call_next(request)
 
     def svc(request: Request) -> PointService:
         service = getattr(request.app.state, "service", None)

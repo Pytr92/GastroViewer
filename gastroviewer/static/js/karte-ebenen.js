@@ -7,7 +7,7 @@
  * damit an jedem einzelnen Datenblock.
  */
 
-import { NF, NF1, zahl } from './format.js';
+import { NF, NF1, NF2, zahl } from './format.js';
 import { el, esc } from './dom.js';
 import { state } from './state.js';
 import { karte } from './karte.js';

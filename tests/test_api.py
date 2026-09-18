@@ -343,7 +343,9 @@ def client(tmp_path, monkeypatch, zensus_600, overpass_combined, nominatim_rever
         import gastroviewer.api as api_mod
 
         monkeypatch.setattr(api_mod, "Outbound", lambda *a, **k: fake_outbound)
-        return TestClient(create_app(settings))
+        # base_url: Der Server nimmt nur Host-Header an, die „dieser Rechner"
+        # bedeuten — „testserver" ist keiner.
+        return TestClient(create_app(settings), base_url="http://127.0.0.1")
 
     original_lifespan_state["make"] = make_client
     c = make_client()
@@ -1883,3 +1885,47 @@ def test_identische_punkte_teilen_sich_alle_einwohner(client):
     assert d["ueberlappung"] is True
     assert d["einwohner_a"] == d["einwohner_b"] == d["gemeinsame_einwohner"] > 0
     assert d["anteil_an_a_prozent"] == 100.0
+
+
+# --------------------------------------------------- Herkunftsprüfung
+
+
+def test_fremder_host_header_wird_abgewiesen(client):
+    """DNS-Rebinding: ein fremder Name zeigt auf 127.0.0.1 — der Server
+    antwortet nur unter seiner eigenen Adresse."""
+    r = client.get("/api/health", headers={"host": "angreifer.example"})
+    assert r.status_code == 400
+    assert "DNS-Rebinding" in r.json()["detail"]
+    for host in ("127.0.0.1:8000", "localhost", "[::1]:8000", "192.168.1.20:8000"):
+        assert client.get("/api/health", headers={"host": host}).status_code == 200, host
+
+
+def test_schreiben_von_fremder_seite_wird_abgewiesen(client):
+    """CSRF: POST aus dem Browser mit fremdem Origin — 403; ohne Origin
+    (curl, Testsuite) und mit eigenem Origin — angenommen."""
+    body = {"label": "CSRF-Probe", "lat": LAT, "lon": LON, "radius": R}
+    r = client.post("/api/points", json=body, headers={"origin": "http://angreifer.example"})
+    assert r.status_code == 403
+    r = client.post("/api/points", json=body, headers={"origin": "null"})
+    assert r.status_code == 403
+    r = client.post("/api/points", json=body, headers={"origin": "http://127.0.0.1:8000"})
+    assert r.status_code < 300, r.text
+    # Lesen mit fremdem Origin bleibt erlaubt — das ist kein CSRF.
+    assert client.get("/api/health", headers={"origin": "http://angreifer.example"}).status_code == 200
+
+
+def test_eigener_hostname_per_umgebung(tmp_path, monkeypatch, zensus_600,
+                                        overpass_combined, nominatim_reverse):
+    """Wer den Server im LAN unter einem Namen erreicht, trägt ihn ein."""
+    from gastroviewer.config import Settings
+
+    monkeypatch.setenv("GASTROVIEWER_ERLAUBTE_HOSTS", "gastro.fritz.box, Buero-PC")
+    monkeypatch.setenv("GASTROVIEWER_DATA_DIR", str(tmp_path))
+    settings = Settings()
+    assert settings.erlaubte_hosts == ("gastro.fritz.box", "buero-pc")
+    fake = FakeOutbound(zensus_600, overpass_combined, nominatim_reverse)
+    monkeypatch.setattr("gastroviewer.api.Outbound", lambda *a, **kw: fake)
+    with TestClient(create_app(settings), base_url="http://127.0.0.1") as c:
+        assert c.get("/api/health", headers={"host": "gastro.fritz.box:8000"}).status_code == 200
+        assert c.get("/api/health", headers={"host": "Buero-PC"}).status_code == 200
+        assert c.get("/api/health", headers={"host": "anderer.fritz.box"}).status_code == 400

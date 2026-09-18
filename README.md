@@ -1258,6 +1258,7 @@ Alles über Umgebungsvariablen, alles optional:
 |---|---|
 | `GASTROVIEWER_CONTACT` | Projekt-URL — **auf eine eigene Adresse setzen** |
 | `GASTROVIEWER_HOST` / `GASTROVIEWER_PORT` | `127.0.0.1` / `8000` |
+| `GASTROVIEWER_ERLAUBTE_HOSTS` | *(leer)* — Hostnamen, unter denen der Server außer IP-Adressen und `localhost` antworten darf (Komma-Liste, z. B. `gastro.fritz.box`). Fremde Host-Header werden mit 400 abgewiesen (Schutz gegen DNS-Rebinding), schreibende Browser-Anfragen mit fremdem `Origin` mit 403 (Schutz gegen CSRF). |
 | `GASTROVIEWER_DATA_DIR` | `~/.gastroviewer` |
 | `GASTROVIEWER_OVERPASS_ENDPOINTS` | overpass-api.de, kumi.systems, private.coffee |
 | `GASTROVIEWER_NOMINATIM_MIN_INTERVAL` | `1.0` — nicht ohne Grund verringern |
