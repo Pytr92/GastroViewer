@@ -44,7 +44,7 @@ AUFNAHME = (Path(__file__).resolve().parent.parent
             / "tests" / "fixtures" / "ui" / "api-antworten.json.gz")
 
 # Routen mit Zustand laufen echt — sie dürfen nie abgefangen werden.
-ECHT_BELASSEN = ("/api/points",)
+ECHT_BELASSEN = ("/api/points", "/api/import")
 
 
 def _norm(params: dict[str, Any]) -> dict[str, str]:

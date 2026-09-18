@@ -1123,6 +1123,13 @@ def pruefe_wien(page) -> str:
     fordere("Wien" in text(page, "#inhalt-maerkte"), "Wiener Märkte fehlen")
     z = text(page, "#inhalt-bevoelkerung")
     fordere("import-raster-at" in z, "der Zensus-Block nennt den Rasterimport nicht")
+    page.wait_for_timeout(800)
+    z = text(page, "#inhalt-bevoelkerung")
+    fordere("Jetzt laden" in z and "186" in z,
+            f"der Knopf für den Rasterimport fehlt im Bevölkerungsblock: {z[-160:]}")
+    g = text(page, "#inhalt-gtfs")
+    fordere("Wiener Linien" in g and "Jetzt laden" in g,
+            f"der Knopf für den Wiener Fahrplan fehlt im ÖPNV-Block: {g[-160:]}")
     for block in ("luft", "einkommen", "pks", "register", "verkehrsmenge"):
         t = text(page, f"#inhalt-{block}")
         fordere("Nur für Deutschland" in t, f"{block}: deutsche Quelle nicht ehrlich leer: {t[:80]}")

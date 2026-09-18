@@ -499,7 +499,7 @@ Antworten liegen als Fixtures unter `fixtures/at/`):
 | Block | Quelle in Österreich | Anmerkung |
 |---|---|---|
 | Adresse, Feiertage, Karte | Nominatim/Photon (`de,at`), OpenHolidaysAPI (`AT-1`…`AT-9`), basemap.at | Kartenhintergrund wechselt automatisch |
-| Bevölkerung | Eurostat GEOSTAT Census Grid 2021, **1 km** | einmalig `gastroviewer import-raster-at`; nur Einwohnerzahl, keine Haushalte/Miete/Baualter |
+| Bevölkerung | Eurostat GEOSTAT Census Grid 2021, **1 km** | einmalig laden: Knopf im Bevölkerungsblock oder `gastroviewer import-raster-at` (186 MB); nur Einwohnerzahl, keine Haushalte/Miete/Baualter |
 | Klima | GeoSphere Austria, Jahreswerte 1991–2020 der nächsten Station | dieselben fünf Kennzahlen wie DWD |
 | Straßenlärm | lärminfo.at (EU-Umgebungslärmkartierung 2022) | 5-dB-Klassen Lden/Lnight, Straße und Schiene |
 | Hochwasser | BML/LFRZ INSPIRE-Dienst (HQ30/100/300, Gefahrenzonen, Risikogebiete) | bundesweit; Risikogebiete getrennt ausgewiesen |
@@ -509,8 +509,15 @@ Antworten liegen als Fixtures unter `fixtures/at/`):
 | Wahl | Nationalratswahl 2024 je Gemeinde (BMI über data.gv.at) | Zuordnung über Bundesland und Gemeindename |
 | Tourismus | Statistik Austria, Nächtigungen je Bundesland | landesweit (für Wien die Stadt) |
 | Kurzzeitvermietung | Inside Airbnb Wien | wie München/Berlin |
-| ÖPNV | Wiener Linien GTFS (`import-gtfs --region wien`) | mit `calendar.txt` |
+| ÖPNV | Wiener Linien GTFS | Knopf im ÖPNV-Block oder `import-gtfs --region wien` (91 MB); mit `calendar.txt` |
 | OSM, ohsome, Overture, Leerstandsmelder, Besonnung, Gehweg, Fahrzeit | länderunabhängig | unverändert |
+
+**Nachladen per Knopf.** Bei einem österreichischen Punkt zeigen der
+Bevölkerungsblock und der ÖPNV-Block einen Knopf „Jetzt laden“ mit Quelle,
+Größe und Lizenz. Erst der Klick startet den Download (Raster 186 MB,
+Fahrplan 91 MB), der Import läuft im Hintergrund mit Fortschrittsanzeige,
+danach lädt der Punkt neu. Nichts lädt ungefragt — dieselben Importe gibt
+es weiter als Kommando (`import-raster-at`, `import-gtfs --region wien`).
 
 Was in Österreich **leer bleibt**, und warum das so richtig ist: Bodenrichtwerte
 (kein Gutachterausschuss-System), Kriminalstatistik je Bezirk (nur PDF),
@@ -1369,6 +1376,8 @@ Alles über Umgebungsvariablen, alles optional:
 | `GET /api/wms/ebenen?bundesland_code=` | zusätzliche amtliche Kartenebenen (Bayern: Luftbild, ALKIS) |
 | `GET /api/wms/bodenrichtwert` | Wert am Punkt beim Landesdienst (GetFeatureInfo) |
 | `GET /api/health` | Zustand, GTFS-Status |
+| `GET /api/import/status` | Zustand der Knopf-Importe (Bevölkerungsraster Österreich, Fahrplan Wien): vorhanden, laufend, Fortschritt, Fehler |
+| `POST /api/import/{art}` | Einen Import im Hintergrund starten (`raster_at`, `gtfs_wien`) — nichts lädt ohne diesen Aufruf |
 
 Interaktive Doku unter `/docs` — die vollständige Referenz; `tests/test_readme_api.py` prüft, dass jede Route hier steht.
 

@@ -13,6 +13,7 @@ import { hole } from './api.js';
 import { BRANCHEN, BRANCHE_SPEICHER, brancheKennzahlen } from './branche.js';
 import { karte } from './karte.js';
 import { springeZuPoi, zeichnePois, zeichneZensus } from './karte-ebenen.js';
+import { importFeld } from './importe.js';
 /* ------------------------------------------------------------- Bloecke */
 
 /* Die Kopfzeile führt zwei Quellen zusammen: Adresse und Ortsteil von Nominatim,
@@ -85,6 +86,11 @@ function zeigeZensus(d) {
       setInhalt(id, ...warnungen(d.warnings || []));
       setQuelle(id, d.provenance);
     }
+    // Österreich: das Raster lässt sich per Knopf nachladen.
+    const lauf = state.ladeLauf;
+    importFeld('raster_at', lauf).then((feld) => {
+      if (feld && lauf === state.ladeLauf) document.getElementById('inhalt-bevoelkerung')?.append(feld);
+    });
     return;
   }
   zeichneZensus(z.zellen);
