@@ -19,6 +19,7 @@ from contextlib import asynccontextmanager
 from typing import Any
 
 from fastapi import FastAPI, HTTPException, Query, Request
+from fastapi.exceptions import RequestValidationError
 from fastapi.responses import FileResponse, JSONResponse, PlainTextResponse, Response
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
@@ -30,6 +31,7 @@ from .http import Outbound
 from .schaetzung import Eingaben, rechne, vorgaben_aus_punkt
 from .service import GRENZEN, PointService
 from .sources import boris, genesis as genesis_mod, gtfs, links, muenchen, wms
+from .sources.base import SourceError
 
 STATIC_DIR = __import__("pathlib").Path(__file__).parent / "static"
 
@@ -1017,7 +1019,14 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         row_b = await asyncio.to_thread(cache.sync.get_point, b)
         if row_a is None or row_b is None:
             raise HTTPException(404, "Punkt nicht gefunden.")
-        return await svc(request).kannibalisierung(row_a, row_b)
+        # Der einzige Endpunkt, der eine Quelle am Block-Mechanismus vorbei
+        # aufruft — ein Zensus-Ausfall darf hier kein 500 sein, sondern
+        # eine Meldung, die die Ursache nennt.
+        try:
+            return await svc(request).kannibalisierung(row_a, row_b)
+        except SourceError as err:
+            raise HTTPException(
+                502, f"Zensus-Dienst nicht erreichbar: {err.message}") from err
 
     @app.get("/api/points/{point_id}")
     async def get_point(request: Request, point_id: int):
@@ -1296,6 +1305,19 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             immer ein Zweikampf."""
             return FileResponse(STATIC_DIR / "duell.html")
 
+    @app.exception_handler(RequestValidationError)
+    async def on_validation_error(request: Request, exc: RequestValidationError):
+        """Eingabefehler als ein deutscher Satz statt als Pydantic-Liste.
+
+        FastAPI antwortet sonst mit ``{"detail": [{loc, msg, type}, …]}`` —
+        die Oberfläche zeigt ``detail`` als Text und machte daraus
+        „[object Object]". Die deutschen Meldungen aus rechne() erreichte
+        nie jemand, weil Pydantic vorher englisch abwies."""
+        return JSONResponse(
+            status_code=422,
+            content={"detail": validierungsfehler_text(exc.errors())},
+        )
+
     @app.exception_handler(500)
     async def on_error(request: Request, exc: Exception):
         return JSONResponse(
@@ -1307,6 +1329,65 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
 
 # ------------------------------------------------------------- Helfer
+
+
+# Pydantic-Fehlertypen (pydantic-core ``type``) → deutsche Satzteile. Was
+# hier fehlt, bekommt die englische Originalmeldung — besser als nichts.
+_VALIDIERUNGS_TEXTE = {
+    "missing": "fehlt",
+    "greater_than": "muss größer als {gt} sein",
+    "greater_than_equal": "muss mindestens {ge} sein",
+    "less_than": "muss kleiner als {lt} sein",
+    "less_than_equal": "darf höchstens {le} sein",
+    "int_parsing": "muss eine ganze Zahl sein",
+    "int_type": "muss eine ganze Zahl sein",
+    "int_from_float": "muss eine ganze Zahl sein",
+    "float_parsing": "muss eine Zahl sein",
+    "float_type": "muss eine Zahl sein",
+    "bool_parsing": "muss ja oder nein sein",
+    "bool_type": "muss ja oder nein sein",
+    "string_type": "muss ein Text sein",
+    "string_too_short": "ist zu kurz (mindestens {min_length} Zeichen)",
+    "string_too_long": "ist zu lang (höchstens {max_length} Zeichen)",
+    "list_type": "muss eine Liste sein",
+    "dict_type": "muss ein Objekt sein",
+    "model_attributes_type": "muss ein Objekt sein",
+    "model_type": "muss ein Objekt sein",
+    "json_invalid": "ist kein gültiges JSON",
+    "enum": "hat keinen der erlaubten Werte",
+    "literal_error": "hat keinen der erlaubten Werte",
+}
+
+
+def validierungsfehler_text(fehler: list[dict[str, Any]]) -> str:
+    """Pydantic-Fehlerliste → ein lesbarer deutscher Satz.
+
+    ``loc`` nennt den Weg zum Feld (``body``/``query`` weggelassen, Indizes
+    als ``punkte[2].lat``), ``type`` den Fehler; die Grenzwerte stehen in
+    ``ctx``."""
+    teile = []
+    for f in fehler:
+        pfad = ""
+        for stueck in f.get("loc") or ():
+            if stueck in ("body", "query", "path"):
+                continue
+            if isinstance(stueck, int):
+                pfad += f"[{stueck}]"
+            else:
+                pfad += ("." if pfad else "") + str(stueck)
+        vorlage = _VALIDIERUNGS_TEXTE.get(str(f.get("type")))
+        ctx = f.get("ctx") or {}
+        if vorlage:
+            try:
+                text = vorlage.format(**ctx)
+            except (KeyError, IndexError):
+                text = vorlage
+        else:
+            text = str(f.get("msg") or "ist ungültig")
+        teile.append(f"Feld {pfad}: {text}" if pfad else text)
+    if not teile:
+        return "Ungültige Eingabe."
+    return "Ungültige Eingabe — " + "; ".join(teile) + "."
 
 
 def _wert(node: Any) -> Any:

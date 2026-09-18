@@ -2056,3 +2056,58 @@ def test_profil_mit_unbekannter_kennzahl_wird_abgewiesen(client):
     r = client.post("/api/points/kriterien", json={"kriterien": [
         {"key": "einwohner", "richtung": "min", "wert": 1000}]})
     assert r.status_code == 200
+
+
+# ------------------------------------------------------- Eingabefehler (422)
+
+
+def test_eingabefehler_kommen_als_deutscher_text(client):
+    """Pydantic weist englisch und als Liste ab — die Oberfläche zeigt
+    ``detail`` als Text und machte daraus „[object Object]". Jetzt: ein
+    Satz, der das Feld nennt."""
+    r = client.post("/api/schaetzung", json={
+        "einwohner": 16370, "wettbewerber": 26, "besuche_je_einwohner": 60.3,
+        "bon_min": 7.15, "bon_max": 10.21, "oeffnungstage": 0,
+    })
+    assert r.status_code == 422
+    detail = r.json()["detail"]
+    assert isinstance(detail, str)
+    assert "oeffnungstage" in detail and "größer als 0" in detail
+
+    r = client.get("/api/point", params={"lat": "abc", "lon": LON})
+    assert r.status_code == 422
+    assert "Feld lat: muss eine Zahl sein" in r.json()["detail"]
+
+    r = client.post("/api/points", json={"lat": LAT, "lon": LON})
+    assert r.status_code == 422
+    assert "Feld label: fehlt" in r.json()["detail"]
+
+
+def test_validierungsfehler_text_nennt_pfad_und_faellt_zurueck():
+    from gastroviewer.api import validierungsfehler_text
+
+    text = validierungsfehler_text([
+        {"loc": ("body", "punkte", 2, "lat"), "type": "float_parsing", "msg": "x"},
+        {"loc": ("query", "r"), "type": "voellig_neu", "msg": "Input should be prime"},
+    ])
+    assert "Feld punkte[2].lat: muss eine Zahl sein" in text
+    assert "Feld r: Input should be prime" in text
+    assert validierungsfehler_text([]) == "Ungültige Eingabe."
+
+
+def test_kannibalisierung_meldet_zensus_ausfall_statt_500(
+        client, zensus_600, overpass_combined, nominatim_reverse):
+    """Der einzige Endpunkt, der eine Quelle am Block-Mechanismus vorbei
+    aufruft: ein Zensus-Ausfall ist 502 mit Ursache, kein 500."""
+    for label in ("K-A", "K-B"):
+        client.post("/api/points", json={
+            "label": label, "lat": LAT, "lon": LON, "radius": R})
+    ids = {p["label"]: p["id"] for p in client.get("/api/points").json()["punkte"]}
+    kaputt = FakeOutbound(zensus_600, overpass_combined, nominatim_reverse,
+                          fehler={"zensus"})
+    c2 = client.make(kaputt)
+    with c2:
+        r = c2.get("/api/points/kannibalisierung",
+                   params={"a": ids["K-A"], "b": ids["K-B"]})
+    assert r.status_code == 502
+    assert "Zeitüberschreitung" in r.json()["detail"]

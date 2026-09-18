@@ -462,7 +462,11 @@ async function kannibalisierungRechnen(paar, knopf) {
   let d;
   try {
     const r = await fetch(`/api/points/kannibalisierung?a=${paar.aId}&b=${paar.bId}`);
-    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    if (!r.ok) {
+      let detail = `HTTP ${r.status}`;
+      try { const j = await r.json(); detail = j.detail || j.fehler || detail; } catch { /* egal */ }
+      throw new Error(detail);
+    }
     d = await r.json();
   } catch (e) {
     box.replaceChildren(el('div', { class: 'fehlerbox' },
