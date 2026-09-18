@@ -1867,12 +1867,10 @@ function zeigeDynamik(d) {
    Arbeitsort (Tagesbevölkerungs-Näherung), Arbeitsmarkt, Bevölkerungsbewegung.
    Kreiswerte mit je eigenem Datenjahr; Land und Bund als Maßstab daneben. */
 async function ladeKreisprofil(ags, lauf) {
-  if (!ags) {
-    ohneSchluessel('kreisprofil', 'kein Kreiswert', 'Kreiswerte kommen aus dem deutschen Regionalatlas.', lauf);
-    return;
-  }
+  // Ohne Gemeindeschlüssel (Österreich) liefert das Backend das Gemeindeprofil
+  // über die Adresse des Punkts — deshalb dann die Koordinaten.
   try {
-    const d = await hole('/api/kreisprofil', { ags });
+    const d = await hole('/api/kreisprofil', ags ? { ags } : { lat: state.lat, lon: state.lon });
     if (lauf !== state.ladeLauf) return;
     state.daten.kreisprofil = d;
     zeigeKreisprofil(d);

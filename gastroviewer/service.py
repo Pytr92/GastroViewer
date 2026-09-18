@@ -43,7 +43,7 @@ from .sources import (airbnb as airbnb_mod,
                       luft as luft_mod,
                       pendler as pendler_mod, pks as pks_mod, planung,
                       planung_at as planung_at_mod, tourismus_at as tourismus_at_mod,
-                      wahl_at as wahl_at_mod,
+                      wahl_at as wahl_at_mod, gemeinde_at as gemeinde_at_mod,
                       register as register_mod, scan as scan_mod,
                       sonne as sonne_mod,
                       tourismus as tourismus_mod, wahl as wahl_mod, zensus)
@@ -843,6 +843,39 @@ class PointService:
             raise SourceError(res.error["kind"], res.error["message"])
         return res.data["ergebnisse"], res.data["gkz"]
 
+    async def _gemeinde_at_daten(self, refresh: bool = False):
+        """Gemeindetabelle von Statistik Austria, **einmal** geladen und
+        eingedampft (Gemeindezeilen plus gerechnete Landes-/Bundeswerte)."""
+
+        async def laden() -> SourceResult:
+            text = await self.outbound.get_text(
+                "gemeinde_at", gemeinde_at_mod.CSV_URL, timeout=120.0,
+                limiter="statistik_at", min_interval=1.0)
+            return SourceResult(name="gemeinde_at_daten", ok=True,
+                                data=await asyncio.to_thread(gemeinde_at_mod.reduzieren, text))
+
+        res = await self._cached("gemeinde_at_daten", "gemeinde_at|daten", laden, refresh=refresh)
+        if not res.ok:
+            raise SourceError(res.error["kind"], res.error["message"])
+        return res.data
+
+    async def kreisprofil_ohne_schluessel(self, lat: float, lon: float, refresh: bool = False):
+        """Kreisprofil für einen Punkt ohne Gemeindeschlüssel: in Österreich
+        das Gemeindeprofil aus der Statistik-Austria-Tabelle, sonst ehrlich leer."""
+        land = await self.land(lat, lon)
+        if land.code == "AT":
+            res = await self.adresse(lat, lon)
+            a = (res.data or {}) if res.ok else {}
+            key = f"kreisprofil_at|{a.get('bundesland_iso') or '-'}|{(a.get('gemeinde') or '-')[:40]}|{(a.get('ortsteil') or '-')[:40]}"
+            return await self._cached(
+                "kreisprofil_at", key,
+                lambda: gemeinde_at_mod.load(a, lambda: self._gemeinde_at_daten(refresh)),
+                refresh=refresh,
+            )
+        return self._nur_in("kreisprofil", land) or SourceResult(
+            name="kreisprofil", ok=True, data=None,
+            warnings=["Ohne Gemeindeschlüssel lässt sich kein Kreiswert zuordnen."])
+
     async def wahl_ohne_schluessel(self, lat: float, lon: float, refresh: bool = False):
         """Wahl-Block für einen Punkt ohne Gemeindeschlüssel: in Österreich
         die Nationalratswahl über die Adresse, sonst ehrlich leer."""
@@ -1636,14 +1669,16 @@ class PointService:
                     warnings=["Ohne Gemeindeschlüssel lässt sich kein Kreiswert zuordnen."],
                 )).to_dict()
             if land.code == "AT":
-                # Nationalratswahl 2024 braucht keinen Schlüssel — Bundesland
-                # und Gemeindename kommen aus der Adresse.
-                try:
-                    blocks["wahl"] = (await self.wahl_at(adresse, refresh)).to_dict()
-                except Exception as exc:  # noqa: BLE001
-                    blocks["wahl"] = SourceResult.failed(
-                        "wahl", SourceError("unknown", f"{type(exc).__name__}: {exc}")
-                    ).to_dict()
+                # Nationalratswahl 2024 und Gemeindeprofil brauchen keinen
+                # Schlüssel — Bundesland und Gemeindename kommen aus der Adresse.
+                for name, lauf in (("wahl", self.wahl_at(adresse, refresh)),
+                                   ("kreisprofil", self.kreisprofil_ohne_schluessel(lat, lon, refresh))):
+                    try:
+                        blocks[name] = (await lauf).to_dict()
+                    except Exception as exc:  # noqa: BLE001
+                        blocks[name] = SourceResult.failed(
+                            name, SourceError("unknown", f"{type(exc).__name__}: {exc}")
+                        ).to_dict()
             # Der Lärmdienst braucht keinen Gemeindeschlüssel — der
             # UBA-Bundesdienst deckt ganz Deutschland ab.
             try:

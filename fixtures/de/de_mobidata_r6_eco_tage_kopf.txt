@@ -1,0 +1,25 @@
+operator_name,domain_name,domain_id,counter_site,counter_site_id,counter_serial,longitude,latitude,timezone,iso_timestamp,channels_in,channels_out,channels_unknown,channels_all,site_temperature,site_rain_accumulation,site_snow_accumulation
+Eco Counter GmbH,Stadt Tübingen,667,Fuß- & Radtunnel Südportal - Derendinger Allee,100003358,YTH24052174,9.04806,48.518,(UTC+01:00) Europe/Paris DST,2026-09-11T00:00:00+02:00,3102,2950,na,6052,15.5,0.0,0.0
+Eco Counter GmbH,Stadt Tübingen,667,Fuß- & Radtunnel Südportal - Derendinger Allee,100003358,YTH24052174,9.04806,48.518,(UTC+01:00) Europe/Paris DST,2026-09-12T00:00:00+02:00,2863,2669,na,5532,16.5,0.0,0.0
+Eco Counter GmbH,Stadt Tübingen,667,Fuß- & Radtunnel Südportal - Derendinger Allee,100003358,YTH24052174,9.04806,48.518,(UTC+01:00) Europe/Paris DST,2026-09-13T00:00:00+02:00,2020,1755,na,3775,18.0,5.5,0.0
+Eco Counter GmbH,Stadt Tübingen,667,Fuß- & Radtunnel Südportal - Derendinger Allee,100003358,YTH24052174,9.04806,48.518,(UTC+01:00) Europe/Paris DST,2026-09-14T00:00:00+02:00,3682,3359,na,7041,18.0,0.1,0.0
+Eco Counter GmbH,Stadt Tübingen,667,Fuß- & Radtunnel Südportal - Derendinger Allee,100003358,YTH24052174,9.04806,48.518,(UTC+01:00) Europe/Paris DST,2026-09-15T00:00:00+02:00,4205,3828,na,8033,19.0,0.0,0.0
+Eco Counter GmbH,Stadt Tübingen,667,Fuß- & Radtunnel Südportal - Derendinger Allee,100003358,YTH24052174,9.04806,48.518,(UTC+01:00) Europe/Paris DST,2026-09-16T00:00:00+02:00,3329,3109,na,6438,17.0,1.9,0.0
+Eco Counter GmbH,Stadt Tübingen,667,Fuß- & Radtunnel Südportal - Derendinger Allee,100003358,YTH24052174,9.04806,48.518,(UTC+01:00) Europe/Paris DST,2026-09-17T00:00:00+02:00,3867,3672,na,7539,na,na,na
+Eco Counter GmbH,Stadt Tübingen,667,Unterführung Steinlach/Karlstraße Südseite - Steinlachallee,100003359,ZLT26053560,9.058865,48.515434,(UTC+01:00) Europe/Paris DST,2026-09-11T00:00:00+02:00,3392,3215,na,6607,15.5,0.0,0.0
+Eco Counter GmbH,Stadt Tübingen,667,Unterführung Steinlach/Karlstraße Südseite - Steinlachallee,100003359,ZLT26053560,9.058865,48.515434,(UTC+01:00) Europe/Paris DST,2026-09-12T00:00:00+02:00,2955,2888,na,5843,16.5,0.0,0.0
+Eco Counter GmbH,Stadt Tübingen,667,Unterführung Steinlach/Karlstraße Südseite - Steinlachallee,100003359,ZLT26053560,9.058865,48.515434,(UTC+01:00) Europe/Paris DST,2026-09-13T00:00:00+02:00,1769,1721,na,3490,18.0,5.5,0.0
+Eco Counter GmbH,Stadt Tübingen,667,Unterführung Steinlach/Karlstraße Südseite - Steinlachallee,100003359,ZLT26053560,9.058865,48.515434,(UTC+01:00) Europe/Paris DST,2026-09-14T00:00:00+02:00,3868,3849,na,7717,18.0,0.1,0.0
+Eco Counter GmbH,Stadt Tübingen,667,Unterführung Steinlach/Karlstraße Südseite - Steinlachallee,100003359,ZLT26053560,9.058865,48.515434,(UTC+01:00) Europe/Paris DST,2026-09-15T00:00:00+02:00,4455,4334,na,8789,19.0,0.0,0.0
+Eco Counter GmbH,Stadt Tübingen,667,Unterführung Steinlach/Karlstraße Südseite - Steinlachallee,100003359,ZLT26053560,9.058865,48.515434,(UTC+01:00) Europe/Paris DST,2026-09-16T00:00:00+02:00,3740,3545,na,7285,17.0,1.9,0.0
+Eco Counter GmbH,Stadt Tübingen,667,Unterführung Steinlach/Karlstraße Südseite - Steinlachallee,100003359,ZLT26053560,9.058865,48.515434,(UTC+01:00) Europe/Paris DST,2026-09-17T00:00:00+02:00,4338,4182,na,8520,na,na,na
+Eco Counter GmbH,Stadt Karlsruhe,752,Erbprinzenstraße,100004165,Y2H16070301,8.4027153,49.0072864,(UTC+01:00) Europe/Paris DST,2026-09-11T00:00:00+02:00,2639,2961,na,5600,17.5,0.0,0.0
+Eco Counter GmbH,Stadt Karlsruhe,752,Erbprinzenstraße,100004165,Y2H16070301,8.4027153,49.0072864,(UTC+01:00) Europe/Paris DST,2026-09-12T00:00:00+02:00,2152,2481,na,4633,19.0,0.0,0.0
+Eco Counter GmbH,Stadt Karlsruhe,752,Erbprinzenstraße,100004165,Y2H16070301,8.4027153,49.0072864,(UTC+01:00) Europe/Paris DST,2026-09-13T00:00:00+02:00,1097,1177,na,2274,19.0,2.6,0.0
+Eco Counter GmbH,Stadt Karlsruhe,752,Erbprinzenstraße,100004165,Y2H16070301,8.4027153,49.0072864,(UTC+01:00) Europe/Paris DST,2026-09-14T00:00:00+02:00,2856,2866,na,5722,20.0,4.3,0.0
+Eco Counter GmbH,Stadt Karlsruhe,752,Erbprinzenstraße,100004165,Y2H16070301,8.4027153,49.0072864,(UTC+01:00) Europe/Paris DST,2026-09-15T00:00:00+02:00,2876,3229,na,6105,22.5,0.0,0.0
+Eco Counter GmbH,Stadt Karlsruhe,752,Erbprinzenstraße,100004165,Y2H16070301,8.4027153,49.0072864,(UTC+01:00) Europe/Paris DST,2026-09-16T00:00:00+02:00,2546,2880,na,5426,19.0,4.3,0.0
+Eco Counter GmbH,Stadt Karlsruhe,752,Erbprinzenstraße,100004165,Y2H16070301,8.4027153,49.0072864,(UTC+01:00) Europe/Paris DST,2026-09-17T00:00:00+02:00,2921,3123,na,6044,na,na,na
+Eco Counter GmbH,Stadt Freiburg,751,Wiwilibrücke,100004595,,7.8407526,47.995213,(UTC+01:00) Europe/Paris DST,2026-09-11T00:00:00+02:00,na,na,10743,10743,16.0,0.0,0.0
+Eco Counter GmbH,Stadt Freiburg,751,Wiwilibrücke,100004595,,7.8407526,47.995213,(UTC+01:00) Europe/Paris DST,2026-09-12T00:00:00+02:00,na,na,10756,10756,17.5,0.0,0.0
+Eco Counter GmbH,Stadt Freiburg,751,Wiwilibrücke,100004595,,7.8407526,47.995213,(UTC+01:00) Europe/Paris DST,2026-09-13T00:00:00+02:00,na,na,5759,5759,19.5,1.5,0.0

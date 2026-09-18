@@ -106,7 +106,8 @@ def statistik_at():
     der Wien-Ausschnitt der Datendatei ab 2018."""
     wurzel = Path(__file__).resolve().parent.parent / "fixtures" / "at"
     return {"herkunft": (wurzel / "stat_OGD_touextsai_Tour_HKL_1_C-C93-2.txt").read_text("utf-8"),
-            "daten": (wurzel / "stat_OGD_touextsai_Tour_HKL_1_wien_ab2018.csv").read_text("utf-8")}
+            "daten": (wurzel / "stat_OGD_touextsai_Tour_HKL_1_wien_ab2018.csv").read_text("utf-8"),
+            "gemeinde": (wurzel / "stat_OGDEXT_AEST_GEMTAB_1_auszug.csv").read_text("utf-8")}
 
 
 @pytest.fixture(scope="session")

@@ -1,0 +1,200 @@
+{
+  "title":"Gliederung Österreichs in Gemeinden",
+  "notes":"Gliederung Österreichs in Gemeinden, historisiert seit 2011. Die Daten liegen in der Projektion MGI Lambert (EPSG:31287) vor. Im STATatlas unter https://www.statistik.at/atlas/?mapid=topo_regionale_gliederung_oesterreich",
+  "tags":[
+    "Regionale Gliederungen",
+    "Gemeinden"
+  ],
+  "maintainer":"Statistik Austria, Guglgasse 13, 1110 Wien, Austria",
+  "license":"Creative Commons Namensnennung 4.0 International",
+  "maintainer_email":"open.data@statistik.gv.at",
+  "resources":[
+    {
+      "url":"https://www.statistik.gv.at/gs-open/GEODATA/ows?service=WFS&version=1.0.0&request=GetFeature&typeName=GEODATA:STATISTIK_AUSTRIA_GEM_20260101&outputFormat=SHAPE-ZIP&format_options=CHARSET:UTF-8",
+      "format":"wfs",
+      "name":"Gemeinden 2026-01-01",
+      "created":"2026-01-01T08:00:00",
+      "last_modified":"2026-03-09T13:27:36",
+      "size":"",
+      "language":"ger",
+      "characterset":"utf8"
+    },
+    {
+      "url":"https://www.statistik.gv.at/gs-open/GEODATA/ows?service=WFS&version=1.0.0&request=GetFeature&typeName=GEODATA:STATISTIK_AUSTRIA_GEM_20250101&outputFormat=SHAPE-ZIP&format_options=CHARSET:UTF-8",
+      "format":"wfs",
+      "name":"Gemeinden 2025-01-01",
+      "created":"2025-01-01T08:00:00",
+      "last_modified":"2026-03-09T13:27:36",
+      "size":"",
+      "language":"ger",
+      "characterset":"utf8"
+    },
+    {
+      "url":"https://www.statistik.gv.at/gs-open/GEODATA/ows?service=WFS&version=1.0.0&request=GetFeature&typeName=GEODATA:STATISTIK_AUSTRIA_GEM_20240101&outputFormat=SHAPE-ZIP&format_options=CHARSET:UTF-8",
+      "format":"wfs",
+      "name":"Gemeinden 2024-01-01",
+      "created":"2024-01-01T08:00:00",
+      "last_modified":"2026-03-09T13:27:36",
+      "size":"",
+      "language":"ger",
+      "characterset":"utf8"
+    },
+    {
+      "url":"https://www.statistik.gv.at/gs-open/GEODATA/ows?service=WFS&version=1.0.0&request=GetFeature&typeName=GEODATA:STATISTIK_AUSTRIA_GEM_20230101&outputFormat=SHAPE-ZIP&format_options=CHARSET:UTF-8",
+      "format":"wfs",
+      "name":"Gemeinden 2023-01-01",
+      "created":"2023-01-01T08:00:00",
+      "last_modified":"2026-03-09T13:27:36",
+      "size":"",
+      "language":"ger",
+      "characterset":"utf8"
+    },
+    {
+      "url":"https://www.statistik.gv.at/gs-open/GEODATA/ows?service=WFS&version=1.0.0&request=GetFeature&typeName=GEODATA:STATISTIK_AUSTRIA_GEM_20220101&outputFormat=SHAPE-ZIP&format_options=CHARSET:UTF-8",
+      "format":"wfs",
+      "name":"Gemeinden 2022-01-01",
+      "created":"2022-01-01T08:00:00",
+      "last_modified":"2026-03-09T13:27:36",
+      "size":"",
+      "language":"ger",
+      "characterset":"utf8"
+    },
+    {
+      "url":"https://www.statistik.gv.at/gs-open/GEODATA/ows?service=WFS&version=1.0.0&request=GetFeature&typeName=GEODATA:STATISTIK_AUSTRIA_GEM_20210101&outputFormat=SHAPE-ZIP&format_options=CHARSET:UTF-8",
+      "format":"wfs",
+      "name":"Gemeinden 2021-01-01",
+      "created":"2021-01-01T08:00:00",
+      "last_modified":"2026-03-09T13:27:36",
+      "size":"",
+      "language":"ger",
+      "characterset":"utf8"
+    },
+    {
+      "url":"https://www.statistik.gv.at/gs-open/GEODATA/ows?service=WFS&version=1.0.0&request=GetFeature&typeName=GEODATA:STATISTIK_AUSTRIA_GEM_20200101&outputFormat=SHAPE-ZIP&format_options=CHARSET:UTF-8",
+      "format":"wfs",
+      "name":"Gemeinden 2020-01-01",
+      "created":"2020-01-01T08:00:00",
+      "last_modified":"2026-03-09T13:27:36",
+      "size":"",
+      "language":"ger",
+      "characterset":"utf8"
+    },
+    {
+      "url":"https://www.statistik.gv.at/gs-open/GEODATA/ows?service=WFS&version=1.0.0&request=GetFeature&typeName=GEODATA:STATISTIK_AUSTRIA_GEM_20190101&outputFormat=SHAPE-ZIP&format_options=CHARSET:UTF-8",
+      "format":"wfs",
+      "name":"Gemeinden 2019-01-01",
+      "created":"2019-01-01T08:00:00",
+      "last_modified":"2026-03-09T13:27:36",
+      "size":"",
+      "language":"ger",
+      "characterset":"utf8"
+    },
+    {
+      "url":"https://www.statistik.gv.at/gs-open/GEODATA/ows?service=WFS&version=1.0.0&request=GetFeature&typeName=GEODATA:STATISTIK_AUSTRIA_GEM_20180101&outputFormat=SHAPE-ZIP&format_options=CHARSET:UTF-8",
+      "format":"wfs",
+      "name":"Gemeinden 2018-01-01",
+      "created":"2018-01-01T08:00:00",
+      "last_modified":"2026-03-09T13:27:36",
+      "size":"",
+      "language":"ger",
+      "characterset":"utf8"
+    },
+    {
+      "url":"https://www.statistik.gv.at/gs-open/GEODATA/ows?service=WFS&version=1.0.0&request=GetFeature&typeName=GEODATA:STATISTIK_AUSTRIA_GEM_20170101&outputFormat=SHAPE-ZIP&format_options=CHARSET:UTF-8",
+      "format":"wfs",
+      "name":"Gemeinden 2017-01-01",
+      "created":"2017-01-01T08:00:00",
+      "last_modified":"2026-03-09T13:27:36",
+      "size":"",
+      "language":"ger",
+      "characterset":"utf8"
+    },
+    {
+      "url":"https://www.statistik.gv.at/gs-open/GEODATA/ows?service=WFS&version=1.0.0&request=GetFeature&typeName=GEODATA:STATISTIK_AUSTRIA_GEM_20160101&outputFormat=SHAPE-ZIP&format_options=CHARSET:UTF-8",
+      "format":"wfs",
+      "name":"Gemeinden 2016-01-01",
+      "created":"2016-01-01T08:00:00",
+      "last_modified":"2026-03-09T13:27:36",
+      "size":"",
+      "language":"ger",
+      "characterset":"utf8"
+    },
+    {
+      "url":"https://www.statistik.gv.at/gs-open/GEODATA/ows?service=WFS&version=1.0.0&request=GetFeature&typeName=GEODATA:STATISTIK_AUSTRIA_GEM_20150101&outputFormat=SHAPE-ZIP&format_options=CHARSET:UTF-8",
+      "format":"wfs",
+      "name":"Gemeinden 2015-01-01",
+      "created":"2015-01-01T08:00:00",
+      "last_modified":"2026-03-09T13:27:36",
+      "size":"",
+      "language":"ger",
+      "characterset":"utf8"
+    },
+    {
+      "url":"https://www.statistik.gv.at/gs-open/GEODATA/ows?service=WFS&version=1.0.0&request=GetFeature&typeName=GEODATA:STATISTIK_AUSTRIA_GEM_20140101&outputFormat=SHAPE-ZIP&format_options=CHARSET:UTF-8",
+      "format":"wfs",
+      "name":"Gemeinden 2014-01-01",
+      "created":"2014-01-01T08:00:00",
+      "last_modified":"2026-03-09T13:27:36",
+      "size":"",
+      "language":"ger",
+      "characterset":"utf8"
+    },
+    {
+      "url":"https://www.statistik.gv.at/gs-open/GEODATA/ows?service=WFS&version=1.0.0&request=GetFeature&typeName=GEODATA:STATISTIK_AUSTRIA_GEM_20130101&outputFormat=SHAPE-ZIP&format_options=CHARSET:UTF-8",
+      "format":"wfs",
+      "name":"Gemeinden 2013-01-01",
+      "created":"2013-01-01T08:00:00",
+      "last_modified":"2026-03-09T13:27:36",
+      "size":"",
+      "language":"ger",
+      "characterset":"utf8"
+    },
+    {
+      "url":"https://www.statistik.gv.at/gs-open/GEODATA/ows?service=WFS&version=1.0.0&request=GetFeature&typeName=GEODATA:STATISTIK_AUSTRIA_GEM_20120101&outputFormat=SHAPE-ZIP&format_options=CHARSET:UTF-8",
+      "format":"wfs",
+      "name":"Gemeinden 2012-01-01",
+      "created":"2012-01-01T08:00:00",
+      "last_modified":"2026-03-09T13:27:36",
+      "size":"",
+      "language":"ger",
+      "characterset":"utf8"
+    },
+    {
+      "url":"https://www.statistik.gv.at/gs-open/GEODATA/ows?service=WFS&version=1.0.0&request=GetFeature&typeName=GEODATA:STATISTIK_AUSTRIA_GEM_20110101&outputFormat=SHAPE-ZIP&format_options=CHARSET:UTF-8",
+      "format":"wfs",
+      "name":"Gemeinden 2011-01-01",
+      "created":"2011-01-01T08:00:00",
+      "last_modified":"2026-03-09T13:27:36",
+      "size":"",
+      "language":"ger",
+      "characterset":"utf8"
+    }
+  ],
+  "extras":{
+    "metadata_identifier":"566c99be-b436-365e-af4f-27be6c536358",
+    "metadata_modified":"2026-03-09T13:27:36",
+    "metadata_linkage":[
+      "https://www.statistik.at/services/tools/services/regionales/",
+      "https://www.statistik.at/atlas/?mapid=topo_regionale_gliederung_oesterreich"
+    ],
+    "metadata_original_portal":"https://data.statistik.gv.at/web/meta.jsp?dataset=OGDEXT_GEM_1",
+    "begin_datetime":"2019-01-01T08:00:00",
+    "end_datetime":null,
+    "categorization":[
+      "Geographie und Planung"
+    ],
+    "schema_name":"OGD Austria Metadata 2.3",
+    "schema_language":"ger",
+    "schema_characterset":"utf8",
+    "attribute_description":"ID:Gemeindecode;NAME:Gemeindename",
+    "maintainer_link":"https://www.statistik.at/kontakt",
+    "publisher":"Statistik Austria",
+    "geographic_toponym":"",
+    "geographic_bbox":"",
+    "update_frequency":"nach Bedarf",
+    "lineage_quality":"",
+    "en_title_and_desc":"Municipalities",
+    "license_citation":"Datenquelle: Statistik Austria - data.statistik.gv.at"
+  },
+  "state":"active"
+}

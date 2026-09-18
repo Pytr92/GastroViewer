@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xsd:schema xmlns:HVD="https://ags.doris.at/arcgis/services/HVD/MapServer/WFSServer" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:gml="http://www.opengis.net/gml/3.2" targetNamespace="https://ags.doris.at/arcgis/services/HVD/MapServer/WFSServer" elementFormDefault="qualified" attributeFormDefault="unqualified">
+<xsd:import namespace="http://www.opengis.net/gml/3.2" schemaLocation="http://schemas.opengis.net/gml/3.2.1/gml.xsd"/>
+<xsd:element name="FLWI_Widmungen_Flächen" type="HVD:FLWI_Widmungen_FlächenFeatureType" substitutionGroup="gml:AbstractFeature"/>
+<xsd:complexType name="FLWI_Widmungen_FlächenFeatureType">
+  <xsd:complexContent>
+    <xsd:extension base="gml:AbstractFeatureType">
+      <xsd:sequence>
+        <xsd:element minOccurs="0" maxOccurs="1" name="OBJECTID" type="xsd:int"/>
+        <xsd:element minOccurs="0" maxOccurs="1" name="KENNZAHL" nillable="true" type="xsd:int"/>
+        <xsd:element minOccurs="0" maxOccurs="1" name="KENNZAHL2" nillable="true" type="xsd:int"/>
+        <xsd:element minOccurs="0" maxOccurs="1" name="KENNZAHL3" nillable="true" type="xsd:int"/>
+        <xsd:element minOccurs="0" maxOccurs="1" name="BEB_DICHTE" nillable="true" type="xsd:double"/>
+        <xsd:element minOccurs="0" maxOccurs="1" name="GFZ" nillable="true" type="xsd:double"/>
+        <xsd:element minOccurs="0" maxOccurs="1" name="VERKAUFSFL" nillable="true" type="xsd:double"/>
+        <xsd:element minOccurs="0" maxOccurs="1" name="ERSCHOE_ZP" nillable="true">
+          <xsd:simpleType>
+            <xsd:restriction base="xsd:string">
+              <xsd:maxLength value="50"/>
+            </xsd:restriction>
+          </xsd:simpleType>
+        </xsd:element>
+        <xsd:element minOccurs="0" maxOccurs="1" name="RICHTUNG" nillable="true" type="xsd:short"/>
+        <xsd:element minOccurs="0" maxOccurs="1" name="Z_INDEX" nillable="true" type="xsd:short"/>
+        <xsd:element minOccurs="0" maxOccurs="1" name="ZWECK" nillable="true">
+          <xsd:simpleType>
+            <xsd:restriction base="xsd:string">
+              <xsd:maxLength value="100"/>
+            </xsd:restriction>
+          </xsd:simpleType>
+        </xsd:element>
+        <xsd:element minOccurs="0" maxOccurs="1" name="ZUSATZTEXT" nillable="true">
+          <xsd:simpleType>
+            <xsd:restriction base="xsd:string">
+              <xsd:maxLength value="255"/>
+            </xsd:restriction>
+          </xsd:simpleType>
+        </xsd:element>
+        <xsd:element minOccurs="0" maxOccurs="1" name="RuleID" nillable="true" type="xsd:int"/>
+        <xsd:element minOccurs="0" maxOccurs="1" name="GEM_NR" nillable="true" type="xsd:int"/>
+        <xsd:element minOccurs="0" maxOccurs="1" name="GlobalID" type="xsd:string"/>
+        <xsd:element minOccurs="0" maxOccurs="1" name="InspireID" nillable="true">
+          <xsd:simpleType>
+            <xsd:restriction base="xsd:string">
+              <xsd:maxLength value="50"/>
+            </xsd:restriction>
+          </xsd:simpleType>
+        </xsd:element>
+        <xsd:element minOccurs="0" maxOccurs="1" name="MASSZAHL" nillable="true">
+          <xsd:simpleType>
+            <xsd:restriction base="xsd:string">
+              <xsd:maxLength value="20"/>
+            </xsd:restriction>
+          </xsd:simpleType>
+        </xsd:element>
+        <xsd:element minOccurs="0" maxOccurs="1" name="MIN_MZ" nillable="true" type="xsd:double"/>
+        <xsd:element minOccurs="0" maxOccurs="1" name="MAX_MZ" nillable="true" type="xsd:double"/>
+        <xsd:element minOccurs="0" maxOccurs="1" name="ANTEIL" nillable="true" type="xsd:short"/>
+        <xsd:element minOccurs="0" maxOccurs="1" name="SHAPE" nillable="true" type="gml:MultiSurfacePropertyType"/>
+        <xsd:element minOccurs="0" maxOccurs="1" name="Shape.STArea__" type="xsd:double"/>
+        <xsd:element minOccurs="0" maxOccurs="1" name="Shape.STLength__" type="xsd:double"/>
+      </xsd:sequence>
+    </xsd:extension>
+  </xsd:complexContent>
+</xsd:complexType>
+</xsd:schema>

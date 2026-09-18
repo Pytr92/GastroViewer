@@ -113,6 +113,8 @@ TTL_KLASSEN: dict[str, str | int] = {
     "tourismus_at_daten": "ttl_gehweg",  # die eingedampfte Gesamtdatei
     "wahl_at": "ttl_zensus",        # NRW 2024, endgültig
     "wahl_at_daten": "ttl_zensus",  # Ergebnisdatei und GKZ-Liste
+    "kreisprofil_at": "ttl_zensus", # Gemeindeprofil, jährliche Tabelle
+    "gemeinde_at_daten": "ttl_zensus",  # die eingedampfte Gemeindetabelle
     # --- Stundenwerte
     "luft_punkt": 3600,             # Luftqualitätsindex, stündlich veröffentlicht
 }

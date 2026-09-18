@@ -1,0 +1,20 @@
+kfz_temporaere_zaehlungen:
+  zaehlstelle: 6281
+  bezeichnung: Bergstraße / Mönckebergstraße
+  richtung: Ost
+  jahr: 2023
+  dtv_kfz: 2600
+  dtvw_kfz: 2800
+  sv_anteil_dtvw: 37
+  geom: (565996.0,5933986.0)
+
+kfz_temporaere_zaehlungen:
+  zaehlstelle: 6281
+  bezeichnung: Bergstraße / Mönckebergstraße
+  richtung: Ost
+  jahr: 2025
+  dtv_kfz: 3100
+  dtvw_kfz: 3300
+  sv_anteil_dtvw: 34
+  geom: (565996.0,5933986.0)
+

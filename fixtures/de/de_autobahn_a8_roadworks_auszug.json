@@ -1,0 +1,1591 @@
+{
+ "roadworks": [
+  {
+   "identifier": "2026-037713--vi-bs.2026-07-31_08-30-00-000.devi-zus.2026-07-31_08-30-00-000.de3",
+   "icon": "123",
+   "isBlocked": "false",
+   "future": false,
+   "extent": "49.47932871273438,6.368012067178018,49.481574885427094,6.371934075545798",
+   "point": "49.47932871273438,6.368012067178018",
+   "startLcPosition": "0",
+   "impact": {
+    "lower": "Moseltal",
+    "upper": "Bundesgrenze",
+    "symbols": [
+     "SEPARATE",
+     "ARROW_UP",
+     "CLOSED",
+     "BORDER_RIGHT",
+     "CLOSED"
+    ]
+   },
+   "display_type": "ROADWORKS",
+   "subtitle": " Luxemburg -> Saarlouis",
+   "title": "A8 | Bundesgrenze - Moseltal",
+   "startTimestamp": "2026-07-31T08:30:00+02:00",
+   "coordinate": {
+    "lat": 49.47932871273438,
+    "long": 6.368012067178018
+   },
+   "description": [
+    "Zeitraum dieser Bauphase:",
+    "Beginn: 31.07.26 um 08:30 Uhr",
+    "Ende: 01.05.27 um 00:00 Uhr",
+    "(Ende der Gesamtmaßnahme: 01.05.27)",
+    "",
+    "A8: Luxemburg -> Saarlouis, zwischen Bundesgrenze und 0.3 km vor Moseltal",
+    "",
+    "Länge: 0.38 km | Maximale Durchfahrtsbreite: 3.5 m",
+    "",
+    "A8 Verkehrssicherung  Moselbrücke bei Schengen"
+   ],
+   "routeRecommendation": [],
+   "footer": [],
+   "lorryParkingFeatureIcons": [],
+   "geometry": {
+    "type": "LineString",
+    "coordinates": [
+     [
+      6.368012067,
+      49.479328713
+     ],
+     [
+      6.3680537,
+      49.479344801
+     ],
+     [
+      6.368409,
+      49.479490701
+     ],
+     [
+      6.3688051,
+      49.479669101
+     ],
+     [
+      6.3692625,
+      49.479883401
+     ],
+     [
+      6.3697801,
+      49.480149601
+     ],
+     [
+      6.3702012,
+      49.480384001
+     ],
+     [
+      6.3706045,
+      49.480620001
+     ],
+     [
+      6.371126,
+      49.480959401
+     ],
+     [
+      6.3716481,
+      49.481342801
+     ],
+     [
+      6.371934076,
+      49.481574885
+     ]
+    ]
+   }
+  },
+  {
+   "identifier": "2026-037713--vi-bs.2026-08-25_06-00-00-000.devi-zus.2026-07-31_08-30-00-000.de5",
+   "icon": "123",
+   "isBlocked": "false",
+   "future": false,
+   "extent": "49.47955247905586,6.368272676162628,49.47942650585895,6.367954299113254",
+   "point": "49.47955247905586,6.368272676162628",
+   "startLcPosition": "1",
+   "impact": {
+    "lower": "Bundesgrenze",
+    "upper": "Moseltal",
+    "symbols": [
+     "SEPARATE",
+     "CLOSED",
+     "CLOSED",
+     "BORDER_RIGHT",
+     "ARROW_UP"
+    ]
+   },
+   "display_type": "ROADWORKS",
+   "subtitle": " Saarlouis -> Luxemburg",
+   "title": "A8 | Moseltal - Bundesgrenze",
+   "startTimestamp": "2026-08-25T06:00:00+02:00",
+   "coordinate": {
+    "lat": 49.47955247905586,
+    "long": 6.368272676162628
+   },
+   "description": [
+    "Zeitraum dieser Bauphase:",
+    "Beginn: 25.08.26 um 06:00 Uhr",
+    "Ende: 01.10.26 um 00:00 Uhr",
+    "(Ende der Gesamtmaßnahme: 01.05.27)",
+    "",
+    "A8: Saarlouis -> Luxemburg, zwischen 0.6 km hinter Moseltal und Bundesgrenze",
+    "",
+    "Länge: 0.03 km | Maximale Durchfahrtsbreite: 3.25 m",
+    "",
+    "A8 Verkehrssicherung  Moselbrücke bei Schengen"
+   ],
+   "routeRecommendation": [],
+   "footer": [],
+   "lorryParkingFeatureIcons": [],
+   "geometry": {
+    "type": "LineString",
+    "coordinates": [
+     [
+      6.368272676,
+      49.479552479
+     ],
+     [
+      6.367954299,
+      49.479426506
+     ]
+    ]
+   }
+  },
+  {
+   "identifier": "2025-060228--vi-bs.2026-09-18_16-00-00-000.devi-zus.2026-06-01_00-00-00-000_008.de22",
+   "icon": "123",
+   "isBlocked": "false",
+   "future": false,
+   "extent": "49.48895290061599,6.411502539020301,49.467020894936006,6.456638550292572",
+   "point": "49.48895290061599,6.411502539020301",
+   "startLcPosition": "2",
+   "impact": {
+    "lower": "Pellinger Berg",
+    "upper": "Perl",
+    "symbols": [
+     "BREAKDOWN_LANE",
+     "BORDER_LEFT",
+     "ARROW_DOWN",
+     "CLOSED",
+     "SEPARATE",
+     "CLOSED",
+     "ARROW_UP",
+     "BORDER_RIGHT",
+     "BREAKDOWN_LANE"
+    ]
+   },
+   "display_type": "ROADWORKS",
+   "subtitle": " Luxemburg -> Saarlouis",
+   "title": "A8 | Perl - Pellinger Berg",
+   "startTimestamp": "2026-09-18T16:00:00+02:00",
+   "coordinate": {
+    "lat": 49.48895290061599,
+    "long": 6.411502539020301
+   },
+   "description": [
+    "Zeitraum dieser Bauphase:",
+    "Beginn: 18.09.26 um 16:00 Uhr",
+    "Ende: 28.09.26 um 16:00 Uhr",
+    "(Ende der Gesamtmaßnahme: 01.10.26)",
+    "",
+    "A8: Luxemburg -> Saarlouis, zwischen 3.0 km hinter AS Perl und 4.8 km vor Pellinger Berg",
+    "",
+    "Länge: 4.27 km | Maximale Durchfahrtsbreite: 3.25 m",
+    "",
+    "A008 Ern. AS Mzg.-Wellingen-AS Perl RF SB 77,8 - KM 90,7"
+   ],
+   "routeRecommendation": [],
+   "footer": [],
+   "lorryParkingFeatureIcons": [],
+   "geometry": {
+    "type": "LineString",
+    "coordinates": [
+     [
+      6.411502539,
+      49.488952901
+     ],
+     [
+      6.4117414,
+      49.488848201
+     ],
+     [
+      6.4125415,
+      49.488510701
+     ],
+     [
+      6.4133254,
+      49.488169201
+     ],
+     [
+      6.4139721,
+      49.487869201
+     ],
+     [
+      6.4146472,
+      49.487513601
+     ],
+     [
+      6.4148596,
+      49.487385301
+     ],
+     [
+      6.4153267,
+      49.487088201
+     ],
+     [
+      6.4159248,
+      49.486635101
+     ],
+     [
+      6.4164409,
+      49.486185101
+     ],
+     [
+      6.4166098,
+      49.486021901
+     ],
+     [
+      6.4167878,
+      49.485839601
+     ],
+     [
+      6.4170815,
+      49.485526501
+     ],
+     [
+      6.4175247,
+      49.484977501
+     ],
+     [
+      6.4177011,
+      49.484739801
+     ],
+     [
+      6.4179756,
+      49.484388501
+     ],
+     [
+      6.4186221,
+      49.483560901
+     ],
+     [
+      6.4188025,
+      49.483351101
+     ],
+     [
+      6.4189736,
+      49.483154601
+     ],
+     [
+      6.4193275,
+      49.482780701
+     ],
+     [
+      6.4196671,
+      49.482453601
+     ],
+     [
+      6.4200031,
+      49.482145401
+     ],
+     [
+      6.420468,
+      49.481759801
+     ],
+     [
+      6.4211181,
+      49.481267201
+     ],
+     [
+      6.4216858,
+      49.480883401
+     ],
+     [
+      6.4222104,
+      49.480559301
+     ],
+     [
+      6.4229255,
+      49.480163101
+     ],
+     [
+      6.4235968,
+      49.479819801
+     ],
+     [
+      6.4240722,
+      49.479597701
+     ],
+     [
+      6.4245285,
+      49.479404401
+     ],
+     [
+      6.4256566,
+      49.478947601
+     ],
+     [
+      6.4268793,
+      49.478477201
+     ],
+     [
+      6.4274881,
+      49.478228901
+     ],
+     [
+      6.4281783,
+      49.477921701
+     ],
+     [
+      6.4287797,
+      49.477619901
+     ],
+     [
+      6.4294554,
+      49.477273501
+     ],
+     [
+      6.4302834,
+      49.476776301
+     ],
+     [
+      6.4311019,
+      49.476225501
+     ],
+     [
+      6.4365934,
+      49.472316801
+     ],
+     [
+      6.4371568,
+      49.471918601
+     ],
+     [
+      6.4376609,
+      49.471564601
+     ],
+     [
+      6.4384562,
+      49.471017701
+     ],
+     [
+      6.4391674,
+      49.470541301
+     ],
+     [
+      6.4399451,
+      49.470097401
+     ],
+     [
+      6.440732,
+      49.469704101
+     ],
+     [
+      6.4418581,
+      49.469187801
+     ],
+     [
+      6.4423138,
+      49.468997801
+     ],
+     [
+      6.4427551,
+      49.468820701
+     ],
+     [
+      6.4432234,
+      49.468639901
+     ],
+     [
+      6.4437272,
+      49.468456901
+     ],
+     [
+      6.4446588,
+      49.468152301
+     ],
+     [
+      6.4452671,
+      49.467980201
+     ],
+     [
+      6.445847,
+      49.467823201
+     ],
+     [
+      6.4467389,
+      49.467611001
+     ],
+     [
+      6.4476921,
+      49.467410701
+     ],
+     [
+      6.4486195,
+      49.467253101
+     ],
+     [
+      6.4495602,
+      49.467119601
+     ],
+     [
+      6.4502126,
+      49.467048301
+     ],
+     [
+      6.4508097,
+      49.466990101
+     ],
+     [
+      6.4514409,
+      49.466948801
+     ],
+     [
+      6.4521714,
+      49.466908701
+     ],
+     [
+      6.4527419,
+      49.466886001
+     ],
+     [
+      6.4533173,
+      49.466880701
+     ],
+     [
+      6.4543843,
+      49.466896901
+     ],
+     [
+      6.4553907,
+      49.466940701
+     ],
+     [
+      6.4563508,
+      49.467002901
+     ],
+     [
+      6.45663855,
+      49.467020895
+     ]
+    ]
+   }
+  },
+  {
+   "identifier": "2026-037713--vi-bs.2026-07-31_08-30-00-000.devi-zus.2026-07-31_08-30-00-000.de1",
+   "icon": "123",
+   "isBlocked": "false",
+   "future": false,
+   "extent": "49.486863049121744,6.378268825981015,49.479431171548114,6.367966090826277",
+   "point": "49.486863049121744,6.378268825981015",
+   "startLcPosition": "3",
+   "impact": {
+    "lower": "Bundesgrenze",
+    "upper": "Perl-Borg",
+    "symbols": [
+     "SEPARATE",
+     "ARROW_UP",
+     "CLOSED",
+     "BORDER_RIGHT",
+     "CLOSED"
+    ]
+   },
+   "display_type": "ROADWORKS",
+   "subtitle": " Saarlouis -> Luxemburg",
+   "title": "A8 | Perl-Borg - Bundesgrenze",
+   "startTimestamp": "2026-07-31T08:30:00+02:00",
+   "coordinate": {
+    "lat": 49.486863049121744,
+    "long": 6.378268825981015
+   },
+   "description": [
+    "Zeitraum dieser Bauphase:",
+    "Beginn: 31.07.26 um 08:30 Uhr",
+    "Ende: 01.05.27 um 00:00 Uhr",
+    "(Ende der Gesamtmaßnahme: 01.05.27)",
+    "",
+    "A8: Saarlouis -> Luxemburg, zwischen 3.3 km hinter AS Perl-Borg und Bundesgrenze",
+    "",
+    "Länge: 1.13 km | Maximale Durchfahrtsbreite: 3.5 m",
+    "",
+    "A8 Verkehrssicherung  Moselbrücke bei Schengen"
+   ],
+   "routeRecommendation": [],
+   "footer": [],
+   "lorryParkingFeatureIcons": [],
+   "geometry": {
+    "type": "LineString",
+    "coordinates": [
+     [
+      6.378268826,
+      49.486863049
+     ],
+     [
+      6.37808,
+      49.486804101
+     ],
+     [
+      6.3776161,
+      49.486629901
+     ],
+     [
+      6.3772585,
+      49.486475301
+     ],
+     [
+      6.3769455,
+      49.486322901
+     ],
+     [
+      6.3767792,
+      49.486241901
+     ],
+     [
+      6.3764422,
+      49.486052701
+     ],
+     [
+      6.3760186,
+      49.485796701
+     ],
+     [
+      6.3757522,
+      49.485612301
+     ],
+     [
+      6.3754123,
+      49.485355001
+     ],
+     [
+      6.3750792,
+      49.485071201
+     ],
+     [
+      6.3748656,
+      49.484853301
+     ],
+     [
+      6.3744609,
+      49.484412201
+     ],
+     [
+      6.3736175,
+      49.483425001
+     ],
+     [
+      6.3731166,
+      49.482864601
+     ],
+     [
+      6.3727518,
+      49.482480301
+     ],
+     [
+      6.3725881,
+      49.482320001
+     ],
+     [
+      6.3722382,
+      49.481994101
+     ],
+     [
+      6.3718457,
+      49.481658101
+     ],
+     [
+      6.3715658,
+      49.481422601
+     ],
+     [
+      6.3714457,
+      49.481335701
+     ],
+     [
+      6.3710389,
+      49.481042601
+     ],
+     [
+      6.3705288,
+      49.480712501
+     ],
+     [
+      6.3701378,
+      49.480480101
+     ],
+     [
+      6.3696764,
+      49.480224001
+     ],
+     [
+      6.3692527,
+      49.480000001
+     ],
+     [
+      6.3687631,
+      49.479765701
+     ],
+     [
+      6.3683622,
+      49.479587901
+     ],
+     [
+      6.367966091,
+      49.479431172
+     ]
+    ]
+   }
+  },
+  {
+   "identifier": "2025-060228--vi-bs.2026-09-18_16-00-00-000.devi-zus.2026-06-01_00-00-00-000_008.de20",
+   "icon": "123",
+   "isBlocked": "false",
+   "future": false,
+   "extent": "49.467119046075986,6.456624061685388,49.48904818330195,6.411601037564654",
+   "point": "49.467119046075986,6.456624061685388",
+   "startLcPosition": "4",
+   "impact": {
+    "lower": "Perl",
+    "upper": "Pellinger Berg",
+    "symbols": [
+     "BREAKDOWN_LANE",
+     "BORDER_LEFT",
+     "ARROW_DOWN",
+     "CLOSED",
+     "SEPARATE",
+     "CLOSED",
+     "ARROW_UP",
+     "BORDER_RIGHT",
+     "BREAKDOWN_LANE"
+    ]
+   },
+   "display_type": "ROADWORKS",
+   "subtitle": " Saarlouis -> Luxemburg",
+   "title": "A8 | Pellinger Berg - Perl",
+   "startTimestamp": "2026-09-18T16:00:00+02:00",
+   "coordinate": {
+    "lat": 49.467119046075986,
+    "long": 6.456624061685388
+   },
+   "description": [
+    "Zeitraum dieser Bauphase:",
+    "Beginn: 18.09.26 um 16:00 Uhr",
+    "Ende: 28.09.26 um 16:00 Uhr",
+    "(Ende der Gesamtmaßnahme: 01.10.26)",
+    "",
+    "A8: Saarlouis -> Luxemburg, zwischen 4.8 km hinter Pellinger Berg und 3.0 km vor AS Perl",
+    "",
+    "Länge: 4.27 km | Maximale Durchfahrtsbreite: 3.25 m",
+    "",
+    "A008 Ern. AS Mzg.-Wellingen-AS Perl RF SB 77,8 - KM 90,7"
+   ],
+   "routeRecommendation": [],
+   "footer": [],
+   "lorryParkingFeatureIcons": [],
+   "geometry": {
+    "type": "LineString",
+    "coordinates": [
+     [
+      6.456624062,
+      49.467119046
+     ],
+     [
+      6.4563481,
+      49.467101701
+     ],
+     [
+      6.4553961,
+      49.467043001
+     ],
+     [
+      6.4543956,
+      49.466996401
+     ],
+     [
+      6.4533254,
+      49.466983001
+     ],
+     [
+      6.4527365,
+      49.466988301
+     ],
+     [
+      6.4521579,
+      49.467006701
+     ],
+     [
+      6.4514342,
+      49.467049001
+     ],
+     [
+      6.4507147,
+      49.467101201
+     ],
+     [
+      6.4501339,
+      49.467159401
+     ],
+     [
+      6.4496011,
+      49.467214701
+     ],
+     [
+      6.4486579,
+      49.467347901
+     ],
+     [
+      6.4477374,
+      49.467507001
+     ],
+     [
+      6.4467965,
+      49.467702101
+     ],
+     [
+      6.4459216,
+      49.467908901
+     ],
+     [
+      6.4453304,
+      49.468067501
+     ],
+     [
+      6.4447279,
+      49.468240801
+     ],
+     [
+      6.4438147,
+      49.468536601
+     ],
+     [
+      6.4433097,
+      49.468719701
+     ],
+     [
+      6.4428261,
+      49.468908001
+     ],
+     [
+      6.4423713,
+      49.469087601
+     ],
+     [
+      6.4419092,
+      49.469278801
+     ],
+     [
+      6.4408315,
+      49.469792901
+     ],
+     [
+      6.4401045,
+      49.470175201
+     ],
+     [
+      6.4393407,
+      49.470615801
+     ],
+     [
+      6.4385898,
+      49.471091101
+     ],
+     [
+      6.437814,
+      49.471626201
+     ],
+     [
+      6.4372855,
+      49.471991801
+     ],
+     [
+      6.4367359,
+      49.472383401
+     ],
+     [
+      6.4312542,
+      49.476287201
+     ],
+     [
+      6.4304291,
+      49.476838801
+     ],
+     [
+      6.4295994,
+      49.477340901
+     ],
+     [
+      6.4289122,
+      49.477699501
+     ],
+     [
+      6.4282735,
+      49.478017001
+     ],
+     [
+      6.4276007,
+      49.478312801
+     ],
+     [
+      6.4269744,
+      49.478561301
+     ],
+     [
+      6.4257725,
+      49.479035801
+     ],
+     [
+      6.4246379,
+      49.479489001
+     ],
+     [
+      6.4241729,
+      49.479692001
+     ],
+     [
+      6.4236952,
+      49.479912701
+     ],
+     [
+      6.4230323,
+      49.480246501
+     ],
+     [
+      6.42229,
+      49.480667301
+     ],
+     [
+      6.4217959,
+      49.480973201
+     ],
+     [
+      6.4212689,
+      49.481328101
+     ],
+     [
+      6.4206086,
+      49.481826701
+     ],
+     [
+      6.4201331,
+      49.482223901
+     ],
+     [
+      6.4197983,
+      49.482531201
+     ],
+     [
+      6.4194587,
+      49.482856801
+     ],
+     [
+      6.4190829,
+      49.483256801
+     ],
+     [
+      6.4187562,
+      49.483644801
+     ],
+     [
+      6.4184135,
+      49.484074201
+     ],
+     [
+      6.418192,
+      49.484356301
+     ],
+     [
+      6.4176708,
+      49.485039901
+     ],
+     [
+      6.4172103,
+      49.485596201
+     ],
+     [
+      6.4169306,
+      49.485911101
+     ],
+     [
+      6.4166238,
+      49.486221501
+     ],
+     [
+      6.4162196,
+      49.486581001
+     ],
+     [
+      6.4160195,
+      49.486744001
+     ],
+     [
+      6.4157206,
+      49.486970201
+     ],
+     [
+      6.4153913,
+      49.487212601
+     ],
+     [
+      6.41471,
+      49.487626901
+     ],
+     [
+      6.4140649,
+      49.487963901
+     ],
+     [
+      6.4133627,
+      49.488295201
+     ],
+     [
+      6.4126233,
+      49.488612601
+     ],
+     [
+      6.4118725,
+      49.488928901
+     ],
+     [
+      6.411601038,
+      49.489048183
+     ]
+    ]
+   }
+  },
+  {
+   "identifier": "2026-008770--vi-bs.2026-03-02_00-00-00-000.devi-zus.2026-03-02_00-00-00-000_008.de5",
+   "icon": "123",
+   "isBlocked": "false",
+   "future": false,
+   "extent": "49.46006597298579,6.595404714981656,49.46005234427671,6.598851516136307",
+   "point": "49.46006597298579,6.595404714981656",
+   "startLcPosition": "6",
+   "impact": {
+    "lower": "Merzig-Schwemlingen",
+    "upper": "Weiler",
+    "symbols": [
+     "SEPARATE",
+     "ARROW_UP",
+     "ARROW_UP",
+     "BORDER_RIGHT",
+     "BREAKDOWN_LANE"
+    ]
+   },
+   "display_type": "ROADWORKS",
+   "subtitle": " Luxemburg -> Saarlouis",
+   "title": "A8 | Weiler - Merzig-Schwemlingen",
+   "startTimestamp": "2026-03-02T00:00:00+01:00",
+   "coordinate": {
+    "lat": 49.46006597298579,
+    "long": 6.595404714981656
+   },
+   "description": [
+    "Zeitraum dieser Bauphase:",
+    "Beginn: 02.03.26 um 00:00 Uhr",
+    "Ende: 31.10.26 um 00:00 Uhr",
+    "(Ende der Gesamtmaßnahme: 31.10.26)",
+    "",
+    "A8: Luxemburg -> Saarlouis, zwischen 2.2 km hinter Weiler und 0.6 km vor AS Merzig-Schwemlingen",
+    "",
+    "Länge: 0.25 km | Maximale Durchfahrtsbreite: 7.5 m",
+    "",
+    "A8 von Merzig (AS) Beschilderungsarbeiten"
+   ],
+   "routeRecommendation": [],
+   "footer": [],
+   "lorryParkingFeatureIcons": [],
+   "geometry": {
+    "type": "LineString",
+    "coordinates": [
+     [
+      6.595404715,
+      49.460065973
+     ],
+     [
+      6.5957022,
+      49.460088201
+     ],
+     [
+      6.5963566,
+      49.460117801
+     ],
+     [
+      6.5968569,
+      49.460129201
+     ],
+     [
+      6.5975301,
+      49.460123101
+     ],
+     [
+      6.5981403,
+      49.460100401
+     ],
+     [
+      6.5988498,
+      49.460052501
+     ],
+     [
+      6.598851516,
+      49.460052344
+     ]
+    ]
+   }
+  },
+  {
+   "identifier": "2026-008770--vi-fbm.2026-04-20_00-00-00-000.devi-zus.2026-03-02_00-00-00-000_008.de11",
+   "icon": "123",
+   "isBlocked": "false",
+   "future": false,
+   "extent": "49.446339840781725,6.622322093310629,49.43764998039552,6.62544197795901",
+   "point": "49.446339840781725,6.622322093310629",
+   "startLcPosition": "7",
+   "impact": {
+    "lower": "Niedmündung",
+    "upper": "Merzig-Schwemlingen",
+    "symbols": [
+     "BREAKDOWN_LANE",
+     "BORDER_LEFT",
+     "ARROW_DOWN",
+     "ARROW_DOWN",
+     "SEPARATE",
+     "ARROW_UP",
+     "ARROW_UP",
+     "BORDER_RIGHT",
+     "BREAKDOWN_LANE"
+    ]
+   },
+   "display_type": "ROADWORKS",
+   "subtitle": " Luxemburg -> Saarlouis",
+   "title": "A8 | Merzig-Schwemlingen - Niedmündung",
+   "startTimestamp": "2026-04-20T00:00:00+02:00",
+   "coordinate": {
+    "lat": 49.446339840781725,
+    "long": 6.622322093310629
+   },
+   "description": [
+    "Zeitraum dieser Bauphase:",
+    "Beginn: 20.04.26 um 00:00 Uhr",
+    "Ende: 31.10.26 um 00:00 Uhr",
+    "(Ende der Gesamtmaßnahme: 31.10.26)",
+    "",
+    "A8: Luxemburg -> Saarlouis, zwischen 1.7 km hinter AS Merzig-Schwemlingen und 6.6 km vor Niedmündung",
+    "",
+    "Länge: 1.01 km | Maximale Durchfahrtsbreite: 6.5 m",
+    "",
+    "A8 von Merzig (AS) Beschilderungsarbeiten"
+   ],
+   "routeRecommendation": [],
+   "footer": [],
+   "lorryParkingFeatureIcons": [],
+   "geometry": {
+    "type": "LineString",
+    "coordinates": [
+     [
+      6.622322093,
+      49.446339841
+     ],
+     [
+      6.6226267,
+      49.445979701
+     ],
+     [
+      6.6227904,
+      49.445785601
+     ],
+     [
+      6.6230335,
+      49.445481601
+     ],
+     [
+      6.6231731,
+      49.445276901
+     ],
+     [
+      6.6233869,
+      49.444999101
+     ],
+     [
+      6.6234982,
+      49.444822101
+     ],
+     [
+      6.6237691,
+      49.444380001
+     ],
+     [
+      6.624036,
+      49.443896101
+     ],
+     [
+      6.6242519,
+      49.443459201
+     ],
+     [
+      6.6243793,
+      49.443168801
+     ],
+     [
+      6.6245282,
+      49.442783401
+     ],
+     [
+      6.6246944,
+      49.442336901
+     ],
+     [
+      6.6248232,
+      49.441910501
+     ],
+     [
+      6.6249399,
+      49.441430101
+     ],
+     [
+      6.6249826,
+      49.441151701
+     ],
+     [
+      6.6250284,
+      49.440948701
+     ],
+     [
+      6.6251223,
+      49.440329601
+     ],
+     [
+      6.6252094,
+      49.439591801
+     ],
+     [
+      6.6252912,
+      49.438804301
+     ],
+     [
+      6.625357,
+      49.438221801
+     ],
+     [
+      6.625441978,
+      49.43764998
+     ]
+    ]
+   }
+  },
+  {
+   "identifier": "2026-008770--vi-bs.2026-03-16_00-00-00-000.devi-zus.2026-03-02_00-00-00-000_008.de7",
+   "icon": "123",
+   "isBlocked": "false",
+   "future": false,
+   "extent": "49.447291255895,6.621582677089722,49.44808321285987,6.620666894224541",
+   "point": "49.447291255895,6.621582677089722",
+   "startLcPosition": "8",
+   "impact": {
+    "lower": "Merzig-Schwemlingen",
+    "upper": "Merzig",
+    "symbols": [
+     "SEPARATE",
+     "ARROW_UP",
+     "ARROW_UP",
+     "BORDER_RIGHT",
+     "BREAKDOWN_LANE"
+    ]
+   },
+   "display_type": "ROADWORKS",
+   "subtitle": " Saarlouis -> Luxemburg",
+   "title": "A8 | Merzig - Merzig-Schwemlingen",
+   "startTimestamp": "2026-03-16T00:00:00+01:00",
+   "coordinate": {
+    "lat": 49.447291255895,
+    "long": 6.621582677089722
+   },
+   "description": [
+    "Zeitraum dieser Bauphase:",
+    "Beginn: 16.03.26 um 00:00 Uhr",
+    "Ende: 31.10.26 um 00:00 Uhr",
+    "(Ende der Gesamtmaßnahme: 31.10.26)",
+    "",
+    "A8: Saarlouis -> Luxemburg, zwischen 0.6 km hinter AS Merzig und 1.5 km vor AS Merzig-Schwemlingen",
+    "",
+    "Länge: 0.11 km | Max. 100 km/h | Maximale Durchfahrtsbreite: 6.5 m",
+    "",
+    "A8 von Merzig (AS) Beschilderungsarbeiten"
+   ],
+   "routeRecommendation": [],
+   "footer": [],
+   "lorryParkingFeatureIcons": [],
+   "geometry": {
+    "type": "LineString",
+    "coordinates": [
+     [
+      6.621582677,
+      49.447291256
+     ],
+     [
+      6.6212415,
+      49.447601501
+     ],
+     [
+      6.6208673,
+      49.447922301
+     ],
+     [
+      6.620666894,
+      49.448083213
+     ]
+    ]
+   }
+  },
+  {
+   "identifier": "2026-008770--vi-bs.2026-03-02_00-00-00-000.devi-zus.2026-03-02_00-00-00-000_008.de3",
+   "icon": "123",
+   "isBlocked": "false",
+   "future": false,
+   "extent": "49.45310631608935,6.613412535454092,49.45470795394556,6.611072878168502",
+   "point": "49.45310631608935,6.613412535454092",
+   "startLcPosition": "8",
+   "impact": {
+    "lower": "Merzig-Schwemlingen",
+    "upper": "Merzig",
+    "symbols": [
+     "SEPARATE",
+     "ARROW_UP",
+     "ARROW_UP",
+     "BORDER_RIGHT",
+     "BREAKDOWN_LANE"
+    ]
+   },
+   "display_type": "ROADWORKS",
+   "subtitle": " Saarlouis -> Luxemburg",
+   "title": "A8 | Merzig - Merzig-Schwemlingen",
+   "startTimestamp": "2026-03-02T00:00:00+01:00",
+   "coordinate": {
+    "lat": 49.45310631608935,
+    "long": 6.613412535454092
+   },
+   "description": [
+    "Zeitraum dieser Bauphase:",
+    "Beginn: 02.03.26 um 00:00 Uhr",
+    "Ende: 31.10.26 um 00:00 Uhr",
+    "(Ende der Gesamtmaßnahme: 31.10.26)",
+    "",
+    "A8: Saarlouis -> Luxemburg, zwischen 1.5 km hinter AS Merzig und 0.5 km vor AS Merzig-Schwemlingen",
+    "",
+    "Länge: 0.25 km | Maximale Durchfahrtsbreite: 7.5 m",
+    "",
+    "A8 von Merzig (AS) Beschilderungsarbeiten"
+   ],
+   "routeRecommendation": [],
+   "footer": [],
+   "lorryParkingFeatureIcons": [],
+   "geometry": {
+    "type": "LineString",
+    "coordinates": [
+     [
+      6.613412535,
+      49.453106316
+     ],
+     [
+      6.6129756,
+      49.453402801
+     ],
+     [
+      6.611072878,
+      49.454707954
+     ]
+    ]
+   }
+  },
+  {
+   "identifier": "2026-008770--vi-fbm.2026-04-20_00-00-00-000.devi-zus.2026-03-02_00-00-00-000_008.de9",
+   "icon": "123",
+   "isBlocked": "false",
+   "future": false,
+   "extent": "49.437660376452726,6.625610178893865,49.44639218425236,6.622463792011145",
+   "point": "49.437660376452726,6.625610178893865",
+   "startLcPosition": "9",
+   "impact": {
+    "lower": "Merzig-Schwemlingen",
+    "upper": "Niedmündung",
+    "symbols": [
+     "BREAKDOWN_LANE",
+     "BORDER_LEFT",
+     "ARROW_DOWN",
+     "ARROW_DOWN",
+     "SEPARATE",
+     "ARROW_UP",
+     "ARROW_UP",
+     "BORDER_RIGHT",
+     "BREAKDOWN_LANE"
+    ]
+   },
+   "display_type": "ROADWORKS",
+   "subtitle": " Saarlouis -> Luxemburg",
+   "title": "A8 | Niedmündung - Merzig-Schwemlingen",
+   "startTimestamp": "2026-04-20T00:00:00+02:00",
+   "coordinate": {
+    "lat": 49.437660376452726,
+    "long": 6.625610178893865
+   },
+   "description": [
+    "Zeitraum dieser Bauphase:",
+    "Beginn: 20.04.26 um 00:00 Uhr",
+    "Ende: 31.10.26 um 00:00 Uhr",
+    "(Ende der Gesamtmaßnahme: 31.10.26)",
+    "",
+    "A8: Saarlouis -> Luxemburg, zwischen 6.6 km hinter Niedmündung und 1.7 km vor AS Merzig-Schwemlingen",
+    "",
+    "Länge: 1.01 km | Maximale Durchfahrtsbreite: 6.5 m",
+    "",
+    "A8 von Merzig (AS) Beschilderungsarbeiten"
+   ],
+   "routeRecommendation": [],
+   "footer": [],
+   "lorryParkingFeatureIcons": [],
+   "geometry": {
+    "type": "LineString",
+    "coordinates": [
+     [
+      6.625610179,
+      49.437660376
+     ],
+     [
+      6.625529,
+      49.438229301
+     ],
+     [
+      6.6254258,
+      49.439099101
+     ],
+     [
+      6.6253801,
+      49.439589301
+     ],
+     [
+      6.6252889,
+      49.440341801
+     ],
+     [
+      6.6251964,
+      49.440968801
+     ],
+     [
+      6.6251052,
+      49.441444101
+     ],
+     [
+      6.6249872,
+      49.441928001
+     ],
+     [
+      6.6248598,
+      49.442361401
+     ],
+     [
+      6.6246935,
+      49.442822701
+     ],
+     [
+      6.6245446,
+      49.443193301
+     ],
+     [
+      6.6244119,
+      49.443494101
+     ],
+     [
+      6.6242,
+      49.443924901
+     ],
+     [
+      6.6239264,
+      49.444414101
+     ],
+     [
+      6.6237104,
+      49.444772501
+     ],
+     [
+      6.6233698,
+      49.445258601
+     ],
+     [
+      6.6231908,
+      49.445512701
+     ],
+     [
+      6.622941,
+      49.445836601
+     ],
+     [
+      6.6227817,
+      49.446032201
+     ],
+     [
+      6.622463792,
+      49.446392184
+     ]
+    ]
+   }
+  },
+  {
+   "identifier": "2026-008770--vi-bs.2026-03-02_00-00-00-000.devi-zus.2026-03-02_00-00-00-000_008.de1",
+   "icon": "123",
+   "isBlocked": "false",
+   "future": false,
+   "extent": "49.43335310616782,6.627225547380997,49.43719864967535,6.625699835153708",
+   "point": "49.43335310616782,6.627225547380997",
+   "startLcPosition": "9",
+   "impact": {
+    "lower": "Merzig",
+    "upper": "Niedmündung",
+    "symbols": [
+     "SEPARATE",
+     "ARROW_UP",
+     "ARROW_UP",
+     "BORDER_RIGHT",
+     "BREAKDOWN_LANE"
+    ]
+   },
+   "display_type": "ROADWORKS",
+   "subtitle": " Saarlouis -> Luxemburg",
+   "title": "A8 | Niedmündung - Merzig",
+   "startTimestamp": "2026-03-02T00:00:00+01:00",
+   "coordinate": {
+    "lat": 49.43335310616782,
+    "long": 6.627225547380997
+   },
+   "description": [
+    "Zeitraum dieser Bauphase:",
+    "Beginn: 02.03.26 um 00:00 Uhr",
+    "Ende: 31.10.26 um 00:00 Uhr",
+    "(Ende der Gesamtmaßnahme: 31.10.26)",
+    "",
+    "A8: Saarlouis -> Luxemburg, zwischen 6.1 km hinter Niedmündung und 0.5 km vor AS Merzig",
+    "",
+    "Länge: 0.44 km | Maximale Durchfahrtsbreite: 7.5 m",
+    "",
+    "A8 von Merzig (AS) Beschilderungsarbeiten"
+   ],
+   "routeRecommendation": [],
+   "footer": [],
+   "lorryParkingFeatureIcons": [],
+   "geometry": {
+    "type": "LineString",
+    "coordinates": [
+     [
+      6.627225547,
+      49.433353106
+     ],
+     [
+      6.6271839,
+      49.433430901
+     ],
+     [
+      6.6266595,
+      49.434442701
+     ],
+     [
+      6.6264791,
+      49.434826201
+     ],
+     [
+      6.6262237,
+      49.435438501
+     ],
+     [
+      6.6260145,
+      49.436022401
+     ],
+     [
+      6.6258522,
+      49.436554001
+     ],
+     [
+      6.6257167,
+      49.437113001
+     ],
+     [
+      6.625699835,
+      49.43719865
+     ]
+    ]
+   }
+  },
+  {
+   "identifier": "2026-041573--vi-bs.2026-08-24_06-00-00-000.de0",
+   "icon": "123",
+   "isBlocked": "false",
+   "future": false,
+   "extent": "49.3866305217091,6.675412764042646,49.38739964622887,6.673067435529931",
+   "point": "49.3866305217091,6.675412764042646",
+   "startLcPosition": "10",
+   "impact": {
+    "lower": "Niedmündung",
+    "upper": "Rehlingen",
+    "symbols": [
+     "SEPARATE",
+     "ARROW_UP",
+     "ARROW_UP",
+     "CLOSED"
+    ]
+   },
+   "display_type": "ROADWORKS",
+   "subtitle": " Saarlouis -> Luxemburg",
+   "title": "A8 | Rehlingen - Niedmündung",
+   "startTimestamp": "2026-08-24T06:00:00+02:00",
+   "coordinate": {
+    "lat": 49.3866305217091,
+    "long": 6.675412764042646
+   },
+   "description": [
+    "Zeitraum dieser Bauphase:",
+    "Beginn: 24.08.26 um 06:00 Uhr",
+    "Ende: 26.09.26 um 12:00 Uhr",
+    "(Ende der Gesamtmaßnahme: 26.09.26)",
+    "",
+    "A8: Saarlouis -> Luxemburg, zwischen 3.4 km hinter AS Rehlingen und 0.1 km vor Niedmündung",
+    "",
+    "Länge: konnte nicht ermittelt werden | Maximale Durchfahrtsbreite: 6.5 m",
+    "",
+    "Von A8 Saarlouis - Luxemburg, zwischen 3.4 km hinter AS Rehlingen und Niedmündung nach Abfahrt von der A8 Niedmündung (aus Richtung Rehlingen) Arbeiten an Parkplätzen"
+   ],
+   "routeRecommendation": [],
+   "footer": [],
+   "lorryParkingFeatureIcons": [],
+   "geometry": {
+    "type": "LineString",
+    "coordinates": [
+     [
+      6.675412764,
+      49.386630522
+     ],
+     [
+      6.6753952,
+      49.386635201
+     ],
+     [
+      6.6747045,
+      49.386831601
+     ],
+     [
+      6.6740406,
+      49.387041501
+     ],
+     [
+      6.6736498,
+      49.387172701
+     ],
+     [
+      6.6735165,
+      49.387220101
+     ],
+     [
+      6.6730887,
+      49.387386101
+     ],
+     [
+      6.673067436,
+      49.387399646
+     ]
+    ]
+   }
+  }
+ ]
+}

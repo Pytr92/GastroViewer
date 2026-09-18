@@ -299,6 +299,8 @@ class FakeOutbound:
             self.calls.append("statistik_at")
             if "statistik_at" in self.fehler or self.statistik_at is None:
                 raise SourceError("timeout", "Zeitüberschreitung — Dienst antwortet nicht.")
+            if "OGDEXT_AEST_GEMTAB_1" in url:
+                return self.statistik_at["gemeinde"]
             return self.statistik_at["herkunft"] if "_C-C93-2" in url else self.statistik_at["daten"]
         if "dwd" in url:
             self.calls.append("dwd")
@@ -2406,7 +2408,7 @@ def test_wiener_punkt_bekommt_ehrliche_antwort(client, zensus_600, overpass_comb
         t = d["bloecke"]["tourismus"]
         assert t["ok"] and t["data"]["gebiet"] == "Wien" and t["data"]["uebernachtungen_12m"] > 15_000_000
         assert 0 < t["data"]["ausland_anteil_prozent"] < 100
-        assert fake.calls.count("wahl_at") == 2 and fake.calls.count("statistik_at") == 2
+        assert fake.calls.count("wahl_at") == 2 and fake.calls.count("statistik_at") == 3
         # Klima und Lärm kommen aus den österreichischen Diensten — in derselben Blockform.
         k = d["bloecke"]["klima"]
         assert k["ok"] and k["data"]["kennzahlen"][0]["station"]["name"] == "Wien Innere Stadt"

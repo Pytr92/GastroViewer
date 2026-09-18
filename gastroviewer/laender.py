@@ -162,7 +162,8 @@ QUELLEN_NUR: dict[str, tuple[set[str], str]] = {
     "frequenz": ({"DE"}, "Gemessene Passantenfrequenz gibt es offen nur in drei deutschen Städten."),
     "register": ({"DE"}, "Das Registerumfeld kommt aus dem deutschen Handelsregister (OffeneRegister)."),
     "einkommen": ({"DE"}, "Kreiswerte kommen aus dem deutschen Regionalatlas."),
-    "kreisprofil": ({"DE"}, "Kreiswerte kommen aus dem deutschen Regionalatlas."),
+    # kreisprofil fehlt hier bewusst: in Österreich antwortet die Gemeindetabelle
+    # von Statistik Austria (sources/gemeinde_at.py) unter demselben Blocknamen.
     "pendler": ({"DE"}, "Die Pendlerrechnung liegt nur für deutsche Gemeinden vor."),
     "genesis": ({"DE"}, "Die Regionaldatenbank ist eine deutsche Quelle."),
     "pks": ({"DE"}, "Die Kriminalstatistik je Kreis veröffentlicht nur das BKA."),
