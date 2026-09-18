@@ -1305,6 +1305,72 @@ def _nahe(f, punkt, d):
 TEILE.update({"at6": at_r6, "de6": de_r6})
 
 
+# ------------------------------------------------------------------ Runde 7
+# Auszüge für Fixtures und drei Nachzügler (BNetzA-Ladesäulen, NRW-WFS).
+
+def r7(c):
+    daten = hole(c, "wien_r7_dauerzaehlstellen_csv", "https://www.wien.gv.at/data/ogd/ma46/dauerzaehlstellen.csv",
+                 speichern=False)
+    if daten:
+        zeilen = daten.decode("cp1252", "replace").splitlines()
+        aus = [zeilen[0]] + [z for z in zeilen[1:] if z.startswith("2025;")]
+        _speichern("wien_r7_dauerzaehlstellen_2025.csv", "\n".join(aus).encode("utf-8"))
+        manifest.append({"name": "wien_r7_dauerzaehlstellen_umfang", "zeilen": len(zeilen), "zeilen_2025": len(aus) - 1,
+                         "jahre": sorted({z[:4] for z in zeilen[1:]})})
+    daten = hole(c, "wien_r7_luft_csv", "https://go.gv.at/l9lumesakt", speichern=False)
+    if daten:
+        _speichern("wien_r7_luft_lumes.csv", daten)
+    daten = hole(c, "de_mobidata_r7_roadworks", "https://api.mobidata-bw.de/datasets/traffic/roadworks/roadworks_geojson.json",
+                 speichern=False)
+    if daten:
+        try:
+            d = json.loads(daten)
+            fs = d.get("features", [])
+            _speichern("de_mobidata_r7_roadworks_auszug.json", json.dumps(
+                {"type": "FeatureCollection", "features": fs[:60]}, ensure_ascii=False).encode())
+        except Exception as exc:  # noqa: BLE001
+            manifest.append({"name": "de_mobidata_r7_roadworks_fehler", "fehler": str(exc)})
+    daten = hole(c, "de_mobidata_r7_eco_tage", "https://mobidata-bw.de/daten/eco-counter/v2/fahrradzaehler_tageswerten.csv",
+                 speichern=False)
+    if daten:
+        zeilen = daten.decode("utf-8", "replace").splitlines()
+        _speichern("de_mobidata_r7_eco_tageswerte_auszug.csv", "\n".join([zeilen[0]] + zeilen[-400:]).encode("utf-8"))
+    daten = hole(c, "de_mobidata_r7_svz", "https://mobidata-bw.de/vm/Karte_Strassenverkehrszaehlung_BW/SVZ-Zaehlstellen_2026-06-26_augmented_SVZ2024.csv",
+                 speichern=False)
+    if daten:
+        zeilen = daten.decode("utf-8", "replace").splitlines()
+        def nah(z):
+            t = z.split(",")
+            try:
+                return 8.9 <= float(t[4]) <= 9.5 and 48.6 <= float(t[5]) <= 48.95
+            except (ValueError, IndexError):
+                return False
+        _speichern("de_mobidata_r7_svz_stuttgart.csv", "\n".join([zeilen[0]] + [z for z in zeilen[1:] if nah(z)]).encode("utf-8"))
+    # BNetzA Ladesäulenregister: ArcGIS FeatureServer aus der bund.dev-Doku
+    basis = "https://services6.arcgis.com/6jU7RmJig2Wwo1b0/ArcGIS/rest/services/Ladesaeulenregister/FeatureServer/7"
+    hole(c, "de_bnetza_r7_meta", basis, params={"f": "json"})
+    for ort, (lat, lon) in (("marienplatz", MUENCHEN), ("stephansplatz", WIEN), ("koeln", KOELN)):
+        hole(c, f"de_bnetza_r7_query_{ort}", f"{basis}/query",
+             params={"geometry": json.dumps({"x": lon, "y": lat, "spatialReference": {"wkid": 4326}}),
+                     "geometryType": "esriGeometryPoint", "inSR": 4326, "outSR": 4326, "distance": 600,
+                     "units": "esriSRUnit_Meter", "outFields": "*", "f": "json", "resultRecordCount": 50})
+    # NRW Straßen.NRW: Ausgabeformat
+    for fmt in (None, "application/json", "application/json; subtype=geojson", "GEOJSON"):
+        p = {"service": "WFS", "version": "2.0.0", "request": "GetFeature", "typeNames": "ms:Zaehlstellen",
+             "srsName": "EPSG:4326", "count": 20,
+             "bbox": f"{KOELN[1]-0.05},{KOELN[0]-0.05},{KOELN[1]+0.05},{KOELN[0]+0.05},EPSG:4326"}
+        if fmt:
+            p["outputFormat"] = fmt
+        hole(c, f"de_nrw_r7_zaehlstellen_{re.sub(r'[^a-z]+', '_', (fmt or 'gml').lower())[:20]}",
+             "https://www.wfs.nrw.de/wfs/strassen_nrw", params=p)
+    hole(c, "salzburg_r7_altstadtschutzzone", "https://data.stadt-salzburg.at/geodaten/wfs",
+         params={"service": "WFS", "version": "1.1.0", "request": "GetFeature", "srsName": "EPSG:4326",
+                 "outputFormat": "application/json", "typeName": "ogdsbg:altstadtschutzzone", "maxFeatures": 5})
+
+
+TEILE.update({"r7": r7})
+
+
 if __name__ == "__main__":
     sys.exit(main(sys.argv))
 
