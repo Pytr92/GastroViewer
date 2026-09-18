@@ -330,6 +330,11 @@ def erreichbare_zellen(
         ew = z.get("Einwohner")
         if lat is None or lon is None or not isinstance(ew, (int, float)):
             continue
+        # Flächenanteil im Luftlinienkreis (zensus.gewichten) — Zähler und
+        # Nenner nach derselben Regel wie die Einwohnerzahl des Punkts.
+        anteil = z.get("_anteil")
+        if isinstance(anteil, (int, float)) and not isinstance(anteil, bool):
+            ew = ew * anteil
         einwohner_gesamt += ew
         knoten, anschluss = netz.naechster_knoten(lat, lon)
         d = dist.get(knoten) if knoten is not None else None

@@ -619,7 +619,9 @@ def test_punkt_merken_und_vergleichen(client):
         assert pflicht in keys
     zeile = v["zeilen"][0]
     assert zeile["label"] == "Kandidat A"
-    assert zeile["einwohner"] == 16370.0
+    # 118 Zellen berühren den Kreis; anteilig nach überdeckter Fläche sind
+    # es 13.303 Einwohner statt 16.370 voll gezählter (zensus.gewichten).
+    assert zeile["einwohner"] == 13303.0
 
     pid = r.json()["id"]
     assert client.delete(f"/api/points/{pid}").status_code == 200
@@ -796,7 +798,7 @@ def test_vergleich_csv(client):
     kopf = r.text.splitlines()[0]
     for spalte in ("Bezeichnung", "Adresse", "Einwohner"):
         assert spalte in kopf, f"{spalte} fehlt im CSV-Kopf"
-    assert "16370" in r.text
+    assert "13303" in r.text
 
 
 def test_csv_erzeugung_ohne_daten_bricht_nicht():
@@ -828,9 +830,10 @@ def test_outbound_log_ist_abrufbar(client):
 
 def test_schaetzung_vorgaben_kommen_aus_den_punktdaten(client):
     d = client.get("/api/schaetzung/vorgaben", params={"lat": LAT, "lon": LON, "r": R}).json()
-    assert d["einwohner"] == 16370.0
+    assert d["einwohner"] == 13303.0
     assert d["wettbewerber"] == 26
     assert "Zensus 2022" in d["einwohner_herkunft"]
+    assert "anteilig" in d["einwohner_herkunft"] and "118 Gitterzellen" in d["einwohner_herkunft"]
     assert "Untergrenze" in d["wettbewerber_herkunft"]
     assert d["referenzwerte"] and all(r["quelle"] for r in d["referenzwerte"])
     assert len(d["formel"]) == 6

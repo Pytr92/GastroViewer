@@ -850,7 +850,7 @@ class PointService:
         bislang nur, DASS sich Kreise überschneiden; hier steht, wie viele
         Menschen sich die Kandidaten teilen."""
         from .sources.base import haversine_m
-        from .sources.zensus import build_cells, fetch_cells
+        from .sources.zensus import build_cells, fetch_cells, gewichten
 
         dist = haversine_m(a["lat"], a["lon"], b["lat"], b["lon"])
         grunddaten = {
@@ -862,9 +862,12 @@ class PointService:
             return {**grunddaten, "ueberlappung": False,
                     "gemeinsame_einwohner": 0}
 
-        def ew(zelle: dict[str, Any]) -> float:
+        def ew(zelle: dict[str, Any], anteil: float | None = None) -> float:
             v = zelle.get("Einwohner")
-            return v if isinstance(v, (int, float)) and v > 0 else 0
+            if not isinstance(v, (int, float)) or v <= 0:
+                return 0
+            a = zelle.get("_anteil", 1.0) if anteil is None else anteil
+            return v * a
 
         # Eine Zugehörigkeitsregel für Zähler und Nenner. Der Zensusdienst
         # liefert alle Zellen, die den Umkreis berühren (Intersects); ew_a und
@@ -876,15 +879,23 @@ class PointService:
         def schluessel(zelle):
             return zelle.get("GITTER_ID_100m") or tuple(zelle.get("_center") or ())
 
-        zellen_a = build_cells((await fetch_cells(
-            self.outbound, self.settings, a["lat"], a["lon"], a["radius"]))[0])
-        zellen_b = build_cells((await fetch_cells(
-            self.outbound, self.settings, b["lat"], b["lon"], b["radius"]))[0])
+        zellen_a = gewichten(build_cells((await fetch_cells(
+            self.outbound, self.settings, a["lat"], a["lon"], a["radius"]))[0]),
+            a["lat"], a["lon"], a["radius"])
+        zellen_b = gewichten(build_cells((await fetch_cells(
+            self.outbound, self.settings, b["lat"], b["lon"], b["radius"]))[0]),
+            b["lat"], b["lon"], b["radius"])
 
+        # Dieselbe Flächengewichtung wie im Zensus-Block je Punkt, damit
+        # einwohner_a der dort ausgewiesenen Einwohnerzahl entspricht. Für
+        # eine Zelle in beiden Umkreisen zählt der kleinere der beiden
+        # Anteile — mehr als das kann in der Schnittfläche nicht liegen.
         ew_a = sum(ew(z) for z in zellen_a)
         ew_b = sum(ew(z) for z in zellen_b)
-        ids_b = {schluessel(z) for z in zellen_b}
-        gemeinsam = sum(ew(z) for z in zellen_a if schluessel(z) in ids_b)
+        anteil_b = {schluessel(z): z.get("_anteil", 1.0) for z in zellen_b}
+        gemeinsam = sum(
+            ew(z, min(z.get("_anteil", 1.0), anteil_b[schluessel(z)]))
+            for z in zellen_a if schluessel(z) in anteil_b)
 
         return {
             **grunddaten,
@@ -899,9 +910,9 @@ class PointService:
                 "(Stichtag 15.05.2022) — Flüsse, Gleise und Gehstrecken "
                 "sieht die Rechnung nicht; die Gehweg-Auswertung je Punkt "
                 "bleibt der genauere Blick.",
-                "Gezählt werden Zensuszellen, die beide Umkreise berühren — "
-                "Randzellen zählen dadurch voll, wie auch in den "
-                "Einwohnerzahlen der einzelnen Punkte.",
+                "Gezählt werden Zensuszellen, die beide Umkreise berühren, "
+                "anteilig nach der überdeckten Fläche — dieselbe Regel wie "
+                "in den Einwohnerzahlen der einzelnen Punkte.",
             ],
         }
 

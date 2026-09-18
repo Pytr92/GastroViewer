@@ -18,6 +18,7 @@ Summe/ein Mittel über Rohwerte, immer mit der Zahl der einbezogenen Zellen dane
 
 from __future__ import annotations
 
+import math
 import time
 from typing import Any
 
@@ -131,10 +132,70 @@ def _ring_center(ring: list[list[float]]) -> tuple[float, float]:
     return sum(lats) / len(lats), sum(lons) / len(lons)
 
 
+def flaechenanteil(
+    zelle: dict[str, Any], lat: float, lon: float, radius: float, raster: int = 8,
+) -> float:
+    """Anteil der Zellfläche, der im Umkreis liegt (0…1).
+
+    Der Dienst liefert jede Zelle, die den Kreis auch nur an einer Ecke
+    berührt (esriSpatialRelIntersects). Voll gezählt überzeichnet das bei
+    r=300 m die Einwohner um rund die Hälfte, bei r=600 m um ein Viertel.
+    Gerechnet wird über ein ``raster``×``raster``-Punktgitter in der
+    Zell-Bounding-Box; Zellen mit allen Ecken im Kreis zählen sofort voll.
+    Ohne Geometrie (``_ring``) bleibt es bei 1.0 — dann steht das im Hinweis."""
+    ring = zelle.get("_ring")
+    if not ring or not radius:
+        return 1.0
+    kx = 111_320.0 * math.cos(math.radians(lat))
+    ky = 111_320.0
+    r2 = float(radius) ** 2
+
+    def drin(plat: float, plon: float) -> bool:
+        dx = (plon - lon) * kx
+        dy = (plat - lat) * ky
+        return dx * dx + dy * dy <= r2
+
+    if all(drin(pt[1], pt[0]) for pt in ring):
+        return 1.0
+    lons = [pt[0] for pt in ring]
+    lats = [pt[1] for pt in ring]
+    min_lon, max_lon, min_lat, max_lat = min(lons), max(lons), min(lats), max(lats)
+    in_zelle = in_kreis = 0
+    for i in range(raster):
+        plat = min_lat + (max_lat - min_lat) * (i + 0.5) / raster
+        for j in range(raster):
+            plon = min_lon + (max_lon - min_lon) * (j + 0.5) / raster
+            if _point_in_ring(plat, plon, ring):
+                in_zelle += 1
+                if drin(plat, plon):
+                    in_kreis += 1
+    if not in_zelle:
+        return 1.0
+    return in_kreis / in_zelle
+
+
+def gewichten(
+    cells: list[dict[str, Any]], lat: float, lon: float, radius: float,
+) -> list[dict[str, Any]]:
+    """Hängt jeder Zelle ihren Flächenanteil im Umkreis als ``_anteil`` an.
+    Die Rohwerte bleiben unverändert — die Karte zeigt weiter die ganze
+    Zelle; nur Summen und gewichtete Mittel rechnen anteilig."""
+    for c in cells:
+        c["_anteil"] = round(flaechenanteil(c, lat, lon, radius), 3)
+    return cells
+
+
+def _anteil(c: dict[str, Any]) -> float:
+    a = c.get("_anteil")
+    return float(a) if isinstance(a, (int, float)) and not isinstance(a, bool) else 1.0
+
+
 class Aggregate:
     """Sammelt Rohwerte und weist immer aus, wie viele Zellen beigetragen haben.
 
-    Nullwerte werden ausgelassen, nicht als 0 gewertet.
+    Nullwerte werden ausgelassen, nicht als 0 gewertet. Trägt eine Zelle
+    einen Flächenanteil ``_anteil`` (siehe :func:`gewichten`), gehen Summen
+    anteilig ein und Mittelwerte mit Einwohner × Anteil als Gewicht.
     """
 
     def __init__(self, cells: list[dict[str, Any]]) -> None:
@@ -142,21 +203,33 @@ class Aggregate:
         self.n = len(cells)
 
     def values(self, field: str) -> list[float]:
+        return [v for v, _ in self._paare(field)]
+
+    def _paare(self, field: str) -> list[tuple[float, float]]:
         out = []
         for c in self.cells:
             v = c.get(field)
             if v is not None:
                 try:
-                    out.append(float(v))
+                    out.append((float(v), _anteil(c)))
                 except (TypeError, ValueError):
                     continue
         return out
 
     def sum(self, field: str) -> dict[str, Any] | None:
-        vals = self.values(field)
-        if not vals:
+        paare = self._paare(field)
+        if not paare:
             return None
-        return {"wert": round(sum(vals), 2), "zellen": len(vals), "zellen_gesamt": self.n}
+        anteilig = any(a < 1.0 for _, a in paare)
+        total = sum(v * a for v, a in paare)
+        return {
+            # Anteilig gezählte Einwohner oder Gebäude sind eine Schätzung —
+            # halbe Menschen weist niemand aus.
+            "wert": float(round(total)) if anteilig else round(total, 2),
+            "zellen": len(paare),
+            "zellen_gesamt": self.n,
+            "zellen_anteilig": round(sum(a for _, a in paare), 1),
+        }
 
     def mean_weighted(self, field: str, weight_field: str = "Einwohner") -> dict[str, Any] | None:
         """Nach Einwohnern gewichtetes Mittel. Fällt auf das ungewichtete Mittel
@@ -171,7 +244,7 @@ class Aggregate:
             except (TypeError, ValueError):
                 continue
             try:
-                fw = float(w) if w is not None else 0.0
+                fw = float(w) * _anteil(c) if w is not None else 0.0
             except (TypeError, ValueError):
                 fw = 0.0
             pairs.append((fv, fw))
@@ -495,7 +568,7 @@ async def load(
             "zensus", err, int((time.perf_counter() - started) * 1000)
         )
 
-    cells = build_cells(features)
+    cells = gewichten(build_cells(features), lat, lon, radius)
     data = summarize(cells, lat, lon)
     data["zellen"] = cells  # Rohwerte je Zelle für Karte und Klick
 
@@ -520,7 +593,9 @@ async def load(
             note=(
                 "Zum Schutz der Einzelangaben liegt über den Werten eine stochastische "
                 "Überlagerung (Cell-Key-Methode). Einzelwerte summieren sich nicht zwingend "
-                "zur ausgewiesenen Summe. Zellen ohne Einwohner fehlen im Datensatz."
+                "zur ausgewiesenen Summe. Zellen ohne Einwohner fehlen im Datensatz. "
+                "Randzellen gehen anteilig nach der vom Umkreis überdeckten Fläche "
+                "in Summen und Mittelwerte ein; die Karte zeigt die ganze Zelle."
             ),
         ),
     )
