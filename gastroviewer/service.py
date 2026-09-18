@@ -186,10 +186,7 @@ class PointService:
 
         res = await self._cached("muenchen_rad_jahr", "muenchen_rad_jahr", laden)
         if not res.ok:
-            raise SourceError(
-                (res.error or {}).get("kind", "unknown"),
-                (res.error or {}).get("message", "unbekannter Fehler"),
-            )
+            raise SourceError.aus_dict(res.error)
         return res.data
 
     async def _indikatoren_stadt(self):
@@ -241,10 +238,7 @@ class PointService:
             "muenchen_indikatoren", "muenchen_indikatoren", laden
         )
         if not res.ok:
-            raise SourceError(
-                (res.error or {}).get("kind", "unknown"),
-                (res.error or {}).get("message", "unbekannter Fehler"),
-            )
+            raise SourceError.aus_dict(res.error)
         return res.data
 
     async def _airbnb_stadt(self, slug: str, refresh: bool = False) -> dict[str, Any]:
@@ -283,10 +277,7 @@ class PointService:
 
         res = await self._cached("airbnb", f"airbnb|{slug}", laden, refresh=refresh)
         if not res.ok:
-            raise SourceError(
-                (res.error or {}).get("kind", "unknown"),
-                (res.error or {}).get("message", "unbekannter Fehler"),
-            )
+            raise SourceError.aus_dict(res.error)
         return res.data
 
     async def airbnb(
@@ -449,10 +440,7 @@ class PointService:
         res = await self._cached("bast", f"bast|{bast_mod.JAHR}", laden,
                                  refresh=refresh)
         if not res.ok or not res.data:
-            raise SourceError(
-                (res.error or {}).get("kind", "unknown"),
-                (res.error or {}).get("message", "unbekannter Fehler"),
-            )
+            raise SourceError.aus_dict(res.error)
         return res.data["zaehlstellen"]
 
     async def verkehrsmenge(self, lat: float, lon: float, radius: int, refresh: bool = False):
@@ -495,10 +483,7 @@ class PointService:
         res = await self._cached("pks", f"pks|{pks_mod.JAHR}", laden,
                                  refresh=refresh)
         if not res.ok or not res.data:
-            raise SourceError(
-                (res.error or {}).get("kind", "unknown"),
-                (res.error or {}).get("message", "unbekannter Fehler"),
-            )
+            raise SourceError.aus_dict(res.error)
         return res.data["kreise"]
 
     async def pks(self, ags: str, refresh: bool = False):
@@ -531,10 +516,7 @@ class PointService:
         res = await self._cached("leerstandsmelder", "leerstandsmelder|welt",
                                  laden, refresh=refresh)
         if not res.ok or not res.data:
-            raise SourceError(
-                (res.error or {}).get("kind", "unknown"),
-                (res.error or {}).get("message", "unbekannter Fehler"),
-            )
+            raise SourceError.aus_dict(res.error)
         return res.data["meldungen"]
 
     async def leerstandsmelder(self, lat: float, lon: float, radius: int,
@@ -564,10 +546,7 @@ class PointService:
         res = await self._cached("luft_stationen", "luft|stationen", laden,
                                  refresh=refresh)
         if not res.ok or not res.data:
-            raise SourceError(
-                (res.error or {}).get("kind", "unknown"),
-                (res.error or {}).get("message", "unbekannter Fehler"),
-            )
+            raise SourceError.aus_dict(res.error)
         return res.data["stationen"]
 
     async def luft(self, lat: float, lon: float, refresh: bool = False):
@@ -595,10 +574,7 @@ class PointService:
         res = await self._cached("frequenz_augsburg", "frequenz|augsburg",
                                  laden, refresh=refresh)
         if not res.ok or not res.data:
-            raise SourceError(
-                (res.error or {}).get("kind", "unknown"),
-                (res.error or {}).get("message",
-                                      "Augsburger Frequenzdatei fehlt."))
+            raise SourceError.aus_dict(res.error, fallback="Augsburger Frequenzdatei fehlt.")
         return res.data["kurve"]
 
     async def frequenz(self, lat: float, lon: float, refresh: bool = False):
@@ -633,9 +609,7 @@ class PointService:
         res = await self._cached("ihk_berlin", "ihk_berlin|gastro", laden,
                                  refresh=refresh)
         if not res.ok or not res.data:
-            raise SourceError(
-                (res.error or {}).get("kind", "unknown"),
-                (res.error or {}).get("message", "IHK-Datei nicht ladbar."))
+            raise SourceError.aus_dict(res.error, fallback="IHK-Datei nicht ladbar.")
         return res.data["betriebe"]
 
     async def ihk_berlin(self, lat: float, lon: float, radius: int,
@@ -706,10 +680,7 @@ class PointService:
 
         res = await self._cached("wahl", "wahl|btw25", laden, refresh=refresh)
         if not res.ok or not res.data:
-            raise SourceError(
-                (res.error or {}).get("kind", "unknown"),
-                (res.error or {}).get("message", "unbekannter Fehler"),
-            )
+            raise SourceError.aus_dict(res.error)
         return res.data["zuordnung"], res.data["kreise"]
 
     async def wahl(self, ags: str, refresh: bool = False):
@@ -1094,10 +1065,7 @@ class PointService:
 
                 res = await self._cached("pendler", cache_id, holen)
                 if not res.ok:
-                    raise SourceError(
-                        (res.error or {}).get("kind", "unknown"),
-                        (res.error or {}).get("message", "unbekannter Fehler"),
-                    )
+                    raise SourceError.aus_dict(res.error)
                 return res.data
 
             # Berichtsjahr absteigend suchen (der Atlas begann mit 2021).

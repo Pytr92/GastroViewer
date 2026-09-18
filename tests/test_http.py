@@ -104,3 +104,64 @@ async def test_weiterleitung_bleibt_erlaubt_wo_niemand_sie_abschaltet(settings):
         assert await out.get_json("test", "https://d.example/alt") == {"ok": True}
     finally:
         await out.aclose()
+
+
+# ------------------------------------------- Netzpfad: Status, Protokoll, JSON
+
+
+async def test_status_ab_400_wird_zum_sourceerror_und_protokolliert(settings):
+    async def handler(request):
+        return httpx.Response(504, text="Gateway Timeout")
+
+    out = _outbound(settings, handler)
+    try:
+        with pytest.raises(SourceError) as info:
+            await out.get_json("overpass", "https://overpass.example/api")
+    finally:
+        await out.aclose()
+    assert info.value.kind == "http_status" and "504" in info.value.message
+    log = out.cache.sync.outbound_since(0)
+    assert len(log) == 1 and log[0]["status"] == 504 and log[0]["source"] == "overpass"
+
+
+async def test_zeitueberschreitung_wird_klassifiziert_und_protokolliert(settings):
+    async def handler(request):
+        raise httpx.ReadTimeout("zu langsam", request=request)
+
+    out = _outbound(settings, handler)
+    try:
+        with pytest.raises(SourceError) as info:
+            await out.get_json("zensus", "https://zensus.example/q")
+    finally:
+        await out.aclose()
+    assert info.value.kind == "timeout"
+    log = out.cache.sync.outbound_since(0)
+    assert len(log) == 1 and log[0]["status"] is None
+    assert log[0]["error"].startswith("timeout:")
+
+
+async def test_kaputtes_json_nennt_den_anfang_der_antwort(settings):
+    async def handler(request):
+        return httpx.Response(200, text="<html>Wartungsseite</html>")
+
+    out = _outbound(settings, handler)
+    try:
+        with pytest.raises(SourceError) as info:
+            await out.get_json("test", "https://d.example/x")
+    finally:
+        await out.aclose()
+    assert info.value.kind == "parse"
+    assert "Wartungsseite" in (info.value.detail or "")
+
+
+async def test_get_text_kodierung_wird_ueberschrieben(settings):
+    """DWD-Dateien sind Latin-1 und sagen das nicht."""
+    async def handler(request):
+        return httpx.Response(200, content="Größe".encode("latin-1"),
+                              headers={"content-type": "text/plain"})
+
+    out = _outbound(settings, handler)
+    try:
+        assert await out.get_text("dwd", "https://d.example/x", encoding="latin-1") == "Größe"
+    finally:
+        await out.aclose()

@@ -329,3 +329,10 @@ def test_abgelaufene_eintraege_werden_beim_oeffnen_und_stuendlich_geraeumt(tmp_p
     c2.set("frisch2", "zensus", {}, ttl=60)
     assert c2.stats()["total"] == 2, "alt2 geräumt, frisch und frisch2 bleiben"
     assert c2.aufraeumen() == {"cache": 0, "protokoll": 0}
+
+
+def test_sourceerror_aus_dict_nimmt_detail_mit():
+    e = SourceError.aus_dict({"kind": "http_status", "message": "HTTP 504", "detail": "Body"})
+    assert (e.kind, e.message, e.detail) == ("http_status", "HTTP 504", "Body")
+    leer = SourceError.aus_dict(None, fallback="IHK-Datei nicht ladbar.")
+    assert (leer.kind, leer.message, leer.detail) == ("unknown", "IHK-Datei nicht ladbar.", None)

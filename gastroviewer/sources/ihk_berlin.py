@@ -28,6 +28,7 @@ from typing import Any, Callable
 
 from ..http import Outbound
 from .base import Provenance, SourceError, SourceResult, haversine_m, now_iso
+from .berlin import STADT_BBOX as BERLIN_BBOX  # ein Stadtkasten, nicht drei Kopien
 
 # Wichtig: media.githubusercontent.com, nicht raw.githubusercontent.com —
 # letzteres liefert bei Git LFS nur den Zeiger, nicht die Datei
@@ -45,7 +46,6 @@ DATEIGROESSE_MB = 125
 NACE_GASTRONOMIE = "56"
 NACE_BEHERBERGUNG = "55"
 
-BERLIN_BBOX = (52.33, 13.08, 52.68, 13.77)
 STANDARD_RADIUS_M = 600
 
 HINWEISE = [

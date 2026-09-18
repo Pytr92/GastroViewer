@@ -20,11 +20,17 @@ Braucht Netz und einen importierten GTFS-Fahrplan. Exitcode 0 = ohne Befund,
 1 = Befunde.
 """
 
+import datetime as dt
 import json
+import re
 import sys
 import time
 import urllib.parse
 import urllib.request
+from pathlib import Path
+
+# Das Paket aus der Projektwurzel — für den Abgleich der WMS-Ebenen.
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 BASIS = (sys.argv[1] if len(sys.argv) > 1 else "http://127.0.0.1:8000").rstrip("/")
 M = (48.1372, 11.5755)     # Marienplatz
@@ -59,8 +65,14 @@ def hole(pfad, params=None, methode="GET", body=None, erwartet=200):
         return roh.decode("utf-8", "replace"), dauer, len(roh)
 
 
+GTFS_PRUEFUNGEN = ("t_gtfs",)
+
+
 def pruefe(name, fn):
     global geprueft
+    if GTFS_DA is False and fn.__name__ in GTFS_PRUEFUNGEN:
+        print(f"[ -- ] {name}\n       übersprungen: kein GTFS-Fahrplan importiert")
+        return
     geprueft += 1
     try:
         ergebnis = fn()
@@ -76,10 +88,19 @@ P = {"lat": M[0], "lon": M[1], "r": 600}
 
 # ------------------------------------------------------ Basis und Betrieb
 
+GTFS_DA = None
+
+
 def t_health():
+    global GTFS_DA
     d, dauer, _ = hole("/api/health")
     assert d["status"] == "ok" and "gastroviewer/" in d["user_agent"]
-    assert d["gtfs"]["importiert"] is True, "GTFS-Fahrplan fehlt"
+    GTFS_DA = bool(d["gtfs"]["importiert"])
+    if not GTFS_DA:
+        # Kein Befund: Ohne Import sind die GTFS-Prüfungen „übersprungen",
+        # nicht „gescheitert" — sonst meldet das Skript auf jedem frischen
+        # Rechner einen Fehler, der keiner ist.
+        return f"OHNE GTFS-Fahrplan (Fahrplanprüfungen werden übersprungen), {dauer*1000:.0f} ms"
     return f"GTFS importiert, {dauer*1000:.0f} ms"
 
 def t_stats():
@@ -131,9 +152,12 @@ def t_osm_live():
     d, dauer, _ = hole("/api/point/osm", {**P, "refresh": "true"})
     assert d["provenance"]["cached"] is False
     stand = d["provenance"]["stand"]
-    assert stand and stand.startswith("OSM-Datenstand 2026-08"), (
-        f"OSM-Stand nicht von heute: {stand}"
-    )
+    # Datum aus dem Stand lesen statt eines fest verdrahteten Monats — der
+    # alte Vergleich „2026-08" schlug ab dem 1. September zwangsläufig fehl.
+    m = re.search(r"(\d{4}-\d{2}-\d{2})", stand or "")
+    assert m, f"OSM-Stand ohne Datum: {stand}"
+    alter = (dt.date.today() - dt.date.fromisoformat(m.group(1))).days
+    assert 0 <= alter <= 7, f"OSM-Stand nicht von dieser Woche: {stand}"
     g = d["data"]["zusammenfassung"]["gastronomie"]
     assert g["gesamt"] > 300 and g["nach_entfernung"][0]["bis_m"] == 150
     return f"live in {dauer:.1f} s: {g['gesamt']} Betriebe, Datenstand {stand[:34]}…"
@@ -149,12 +173,16 @@ def t_gtfs():
 def t_radzaehlung():
     d, _, _ = hole("/api/point/radzaehlung", P)
     n = d["data"]["naechste"]
-    assert n["summe_vorjahr_jahr"] == 2025, f"Vorjahr veraltet: {n['summe_vorjahr_jahr']}"
+    # Das Jahr kommt aus den Feldnamen des Münchner Datensatzes, nicht aus
+    # der Uhr — im Januar darf es noch das vorletzte sein.
+    jahr = time.gmtime().tm_year
+    assert n["summe_vorjahr_jahr"] in {jahr - 1, jahr - 2}, (
+        f"Vorjahr veraltet: {n['summe_vorjahr_jahr']}")
     assert n["summe_laufender_monat"] and n["summe_laufender_monat"] > 0, (
         "kein laufender Monat — dann wäre es nicht live"
     )
-    return (f"{n['name']}: {n['summe_vorjahr']} Fahrten 2025, laufender Monat "
-            f"{n['summe_laufender_monat']} — der Dienst liefert aktuelle Zahlen")
+    return (f"{n['name']}: {n['summe_vorjahr']} Fahrten {n['summe_vorjahr_jahr']}, "
+            f"laufender Monat {n['summe_laufender_monat']} — der Dienst liefert aktuelle Zahlen")
 
 def t_verkehrsmenge():
     d, _, _ = hole("/api/point/verkehrsmenge",
@@ -268,8 +296,13 @@ def t_wms_nrw():
 def t_wms_ebenen():
     d, _, _ = hole("/api/wms/ebenen", {"bundesland_code": "09"})
     s = {e["schluessel"] for e in d["ebenen"]}
-    assert s == {"by_dop40", "by_verkehrsmengen", "by_laerm", "by_alkis"}
-    return "Bayern: Luftbild, Verkehrsmengen, Lärm, ALKIS"
+    # Gegen das Paket statt gegen eine feste Liste: seit den bundesweiten
+    # Lärm- und Hochwasser-Ebenen liefert Bayern sechs, nicht vier.
+    from gastroviewer.sources import wms
+    erwartet = {e["schluessel"] for e in wms.zusatzebenen("09")}
+    assert s == erwartet, f"Ebenen {sorted(s)} ≠ Paket {sorted(erwartet)}"
+    assert {"by_dop40", "by_alkis"} <= s
+    return f"Bayern: {len(s)} Ebenen, wie im Paket hinterlegt"
 
 def t_brw_live():
     d, _, _ = hole("/api/wms/bodenrichtwert",

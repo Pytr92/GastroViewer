@@ -25,6 +25,7 @@ from fastapi.responses import FileResponse, JSONResponse, PlainTextResponse, Res
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
+from . import __version__
 from .cache import STAENDE, STAND_SCHLUESSEL, AsyncCache, pruefe_punkt
 from .kriterien import ProfilFehler, moegliche_kriterien, pruefe_kriterium, pruefe_profil
 from .config import Settings, get_settings
@@ -213,7 +214,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app = FastAPI(
         title="Standort-Datenterminal",
         description="Offene Daten zu einem Punkt in Deutschland. Daten-Browser, kein Prognose-Tool.",
-        version="0.2.0",
+        version=__version__,
         lifespan=lifespan,
     )
     app.state.settings = settings or get_settings()

@@ -6,6 +6,9 @@ Plattformunabhängig: Pfade über pathlib, Datenverzeichnis im Home des Nutzers
 
 from __future__ import annotations
 
+from . import __version__
+
+import logging
 import os
 import re
 from dataclasses import dataclass, field
@@ -36,6 +39,73 @@ def default_data_dir() -> Path:
     if override:
         return Path(override).expanduser()
     return Path.home() / ".gastroviewer"
+
+
+# ------------------------------------------------------------- Cache-Dauern
+#
+# Je Quelle (Name aus service._cached) die TTL-Klasse: ein Attributname der
+# Settings oder eine feste Sekundenzahl — mit Begründung. Wer eine Quelle
+# ergänzt, trägt sie hier ein; tests/test_ttl.py prüft das per AST gegen
+# service.py und friert die Dauern ein, damit sie nicht unbemerkt wandern.
+TTL_KLASSEN: dict[str, str | int] = {
+    # --- Netz- und Wegeberechnungen: teuer, ändern sich in Wochen
+    "gehweg": "ttl_gehweg",         # Fußwegenetz, 1–3 MB je Punkt
+    "planung": "ttl_gehweg",        # Hochwasser, B-Plan, Erhaltungssatzung
+    "liefergebiet": "ttl_gehweg",   # Rad-Liefergebiet auf dem Wegenetz
+    "fahrzeit": "ttl_gehweg",       # Auto-Einzugsgebiet, größte Abfrage
+    # --- OSM und Kurzlebiges: ein Tag
+    "overpass": "ttl_osm",          # kombinierte Overpass-Abfrage je Punkt
+    "marke_basis": "ttl_osm",       # Gebietsschutz-Check (Overpass, 20 km)
+    "scan": "ttl_osm",              # Flächen-Scan je Kartenausschnitt
+    "vorschlaege": "ttl_osm",       # Adressvorschläge (Photon)
+    "oepnv_einzug": "ttl_osm",      # Runden-Router, lokal gerechnet
+    "muenchen_baustellen": "ttl_osm",  # rollierende Vier-Wochen-Vorschau
+    "hamburg_baustellen": "ttl_osm",   # dito Hamburg
+    "berlin_baustellen": "ttl_osm",    # dito Berlin
+    "leerstandsmelder": "ttl_osm",     # Weltbestand, laufend gemeldet, 3 MB
+    "leerstandsmelder_punkt": "ttl_osm",
+    "muenchen_rad": "ttl_osm",      # Raddauerzählstellen mit laufendem Monat
+    "hamburg_rad": "ttl_osm",       # dito Hamburg
+    "muenchen_messe": "ttl_osm",    # Messe-Kalender: kommende Termine
+    "muenchen_tourismus": "ttl_osm",  # Monatszahlen, monatlich fortgeschrieben
+    "hamburg_maerkte": "ttl_osm",   # Hamburger Marktliste wechselt saisonal —
+                                    # bewusst kürzer als die Münchner (30 d)
+    "baysis": "ttl_osm",            # BAYSIS-Verkehrsmengen (Dienstantwort)
+    # --- Amtliche Bestände: einmal im Jahr fortgeschrieben
+    "zensus": "ttl_zensus",         # Zensus 2022, Stichtag fest
+    "zensus_gitter": "ttl_zensus",  # Übersichtsgitter 1 km / 10 km
+    "nominatim_reverse": "ttl_nominatim",
+    "nominatim_search": "ttl_nominatim",
+    "einkommen": "ttl_zensus",      # Regionalatlas-Kreiswerte
+    "kreisprofil": "ttl_zensus",    # dito
+    "klima": "ttl_zensus",          # DWD-Normalperiode 1991–2020
+    "pendler": "ttl_zensus",        # Pendlerrechnung, ein Berichtsjahr
+    "dynamik": "ttl_zensus",        # OSM-Jahresreihe, Datenpunkt 1. Januar
+    "muenchen_rad_jahr": "ttl_zensus",  # abgeschlossenes Jahr
+    "laerm": "ttl_zensus",          # EU-Lärmkartierung, alle fünf Jahre
+    "muenchen_indikatoren": "ttl_zensus",  # Stadtbezirks-Jahresreihen
+    "muenchen_maerkte": "ttl_zensus",      # städtische Marktliste, selten geändert
+    "airbnb": "ttl_zensus",         # Inside Airbnb, quartalsweise
+    "genesis": "ttl_zensus",        # Regionaldatenbank, jährlich
+    "bast": "ttl_zensus",           # BASt-Jahresdatei, bundesweit
+    "bast_punkt": "ttl_zensus",
+    "pks": "ttl_zensus",            # BKA-Kreistabelle, Berichtsjahr
+    "pks_kreis": "ttl_zensus",
+    "luft_stationen": "ttl_zensus",  # Stationsliste, selten geändert
+    "wahl": "ttl_zensus",           # endgültiges Wahlergebnis
+    "wahl_gemeinde": "ttl_zensus",
+    "register": "ttl_zensus",       # eingefrorener lokaler Bestand
+    "kalender": "ttl_zensus",       # Feiertage und Ferien eines Jahres
+    "ihk_berlin": "ttl_zensus",     # IHK-Bestand, monatlich, 125 MB
+    "ihk_punkt": "ttl_zensus",
+    "baurecht": "ttl_zensus",       # Bebauungspläne, Jahre in Aufstellung
+    "frequenz": "ttl_zensus",       # Passantenfrequenz, Stundenmittel
+    "frequenz_augsburg": "ttl_zensus",
+    "sonne": "ttl_zensus",          # Besonnung hängt am Gebäudebestand
+    # --- Stundenwerte
+    "luft_punkt": 3600,             # Luftqualitätsindex, stündlich veröffentlicht
+}
+_TTL_GEWARNT: set[str] = set()
 
 
 @dataclass
@@ -71,7 +141,8 @@ class Settings:
             "GASTROVIEWER_CONTACT", "https://github.com/Pytr92/GastroViewer"
         )
     )
-    version: str = "0.2.0"
+    #: Aus gastroviewer/__init__.py — die eine Quelle der Versionsnummer.
+    version: str = __version__
 
     # --- Overpass ---
     overpass_endpoints: tuple[str, ...] = field(
@@ -204,100 +275,22 @@ class Settings:
         return f"gastroviewer/{self.version} ({self.contact})"
 
     def ttl_for(self, source: str) -> int:
-        if (source.startswith("gehweg") or source.startswith("planung")
-                or source.startswith("liefergebiet")
-                or source.startswith("fahrzeit")):
-            return self.ttl_gehweg
-        if source.startswith("overpass"):
+        """Cache-Dauer je Quelle — Nachschlag in TTL_KLASSEN, exakter Name.
+
+        Vorher eine Kette aus 30 ``startswith``-Zweigen: reihenfolgeabhängig,
+        mit toten Regeln, und 16 Quellen fielen still auf den Default. Jetzt
+        steht jede Quelle mit Klasse und Begründung in der Tabelle; ein
+        unbekannter Name bekommt die kurze OSM-Dauer (irrt Richtung
+        „frischer", nie Richtung „veraltet") und eine einmalige Warnung."""
+        klasse = TTL_KLASSEN.get(source)
+        if klasse is None:
+            if source not in _TTL_GEWARNT:
+                _TTL_GEWARNT.add(source)
+                logging.getLogger(__name__).warning(
+                    "Quelle %r hat keinen Eintrag in TTL_KLASSEN — kurze TTL "
+                    "(ttl_osm) als Rückfall.", source)
             return self.ttl_osm
-        if source.startswith("nominatim"):
-            return self.ttl_nominatim
-        if source.startswith("zensus"):
-            return self.ttl_zensus
-        # Regionalatlas-Kreiswerte (Einkommen, Kreisprofil) ändern sich
-        # einmal im Jahr.
-        if source.startswith("einkommen") or source.startswith("kreisprofil"):
-            return self.ttl_zensus
-        # DWD-Klimanormalwerte 1991–2020 sind bis zur nächsten Normalperiode
-        # fest — längste TTL im Werkzeug.
-        if source.startswith("klima"):
-            return self.ttl_zensus
-        # Pendlerrechnung: ein Berichtsjahr, einmal jährlich fortgeschrieben.
-        if source.startswith("pendler"):
-            return self.ttl_zensus
-        # OSM-Jahresreihe: der jüngste Datenpunkt ist der 1. Januar — vor dem
-        # Jahreswechsel ändert sich an der Reihe nichts Wesentliches.
-        if source.startswith("dynamik"):
-            return self.ttl_zensus
-        # Tageswerte-Jahresdatei der Radzählstellen: ein abgeschlossenes Jahr,
-        # fortgeschrieben erst mit dem nächsten Jahrgang.
-        if source.startswith("muenchen_rad_jahr"):
-            return self.ttl_zensus
-        # Lärmkartierung: EU-Rhythmus alle fünf Jahre.
-        if source.startswith("laerm"):
-            return self.ttl_zensus
-        # Stadtbezirks-Indikatoren: jährliche Fortschreibung, stadtweit ein
-        # Abruf — wie die Rad-Jahresdatei.
-        if source.startswith("muenchen_indikatoren"):
-            return self.ttl_zensus
-        # Städtische Marktliste: ändert sich selten.
-        if source.startswith("muenchen_maerkte"):
-            return self.ttl_zensus
-        # Baustellen-Vorschau: rollierende vier Wochen — bewusst die kurze
-        # TTL, damit „Neu laden" nicht der einzige Weg zu frischen Daten ist.
-        if source.startswith("muenchen_baustellen"):
-            return self.ttl_osm
-        # Inside Airbnb sammelt etwa quartalsweise; ein stadtweiter Datensatz
-        # je Stadt.
-        if source.startswith("airbnb"):
-            return self.ttl_zensus
-        # Regionaldatenbank (Umsatzsteuer, Gewerbeanzeigen): jährliche
-        # Fortschreibung, Kreiswerte.
-        if source.startswith("genesis"):
-            return self.ttl_zensus
-        # BASt-Jahresdatei: ein abgeschlossenes Jahr, bundesweit ein
-        # Download — wie die Rad-Jahresdatei.
-        if source.startswith("bast"):
-            return self.ttl_zensus
-        # BKA-Kreistabelle: ein Berichtsjahr, bundesweit ein Download.
-        if source.startswith("pks"):
-            return self.ttl_zensus
-        # Luftmessnetz: Stationsliste ändert sich selten, der
-        # Stundenindex am Punkt veraltet nach einer Stunde.
-        if source.startswith("luft_stationen"):
-            return self.ttl_zensus
-        if source.startswith("luft"):
-            return 3600
-        # Endgültiges Wahlergebnis: ändert sich bis zur nächsten Wahl
-        # nicht — längste TTL.
-        if source.startswith("wahl"):
-            return self.ttl_zensus
-        # Leerstandsmelder-Weltbestand: laufend gemeldet, aber ein einziger
-        # 3-MB-Abruf für alle Punkte — die kurze TTL hält ihn aktuell genug.
-        if source.startswith("leerstandsmelder"):
-            return self.ttl_osm
-        # Registerumfeld: eingefrorener lokaler Bestand, kein Netzabruf —
-        # die TTL betrifft nur den gerechneten PLZ-Auszug.
-        if source.startswith("register"):
-            return self.ttl_zensus
-        # Feiertage und Ferien eines Jahres stehen fest.
-        if source.startswith("kalender"):
-            return self.ttl_zensus
-        # IHK-Mitgliederbestand: monatlich fortgeschrieben, 125-MB-Datei.
-        if source.startswith("ihk"):
-            return self.ttl_zensus
-        # Bebauungspläne werden über Jahre aufgestellt, nicht über Tage.
-        if source.startswith("baurecht"):
-            return self.ttl_zensus
-        # Passantenfrequenz: Stundenmittel über Jahre — ein Tag mehr oder
-        # weniger verschiebt die Kurve nicht.
-        if source.startswith("frequenz"):
-            return self.ttl_zensus
-        # Besonnung: hängt am Gebäudebestand, und Häuser stehen lange.
-        # Die Rechnung selbst ist teuer genug, um sie nicht zu wiederholen.
-        if source.startswith("sonne"):
-            return self.ttl_zensus
-        return self.ttl_osm
+        return getattr(self, klasse) if isinstance(klasse, str) else int(klasse)
 
     def ensure_dirs(self) -> None:
         self.data_dir.mkdir(parents=True, exist_ok=True)

@@ -63,8 +63,7 @@ def test_abfrage_nutzt_crs84_statt_4326():
 
 
 def test_regionen_sparen_den_netzaufruf():
-    assert planung.in_bayern(48.1372, 11.5755) is True
-    assert planung.in_bayern(50.9413, 6.9583) is False
+    assert not hasattr(planung, "in_bayern"), "Bayern-Kasten liegt nur noch in bayern.py"
     assert planung.in_muenchen(48.1372, 11.5755) is True
     assert planung.in_muenchen(49.4521, 11.0767) is False, "Nürnberg ist nicht München"
 
@@ -309,7 +308,9 @@ async def test_stuttgart_liegt_im_bayern_kasten_bekommt_aber_den_bund(settings, 
         async def get_json(self, source, url, **kw):  # pragma: no cover
             raise AssertionError(f"LfU/München für Stuttgart gefragt: {source}")
 
-    assert planung.in_bayern(48.78, 9.18), "Vorbedingung: Stuttgart im alten Kasten"
+    from gastroviewer.sources import bayern
+
+    assert bayern.in_bayern(48.78, 9.18), "Vorbedingung: Stuttgart im alten Kasten"
     res = await planung.load(FakeOut(), settings, 48.78, 9.18, 600, bundesland_code="08")
     assert res.ok and res.data["hochwasser"]["dienst"] == "bfg"
     assert gesehen == ["bfg_hochwasser"]

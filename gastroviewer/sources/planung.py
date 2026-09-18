@@ -88,11 +88,12 @@ BUND_HOCHWASSER_LIZENZ = (
     "HWRM-Richtlinie. „Es gelten keine Zugriffsbeschränkungen“"
 )
 
-# Bayern grob. Nur noch Orientierung für Aufrufer ohne Zensus-Code —
-# die Dienstwahl in load() läuft über den Bundesland-Code, weil der
-# Kasten Stuttgart, Ulm, Konstanz und Fulda einschließt.
-BAYERN_BBOX = (47.20, 8.90, 50.60, 13.90)
-# München grob, für den städtischen Bebauungsplandienst.
+# München grob, für den städtischen Bebauungsplandienst. Bewusst enger als
+# baustellen.STADT_BBOX: Der B-Plan-Dienst ist strikt stadtgebietsgebunden,
+# außerhalb wäre „kein Plan" eine unehrliche Entwarnung. Die Bayern-Box
+# (bayern.BAYERN_BBOX) wird hier nicht mehr geführt — die Dienstwahl in
+# load() läuft über den Bundesland-Code, weil der Kasten Stuttgart, Ulm,
+# Konstanz und Fulda einschließt.
 MUENCHEN_BBOX = (48.05, 11.35, 48.25, 11.73)
 
 # Kantenlänge der Abfragebox in Grad. Rund 45 m — klein genug, dass der Treffer
@@ -102,10 +103,6 @@ BOX = 0.0004
 
 def _im_kasten(kasten: tuple[float, float, float, float], lat: float, lon: float) -> bool:
     return kasten[0] <= lat <= kasten[2] and kasten[1] <= lon <= kasten[3]
-
-
-def in_bayern(lat: float, lon: float) -> bool:
-    return _im_kasten(BAYERN_BBOX, lat, lon)
 
 
 def in_muenchen(lat: float, lon: float) -> bool:
