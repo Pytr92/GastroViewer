@@ -7,6 +7,7 @@ durchkommt, erzeugt keinen Traffic — die Grundlage für den Cache-Nachweis aus
 from __future__ import annotations
 
 import time
+from urllib.parse import urlsplit
 from typing import Any
 
 import httpx
@@ -92,13 +93,26 @@ class Outbound:
         *,
         limiter: str | None = None,
         min_interval: float = 0.0,
+        max_concurrent: int | None = None,
         timeout: float | None = None,
         **kwargs: Any,
     ) -> httpx.Response:
-        """Ein ausgehender Aufruf. Rate-Limit vorher, Protokoll immer."""
-        if limiter:
-            await self.limiters.get(limiter, min_interval).acquire()
+        """Ein ausgehender Aufruf. Rate-Limit vorher, Protokoll immer.
 
+        ``max_concurrent`` deckelt die gleichzeitig laufenden Anfragen des
+        Limiters — der Platz wird für die ganze Dauer der Anfrage gehalten,
+        der Mindestabstand gilt nur für den Start."""
+        if not limiter:
+            return await self._request(source, method, url, timeout=timeout, **kwargs)
+        lim = self.limiters.get(limiter, min_interval, max_concurrent)
+        async with lim.slot():
+            await lim.acquire()
+            return await self._request(source, method, url, timeout=timeout, **kwargs)
+
+    async def _request(
+        self, source: str, method: str, url: str, *,
+        timeout: float | None, **kwargs: Any,
+    ) -> httpx.Response:
         started = time.perf_counter()
         try:
             resp = await self.client.request(method, url, timeout=timeout, **kwargs)
@@ -116,6 +130,20 @@ class Outbound:
         )
         if resp.status_code >= 400:
             raise classify(httpx.HTTPStatusError("status", request=resp.request, response=resp))
+        if kwargs.get("follow_redirects") is False and 300 <= resp.status_code < 400:
+            # Wer Weiterleitungen abschaltet, will die Zugangsdaten nicht auf
+            # einem fremden Host sehen. httpx würde bei einer Weiterleitung
+            # nur "Authorization" entfernen, eigene Header wie GENESIS'
+            # username/password blieben. Ohne diese Prüfung käme die
+            # 3xx-Antwort als Erfolg mit leerem Body zurück.
+            ziel = resp.headers.get("location") or ""
+            host = urlsplit(ziel).netloc or ziel
+            raise SourceError(
+                "http_status",
+                f"Dienst leitet um (HTTP {resp.status_code}) — Zugangsdaten werden "
+                "nicht weitergegeben.",
+                detail=f"Ziel: {host}" if host else None,
+            )
         return resp
 
     async def get_json(self, source: str, url: str, **kwargs: Any) -> Any:

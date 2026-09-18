@@ -351,7 +351,9 @@ Punkt) und Mapillary (Straßenfotos, „virtuelle Begehung").
 Overpass ist ein Spendenprojekt, Nominatim läuft auf Spendenhardware. Deshalb:
 
 - **eine** kombinierte Overpass-Abfrage je Punkt statt einer pro Kategorie
-- Mindestabstand zwischen Abfragen, serialisiert auch bei parallelen Anfragen
+- höchstens **eine** Overpass-Abfrage gleichzeitig (Semaphore über die ganze
+  Anfrage) plus Mindestabstand zwischen zwei Starts — auch bei parallelen
+  Aufrufen verschiedener Blöcke (Gehweg, Fahrzeit, Besonnung, Marke)
 - Nominatim strikt auf 1 Anfrage/Sekunde gedrosselt
 - jede Antwort wird zwischengespeichert; der zweite Aufruf desselben Punkts erzeugt
   **keinen** ausgehenden Verkehr (nachprüfbar unter `/api/outbound`)

@@ -206,6 +206,10 @@ async def run_query(
                 timeout=settings.overpass_timeout,
                 limiter="overpass",
                 min_interval=settings.overpass_min_interval,
+                # Höchstens eine Overpass-Abfrage gleichzeitig — die
+                # Nutzungsbedingung, die config.py verspricht. Der Abstand
+                # allein deckelt nur die Starts, nicht die Abfragen in Flug.
+                max_concurrent=1,
             )
             if isinstance(payload, dict) and "remark" in payload and not payload.get("elements"):
                 raise SourceError(

@@ -89,8 +89,9 @@ class Settings:
     overpass_timeout: float = field(
         default_factory=lambda: _env_float("GASTROVIEWER_OVERPASS_TIMEOUT", 90.0)
     )
-    # Overpass ist ein Spendenprojekt: höchstens eine Abfrage gleichzeitig,
-    # Mindestabstand zwischen zwei Abfragen.
+    # Overpass ist ein Spendenprojekt: höchstens eine Abfrage gleichzeitig
+    # (Semaphore im Rate-Limiter, umschließt die ganze Anfrage) und dieser
+    # Mindestabstand zwischen zwei Starts.
     overpass_min_interval: float = field(
         default_factory=lambda: _env_float("GASTROVIEWER_OVERPASS_MIN_INTERVAL", 1.0)
     )

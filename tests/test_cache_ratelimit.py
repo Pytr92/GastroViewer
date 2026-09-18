@@ -200,3 +200,56 @@ def test_photon_aufrufe_teilen_einen_abstand():
 
     quelltext = inspect.getsource(nominatim)
     assert "min_interval=0.3" not in quelltext and quelltext.count("PHOTON_MIN_INTERVAL") >= 4
+
+
+async def test_hoechstens_eine_anfrage_gleichzeitig():
+    """Overpass: der Abstand deckelt nur die Starts — erst das Semaphore
+    hält den Platz für die ganze Dauer der Anfrage."""
+    import asyncio
+
+    lim = RateLimiter(0.0, max_concurrent=1)
+    in_flug = spitze = 0
+
+    async def anfrage():
+        nonlocal in_flug, spitze
+        async with lim.slot():
+            await lim.acquire()
+            in_flug += 1
+            spitze = max(spitze, in_flug)
+            await asyncio.sleep(0.05)
+            in_flug -= 1
+
+    await asyncio.gather(*[anfrage() for _ in range(3)])
+    assert spitze == 1
+    assert lim.stats()["in_flight"] == 0
+    assert lim.stats()["max_concurrent"] == 1
+
+
+async def test_ohne_obergrenze_laufen_anfragen_parallel():
+    import asyncio
+
+    lim = RateLimiter(0.0)
+    in_flug = spitze = 0
+
+    async def anfrage():
+        nonlocal in_flug, spitze
+        async with lim.slot():
+            in_flug += 1
+            spitze = max(spitze, in_flug)
+            await asyncio.sleep(0.05)
+            in_flug -= 1
+
+    await asyncio.gather(*[anfrage() for _ in range(3)])
+    assert spitze == 3, "ohne max_concurrent darf nichts gebremst werden"
+    assert lim.stats()["max_concurrent"] is None
+
+
+def test_limiter_registry_kennt_je_dienst_eine_obergrenze():
+    from gastroviewer.ratelimit import Limiters
+
+    reg = Limiters()
+    a = reg.get("overpass", 1.0, max_concurrent=1)
+    assert reg.get("overpass", 1.0) is a, "ohne Angabe gilt die vorhandene Grenze"
+    assert reg.get("overpass", 1.0, max_concurrent=1) is a
+    with pytest.raises(ValueError):
+        reg.get("overpass", 1.0, max_concurrent=2)
