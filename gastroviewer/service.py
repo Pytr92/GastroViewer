@@ -764,7 +764,6 @@ class PointService:
         async def laden() -> SourceResult:
             started = time.perf_counter()
             from .sources import gtfs as gtfs_mod
-            from .sources.base import haversine_m
 
             data = await asyncio.to_thread(
                 gtfs_mod.einzugsgebiet, self.settings, lat, lon, minuten)
@@ -790,20 +789,12 @@ class PointService:
                 n = max(h["lat"] for h in halte) + 0.015
                 gitter = await self.gitter("1km", w, s, o, n)
                 if gitter.ok and gitter.data:
-                    einwohner = 0
-                    zellen_mit_halt = 0
-                    for z in gitter.data["zellen"]:
-                        ring = z.get("ring") or []
-                        if not ring:
-                            continue
-                        clat = sum(p[1] for p in ring) / len(ring)
-                        clon = sum(p[0] for p in ring) / len(ring)
-                        if any(haversine_m(clat, clon, h["lat"], h["lon"]) <= 700
-                               for h in halte):
-                            zellen_mit_halt += 1
-                            ew = z.get("einwohner")
-                            if isinstance(ew, (int, float)) and ew > 0:
-                                einwohner += ew
+                    # Zellen × Halte per Haversine — bei 1.600 Zellen und
+                    # 2.000 Halten über eine Sekunde; deshalb geraster t und
+                    # im Worker-Thread, nicht im Event-Loop.
+                    einwohner, zellen_mit_halt = await asyncio.to_thread(
+                        gtfs_mod.einwohner_nahe_halten,
+                        gitter.data["zellen"], halte, 700)
                     data["einwohner_naeherung"] = round(einwohner)
                     data["einwohner_zellen"] = zellen_mit_halt
                     warnungen.extend(gitter.warnings or [])
@@ -850,7 +841,6 @@ class PointService:
         bislang nur, DASS sich Kreise überschneiden; hier steht, wie viele
         Menschen sich die Kandidaten teilen."""
         from .sources.base import haversine_m
-        from .sources.zensus import build_cells, fetch_cells, gewichten
 
         dist = haversine_m(a["lat"], a["lon"], b["lat"], b["lon"])
         grunddaten = {
@@ -879,12 +869,23 @@ class PointService:
         def schluessel(zelle):
             return zelle.get("GITTER_ID_100m") or tuple(zelle.get("_center") or ())
 
-        zellen_a = gewichten(build_cells((await fetch_cells(
-            self.outbound, self.settings, a["lat"], a["lon"], a["radius"]))[0]),
-            a["lat"], a["lon"], a["radius"])
-        zellen_b = gewichten(build_cells((await fetch_cells(
-            self.outbound, self.settings, b["lat"], b["lon"], b["radius"]))[0]),
-            b["lat"], b["lon"], b["radius"])
+        # Über den Zensus-Block je Punkt (Cache, 30 Tage): Beide Punkte sind
+        # gemerkt, ihr Zensus-Stand liegt unter genau diesem Schlüssel. Vorher
+        # gingen je Aufruf zwei Live-Abrufe an den Gitterdienst hinaus, und
+        # ein Dienstfehler endete als 500.
+        res_a, res_b = await asyncio.gather(
+            self.zensus(a["lat"], a["lon"], a["radius"]),
+            self.zensus(b["lat"], b["lon"], b["radius"]))
+        for res in (res_a, res_b):
+            if not res.ok or res.data is None:
+                fehler = res.error or {}
+                raise SourceError(fehler.get("kind", "unknown"),
+                                  fehler.get("message", "Zensus nicht verfügbar"),
+                                  detail=fehler.get("detail"))
+        zellen_a = res_a.data.get("zellen") or []
+        zellen_b = res_b.data.get("zellen") or []
+        warnungen = [w for w in (res_a.warnings or []) + (res_b.warnings or [])
+                     if "Gitterzelle" not in w]
 
         # Dieselbe Flächengewichtung wie im Zensus-Block je Punkt, damit
         # einwohner_a der dort ausgewiesenen Einwohnerzahl entspricht. Für
@@ -913,6 +914,7 @@ class PointService:
                 "Gezählt werden Zensuszellen, die beide Umkreise berühren, "
                 "anteilig nach der überdeckten Fläche — dieselbe Regel wie "
                 "in den Einwohnerzahlen der einzelnen Punkte.",
+                *dict.fromkeys(warnungen),
             ],
         }
 

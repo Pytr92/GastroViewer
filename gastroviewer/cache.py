@@ -110,9 +110,15 @@ def cache_key(source: str, lat: float, lon: float, radius: float | int, *, extra
 
 
 class Cache:
+    #: Outbound-Protokoll: älter als das wird beim Aufräumen gelöscht.
+    PROTOKOLL_TAGE = 90
+    #: Aufräumen aus set() höchstens einmal je Intervall (Sekunden).
+    AUFRAEUM_INTERVALL = 3600
+
     def __init__(self, path: Path) -> None:
         self.path = Path(path)
         self.path.parent.mkdir(parents=True, exist_ok=True)
+        self._zuletzt_aufgeraeumt = 0.0
         self._init_db()
 
     def _connect(self) -> sqlite3.Connection:
@@ -127,6 +133,30 @@ class Cache:
             # Eine Datenbank aus einer früheren Fassung soll weiterlaufen, statt
             # den Nutzer seine gemerkten Punkte zu kosten.
             self._nachruesten(conn)
+            self._aufraeumen(conn)
+
+    def _aufraeumen(self, conn: sqlite3.Connection) -> dict[str, int]:
+        """Abgelaufene Einträge und altes Protokoll löschen.
+
+        get() räumt nur den Schlüssel, der gerade gelesen wird — punktbezogene
+        Schlüssel (quelle|lat|lon|radius) liest nach einem einmaligen Klick
+        praktisch nie jemand wieder, sie blieben also für immer liegen
+        (0,5 bis 3,5 MB je Punkt). Läuft beim Öffnen und höchstens einmal
+        je Stunde aus set(). Nicht aus stats(): die Zahl „abgelaufen" soll
+        weiter etwas zeigen. Die Datei schrumpft ohne VACUUM nicht, freie
+        Seiten werden wiederverwendet."""
+        now = time.time()
+        geloescht = conn.execute(
+            "DELETE FROM cache WHERE expires_at < ?", (now,)).rowcount
+        protokoll = conn.execute(
+            "DELETE FROM outbound_log WHERE ts < ?",
+            (now - self.PROTOKOLL_TAGE * 24 * 3600,)).rowcount
+        self._zuletzt_aufgeraeumt = now
+        return {"cache": geloescht, "protokoll": protokoll}
+
+    def aufraeumen(self) -> dict[str, int]:
+        with self._connect() as conn:
+            return self._aufraeumen(conn)
 
     # ------------------------------------------------------------------ Cache
 
@@ -155,6 +185,8 @@ class Cache:
                 " VALUES (?,?,?,?,?)",
                 (key, source, json.dumps(payload, ensure_ascii=False), now, now + ttl),
             )
+            if now - self._zuletzt_aufgeraeumt > self.AUFRAEUM_INTERVALL:
+                self._aufraeumen(conn)
         return now
 
     def delete(self, key: str) -> None:

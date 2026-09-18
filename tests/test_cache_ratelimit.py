@@ -299,3 +299,33 @@ def test_import_direkt_prueft_alles_oder_nichts(tmp_path):
         c.import_points({**basis, "punkte": [gut, {**gut, "radius": 99999}]})
     assert c.list_points() == [], "der gültige erste Punkt darf nicht allein landen"
     assert c.import_points({**basis, "punkte": [gut]}) == {"neu": 1, "uebersprungen": 0}
+
+
+# ------------------------------------------------------------ Aufräumen
+
+
+def test_abgelaufene_eintraege_werden_beim_oeffnen_und_stuendlich_geraeumt(tmp_path):
+    """get() räumte nur den Schlüssel, der gerade gelesen wird — punktbezogene
+    Einträge liest nach einem Klick nie wieder jemand, sie blieben für immer."""
+    c = Cache(tmp_path / "t.sqlite")
+    c.set("alt", "zensus", {"a": 1}, ttl=-1)
+    c.set("frisch", "zensus", {"a": 2}, ttl=60)
+    jetzt = time.time()
+    with c._connect() as conn:
+        for alter_s, url in ((100 * 86400, "uralt"), (48 * 3600, "vorgestern")):
+            conn.execute(
+                "INSERT INTO outbound_log (ts, source, url) VALUES (?, 'overpass', ?)",
+                (jetzt - alter_s, url))
+    assert c.stats()["total"] == 2, "stats() räumt bewusst nicht auf"
+
+    c2 = Cache(tmp_path / "t.sqlite")  # Öffnen räumt
+    s = c2.stats()
+    assert s["total"] == 1
+    assert s["outbound_requests_total"] == 1, "90 Tage altes Protokoll ist weg, 48 h bleiben"
+
+    c2.set("alt2", "zensus", {}, ttl=-1)
+    assert c2.stats()["total"] == 2, "innerhalb der Stunde kein zweites Aufräumen"
+    c2._zuletzt_aufgeraeumt = 0.0
+    c2.set("frisch2", "zensus", {}, ttl=60)
+    assert c2.stats()["total"] == 2, "alt2 geräumt, frisch und frisch2 bleiben"
+    assert c2.aufraeumen() == {"cache": 0, "protokoll": 0}

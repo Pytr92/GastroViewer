@@ -2102,18 +2102,34 @@ def test_kannibalisierung_meldet_zensus_ausfall_statt_500(
         client, zensus_600, overpass_combined, nominatim_reverse):
     """Der einzige Endpunkt, der eine Quelle am Block-Mechanismus vorbei
     aufruft: ein Zensus-Ausfall ist 502 mit Ursache, kein 500."""
-    for label in ("K-A", "K-B"):
-        client.post("/api/points", json={
-            "label": label, "lat": LAT, "lon": LON, "radius": R})
-    ids = {p["label"]: p["id"] for p in client.get("/api/points").json()["punkte"]}
     kaputt = FakeOutbound(zensus_600, overpass_combined, nominatim_reverse,
                           fehler={"zensus"})
     c2 = client.make(kaputt)
     with c2:
+        # Punkte mit ausgefallenem Zensus merken — dann liegt kein Zensus-
+        # Stand im Cache, und der Check muss den Dienst selbst fragen.
+        for label in ("K-A", "K-B"):
+            c2.post("/api/points", json={
+                "label": label, "lat": LAT + 0.01, "lon": LON, "radius": R})
+        ids = {p["label"]: p["id"] for p in c2.get("/api/points").json()["punkte"]}
         r = c2.get("/api/points/kannibalisierung",
                    params={"a": ids["K-A"], "b": ids["K-B"]})
     assert r.status_code == 502
     assert "Zeitüberschreitung" in r.json()["detail"]
+
+
+def test_kannibalisierung_nutzt_den_zensus_cache(client):
+    """Beide Punkte sind gemerkt, ihr Zensus-Stand liegt im Cache — der
+    Check darf keinen neuen Abruf beim Gitterdienst auslösen."""
+    for label in ("C-A", "C-B"):
+        client.post("/api/points", json={
+            "label": label, "lat": LAT, "lon": LON, "radius": R})
+    ids = {p["label"]: p["id"] for p in client.get("/api/points").json()["punkte"]}
+    vorher = client.fake.calls.count("zensus")
+    d = client.get("/api/points/kannibalisierung",
+                   params={"a": ids["C-A"], "b": ids["C-B"]}).json()
+    assert d["ueberlappung"] is True and d["anteil_an_a_prozent"] == 100.0
+    assert client.fake.calls.count("zensus") == vorher
 
 
 # ------------------------------------------------- Import: Struktur und Bereich
