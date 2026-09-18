@@ -98,3 +98,21 @@ async def test_load_ohne_netz_ist_ein_befund_kein_absturz(settings):
     res = await liefergebiet.load(FakeOut(), settings, *ISAR, 10, None)
     assert res.ok and res.data is None
     assert any("kein befahrbares Wegenetz" in w for w in res.warnings)
+
+
+async def test_zensus_ausfall_wird_benannt(elemente, settings):
+    from gastroviewer.sources import liefergebiet
+
+    class FakeOut:
+        async def post_json(self, source, url, **kw):
+            return {"elements": elemente}
+
+    res = await liefergebiet.load(FakeOut(), settings, *ISAR, 10, None,
+                                  zensus_warnungen=["Zeitüberschreitung"])
+    assert res.ok and res.data["einwohner_liefergebiet"] is None
+    assert any("Zensus" in w and "Zeitüberschreitung" in w for w in res.warnings)
+    assert "Zensus" not in res.provenance.source
+
+    leer = await liefergebiet.load(FakeOut(), settings, *ISAR, 10, [])
+    assert leer.data["einwohner_liefergebiet"] == 0 and leer.data["zellen_im_liefergebiet"] == 0
+    assert not any("Zensus-Abruf" in w for w in leer.warnings)

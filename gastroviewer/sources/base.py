@@ -32,6 +32,17 @@ class SourceError(Exception):
     def to_dict(self) -> dict[str, Any]:
         return {"kind": self.kind, "message": self.message, "detail": self.detail}
 
+    @classmethod
+    def aus_dict(cls, fehler: dict[str, Any] | None, *,
+                 fallback: str = "unbekannter Fehler") -> "SourceError":
+        """Rückweg aus ``SourceResult.error`` — für Helfer, die ein gecachtes
+        Ergebnis als Ausnahme weiterreichen. Nimmt ``detail`` mit, das in den
+        elf handgeschriebenen Kopien dieses Blocks verloren ging."""
+        d = fehler or {}
+        return cls(str(d.get("kind") or "unknown"),
+                   str(d.get("message") or fallback),
+                   detail=d.get("detail"))
+
 
 @dataclass
 class Provenance:

@@ -213,6 +213,7 @@ def test_vorgaben_aus_punkt_uebernimmt_die_echten_zahlen(zensus_600, overpass_co
     assert v["einwohner"] == 16370.0
     assert v["wettbewerber"] == 26
     assert "118 Gitterzellen" in v["einwohner_herkunft"]
+    assert "Randzellen zählen voll" in v["einwohner_herkunft"], "ohne _anteil keine Gewichtung"
     assert "Untergrenze" in v["wettbewerber_herkunft"]
     assert v["wettbewerber_alternative"]["alle_gastronomie"] == 270
     assert v["bon_min"] == 7.15

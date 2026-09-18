@@ -109,3 +109,29 @@ def test_trend_faellt_auf_fruehestes_jahr_zurueck():
     assert indikatoren._trend([]) is None
     einzeln = indikatoren._trend([[2025, 5.0]])
     assert einzeln["delta"] is None
+
+
+def test_unlesbare_csv_wird_benannt_statt_verschwiegen():
+    """Geänderte Spalten oder fehlende Ausprägung: Warnung, kein stilles Loch."""
+    from gastroviewer.sources import indikatoren as ind
+
+    erste = ind.INDIKATOREN[0]
+    # Eine Datei kann mehrere Kennzahlen tragen — je Kennzahl eine Warnung.
+    gleiche_datei = [i for i in ind.INDIKATOREN if i["datei"] == erste["datei"]]
+    texte = {erste["datei"]: "Spalte_A;Spalte_B\n1;2\n"}
+    kompakt, warnungen = ind.reduzieren_mit_warnungen(texte)
+    assert kompakt == {}
+    assert len(warnungen) == len(gleiche_datei)
+    assert all("Spalten" in w for w in warnungen) and erste["schluessel"] in warnungen[0]
+
+    kopf = "Ausprägung,Raumbezug,Jahr,Indikatorwert\n"
+    texte = {erste["datei"]: kopf + "ganz andere Ausprägung,Stadt,2024,1.0\n"}
+    kompakt, warnungen = ind.reduzieren_mit_warnungen(texte)
+    assert kompakt == {} and all("Ausprägung" in w for w in warnungen)
+
+    texte = {erste["datei"]: kopf + f"{erste['auspraegung']},Stadt,2024,1.5\n"}
+    kompakt, warnungen = ind.reduzieren_mit_warnungen(texte)
+    assert kompakt == {erste["schluessel"]: {"Stadt": [[2024, 1.5]]}}
+    assert not any(f"„{erste['schluessel']}“" in w for w in warnungen)
+    assert len(warnungen) == len(gleiche_datei) - 1
+    assert ind.reduzieren(texte) == kompakt

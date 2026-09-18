@@ -689,10 +689,17 @@ def pruefe_score(page) -> str:
     vorher = text(page, "#inhalt-score")
     page.eval_on_selector(
         "#inhalt-score input[type=range]",
-        "e=>{e.value='0';e.dispatchEvent(new Event('input'))}")
+        "e=>{e.dataset.probe='1';e.focus();e.value='0';e.dispatchEvent(new Event('input'))}")
     page.wait_for_timeout(300)
     nachher = text(page, "#inhalt-score")
     fordere(vorher != nachher, "Gewichtsänderung ändert die Anzeige nicht")
+    # Der Regler, an dem gezogen wird, muss den Schritt überleben — vorher
+    # baute jeder input-Schritt den Block neu und riss den Regler unter dem
+    # Zeiger weg (Drag brach ab, Tastaturfokus sprang hinaus).
+    fordere(page.evaluate(
+        "() => { const e = document.querySelector('#inhalt-score input[data-probe]');"
+        " return !!e && e.isConnected && document.activeElement === e; }"),
+        "der Gewichtsregler wurde beim Ziehen ersetzt oder verlor den Fokus")
     page.evaluate("() => localStorage.removeItem('gastroviewer.score.gewichte')")
     page.evaluate("() => zeigeScore()")
     return f"{st}, {regler} Regler, Anker ausgewiesen"

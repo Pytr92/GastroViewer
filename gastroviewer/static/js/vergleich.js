@@ -15,6 +15,7 @@ import { NF, NF1, nfFest, zahl } from './format.js';
 import { el, kennzahl, fehlerbox, hinweisZeile } from './dom.js';
 import { ueberlappungen } from './geometrie.js';
 import { kriterienBereich } from './kriterien.js';
+import { state } from './state.js';
 
 let nachPunkteAenderung = () => {};
 
@@ -462,7 +463,11 @@ async function kannibalisierungRechnen(paar, knopf) {
   let d;
   try {
     const r = await fetch(`/api/points/kannibalisierung?a=${paar.aId}&b=${paar.bId}`);
-    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    if (!r.ok) {
+      let detail = `HTTP ${r.status}`;
+      try { const j = await r.json(); detail = j.detail || j.fehler || detail; } catch { /* egal */ }
+      throw new Error(detail);
+    }
     d = await r.json();
   } catch (e) {
     box.replaceChildren(el('div', { class: 'fehlerbox' },

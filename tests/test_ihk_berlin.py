@@ -94,3 +94,16 @@ def test_lfs_hinweis_steht_in_der_url():
     """raw.githubusercontent.com liefert bei Git LFS nur den Zeiger —
     der Endpunkt muss media.githubusercontent.com sein."""
     assert ihk_berlin.CSV_URL.startswith("https://media.githubusercontent.com")
+
+
+def test_parse_nimmt_bytes_mit_bom():
+    """Die 125-MB-Datei wird als Bytes gelesen; die BOM frisst utf-8-sig."""
+    from gastroviewer.sources import ihk_berlin
+
+    kopf = ("branch_top_level_id,latitude,longitude,postcode,ihk_branch_desc,"
+            "nace_desc,business_age,employees_range,Planungsraum,Bezirk\n")
+    zeile = f"{ihk_berlin.NACE_GASTRONOMIE},52.52,13.40,10115,Gastro,Restaurants,5,1-5,PR1,Mitte\n"
+    roh = ("\ufeff" + kopf + zeile).encode("utf-8")
+    b = ihk_berlin.parse_gastro(roh)
+    assert len(b) == 1 and b[0]["plz"] == "10115" and b[0]["abschnitt"] == ihk_berlin.NACE_GASTRONOMIE
+    assert ihk_berlin.parse_gastro(roh.decode("utf-8")) == b

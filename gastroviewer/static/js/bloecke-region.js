@@ -2007,6 +2007,9 @@ function zeigeLinks(d) {
   setzeBrwEbene(b.bundesland_code);
   setzeZusatzebenen(b.bundesland_code);
   const brw = brwBlock(b);
+  // Nie zwei Bodenrichtwert-Blöcke (doppelte Element-IDs), auch wenn
+  // eine Antwort das Gerüst zweimal erreicht.
+  document.getElementById('block-bodenrichtwert')?.remove();
   document.getElementById('block-quellen')?.before(brw);
 
   teile.push(el('h3', { class: 'hinweis-klein' }, 'Bodenrichtwert-Portale'));

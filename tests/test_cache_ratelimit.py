@@ -178,3 +178,161 @@ def test_stats_ohne_verkehr_meldet_null_statt_zu_fehlen(tmp_path):
     assert s["outbound_24h"] == 0
     assert s["outbound_24h_je_dienst"] == {}
     assert s["overpass_24h"] == 0
+
+
+def test_limiter_registry_kennt_je_dienst_einen_abstand():
+    """Gleicher Name, anderer Abstand: ein Programmierfehler, kein stilles
+    „der erste gewinnt"."""
+    from gastroviewer.ratelimit import Limiters
+
+    reg = Limiters()
+    a = reg.get("photon", 0.5)
+    assert reg.get("photon", 0.5) is a
+    with pytest.raises(ValueError) as info:
+        reg.get("photon", 1.0)
+    assert "photon" in str(info.value)
+
+
+def test_photon_aufrufe_teilen_einen_abstand():
+    import inspect
+
+    from gastroviewer.sources import nominatim
+
+    quelltext = inspect.getsource(nominatim)
+    assert "min_interval=0.3" not in quelltext and quelltext.count("PHOTON_MIN_INTERVAL") >= 4
+
+
+async def test_hoechstens_eine_anfrage_gleichzeitig():
+    """Overpass: der Abstand deckelt nur die Starts — erst das Semaphore
+    hält den Platz für die ganze Dauer der Anfrage."""
+    import asyncio
+
+    lim = RateLimiter(0.0, max_concurrent=1)
+    in_flug = spitze = 0
+
+    async def anfrage():
+        nonlocal in_flug, spitze
+        async with lim.slot():
+            await lim.acquire()
+            in_flug += 1
+            spitze = max(spitze, in_flug)
+            await asyncio.sleep(0.05)
+            in_flug -= 1
+
+    await asyncio.gather(*[anfrage() for _ in range(3)])
+    assert spitze == 1
+    assert lim.stats()["in_flight"] == 0
+    assert lim.stats()["max_concurrent"] == 1
+
+
+async def test_ohne_obergrenze_laufen_anfragen_parallel():
+    import asyncio
+
+    lim = RateLimiter(0.0)
+    in_flug = spitze = 0
+
+    async def anfrage():
+        nonlocal in_flug, spitze
+        async with lim.slot():
+            in_flug += 1
+            spitze = max(spitze, in_flug)
+            await asyncio.sleep(0.05)
+            in_flug -= 1
+
+    await asyncio.gather(*[anfrage() for _ in range(3)])
+    assert spitze == 3, "ohne max_concurrent darf nichts gebremst werden"
+    assert lim.stats()["max_concurrent"] is None
+
+
+def test_limiter_registry_kennt_je_dienst_eine_obergrenze():
+    from gastroviewer.ratelimit import Limiters
+
+    reg = Limiters()
+    a = reg.get("overpass", 1.0, max_concurrent=1)
+    assert reg.get("overpass", 1.0) is a, "ohne Angabe gilt die vorhandene Grenze"
+    assert reg.get("overpass", 1.0, max_concurrent=1) is a
+    with pytest.raises(ValueError):
+        reg.get("overpass", 1.0, max_concurrent=2)
+
+
+# ------------------------------------------------------- Bereichsregel
+
+
+@pytest.mark.parametrize("lat, lon, radius, erwartet", [
+    ("48", 11.5, 600, "Zahl"),
+    (True, 11.5, 600, "Zahl"),
+    (48.1, 11.5, 600.0, "ganze Zahl"),
+    (91, 11.5, 600, "gültigen Bereichs"),
+    (48.85, 2.35, 600, "Deutschlands"),
+    (48.1, 11.5, 49, "50 und 5000"),
+    (48.1, 11.5, 5001, "50 und 5000"),
+])
+def test_pruefe_punkt_weist_ab(lat, lon, radius, erwartet):
+    from gastroviewer.cache import pruefe_punkt
+
+    with pytest.raises(ValueError) as info:
+        pruefe_punkt(lat, lon, radius)
+    assert erwartet in str(info.value)
+
+
+def test_pruefe_punkt_nimmt_gueltige_werte():
+    from gastroviewer.cache import pruefe_punkt
+
+    assert pruefe_punkt(48.1334, 11.5674, 600) is None
+    assert pruefe_punkt(48, 11, 50) is None
+
+
+def test_import_direkt_prueft_alles_oder_nichts(tmp_path):
+    """Auch ohne API-Schicht: Typen und Bereich vor dem ersten INSERT —
+    entweder die ganze Sicherung oder nichts davon."""
+    c = Cache(tmp_path / "t.sqlite")
+    basis = {"format": c.EXPORT_FORMAT, "version": c.EXPORT_VERSION}
+    gut = {"label": "gut", "lat": 48.1, "lon": 11.5, "radius": 600,
+           "created_at": 1.0, "payload": {}}
+    with pytest.raises(ValueError, match="Liste"):
+        c.import_points({**basis, "punkte": {"a": 1}})
+    with pytest.raises(ValueError, match="Bezeichnung"):
+        c.import_points({**basis, "punkte": [{**gut, "label": None}]})
+    with pytest.raises(ValueError, match="Anlagezeitpunkt"):
+        c.import_points({**basis, "punkte": [{**gut, "created_at": "gestern"}]})
+    with pytest.raises(ValueError, match="Punkt 2 .*Radius"):
+        c.import_points({**basis, "punkte": [gut, {**gut, "radius": 99999}]})
+    assert c.list_points() == [], "der gültige erste Punkt darf nicht allein landen"
+    assert c.import_points({**basis, "punkte": [gut]}) == {"neu": 1, "uebersprungen": 0}
+
+
+# ------------------------------------------------------------ Aufräumen
+
+
+def test_abgelaufene_eintraege_werden_beim_oeffnen_und_stuendlich_geraeumt(tmp_path):
+    """get() räumte nur den Schlüssel, der gerade gelesen wird — punktbezogene
+    Einträge liest nach einem Klick nie wieder jemand, sie blieben für immer."""
+    c = Cache(tmp_path / "t.sqlite")
+    c.set("alt", "zensus", {"a": 1}, ttl=-1)
+    c.set("frisch", "zensus", {"a": 2}, ttl=60)
+    jetzt = time.time()
+    with c._connect() as conn:
+        for alter_s, url in ((100 * 86400, "uralt"), (48 * 3600, "vorgestern")):
+            conn.execute(
+                "INSERT INTO outbound_log (ts, source, url) VALUES (?, 'overpass', ?)",
+                (jetzt - alter_s, url))
+    assert c.stats()["total"] == 2, "stats() räumt bewusst nicht auf"
+
+    c2 = Cache(tmp_path / "t.sqlite")  # Öffnen räumt
+    s = c2.stats()
+    assert s["total"] == 1
+    assert s["outbound_requests_total"] == 1, "90 Tage altes Protokoll ist weg, 48 h bleiben"
+
+    c2.set("alt2", "zensus", {}, ttl=-1)
+    assert c2.stats()["total"] == 2, "innerhalb der Stunde kein zweites Aufräumen"
+    c2._zuletzt_aufgeraeumt = 0.0
+    c2.set("frisch2", "zensus", {}, ttl=60)
+    assert c2.stats()["total"] == 2, "alt2 geräumt, frisch und frisch2 bleiben"
+    assert c2.aufraeumen() == {"cache": 0, "protokoll": 0}
+
+
+def test_sourceerror_aus_dict_nimmt_detail_mit():
+    e = SourceError.aus_dict({"kind": "http_status", "message": "HTTP 504", "detail": "Body"})
+    assert (e.kind, e.message, e.detail) == ("http_status", "HTTP 504", "Body")
+    leer = SourceError.aus_dict(None, fallback="IHK-Datei nicht ladbar.")
+    assert (leer.kind, leer.message, leer.detail) == ("unknown", "IHK-Datei nicht ladbar.", None)

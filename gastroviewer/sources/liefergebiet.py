@@ -126,7 +126,7 @@ def _rechne(elements: list[dict[str, Any]], lat: float, lon: float,
     # Einwohner im erreichten Gebiet — Zellmittelpunkt-Näherung.
     einwohner = None
     zellen_drin = None
-    if zellen:
+    if zellen is not None:
         summe = 0.0
         drin = 0
         for z in zellen:
@@ -161,6 +161,7 @@ async def load(
     lon: float,
     minuten: int,
     zellen: list[dict[str, Any]] | None,
+    zensus_warnungen: list[str] | None = None,
 ) -> SourceResult:
     started = time.perf_counter()
     minuten = max(MIN_MINUTEN, min(MAX_MINUTEN, int(minuten)))
@@ -176,6 +177,14 @@ async def load(
 
     elements = payload.get("elements", []) if isinstance(payload, dict) else []
     warnungen = list(problems)
+    if zellen is None:
+        # Ohne Zensuszellen gibt es keine Einwohnerzahl — das war vorher ein
+        # stilles None. Der Grund (Zensus ausgefallen) gehört in den Block.
+        warnungen.append(
+            "Einwohner im Liefergebiet nicht berechenbar — der Zensus-Abruf "
+            "ist ausgefallen"
+            + (": " + "; ".join(zensus_warnungen) if zensus_warnungen else ".")
+        )
     # Parsen, Netzaufbau, Dijkstra und Zellenschleife sind CPU-Arbeit — bei
     # 15 Minuten über 100 000 Knoten. Im Event-Loop blockierten sie jeden
     # anderen Abruf; deshalb ein einziger Thread-Aufruf (nicht drei), damit
@@ -206,7 +215,8 @@ async def load(
         duration_ms=int((time.perf_counter() - started) * 1000),
         warnings=warnungen,
         provenance=Provenance(
-            source="OpenStreetMap Wegenetz über Overpass · Zensus 2022",
+            source=("OpenStreetMap Wegenetz über Overpass · Zensus 2022"
+                    if zellen is not None else "OpenStreetMap Wegenetz über Overpass"),
             license=LICENSE,
             endpoint=endpoint,
             stand=(payload.get("osm3s") or {}).get("timestamp_osm_base"),

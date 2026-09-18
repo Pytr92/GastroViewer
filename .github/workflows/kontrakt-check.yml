@@ -1,0 +1,35 @@
+# Monatliche Gegenprobe der Datenverträge — vier leichte Metadaten-Abrufe
+# (Zensus-Felder, WMS-GetCapabilities, DWD-Dateinamen, CKAN-Datensätze).
+#
+# Die Testsuite läuft bewusst offline; dieser Lauf ist der einzige, der
+# nach draußen fragt. Er ersetzt keinen Datenabruf und erzeugt keinen
+# nennenswerten Verkehr. Hinweis: GitHub schaltet `schedule` nach 60 Tagen
+# ohne Aktivität im Repository ab — `workflow_dispatch` bleibt als Handstart.
+
+name: Kontrakt-Check
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 5 1 * *"
+
+jobs:
+  vertraege:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Paket installieren
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install .
+
+      - name: Verträge gegenprüfen
+        env:
+          GASTROVIEWER_CONTACT: ${{ secrets.GASTROVIEWER_CONTACT }}
+        run: python scripts/kontrakt_check.py

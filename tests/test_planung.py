@@ -63,8 +63,7 @@ def test_abfrage_nutzt_crs84_statt_4326():
 
 
 def test_regionen_sparen_den_netzaufruf():
-    assert planung.in_bayern(48.1372, 11.5755) is True
-    assert planung.in_bayern(50.9413, 6.9583) is False
+    assert not hasattr(planung, "in_bayern"), "Bayern-Kasten liegt nur noch in bayern.py"
     assert planung.in_muenchen(48.1372, 11.5755) is True
     assert planung.in_muenchen(49.4521, 11.0767) is False, "Nürnberg ist nicht München"
 
@@ -309,7 +308,9 @@ async def test_stuttgart_liegt_im_bayern_kasten_bekommt_aber_den_bund(settings, 
         async def get_json(self, source, url, **kw):  # pragma: no cover
             raise AssertionError(f"LfU/München für Stuttgart gefragt: {source}")
 
-    assert planung.in_bayern(48.78, 9.18), "Vorbedingung: Stuttgart im alten Kasten"
+    from gastroviewer.sources import bayern
+
+    assert bayern.in_bayern(48.78, 9.18), "Vorbedingung: Stuttgart im alten Kasten"
     res = await planung.load(FakeOut(), settings, 48.78, 9.18, 600, bundesland_code="08")
     assert res.ok and res.data["hochwasser"]["dienst"] == "bfg"
     assert gesehen == ["bfg_hochwasser"]
@@ -326,3 +327,29 @@ async def test_ohne_code_laeuft_der_bundesdienst_auch_in_bayern(settings, bfg_ho
 
     res = await planung.load(FakeOut(), settings, 48.1372, 11.5755, 600)
     assert res.ok and res.data["hochwasser"]["dienst"] == "bfg"
+
+
+def test_bund_serviceexception_ist_kein_nicht_betroffen():
+    """Gültiges XML, aber ein Fehlerbericht des Dienstes: Fehler, nicht „kein
+    Hochwasser"."""
+    from gastroviewer.sources.base import SourceError
+
+    xml = (
+        '<?xml version="1.0"?>'
+        '<ServiceExceptionReport version="1.3.0" xmlns="http://www.opengis.net/ogc">'
+        '<ServiceException code="LayerNotDefined">Layer NZ.HazardArea not found</ServiceException>'
+        '</ServiceExceptionReport>'
+    )
+    with pytest.raises(SourceError) as info:
+        planung.bund_hochwasser_aufbereiten(xml)
+    assert info.value.kind == "api_error"
+    assert "LayerNotDefined" in info.value.message and "not found" in info.value.message
+
+
+def test_bund_fremde_wurzel_wird_benannt():
+    from gastroviewer.sources.base import SourceError
+
+    with pytest.raises(SourceError) as info:
+        planung.bund_hochwasser_aufbereiten("<html><body>Wartung</body></html>")
+    assert info.value.kind == "parse"
+    assert "html" in info.value.message

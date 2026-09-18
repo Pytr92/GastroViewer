@@ -676,7 +676,15 @@ def vorgaben_aus_punkt(punkt: dict[str, Any]) -> dict[str, Any]:
     bloecke = punkt.get("bloecke") or {}
     z = (bloecke.get("zensus") or {}).get("data") or {}
     o = (bloecke.get("osm") or {}).get("data") or {}
-    einwohner = ((z.get("bevoelkerung") or {}).get("einwohner") or {}).get("wert")
+    einwohner_block = (z.get("bevoelkerung") or {}).get("einwohner") or {}
+    einwohner = einwohner_block.get("wert")
+    zellen = einwohner_block.get("zellen", 0)
+    zellen_anteilig = einwohner_block.get("zellen_anteilig")
+    if isinstance(zellen_anteilig, (int, float)) and zellen_anteilig < zellen:
+        randzellen = (f"Randzellen anteilig nach überdeckter Fläche "
+                      f"(entspricht {zellen_anteilig:.0f} ganzen Zellen)")
+    else:
+        randzellen = "Randzellen zählen voll"
     gastro = (o.get("zusammenfassung") or {}).get("gastronomie") or {}
     schnell = (gastro.get("nach_typ") or {}).get("Schnellrestaurant", 0)
     miete = (z.get("wohnen") or {}).get("miete_qm") or {}
@@ -689,8 +697,8 @@ def vorgaben_aus_punkt(punkt: dict[str, Any]) -> dict[str, Any]:
         # mit HTTP 422 abbrechen — das sähe aus wie ein Fehler des Werkzeugs.
         "einwohner": einwohner if einwohner is not None else 0,
         "einwohner_herkunft": (
-            f"Zensus 2022, Summe über {((z.get('bevoelkerung') or {}).get('einwohner') or {}).get('zellen', 0)} "
-            f"Gitterzellen im Radius {punkt.get('punkt', {}).get('radius_m')} m"
+            f"Zensus 2022, Summe über {zellen} Gitterzellen im Radius "
+            f"{punkt.get('punkt', {}).get('radius_m')} m, {randzellen}"
             if einwohner is not None
             else "keine Zensuszelle im Umkreis"
         ),

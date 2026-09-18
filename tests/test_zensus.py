@@ -20,8 +20,9 @@ def test_fixture_ist_die_echte_antwort(zensus_600):
 
 
 def test_alle_spec_felder_existieren_im_dienst(zensus_meta):
-    """§4.1 listet die Feldnamen. Phase 0 hat sie bestätigt — hier festgehalten,
-    damit eine Umbenennung beim Anbieter sofort auffällt."""
+    """§4.1 listet die Feldnamen. Geprüft wird gegen die aufgezeichnete
+    Feldliste aus Phase 0 (Fixture gegen Fixture) — die Live-Gegenprobe
+    beim Dienst macht scripts/kontrakt_check.py (monatlicher Workflow)."""
     vorhanden = {f["name"] for f in zensus_meta["fields"]}
     fehlend = [f for f in zensus.FIELDS if f not in vorhanden]
     assert not fehlend, f"Diese Felder gibt es im Dienst nicht mehr: {fehlend}"
@@ -198,3 +199,68 @@ def test_ohne_gebaeudedaten_kein_neubauwert_und_kein_hinweis():
     s = zensus.summarize(zensus.build_cells(roh["features"]), 48.1334, 11.5674)
     assert s["wohnen"]["neubau_anteil"] is None
     assert not any("15.05.2022" in h for h in s["hinweise"])
+
+
+# ------------------------------------------------ Flächenanteil im Umkreis
+
+
+def _quadrat(clat, clon, seite_m=100.0):
+    """Ring einer achsparallelen Zelle um (clat, clon), Punkte als [lon, lat]."""
+    import math
+
+    dlat = seite_m / 2 / 111_320
+    dlon = seite_m / 2 / (111_320 * math.cos(math.radians(clat)))
+    return [[clon - dlon, clat - dlat], [clon + dlon, clat - dlat],
+            [clon + dlon, clat + dlat], [clon - dlon, clat + dlat],
+            [clon - dlon, clat - dlat]]
+
+
+def test_flaechenanteil_kreis_in_der_zelle():
+    """Kreis r=40 m mitten in einer 100-m-Zelle: π·40²/100² ≈ 0,50."""
+    zelle = {"_ring": _quadrat(LAT, LON)}
+    anteil = zensus.flaechenanteil(zelle, LAT, LON, 40, raster=20)
+    assert abs(anteil - 0.503) < 0.03, anteil
+
+
+def test_flaechenanteil_randfaelle():
+    zelle = {"_ring": _quadrat(LAT, LON)}
+    assert zensus.flaechenanteil(zelle, LAT, LON, 600) == 1.0, "ganz im Kreis"
+    weit = {"_ring": _quadrat(LAT + 0.01, LON)}  # gut 1 km nördlich
+    assert zensus.flaechenanteil(weit, LAT, LON, 600) == 0.0, "berührt den Kreis nicht"
+    # Halb im Kreis: Zelle, deren Westkante durch den Kreismittelpunkt läuft,
+    # bei großem Radius (Kreisrand fast gerade) → rund die Hälfte … nein:
+    # die ganze Zelle liegt im Kreis. Halb heißt: Kreisrand durch die Mitte.
+    halb = {"_ring": _quadrat(LAT, LON + 600 / (111_320 * 0.667))}
+    anteil = zensus.flaechenanteil(halb, LAT, LON, 600, raster=20)
+    assert 0.4 < anteil < 0.6, anteil
+    assert zensus.flaechenanteil({"Einwohner": 5}, LAT, LON, 600) == 1.0, "ohne Ring voll"
+
+
+def test_randzellen_zaehlen_anteilig(zensus_600):
+    """Der Dienst liefert jede Zelle, die den Kreis berührt. Voll gezählt
+    sind das bei r=600 rund ein Viertel zu viel — Kreisfläche 1,13 km²
+    entspricht 113 Zellen, geliefert werden 118 volle, davon viele nur
+    angeschnitten."""
+    cells = zensus.gewichten(zensus.build_cells(zensus_600["features"]), LAT, LON, 600)
+    voll = sum(f["attributes"]["Einwohner"] for f in zensus_600["features"]
+               if f["attributes"].get("Einwohner") is not None)
+    data = zensus.summarize(cells, LAT, LON)
+    e = data["bevoelkerung"]["einwohner"]
+    assert e["zellen"] == 118, "die Zahl der berührenden Zellen bleibt"
+    assert 90 < e["zellen_anteilig"] < 118
+    assert 12_500 < e["wert"] < 14_000 and e["wert"] < voll, e
+    assert e["wert"] == round(e["wert"]), "anteilige Einwohner sind ganze Zahlen"
+    mitte = zensus.pick_center_cell(cells, LAT, LON)
+    assert mitte["_anteil"] == 1.0
+    assert any(c["_anteil"] < 1.0 for c in cells)
+    # Gewichtete Mittel bleiben im Wertebereich, nur das Gewicht ändert sich.
+    alter = data["bevoelkerung"]["durchschnittsalter"]
+    assert alter["min"] <= alter["wert"] <= alter["max"]
+
+
+def test_ohne_gewichte_bleibt_die_volle_summe(zensus_600):
+    """Zellen ohne _anteil (alte Cache-Einträge, Fixtures) zählen voll —
+    und weisen zellen_anteilig == zellen aus."""
+    cells = zensus.build_cells(zensus_600["features"])
+    e = zensus.summarize(cells, LAT, LON)["bevoelkerung"]["einwohner"]
+    assert e["wert"] == 16370.0 and e["zellen_anteilig"] == 118

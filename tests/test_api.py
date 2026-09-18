@@ -29,7 +29,7 @@ class FakeOutbound:
 
     def __init__(self, zensus, overpass, nominatim, einkommen=None,
                  kreisprofil=None, dwd=None, pendler=None, ohsome=None,
-                 laerm=None, fehler: set[str] | None = None,
+                 laerm=None, fehler: set[str] | None = None, photon=None,
                  baustellen=None, maerkte=None, indikatoren=None,
                  airbnb=None, messe=None, tourismus=None,
                  uba=None, bfg_hochwasser=None,
@@ -44,6 +44,7 @@ class FakeOutbound:
         self.overpass = overpass
         self.gebaeude = gebaeude or {"elements": []}
         self.nominatim = nominatim
+        self.photon = photon or {"reverse": {"features": []}, "search": {"features": []}}
         self.einkommen = einkommen or {"features": []}
         # Fixture je Tabelle — Einkommen und Kreisprofil teilen sich Endpunkt
         # und URL, unterscheiden sich nur im layer-Parameter.
@@ -145,8 +146,17 @@ class FakeOutbound:
             if "nominatim" in self.fehler:
                 raise SourceError("http_status", "HTTP 403 — Zugriff abgelehnt.")
             return self.nominatim
+        if "photon" in url:
+            # Rückfall-Geocoder: ohne diesen Zweig lief der Adressblock bei
+            # Nominatim-Ausfall in „unerwartete URL" statt in den Rückfall.
+            self.calls.append("photon")
+            if "photon" in self.fehler:
+                raise SourceError("timeout", "Zeitüberschreitung — Dienst antwortet nicht.")
+            return self.photon["reverse"] if "reverse" in url else self.photon["search"]
         if "pendleratlas" in url:
             self.calls.append("pendler")
+            if "pendler" in self.fehler:
+                raise SourceError("http_status", "HTTP 404 — Dienst antwortet nicht.")
             name = url.rsplit("/", 1)[-1]
             if name.startswith("gemeinden_2024"):
                 return self.pendler["gemeinden"]
@@ -619,7 +629,9 @@ def test_punkt_merken_und_vergleichen(client):
         assert pflicht in keys
     zeile = v["zeilen"][0]
     assert zeile["label"] == "Kandidat A"
-    assert zeile["einwohner"] == 16370.0
+    # 118 Zellen berühren den Kreis; anteilig nach überdeckter Fläche sind
+    # es 13.303 Einwohner statt 16.370 voll gezählter (zensus.gewichten).
+    assert zeile["einwohner"] == 13303.0
 
     pid = r.json()["id"]
     assert client.delete(f"/api/points/{pid}").status_code == 200
@@ -796,7 +808,7 @@ def test_vergleich_csv(client):
     kopf = r.text.splitlines()[0]
     for spalte in ("Bezeichnung", "Adresse", "Einwohner"):
         assert spalte in kopf, f"{spalte} fehlt im CSV-Kopf"
-    assert "16370" in r.text
+    assert "13303" in r.text
 
 
 def test_csv_erzeugung_ohne_daten_bricht_nicht():
@@ -819,7 +831,9 @@ def test_cache_leeren(client):
 def test_outbound_log_ist_abrufbar(client):
     client.get("/api/point", params={"lat": LAT, "lon": LON, "r": R})
     d = client.get("/api/outbound").json()
-    # FakeOutbound umgeht das Protokoll, deshalb nur Struktur prüfen.
+    # FakeOutbound umgeht das Protokoll, deshalb hier nur die Struktur —
+    # den echten Netzpfad samt Protokoll prüft tests/test_http.py gegen
+    # einen httpx.MockTransport.
     assert "anzahl" in d and "eintraege" in d
 
 
@@ -828,9 +842,10 @@ def test_outbound_log_ist_abrufbar(client):
 
 def test_schaetzung_vorgaben_kommen_aus_den_punktdaten(client):
     d = client.get("/api/schaetzung/vorgaben", params={"lat": LAT, "lon": LON, "r": R}).json()
-    assert d["einwohner"] == 16370.0
+    assert d["einwohner"] == 13303.0
     assert d["wettbewerber"] == 26
     assert "Zensus 2022" in d["einwohner_herkunft"]
+    assert "anteilig" in d["einwohner_herkunft"] and "118 Gitterzellen" in d["einwohner_herkunft"]
     assert "Untergrenze" in d["wettbewerber_herkunft"]
     assert d["referenzwerte"] and all(r["quelle"] for r in d["referenzwerte"])
     assert len(d["formel"]) == 6
@@ -2044,3 +2059,232 @@ def test_pruefung_ohne_jede_bewegliche_quelle_speichert_nichts(client):
     d = r.json()
     assert d["ok"] is False and d["gespeichert"] is False
     assert client.get(f"/api/points/{pid}/verlauf").json()["anzahl"] == vorher
+
+
+def test_profil_mit_unbekannter_kennzahl_wird_abgewiesen(client):
+    """Ein Tippfehler im Kriterien-Key zählte für jeden Standort als
+    „nicht prüfbar" — jetzt 422 mit Namen, auch ohne gemerkte Punkte."""
+    r = client.post("/api/points/kriterien", json={"kriterien": [
+        {"key": "einwohnr", "richtung": "min", "wert": 1000}]})
+    assert r.status_code == 422
+    assert "einwohnr" in r.json()["detail"]
+    r = client.post("/api/points/kriterien", json={"kriterien": [
+        {"key": "einwohner", "richtung": "min", "wert": 1000}]})
+    assert r.status_code == 200
+
+
+# ------------------------------------------------------- Eingabefehler (422)
+
+
+def test_eingabefehler_kommen_als_deutscher_text(client):
+    """Pydantic weist englisch und als Liste ab — die Oberfläche zeigt
+    ``detail`` als Text und machte daraus „[object Object]". Jetzt: ein
+    Satz, der das Feld nennt."""
+    r = client.post("/api/schaetzung", json={
+        "einwohner": 16370, "wettbewerber": 26, "besuche_je_einwohner": 60.3,
+        "bon_min": 7.15, "bon_max": 10.21, "oeffnungstage": 0,
+    })
+    assert r.status_code == 422
+    detail = r.json()["detail"]
+    assert isinstance(detail, str)
+    assert "oeffnungstage" in detail and "größer als 0" in detail
+
+    r = client.get("/api/point", params={"lat": "abc", "lon": LON})
+    assert r.status_code == 422
+    assert "Feld lat: muss eine Zahl sein" in r.json()["detail"]
+
+    r = client.post("/api/points", json={"lat": LAT, "lon": LON})
+    assert r.status_code == 422
+    assert "Feld label: fehlt" in r.json()["detail"]
+
+
+def test_validierungsfehler_text_nennt_pfad_und_faellt_zurueck():
+    from gastroviewer.api import validierungsfehler_text
+
+    text = validierungsfehler_text([
+        {"loc": ("body", "punkte", 2, "lat"), "type": "float_parsing", "msg": "x"},
+        {"loc": ("query", "r"), "type": "voellig_neu", "msg": "Input should be prime"},
+    ])
+    assert "Feld punkte[2].lat: muss eine Zahl sein" in text
+    assert "Feld r: Input should be prime" in text
+    assert validierungsfehler_text([]) == "Ungültige Eingabe."
+
+
+def test_kannibalisierung_meldet_zensus_ausfall_statt_500(
+        client, zensus_600, overpass_combined, nominatim_reverse):
+    """Der einzige Endpunkt, der eine Quelle am Block-Mechanismus vorbei
+    aufruft: ein Zensus-Ausfall ist 502 mit Ursache, kein 500."""
+    kaputt = FakeOutbound(zensus_600, overpass_combined, nominatim_reverse,
+                          fehler={"zensus"})
+    c2 = client.make(kaputt)
+    with c2:
+        # Punkte mit ausgefallenem Zensus merken — dann liegt kein Zensus-
+        # Stand im Cache, und der Check muss den Dienst selbst fragen.
+        for label in ("K-A", "K-B"):
+            c2.post("/api/points", json={
+                "label": label, "lat": LAT + 0.01, "lon": LON, "radius": R})
+        ids = {p["label"]: p["id"] for p in c2.get("/api/points").json()["punkte"]}
+        r = c2.get("/api/points/kannibalisierung",
+                   params={"a": ids["K-A"], "b": ids["K-B"]})
+    assert r.status_code == 502
+    assert "Zeitüberschreitung" in r.json()["detail"]
+
+
+def test_kannibalisierung_nutzt_den_zensus_cache(client):
+    """Beide Punkte sind gemerkt, ihr Zensus-Stand liegt im Cache — der
+    Check darf keinen neuen Abruf beim Gitterdienst auslösen."""
+    for label in ("C-A", "C-B"):
+        client.post("/api/points", json={
+            "label": label, "lat": LAT, "lon": LON, "radius": R})
+    ids = {p["label"]: p["id"] for p in client.get("/api/points").json()["punkte"]}
+    vorher = client.fake.calls.count("zensus")
+    d = client.get("/api/points/kannibalisierung",
+                   params={"a": ids["C-A"], "b": ids["C-B"]}).json()
+    assert d["ueberlappung"] is True and d["anteil_an_a_prozent"] == 100.0
+    assert client.fake.calls.count("zensus") == vorher
+
+
+# ------------------------------------------------- Import: Struktur und Bereich
+
+
+def test_import_prueft_struktur_und_wertebereich(client):
+    """Falsche Struktur war ein TypeError (HTTP 500); Koordinaten und Radius
+    gingen ungeprüft in die Datenbank und von dort an Overpass."""
+    sicherung = client.get("/api/points/export").json()
+    for kaputt in ({"a": 1}, "punkte", ["x"], [{"label": "nur Label"}]):
+        r = client.post("/api/points/import", json={**sicherung, "punkte": kaputt})
+        assert r.status_code == 422, kaputt
+        assert isinstance(r.json()["detail"], str)
+        assert "punkte" in r.json()["detail"], r.json()
+
+    basis = {"label": "Import-Probe", "lat": LAT, "lon": LON, "radius": R,
+             "created_at": 1.0, "payload": {}}
+    faelle = (
+        ({"lat": "abc"}, "muss eine Zahl sein"),
+        ({"radius": "abc"}, "ganze Zahl"),
+        ({"lat": 999}, "Koordinaten außerhalb"),
+        ({"lat": 48.85, "lon": 2.35}, "außerhalb Deutschlands"),
+        ({"radius": -5}, "zwischen 50 und 5000"),
+        ({"radius": 999999}, "zwischen 50 und 5000"),
+    )
+    overpass_vorher = client.fake.calls.count("overpass")
+    for aenderung, erwartet in faelle:
+        r = client.post("/api/points/import",
+                        json={**sicherung, "punkte": [{**basis, **aenderung}]})
+        assert r.status_code == 422, aenderung
+        assert erwartet in r.json()["detail"], (aenderung, r.json())
+    labels = [p["label"] for p in client.get("/api/points").json()["punkte"]]
+    assert "Import-Probe" not in labels, "kein Punkt darf gespeichert sein"
+    assert client.fake.calls.count("overpass") == overpass_vorher
+
+    # Und ein gültiger Punkt geht weiterhin durch — mit Verlauf und Notiz.
+    gut = {**basis, "notiz": "aus Sicherung", "bewertung": 4,
+           "verlauf": [{"ts": 2.0, "payload": {"bloecke": {}}}]}
+    r = client.post("/api/points/import", json={**sicherung, "punkte": [gut]})
+    assert r.status_code == 200 and r.json()["neu"] == 1
+
+
+def test_alter_bestand_ausserhalb_des_bereichs_geht_nicht_an_overpass(client):
+    """Ein vor der Importprüfung eingespielter Punkt mit Radius 99999:
+    „Neu prüfen" und der Wächter weisen ihn ab, statt die größte Abfrage
+    des Werkzeugs auszulösen."""
+    cache = client.app.state.cache.sync
+    with cache._connect() as conn:
+        cur = conn.execute(
+            "INSERT INTO saved_points(label, lat, lon, radius, created_at, payload)"
+            " VALUES (?,?,?,?,?,?)",
+            ("Altbestand", LAT, LON, 99999, 1.0, json.dumps({"bloecke": {}})),
+        )
+        pid = cur.lastrowid
+    overpass_vorher = client.fake.calls.count("overpass")
+    r = client.post(f"/api/points/{pid}/pruefung")
+    assert r.status_code == 422 and "5000" in r.json()["detail"]
+    r = client.get(f"/api/points/{pid}/waechter")
+    assert r.status_code == 422
+    assert client.fake.calls.count("overpass") == overpass_vorher
+
+
+
+# ------------------------------------------------ Fehlerpfade auf API-Ebene
+
+
+def test_zensus_ausfall_laesst_die_kreisbloecke_sauber_leer(
+        client, zensus_600, overpass_combined, nominatim_reverse, uba_laerm):
+    """Ohne Zensus gibt es keinen Gemeindeschlüssel: die Kreisblöcke sagen
+    das, statt zu raten, und der Lärmblock nimmt den bundesweiten UBA-Pfad."""
+    kaputt = FakeOutbound(zensus_600, overpass_combined, nominatim_reverse,
+                          fehler={"zensus"},
+                          uba={"35": uba_laerm["leer"], "30": uba_laerm["hlq_den"],
+                               "29": uba_laerm["hlq_night"]})
+    c2 = client.make(kaputt)
+    with c2:
+        d = c2.get("/api/point", params={"lat": LAT, "lon": LON, "r": R}).json()
+    assert d["bloecke"]["zensus"]["ok"] is False
+    assert d["bloecke"]["zensus"]["error"]["kind"] == "timeout"
+    assert d["punkt"].get("ags") is None
+    for block in ("einkommen", "kreisprofil", "pendler", "pks", "wahl"):
+        b = d["bloecke"][block]
+        assert b["ok"] is True and b["data"] is None, block
+        assert any("Gemeindeschlüssel" in w for w in b["warnings"]), (block, b["warnings"])
+    laerm = d["bloecke"]["laerm"]
+    assert laerm["ok"] is True and (laerm["data"] or {}).get("dienst") == "uba"
+    assert d["bloecke"]["osm"]["ok"] is True, "die übrigen Blöcke laufen weiter"
+
+
+def test_nominatim_ausfall_faellt_auf_photon_zurueck(
+        client, zensus_600, overpass_combined, nominatim_reverse, photon):
+    kaputt = FakeOutbound(zensus_600, overpass_combined, nominatim_reverse,
+                          fehler={"nominatim"}, photon=photon)
+    c2 = client.make(kaputt)
+    with c2:
+        d = c2.get("/api/point/adresse", params={"lat": LAT, "lon": LON}).json()
+    assert d["ok"] is True
+    assert "Photon" in d["provenance"]["source"]
+    assert any("Photon" in w or "Nominatim" in w for w in d["warnings"])
+    assert "photon" in kaputt.calls
+
+
+def test_beide_geocoder_tot_nennt_den_nominatim_fehler(
+        client, zensus_600, overpass_combined, nominatim_reverse):
+    kaputt = FakeOutbound(zensus_600, overpass_combined, nominatim_reverse,
+                          fehler={"nominatim", "photon"})
+    c2 = client.make(kaputt)
+    with c2:
+        d = c2.get("/api/point/adresse", params={"lat": LAT, "lon": LON}).json()
+    assert d["ok"] is False
+    assert "403" in d["error"]["message"], "der ursprüngliche Nominatim-Fehler zählt"
+
+
+def test_dwd_totalausfall_und_teilausfall(
+        client, zensus_600, overpass_combined, nominatim_reverse, dwd_klima):
+    kaputt = FakeOutbound(zensus_600, overpass_combined, nominatim_reverse,
+                          dwd=dwd_klima, fehler={"dwd"})
+    c2 = client.make(kaputt)
+    with c2:
+        d = c2.get("/api/point/klima", params={"lat": LAT, "lon": LON}).json()
+    assert d["ok"] is False and d["error"]["kind"] in ("timeout", "api_error")
+
+    # Eine Datei fehlt: der Block bleibt da und nennt den fehlenden Parameter.
+    teil = dict(dwd_klima)
+    fehlend = next(k for k in teil if "Sommertage" in k)
+    del teil[fehlend]
+    halb = FakeOutbound(zensus_600, overpass_combined, nominatim_reverse, dwd=teil)
+    c3 = client.make(halb)
+    with c3:
+        d = c3.get("/api/point/klima", params={"lat": LAT, "lon": LON}).json()
+    assert d["ok"] is True
+    assert any("Sommertage" in w for w in d["warnings"]), d["warnings"]
+
+
+def test_pendler_gemeindeliste_404_ist_ein_benannter_fehler(
+        client, zensus_600, overpass_combined, nominatim_reverse):
+    kaputt = FakeOutbound(zensus_600, overpass_combined, nominatim_reverse,
+                          fehler={"pendler"})
+    c2 = client.make(kaputt)
+    with c2:
+        d = c2.get("/api/pendler", params={"ags": "09162000"}).json()
+    # Welche der Pendler-Anfragen zuerst scheitert (Jahres-Sondierung per
+    # Text oder Gemeindeliste als JSON), entscheidet die Art — benannt ist
+    # sie in jedem Fall, nie „unknown".
+    assert d["ok"] is False and d["error"]["kind"] in ("http_status", "timeout")
+    assert "Dienst" in d["error"]["message"]

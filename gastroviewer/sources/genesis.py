@@ -179,6 +179,10 @@ async def logincheck(
         timeout=30.0,
         limiter="genesis",
         min_interval=1.0,
+        # Kennung und Passwort gehen als eigene Header. httpx entfernt bei
+        # einer Weiterleitung auf einen anderen Host nur "Authorization" —
+        # die Zugangsdaten landeten sonst im Klartext beim Zielhost.
+        follow_redirects=False,
     )
     try:
         payload = json.loads(text)
@@ -671,6 +675,10 @@ async def _tabelle(
         timeout=90.0,
         limiter="genesis",
         min_interval=1.0,
+        # Kennung und Passwort gehen als eigene Header. httpx entfernt bei
+        # einer Weiterleitung auf einen anderen Host nur "Authorization" —
+        # die Zugangsdaten landeten sonst im Klartext beim Zielhost.
+        follow_redirects=False,
     )
     t = text.lstrip()
     if not t.startswith("{"):

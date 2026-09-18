@@ -26,7 +26,9 @@ const UEBERSICHT_KLASSEN = {
   '10km': { titel: 'Einwohner je 10-km-Zelle', grenzen: [1000, 5000, 20000, 75000, 200000] },
 };
 
-const uebersichtState = { schluessel: null, laedt: false };
+// ausstehend: moveend kam, während ein Abruf lief — wird im finally nachgeholt,
+// sonst bliebe der zuletzt gezeigte Ausschnitt ohne Zellen und ohne Hinweis.
+const uebersichtState = { schluessel: null, laedt: false, ausstehend: false };
 
 function uebersichtEbene() {
   return karte.getZoom() >= 12 ? '1km' : '10km';
@@ -111,7 +113,8 @@ async function ladeUebersicht() {
   }
 
   const schluessel = `${ebene}|${west.toFixed(2)}|${sued.toFixed(2)}|${ost.toFixed(2)}|${nord.toFixed(2)}`;
-  if (schluessel === uebersichtState.schluessel || uebersichtState.laedt) return;
+  if (schluessel === uebersichtState.schluessel) return;
+  if (uebersichtState.laedt) { uebersichtState.ausstehend = true; return; }
   uebersichtState.laedt = true;
   try {
     const d = await hole('/api/gitter', { ebene, west, sued, ost, nord });
@@ -144,6 +147,10 @@ async function ladeUebersicht() {
     zeigeUebersichtLegende(ebene, 0, `Übersicht nicht ladbar: ${e.message}`);
   } finally {
     uebersichtState.laedt = false;
+    if (uebersichtState.ausstehend) {
+      uebersichtState.ausstehend = false;
+      ladeUebersicht();
+    }
   }
 }
 

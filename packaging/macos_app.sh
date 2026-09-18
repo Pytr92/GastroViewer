@@ -44,7 +44,7 @@ fi
 # Version aus pyproject.toml lesen, damit im Paket nicht eine zweite,
 # abweichende Zahl gepflegt werden muss.
 WURZEL="$(cd "$(dirname "$0")/.." && pwd)"
-VERSION="$(sed -n 's/^version = "\(.*\)"/\1/p' "$WURZEL/pyproject.toml" | head -1)"
+VERSION="$(sed -n 's/^__version__ = "\(.*\)"/\1/p' "$WURZEL/gastroviewer/__init__.py" | head -1)"
 VERSION="${VERSION:-0}"
 
 APP="$ZIELORDNER/GastroViewer.app"

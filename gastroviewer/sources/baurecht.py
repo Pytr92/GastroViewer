@@ -39,6 +39,7 @@ from typing import Any
 
 from ..http import Outbound
 from .base import Provenance, SourceError, SourceResult, now_iso
+from .berlin import STADT_BBOX as BERLIN_BBOX
 
 # Achsenreihenfolge: Mit "urn:ogc:def:crs:EPSG::4326" liefern die
 # deegree-Dienste stumm 0 Treffer (lat/lon-Vertauschung). CRS84 ist
@@ -107,7 +108,7 @@ XPLAN_DIENSTE = (
     },
 )
 
-BERLIN_BBOX = (52.33, 13.08, 52.68, 13.77)
+# Stadtkasten aus berlin.py — eine Definition, drei Nutzer.
 BERLIN_DIENSTE = {
     "bplan": ("https://gdi.berlin.de/services/wfs/bplan", "b_bp_fs"),
     "sanierung": ("https://gdi.berlin.de/services/wfs/sanier",

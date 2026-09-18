@@ -351,7 +351,9 @@ Punkt) und Mapillary (Straßenfotos, „virtuelle Begehung").
 Overpass ist ein Spendenprojekt, Nominatim läuft auf Spendenhardware. Deshalb:
 
 - **eine** kombinierte Overpass-Abfrage je Punkt statt einer pro Kategorie
-- Mindestabstand zwischen Abfragen, serialisiert auch bei parallelen Anfragen
+- höchstens **eine** Overpass-Abfrage gleichzeitig (Semaphore über die ganze
+  Anfrage) plus Mindestabstand zwischen zwei Starts — auch bei parallelen
+  Aufrufen verschiedener Blöcke (Gehweg, Fahrzeit, Besonnung, Marke)
 - Nominatim strikt auf 1 Anfrage/Sekunde gedrosselt
 - jede Antwort wird zwischengespeichert; der zweite Aufruf desselben Punkts erzeugt
   **keinen** ausgehenden Verkehr (nachprüfbar unter `/api/outbound`)
@@ -1276,12 +1278,17 @@ Alles über Umgebungsvariablen, alles optional:
 |---|---|
 | `GET /api/point?lat=&lon=&r=` | alles auf einmal |
 | `GET /api/point/{adresse\|zensus\|osm\|gtfs\|radzaehlung\|verkehrsmenge\|links}` | je Quelle einzeln (nutzt die Oberfläche) |
+| `GET /api/point/{planung\|baurecht\|luft\|sonne\|frequenz\|leerstandsmelder\|ihk-berlin}` | weitere Blöcke je Quelle: Hochwasser/B-Plan, Bebauungspläne, Luftqualität, Besonnung, Passantenfrequenz, Leerstandsmelder, IHK-Bestand Berlin |
+| `GET /api/point/oepnv-einzug?lat=&lon=&minuten=` | ÖPNV-Einzugsgebiet: erreichbare Halte in N Minuten (Runden-Router auf dem importierten Fahrplan) |
+| `GET /api/point/fahrzeit?lat=&lon=&minuten=` | Auto-Einzugsgebiet auf dem OSM-Straßennetz — **nur auf Anforderung**, größte Abfrage des Werkzeugs |
 | `GET /api/point/gehweg?lat=&lon=&r=` | Gehstrecken statt Luftlinie — **nur auf Anforderung**, siehe eigener Abschnitt |
 | `GET /api/gitter?ebene=&west=&sued=&ost=&nord=` | Übersichtsgitter 1 km/10 km je Kartenausschnitt |
 | `GET /api/scan?west=&sued=&ost=&nord=` | Flächen-Scan: Einwohner je Betrieb im 300-m-Umfeld, je 100-m-Zelle |
 | `GET /api/einkommen?ags=` | verfügbares Einkommen je Einwohner (VGRdL, Kreisebene) mit Land- und Bundesvergleich |
 | `GET /api/kreisprofil?ags=` | Kreisprofil: Übernachtungen, Erwerbstätige am Arbeitsort, Arbeitsmarkt, Bevölkerung |
 | `GET /api/pendler?ags=` | Pendlerrechnung der Gemeinde: Ein-/Auspendler, Saldo, Top-Verflechtungen |
+| `GET /api/pks?ags=` · `GET /api/wahl?ags=` · `GET /api/kalender?ags=` | Kriminalstatistik des Kreises, Wahlergebnis der Gemeinde, Feiertage und Ferien des Landes |
+| `GET /api/register?plz=` | Registerumfeld: Unternehmen im PLZ-Gebiet aus dem lokalen OffeneRegister-Import |
 | `GET /api/point/klima?lat=&lon=` | DWD-Klimanormalwerte 1991–2020 der nächsten Station |
 | `GET /api/point/dynamik?lat=&lon=&r=` | Gastro-Dynamik: Jahresreihe der OSM-Objekte (ohsome) |
 | `GET /api/point/overture?lat=&lon=&r=` | Wettbewerbs-Abgleich OSM ↔ Overture Places (lokaler Import) |
@@ -1296,15 +1303,19 @@ Alles über Umgebungsvariablen, alles optional:
 | `GET/POST/DELETE /api/genesis/zugang` | Kennungs-Status ansehen, eintragen (mit Live-Prüfung), entfernen |
 | `GET /api/point/liefergebiet?lat=&lon=&minuten=` | Rad-Liefergebiet: erreichbare Einwohner in 5–15 min — **nur auf Anforderung** |
 | `GET /api/point/marke?lat=&lon=&marke=&r=` | Gebietsschutz-Check: Betriebe der eigenen Marke bis 20 km |
-| `GET /api/geocode?q=` | Adresssuche |
+| `GET /api/geocode?q=` · `GET /api/geocode/vorschlaege?q=` | Adresssuche bzw. Vorschläge beim Tippen (Photon) |
+| `GET /api/schaetzung/vorgaben?lat=&lon=&r=` · `POST /api/schaetzung` | Umsatzschätzung §9: Vorgaben aus dem Punkt, Rechnung mit Spannen |
 | `GET /api/points` · `POST /api/points` · `DELETE /api/points/{id}` | gemerkte Punkte |
 | `GET /api/points/{id}` · `GET /api/points/{id}/verlauf` | ein Punkt mit vollem Datenstand bzw. seine abgelegten Stände |
 | `POST /api/points/{id}/pruefung` | „Neu prüfen": Quellen erneut abfragen, Unterschiede ausweisen |
+| `GET /api/points/{id}/waechter` | Veränderungs-Wächter: frische OSM-Zählung gegen den gespeicherten Stand, ohne ihn zu überschreiben |
+| `GET /api/points/kriterien` · `POST /api/points/kriterien` | Standortprofil: prüfbare Kennzahlen bzw. Prüfung aller Punkte gegen das eigene Profil |
+| `GET /api/points/kannibalisierung?a=&b=` | gemeinsame Einwohner zweier gemerkter Punkte (Umkreis-Überlappung auf dem Zensusgitter) |
 | `GET /bericht?punkt={id}` | druckbarer Standortbericht (PDF über den Browserdruck) |
 | `GET /duell?a={id}&b={id}` | Duell-Bericht: zwei Punkte Spalte an Spalte, beide Lagekarten |
 | `GET /api/points/export` · `POST /api/points/import` | Datensicherung aller Punkte samt Verlauf als eine Datei |
 | `GET /api/points/vergleich` | Vergleichstabelle |
-| `GET /api/export/point.json` · `point.csv` · `vergleich.csv` | Export |
+| `GET /api/export/point.json` · `GET /api/export/point.csv` · `GET /api/export/vergleich.csv` | Export |
 | `GET /api/stats` · `GET /api/outbound` | Cache-Zustand, Protokoll der echten Abrufe |
 | `DELETE /api/cache?quelle=` | Cache leeren |
 | `GET /api/wms` · `?bundesland_code=` | Kartendienst-Register bzw. Ebene eines Landes |
@@ -1312,7 +1323,7 @@ Alles über Umgebungsvariablen, alles optional:
 | `GET /api/wms/bodenrichtwert` | Wert am Punkt beim Landesdienst (GetFeatureInfo) |
 | `GET /api/health` | Zustand, GTFS-Status |
 
-Interaktive Doku unter `/docs`.
+Interaktive Doku unter `/docs` — die vollständige Referenz; `tests/test_readme_api.py` prüft, dass jede Route hier steht.
 
 Jede Quellenantwort hat dieselbe Form:
 
@@ -1355,7 +1366,7 @@ Das letzte Protokoll steht in [`docs/abnahme.md`](docs/abnahme.md).
 
 ### Vollprüfung aller Endpunkte
 
-Die dritte Ebene: alle API-Routen (61 Prüfungen) live gegen einen laufenden Server, mit erzwungenen
+Die dritte Ebene: die API-Routen live gegen einen laufenden Server (`scripts/vollpruefung.py`, rund 60 Prüfungen), mit erzwungenen
 Frischabrufen bei Zensus, Overpass und „Neu prüfen" und unabhängigen Erwartungswerten
 (A9: 111.624 Kfz/Tag; Isarauen: HQ 100; Köln: Bodenrichtwert; Innenstadt-Scan: über
 100 Betriebe). Braucht Netz und einen GTFS-Import.
@@ -1443,7 +1454,9 @@ gastroviewer/
   ratelimit.py       Mindestabstand je Dienst, serialisiert
   http.py            alle ausgehenden Aufrufe, Fehler → benennbare Ursachen
   service.py         führt die Quellen zusammen, isoliert Ausfälle
-  api.py             HTTP-Schnittstelle
+  api.py             App-Aufbau: Lifespan, Host-/Origin-Prüfung, Fehlerformat
+  routen/            HTTP-Routen je Thema (system, punkt, region, schaetzung, punkte)
+  vergleich.py       Vergleichstabelle: Spalten, Zeilen, Verlauf, CSV
   __main__.py        CLI: serve, import-gtfs, clear-cache, status
   sources/
     zensus.py        100-m-Gitter, Paginierung, null-Behandlung, Aggregate
@@ -1459,13 +1472,15 @@ gastroviewer/
     messe.py         Messe-Kalender München (Termine, Besucher-Jahresbilanz)
     tourismus.py     Tourismus-Monatszahlen München (Saisonkurve)
     links.py         Deep-Links aus Spec §4.6 und den Notizen
+    …                ein Modul je Quelle (über 40), siehe docs/bestandsaufnahme.md
   static/            Oberfläche (Leaflet lokal, kein CDN)
 scripts/
   abnahme.py         Abnahmekriterien aus §7 gegen einen laufenden Server
   uitest.py          Oberflächenprüfung im echten Browser (auch --attrappe)
   aufzeichnen.py     nimmt die echten /api-Antworten für die Attrappe auf
   attrappe.py        die Anwendung ohne Netz — Grundlage der Browserprüfung in der CI
-  vollpruefung.py    alle 29 API-Routen live, mit inhaltlicher Bewertung
+  vollpruefung.py    die API-Routen live, mit inhaltlicher Bewertung (rund 60 Prüfungen)
+  kontrakt_check.py  monatliche Gegenprobe der Datenverträge (Feldlisten, Dateinamen, WMS)
 fixtures/            echte API-Antworten aus Phase 0, Grundlage der Tests
-docs/                Endpunktprüfung
+docs/                Endpunktprüfung, Abnahmeprotokoll, Bestandsaufnahme, Österreich-Recherche
 ```

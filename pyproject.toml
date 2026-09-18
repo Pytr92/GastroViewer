@@ -1,6 +1,6 @@
 [project]
 name = "gastroviewer"
-version = "0.2.0"
+dynamic = ["version"]
 description = "Standort-Datenterminal Deutschland — offene Daten zu einem Punkt auf der Karte"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -23,6 +23,10 @@ gastroviewer = "gastroviewer.__main__:main"
 [build-system]
 requires = ["setuptools>=68"]
 build-backend = "setuptools.build_meta"
+
+[tool.setuptools.dynamic]
+# Eine Quelle für die Version: gastroviewer/__init__.py
+version = { attr = "gastroviewer.__version__" }
 
 [tool.setuptools.packages.find]
 include = ["gastroviewer*"]

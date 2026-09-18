@@ -339,3 +339,104 @@ def test_einzugsgebiet_meldet_den_gerechneten_referenztag(importiert, tmp_path):
     d = gtfs.einzugsgebiet(s, LAT, LON, minuten=30)
     assert d["referenztag"]["date"] == "20250902"
     assert d["referenztag"]["weekday_de"] == "Dienstag"
+
+
+def test_kaputtes_zip_laesst_die_alte_datenbank_stehen(importiert, tmp_path):
+    """Ein fehlerhaftes ZIP darf den vorhandenen Import nicht zerstören."""
+    import zipfile
+
+    s, _ = importiert
+    vorher = gtfs.status(s)
+    assert vorher["importiert"]
+    kaputt = tmp_path / "kaputt.zip"
+    with zipfile.ZipFile(kaputt, "w") as z:
+        z.writestr("stops.txt", "stop_id,stop_name\n")  # trips/stop_times fehlen
+    with pytest.raises(ValueError):
+        gtfs.import_feed(s, kaputt, progress=lambda _m: None)
+    nachher = gtfs.status(s)
+    assert nachher["importiert"] and nachher.get("referenzdatum") == vorher.get("referenzdatum")
+    assert s.gtfs_db_path.exists()
+
+
+# --------------------------------------- Zeitfenster, Raster, Normalisierung
+
+
+def test_zeit_normalisieren():
+    assert gtfs.zeit_normalisieren("8:05:00") == "08:05:00"
+    assert gtfs.zeit_normalisieren("25:10:00") == "25:10:00", "Stunden über 24 bleiben"
+    assert gtfs.zeit_normalisieren("kaputt") == "kaputt"
+
+
+def test_import_normalisiert_die_zeiten_und_setzt_die_marke(importiert):
+    import sqlite3
+
+    s, _ = importiert
+    conn = sqlite3.connect(s.gtfs_db_path)
+    try:
+        marke = conn.execute(
+            "SELECT value FROM meta WHERE key = 'zeiten_normalisiert'").fetchone()
+        assert marke and marke[0] == "1"
+        krumm = conn.execute(
+            "SELECT COUNT(*) FROM stop_times WHERE length(departure_time) != 8").fetchone()[0]
+        assert krumm == 0
+        indizes = {r[1] for r in conn.execute("PRAGMA index_list('stop_times')")}
+        assert "idx_stop_times_stop_dep" in indizes
+    finally:
+        conn.close()
+
+
+def test_einzugsgebiet_ohne_zeitmarke_rechnet_gleich(importiert, tmp_path):
+    """Eine Datenbank aus einer früheren Fassung trägt die Marke nicht — der
+    Router nimmt dann den Weg über Python und kommt zum selben Ergebnis."""
+    import shutil
+    import sqlite3
+
+    from gastroviewer.config import Settings
+
+    s, _ = importiert
+    s2 = Settings()
+    s2.data_dir = tmp_path
+    shutil.copy(s.gtfs_db_path, s2.gtfs_db_path)
+    conn = sqlite3.connect(s2.gtfs_db_path)
+    conn.execute("DELETE FROM meta WHERE key = 'zeiten_normalisiert'")
+    conn.commit()
+    conn.close()
+    for minuten, abfahrt in ((30, "12:00:00"), (15, "08:00"), (20, "00:00")):
+        assert (gtfs.einzugsgebiet(s2, LAT, LON, minuten=minuten, abfahrt=abfahrt)
+                == gtfs.einzugsgebiet(s, LAT, LON, minuten=minuten, abfahrt=abfahrt))
+
+
+def test_einwohner_nahe_halten_wie_die_volle_rechnung():
+    """Das Raster darf nichts anderes liefern als Zellen × Halte per
+    Haversine — nur schneller."""
+    import random
+
+    from gastroviewer.sources.base import haversine_m
+
+    random.seed(7)
+    halte = [{"lat": 48.10 + random.random() * 0.10, "lon": 11.50 + random.random() * 0.15}
+             for _ in range(300)]
+    zellen = []
+    for i in range(40):
+        for j in range(40):
+            lat, lon = 48.10 + i * 0.0025, 11.50 + j * 0.00375
+            zellen.append({
+                "ring": [[lon - 0.001, lat - 0.001], [lon + 0.001, lat - 0.001],
+                         [lon + 0.001, lat + 0.001], [lon - 0.001, lat + 0.001]],
+                "einwohner": (i * j) % 50,
+            })
+    zellen.append({"ring": [], "einwohner": 999})  # ohne Geometrie: übergangen
+
+    ew, n = gtfs.einwohner_nahe_halten(zellen, halte, 700)
+    voll_ew = voll_n = 0
+    for z in zellen:
+        ring = z["ring"]
+        if not ring:
+            continue
+        clat = sum(p[1] for p in ring) / len(ring)
+        clon = sum(p[0] for p in ring) / len(ring)
+        if any(haversine_m(clat, clon, h["lat"], h["lon"]) <= 700 for h in halte):
+            voll_n += 1
+            voll_ew += z["einwohner"]
+    assert (ew, n) == (voll_ew, voll_n)
+    assert 0 < n < len(zellen) - 1

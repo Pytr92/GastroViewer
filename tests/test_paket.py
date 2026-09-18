@@ -81,10 +81,11 @@ def test_paket_weist_sich_als_programm_aus(paket):
     assert angaben["CFBundleName"] == "GastroViewer"
 
 
-def test_version_kommt_aus_pyproject(paket):
+def test_version_kommt_aus_dem_paket(paket):
     """Eine zweite, von Hand gepflegte Versionsnummer wäre eine, die abweicht."""
-    erwartet = re.search(
-        r'^version = "(.*)"', (WURZEL / "pyproject.toml").read_text(), re.M).group(1)
+    import gastroviewer
+
+    erwartet = gastroviewer.__version__
     angaben = plistlib.loads(
         (paket / "GastroViewer.app" / "Contents" / "Info.plist").read_bytes())
     assert angaben["CFBundleShortVersionString"] == erwartet
@@ -136,28 +137,37 @@ def test_macos_paket_ist_der_weg_ins_release():
             assert zeile.endswith(".zip"), zeile
 
 
-def test_versionsnummern_stimmen_ueberein():
-    """Vier Stellen halten die Version — sie dürfen nicht auseinanderlaufen.
+def test_versionsnummer_hat_eine_quelle():
+    """Die Nummer steht einmal in ``gastroviewer/__init__.py``. Paket-
+    Metadaten (pyproject: dynamic), Settings (User-Agent gegenüber fremden
+    Diensten) und API-Beschreibung lesen sie von dort; das macOS-Paketskript
+    zieht sie per sed aus derselben Datei. Vorher stand sie an vier Stellen
+    und ein Test hielt sie nur mühsam zusammen."""
+    import importlib.metadata
+    import subprocess
 
-    Die Nummer steht in ``pyproject.toml`` (Paket), ``__init__.py``,
-    ``config.py`` (sie geht als Kennzeichen an fremde Dienste) und
-    ``api.py`` (sie steht in der API-Beschreibung). Läuft eine davon weg,
-    sendet das Werkzeug eine andere Version, als es ist — und genau dieses
-    Kennzeichen ist der Anlass, aus dem ein Dienst jemanden anschreibt statt
-    zu sperren.
-    """
-    stellen = {
-        "pyproject.toml": r'^version = "(.+)"',
-        "gastroviewer/__init__.py": r'^__version__ = "(.+)"',
-        "gastroviewer/config.py": r'version: str = "(.+)"',
-        "gastroviewer/api.py": r'version="(\d[^"]*)"',
-    }
-    gefunden = {}
-    for datei, muster in stellen.items():
-        treffer = re.search(muster, (WURZEL / datei).read_text(), re.M)
-        assert treffer, f"Keine Version in {datei} gefunden."
-        gefunden[datei] = treffer.group(1)
-    assert len(set(gefunden.values())) == 1, gefunden
+    import gastroviewer
+    from gastroviewer.api import create_app
+    from gastroviewer.config import Settings
+
+    version = gastroviewer.__version__
+    assert re.fullmatch(r"\d+\.\d+\.\d+", version)
+    assert Settings().version == version
+    assert create_app(Settings()).version == version
+    try:
+        assert importlib.metadata.version("gastroviewer") == version
+    except importlib.metadata.PackageNotFoundError:
+        pytest.skip("Paket nicht installiert — Metadaten nicht prüfbar")
+    assert 'version = "' not in (WURZEL / "pyproject.toml").read_text(), (
+        "pyproject muss dynamic = [\"version\"] nutzen")
+    # Der sed-Ausdruck des Paketskripts liest dieselbe Nummer.
+    skript = (WURZEL / "packaging" / "macos_app.sh").read_text()
+    ausdruck = re.search(r"sed -n '([^']+)' \"\$WURZEL/gastroviewer/__init__.py\"", skript)
+    assert ausdruck, "macos_app.sh liest die Version nicht aus __init__.py"
+    gelesen = subprocess.run(
+        ["sed", "-n", ausdruck.group(1), str(WURZEL / "gastroviewer" / "__init__.py")],
+        capture_output=True, text=True, check=True).stdout.strip()
+    assert gelesen == version
 
 
 def test_finder_argument_wird_weggeworfen():

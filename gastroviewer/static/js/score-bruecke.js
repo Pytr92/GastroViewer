@@ -10,7 +10,6 @@
  * Gewichtsreglern darstellen.
  */
 
-/* eslint-disable no-undef */
 import { NF, NF1 } from './format.js';
 import { el, kennzahl, setStatus, setInhalt, liste } from './dom.js';
 import { state } from './state.js';
@@ -33,50 +32,71 @@ function zeigeScore() {
       'Der Score rechnet, sobald die ersten Blöcke geladen sind.'));
     return;
   }
-  setStatus('score', 'ok',
-    s.gesamt === null ? 'alle Gewichte 0' : `${s.gesamt} / 100`);
 
+  // Aufbau einmal, danach nur noch Werte setzen: Ein Neubau je input-Schritt
+  // ersetzte den Regler unter dem Zeiger — der Drag brach nach dem ersten
+  // Schritt ab, per Tastatur sprang der Fokus bei jedem Pfeil hinaus.
+  const gesamtWert = el('div', { class: 'wert' });
+  const gesamtBasis = el('div', { class: 'basis' });
   const kopf = el('div', { class: 'kennzahlen' },
     el('div', { class: 'kennzahl' },
-      el('div', { class: 'titel' }, 'Gesamt-Score'),
-      el('div', { class: 'wert' },
-        s.gesamt === null ? '—' : `${NF.format(s.gesamt)} / 100`),
-      el('div', { class: 'basis' },
-        `${s.teile.length} Kennzahlen · Gewichtssumme ${NF1.format(s.gewichtSumme)}`)));
+      el('div', { class: 'titel' }, 'Gesamt-Score'), gesamtWert, gesamtBasis));
 
-  const zeilen = s.teile.map((t) => {
+  const wertText = (t) => t.text
+    || `${NF.format(Math.round(t.wert))}${t.einheit ? ' ' + t.einheit : ''}`;
+  const zeilen = new Map();
+  const zeilenEls = s.teile.map((t) => {
     const regler = el('input', {
-      type: 'range', min: '0', max: '3', step: '0.5',
+      type: 'range', min: '0', max: '3', step: '0.5', 'data-key': t.key,
       value: String(t.gewicht), title: 'Gewicht dieser Kennzahl (0 = zählt nicht)',
     });
+    const neben = el('span', { class: 'neben' });
+    const balken = el('div', {
+      style: 'width:0;height:100%;background:var(--akzent);opacity:.8;',
+    });
+    const gewichtText = el('span', {});
+    zeilen.set(t.key, { neben, balken, gewichtText });
     regler.addEventListener('input', () => {
       const g = ladeScoreGewichte();
       g[t.key] = Number(regler.value);
       speichereScoreGewichte(g);
-      zeigeScore();
+      aktualisiere(berechneScore(state.daten || {}, g));
     });
-    const wertText = t.text
-      || `${NF.format(Math.round(t.wert))}${t.einheit ? ' ' + t.einheit : ''}`;
     const [schlecht, gut] = t.anker;
     return el('div', { class: 'score-zeile', title: t.begruendung || '' },
       el('div', { class: 'score-kopf' },
-        el('span', { class: 'haupt' }, t.label),
-        el('span', { class: 'neben' },
-          ` ${wertText} → ${NF.format(t.punkte)} P. · ${t.quelle}`)),
+        el('span', { class: 'haupt' }, t.label), neben),
       el('div', { class: 'score-balken', style: 'height:8px;background:#e8ecef;border-radius:4px;overflow:hidden;' },
-        el('div', {
-          style: `width:${t.punkte}%;height:100%;background:var(--akzent);opacity:.8;`,
-        })),
+        balken),
       el('div', { class: 'score-fuss', style: 'display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:11px;color:#5b6570;' },
         el('span', {},
           `Anker (gewählt): ${NF.format(schlecht)} → 0 P. · ${NF.format(gut)} → 100 P.`),
         el('label', { style: 'display:flex;align-items:center;gap:4px;' },
-          `Gewicht ${NF1.format(t.gewicht)}`, regler)));
+          gewichtText, regler)));
   });
+
+  function aktualisiere(s2) {
+    if (s2.teile.length !== zeilen.size || s2.teile.some((t) => !zeilen.has(t.key))) {
+      zeigeScore(); // andere Kennzahlmenge — dann wirklich neu bauen
+      return;
+    }
+    setStatus('score', 'ok',
+      s2.gesamt === null ? 'alle Gewichte 0' : `${s2.gesamt} / 100`);
+    gesamtWert.textContent = s2.gesamt === null ? '—' : `${NF.format(s2.gesamt)} / 100`;
+    gesamtBasis.textContent =
+      `${s2.teile.length} Kennzahlen · Gewichtssumme ${NF1.format(s2.gewichtSumme)}`;
+    for (const t of s2.teile) {
+      const z = zeilen.get(t.key);
+      z.neben.textContent = ` ${wertText(t)} → ${NF.format(t.punkte)} P. · ${t.quelle}`;
+      z.balken.style.width = `${t.punkte}%`;
+      z.gewichtText.textContent = `Gewicht ${NF1.format(t.gewicht)}`;
+    }
+  }
+  aktualisiere(s);
 
   setInhalt('score',
     kopf,
-    el('div', { class: 'score-liste', style: 'display:flex;flex-direction:column;gap:10px;margin-top:6px;' }, zeilen),
+    el('div', { class: 'score-liste', style: 'display:flex;flex-direction:column;gap:10px;margin-top:6px;' }, zeilenEls),
     s.fehlend.length
       ? el('div', { class: 'warnung' },
         'Nicht eingeflossen (liegt für diesen Punkt nicht vor): '

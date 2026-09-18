@@ -17,8 +17,9 @@ export const el = (tag, attrs = {}, ...kinder) => {
   const n = document.createElement(tag);
   for (const [k, v] of Object.entries(attrs)) {
     if (v === null || v === undefined || v === false) continue;
+    // Bewusst kein `html`-Attribut: el() baut nur aus Text und Knoten —
+    // ein innerHTML-Weg wäre die einzige XSS-Senke des Werkzeugs.
     if (k === 'class') n.className = v;
-    else if (k === 'html') n.innerHTML = v;
     else if (k.startsWith('on')) n.addEventListener(k.slice(2), v);
     else n.setAttribute(k, v);
   }

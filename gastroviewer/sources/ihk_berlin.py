@@ -28,6 +28,7 @@ from typing import Any, Callable
 
 from ..http import Outbound
 from .base import Provenance, SourceError, SourceResult, haversine_m, now_iso
+from .berlin import STADT_BBOX as BERLIN_BBOX  # ein Stadtkasten, nicht drei Kopien
 
 # Wichtig: media.githubusercontent.com, nicht raw.githubusercontent.com —
 # letzteres liefert bei Git LFS nur den Zeiger, nicht die Datei
@@ -45,7 +46,6 @@ DATEIGROESSE_MB = 125
 NACE_GASTRONOMIE = "56"
 NACE_BEHERBERGUNG = "55"
 
-BERLIN_BBOX = (52.33, 13.08, 52.68, 13.77)
 STANDARD_RADIUS_M = 600
 
 HINWEISE = [
@@ -76,13 +76,19 @@ def _zahl(wert: str | None) -> int | None:
         return None
 
 
-def parse_gastro(text: str) -> list[dict[str, Any]]:
+def parse_gastro(text: str | bytes) -> list[dict[str, Any]]:
     """CSV → nur die Beherbergungs- und Gastronomiebetriebe.
 
     Die Vollzeile hat 20 Spalten; behalten wird, was der Block zeigt —
-    aus 368 000 Zeilen werden so gut 23 000."""
+    aus 368 000 Zeilen werden so gut 23 000.
+
+    Nimmt Bytes: Die Datei ist 125 MB, und als Python-Text lag sie vorher
+    dreifach im Speicher (Antwort, dekodiert, ohne BOM) — rund 1 GB Spitze.
+    ``utf-8-sig`` frisst die BOM beim Lesen."""
     betriebe = []
-    leser = csv.DictReader(io.StringIO(text.lstrip("﻿")))
+    roh = text.encode("utf-8") if isinstance(text, str) else text
+    leser = csv.DictReader(io.TextIOWrapper(io.BytesIO(roh), encoding="utf-8-sig",
+                                            newline=""))
     for zeile in leser:
         abschnitt = (zeile.get("branch_top_level_id") or "").strip()
         if abschnitt not in (NACE_GASTRONOMIE, NACE_BEHERBERGUNG):

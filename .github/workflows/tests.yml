@@ -47,6 +47,14 @@ jobs:
             echo "ok $f"
           done
 
+      # Undefinierte Namen fielen bisher erst im Browser auf: vergleich.js
+      # benutzte `state` ohne Import und lief nur über die window-Brücke.
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Oberfläche auf undefinierte Namen prüfen (ESLint)
+        run: npx --yes eslint@9 gastroviewer/static/js gastroviewer/static/app.js gastroviewer/static/score.js gastroviewer/static/bericht.js gastroviewer/static/duell.js
+
   # Die Oberfläche ist mit über 6 000 Zeilen das größte Einzelstück des
   # Projekts und war bisher nur per Syntaxprüfung abgesichert — ein
   # Renderfehler fiel erst auf, wenn jemand hinsah. Dieser Job fährt die

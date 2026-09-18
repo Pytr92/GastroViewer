@@ -186,10 +186,7 @@ class PointService:
 
         res = await self._cached("muenchen_rad_jahr", "muenchen_rad_jahr", laden)
         if not res.ok:
-            raise SourceError(
-                (res.error or {}).get("kind", "unknown"),
-                (res.error or {}).get("message", "unbekannter Fehler"),
-            )
+            raise SourceError.aus_dict(res.error)
         return res.data
 
     async def _indikatoren_stadt(self):
@@ -215,7 +212,8 @@ class PointService:
                     "muenchen_indikatoren", url, timeout=60.0,
                     limiter="muenchen", min_interval=1.0,
                 )
-            kompakt = await asyncio.to_thread(indikatoren_mod.reduzieren, texte)
+            kompakt, lese_warnungen = await asyncio.to_thread(
+                indikatoren_mod.reduzieren_mit_warnungen, texte)
             if not kompakt:
                 raise SourceError(
                     "parse", "Indikatorenatlas-CSVs ließen sich nicht lesen."
@@ -233,17 +231,14 @@ class PointService:
             return SourceResult(
                 name="muenchen_indikatoren", ok=True,
                 data={"kompakt": kompakt, "stand": stand,
-                      "fehlend_warnungen": warn},
+                      "fehlend_warnungen": warn + lese_warnungen},
             )
 
         res = await self._cached(
             "muenchen_indikatoren", "muenchen_indikatoren", laden
         )
         if not res.ok:
-            raise SourceError(
-                (res.error or {}).get("kind", "unknown"),
-                (res.error or {}).get("message", "unbekannter Fehler"),
-            )
+            raise SourceError.aus_dict(res.error)
         return res.data
 
     async def _airbnb_stadt(self, slug: str, refresh: bool = False) -> dict[str, Any]:
@@ -282,10 +277,7 @@ class PointService:
 
         res = await self._cached("airbnb", f"airbnb|{slug}", laden, refresh=refresh)
         if not res.ok:
-            raise SourceError(
-                (res.error or {}).get("kind", "unknown"),
-                (res.error or {}).get("message", "unbekannter Fehler"),
-            )
+            raise SourceError.aus_dict(res.error)
         return res.data
 
     async def airbnb(
@@ -448,10 +440,7 @@ class PointService:
         res = await self._cached("bast", f"bast|{bast_mod.JAHR}", laden,
                                  refresh=refresh)
         if not res.ok or not res.data:
-            raise SourceError(
-                (res.error or {}).get("kind", "unknown"),
-                (res.error or {}).get("message", "unbekannter Fehler"),
-            )
+            raise SourceError.aus_dict(res.error)
         return res.data["zaehlstellen"]
 
     async def verkehrsmenge(self, lat: float, lon: float, radius: int, refresh: bool = False):
@@ -494,10 +483,7 @@ class PointService:
         res = await self._cached("pks", f"pks|{pks_mod.JAHR}", laden,
                                  refresh=refresh)
         if not res.ok or not res.data:
-            raise SourceError(
-                (res.error or {}).get("kind", "unknown"),
-                (res.error or {}).get("message", "unbekannter Fehler"),
-            )
+            raise SourceError.aus_dict(res.error)
         return res.data["kreise"]
 
     async def pks(self, ags: str, refresh: bool = False):
@@ -530,10 +516,7 @@ class PointService:
         res = await self._cached("leerstandsmelder", "leerstandsmelder|welt",
                                  laden, refresh=refresh)
         if not res.ok or not res.data:
-            raise SourceError(
-                (res.error or {}).get("kind", "unknown"),
-                (res.error or {}).get("message", "unbekannter Fehler"),
-            )
+            raise SourceError.aus_dict(res.error)
         return res.data["meldungen"]
 
     async def leerstandsmelder(self, lat: float, lon: float, radius: int,
@@ -563,10 +546,7 @@ class PointService:
         res = await self._cached("luft_stationen", "luft|stationen", laden,
                                  refresh=refresh)
         if not res.ok or not res.data:
-            raise SourceError(
-                (res.error or {}).get("kind", "unknown"),
-                (res.error or {}).get("message", "unbekannter Fehler"),
-            )
+            raise SourceError.aus_dict(res.error)
         return res.data["stationen"]
 
     async def luft(self, lat: float, lon: float, refresh: bool = False):
@@ -594,10 +574,7 @@ class PointService:
         res = await self._cached("frequenz_augsburg", "frequenz|augsburg",
                                  laden, refresh=refresh)
         if not res.ok or not res.data:
-            raise SourceError(
-                (res.error or {}).get("kind", "unknown"),
-                (res.error or {}).get("message",
-                                      "Augsburger Frequenzdatei fehlt."))
+            raise SourceError.aus_dict(res.error, fallback="Augsburger Frequenzdatei fehlt.")
         return res.data["kurve"]
 
     async def frequenz(self, lat: float, lon: float, refresh: bool = False):
@@ -622,7 +599,7 @@ class PointService:
         """Die IHK-Datei ist ~125 MB — einmal laden, auf Gastronomie
         reduziert 30 Tage halten."""
         async def laden() -> SourceResult:
-            text = await self.outbound.get_text(
+            text = await self.outbound.get_bytes(
                 "ihk_berlin", ihk_mod.CSV_URL, timeout=600.0,
                 limiter="ihk_berlin", min_interval=1.0)
             betriebe = await asyncio.to_thread(ihk_mod.parse_gastro, text)
@@ -632,9 +609,7 @@ class PointService:
         res = await self._cached("ihk_berlin", "ihk_berlin|gastro", laden,
                                  refresh=refresh)
         if not res.ok or not res.data:
-            raise SourceError(
-                (res.error or {}).get("kind", "unknown"),
-                (res.error or {}).get("message", "IHK-Datei nicht ladbar."))
+            raise SourceError.aus_dict(res.error, fallback="IHK-Datei nicht ladbar.")
         return res.data["betriebe"]
 
     async def ihk_berlin(self, lat: float, lon: float, radius: int,
@@ -705,10 +680,7 @@ class PointService:
 
         res = await self._cached("wahl", "wahl|btw25", laden, refresh=refresh)
         if not res.ok or not res.data:
-            raise SourceError(
-                (res.error or {}).get("kind", "unknown"),
-                (res.error or {}).get("message", "unbekannter Fehler"),
-            )
+            raise SourceError.aus_dict(res.error)
         return res.data["zuordnung"], res.data["kreise"]
 
     async def wahl(self, ags: str, refresh: bool = False):
@@ -763,7 +735,6 @@ class PointService:
         async def laden() -> SourceResult:
             started = time.perf_counter()
             from .sources import gtfs as gtfs_mod
-            from .sources.base import haversine_m
 
             data = await asyncio.to_thread(
                 gtfs_mod.einzugsgebiet, self.settings, lat, lon, minuten)
@@ -789,20 +760,12 @@ class PointService:
                 n = max(h["lat"] for h in halte) + 0.015
                 gitter = await self.gitter("1km", w, s, o, n)
                 if gitter.ok and gitter.data:
-                    einwohner = 0
-                    zellen_mit_halt = 0
-                    for z in gitter.data["zellen"]:
-                        ring = z.get("ring") or []
-                        if not ring:
-                            continue
-                        clat = sum(p[1] for p in ring) / len(ring)
-                        clon = sum(p[0] for p in ring) / len(ring)
-                        if any(haversine_m(clat, clon, h["lat"], h["lon"]) <= 700
-                               for h in halte):
-                            zellen_mit_halt += 1
-                            ew = z.get("einwohner")
-                            if isinstance(ew, (int, float)) and ew > 0:
-                                einwohner += ew
+                    # Zellen × Halte per Haversine — bei 1.600 Zellen und
+                    # 2.000 Halten über eine Sekunde; deshalb geraster t und
+                    # im Worker-Thread, nicht im Event-Loop.
+                    einwohner, zellen_mit_halt = await asyncio.to_thread(
+                        gtfs_mod.einwohner_nahe_halten,
+                        gitter.data["zellen"], halte, 700)
                     data["einwohner_naeherung"] = round(einwohner)
                     data["einwohner_zellen"] = zellen_mit_halt
                     warnungen.extend(gitter.warnings or [])
@@ -849,7 +812,6 @@ class PointService:
         bislang nur, DASS sich Kreise überschneiden; hier steht, wie viele
         Menschen sich die Kandidaten teilen."""
         from .sources.base import haversine_m
-        from .sources.zensus import build_cells, fetch_cells
 
         dist = haversine_m(a["lat"], a["lon"], b["lat"], b["lon"])
         grunddaten = {
@@ -861,9 +823,12 @@ class PointService:
             return {**grunddaten, "ueberlappung": False,
                     "gemeinsame_einwohner": 0}
 
-        def ew(zelle: dict[str, Any]) -> float:
+        def ew(zelle: dict[str, Any], anteil: float | None = None) -> float:
             v = zelle.get("Einwohner")
-            return v if isinstance(v, (int, float)) and v > 0 else 0
+            if not isinstance(v, (int, float)) or v <= 0:
+                return 0
+            a = zelle.get("_anteil", 1.0) if anteil is None else anteil
+            return v * a
 
         # Eine Zugehörigkeitsregel für Zähler und Nenner. Der Zensusdienst
         # liefert alle Zellen, die den Umkreis berühren (Intersects); ew_a und
@@ -875,15 +840,34 @@ class PointService:
         def schluessel(zelle):
             return zelle.get("GITTER_ID_100m") or tuple(zelle.get("_center") or ())
 
-        zellen_a = build_cells((await fetch_cells(
-            self.outbound, self.settings, a["lat"], a["lon"], a["radius"]))[0])
-        zellen_b = build_cells((await fetch_cells(
-            self.outbound, self.settings, b["lat"], b["lon"], b["radius"]))[0])
+        # Über den Zensus-Block je Punkt (Cache, 30 Tage): Beide Punkte sind
+        # gemerkt, ihr Zensus-Stand liegt unter genau diesem Schlüssel. Vorher
+        # gingen je Aufruf zwei Live-Abrufe an den Gitterdienst hinaus, und
+        # ein Dienstfehler endete als 500.
+        res_a, res_b = await asyncio.gather(
+            self.zensus(a["lat"], a["lon"], a["radius"]),
+            self.zensus(b["lat"], b["lon"], b["radius"]))
+        for res in (res_a, res_b):
+            if not res.ok or res.data is None:
+                fehler = res.error or {}
+                raise SourceError(fehler.get("kind", "unknown"),
+                                  fehler.get("message", "Zensus nicht verfügbar"),
+                                  detail=fehler.get("detail"))
+        zellen_a = res_a.data.get("zellen") or []
+        zellen_b = res_b.data.get("zellen") or []
+        warnungen = [w for w in (res_a.warnings or []) + (res_b.warnings or [])
+                     if "Gitterzelle" not in w]
 
+        # Dieselbe Flächengewichtung wie im Zensus-Block je Punkt, damit
+        # einwohner_a der dort ausgewiesenen Einwohnerzahl entspricht. Für
+        # eine Zelle in beiden Umkreisen zählt der kleinere der beiden
+        # Anteile — mehr als das kann in der Schnittfläche nicht liegen.
         ew_a = sum(ew(z) for z in zellen_a)
         ew_b = sum(ew(z) for z in zellen_b)
-        ids_b = {schluessel(z) for z in zellen_b}
-        gemeinsam = sum(ew(z) for z in zellen_a if schluessel(z) in ids_b)
+        anteil_b = {schluessel(z): z.get("_anteil", 1.0) for z in zellen_b}
+        gemeinsam = sum(
+            ew(z, min(z.get("_anteil", 1.0), anteil_b[schluessel(z)]))
+            for z in zellen_a if schluessel(z) in anteil_b)
 
         return {
             **grunddaten,
@@ -898,9 +882,10 @@ class PointService:
                 "(Stichtag 15.05.2022) — Flüsse, Gleise und Gehstrecken "
                 "sieht die Rechnung nicht; die Gehweg-Auswertung je Punkt "
                 "bleibt der genauere Blick.",
-                "Gezählt werden Zensuszellen, die beide Umkreise berühren — "
-                "Randzellen zählen dadurch voll, wie auch in den "
-                "Einwohnerzahlen der einzelnen Punkte.",
+                "Gezählt werden Zensuszellen, die beide Umkreise berühren, "
+                "anteilig nach der überdeckten Fläche — dieselbe Regel wie "
+                "in den Einwohnerzahlen der einzelnen Punkte.",
+                *dict.fromkeys(warnungen),
             ],
         }
 
@@ -1080,10 +1065,7 @@ class PointService:
 
                 res = await self._cached("pendler", cache_id, holen)
                 if not res.ok:
-                    raise SourceError(
-                        (res.error or {}).get("kind", "unknown"),
-                        (res.error or {}).get("message", "unbekannter Fehler"),
-                    )
+                    raise SourceError.aus_dict(res.error)
                 return res.data
 
             # Berichtsjahr absteigend suchen (der Atlas begann mit 2021).
@@ -1171,11 +1153,15 @@ class PointService:
         async def laden() -> SourceResult:
             radius = int(minuten * liefer_mod.RADTEMPO_M_PRO_MIN)
             zellen = None
+            zensus_warnungen: list[str] = []
             zensus_res = await self.zensus(lat, lon, radius)
             if zensus_res.ok and zensus_res.data:
-                zellen = zensus_res.data.get("zellen")
+                zellen = zensus_res.data.get("zellen") or []
+            elif zensus_res.error:
+                zensus_warnungen.append(zensus_res.error.get("message") or "Zensus ohne Antwort")
             return await liefer_mod.load(
-                self.outbound, self.settings, lat, lon, minuten, zellen
+                self.outbound, self.settings, lat, lon, minuten, zellen,
+                zensus_warnungen=zensus_warnungen,
             )
 
         return await self._cached("liefergebiet", key, laden)

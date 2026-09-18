@@ -110,9 +110,15 @@ def cache_key(source: str, lat: float, lon: float, radius: float | int, *, extra
 
 
 class Cache:
+    #: Outbound-Protokoll: älter als das wird beim Aufräumen gelöscht.
+    PROTOKOLL_TAGE = 90
+    #: Aufräumen aus set() höchstens einmal je Intervall (Sekunden).
+    AUFRAEUM_INTERVALL = 3600
+
     def __init__(self, path: Path) -> None:
         self.path = Path(path)
         self.path.parent.mkdir(parents=True, exist_ok=True)
+        self._zuletzt_aufgeraeumt = 0.0
         self._init_db()
 
     def _connect(self) -> sqlite3.Connection:
@@ -127,6 +133,30 @@ class Cache:
             # Eine Datenbank aus einer früheren Fassung soll weiterlaufen, statt
             # den Nutzer seine gemerkten Punkte zu kosten.
             self._nachruesten(conn)
+            self._aufraeumen(conn)
+
+    def _aufraeumen(self, conn: sqlite3.Connection) -> dict[str, int]:
+        """Abgelaufene Einträge und altes Protokoll löschen.
+
+        get() räumt nur den Schlüssel, der gerade gelesen wird — punktbezogene
+        Schlüssel (quelle|lat|lon|radius) liest nach einem einmaligen Klick
+        praktisch nie jemand wieder, sie blieben also für immer liegen
+        (0,5 bis 3,5 MB je Punkt). Läuft beim Öffnen und höchstens einmal
+        je Stunde aus set(). Nicht aus stats(): die Zahl „abgelaufen" soll
+        weiter etwas zeigen. Die Datei schrumpft ohne VACUUM nicht, freie
+        Seiten werden wiederverwendet."""
+        now = time.time()
+        geloescht = conn.execute(
+            "DELETE FROM cache WHERE expires_at < ?", (now,)).rowcount
+        protokoll = conn.execute(
+            "DELETE FROM outbound_log WHERE ts < ?",
+            (now - self.PROTOKOLL_TAGE * 24 * 3600,)).rowcount
+        self._zuletzt_aufgeraeumt = now
+        return {"cache": geloescht, "protokoll": protokoll}
+
+    def aufraeumen(self) -> dict[str, int]:
+        with self._connect() as conn:
+            return self._aufraeumen(conn)
 
     # ------------------------------------------------------------------ Cache
 
@@ -155,6 +185,8 @@ class Cache:
                 " VALUES (?,?,?,?,?)",
                 (key, source, json.dumps(payload, ensure_ascii=False), now, now + ttl),
             )
+            if now - self._zuletzt_aufgeraeumt > self.AUFRAEUM_INTERVALL:
+                self._aufraeumen(conn)
         return now
 
     def delete(self, key: str) -> None:
@@ -392,9 +424,24 @@ class Cache:
                 f"Unbekannte Sicherungsversion {daten.get('version')!r} — "
                 f"dieses Werkzeug schreibt Version {self.EXPORT_VERSION}."
             )
+        punkte = daten.get("punkte") or []
+        if not isinstance(punkte, list) or not all(isinstance(p, dict) for p in punkte):
+            raise ValueError("„punkte“ muss eine Liste von Punkten sein — Datei beschädigt?")
+        # Vor dem ersten INSERT prüfen: entweder wird die ganze Sicherung
+        # eingespielt oder nichts davon.
+        for i, p in enumerate(punkte):
+            if not isinstance(p.get("label"), str) or not p["label"].strip():
+                raise ValueError(f"Punkt {i + 1}: Bezeichnung fehlt.")
+            if isinstance(p.get("created_at"), bool) or not isinstance(
+                    p.get("created_at"), (int, float)):
+                raise ValueError(f"Punkt {i + 1}: Anlagezeitpunkt fehlt oder ist keine Zahl.")
+            try:
+                pruefe_punkt(p.get("lat"), p.get("lon"), p.get("radius"))
+            except ValueError as err:
+                raise ValueError(f"Punkt {i + 1} („{p['label']}“): {err}") from err
         neu = uebersprungen = 0
         with self._connect() as conn:
-            for p in daten.get("punkte") or []:
+            for p in punkte:
                 vorhanden = conn.execute(
                     "SELECT 1 FROM saved_points WHERE label = ? AND lat = ? "
                     "AND lon = ? AND radius = ? AND created_at = ?",
@@ -425,6 +472,31 @@ class Cache:
                     )
                 neu += 1
         return {"neu": neu, "uebersprungen": uebersprungen}
+
+
+def pruefe_punkt(lat: Any, lon: Any, radius: Any) -> None:
+    """Die eine Bereichsregel für Koordinaten und Radius — für Anfragen
+    (api._validate) und für eingespielte Sicherungen gleichermaßen.
+
+    Der Radius ist die teuerste Stellschraube des Werkzeugs (r=3000 sind
+    4,5 MB Overpass-Antwort); eine manipulierte oder fremde Sicherung darf
+    ihn nicht am Deckel vorbei setzen. Wirft ValueError mit deutscher
+    Meldung."""
+    for name, wert in (("lat", lat), ("lon", lon)):
+        if isinstance(wert, bool) or not isinstance(wert, (int, float)):
+            raise ValueError(f"{name} muss eine Zahl sein.")
+    if isinstance(radius, bool) or not isinstance(radius, int):
+        raise ValueError("Radius muss eine ganze Zahl in Metern sein.")
+    if not (-90 <= lat <= 90) or not (-180 <= lon <= 180):
+        raise ValueError("Koordinaten außerhalb des gültigen Bereichs.")
+    # Deutschland grob; außerhalb liefern Zensus und BORIS ohnehin nichts.
+    if not (47.0 <= lat <= 55.5 and 5.5 <= lon <= 15.5):
+        raise ValueError(
+            "Punkt liegt außerhalb Deutschlands. Zensus 2022 und die "
+            "Bodenrichtwert-Portale decken nur Deutschland ab."
+        )
+    if not (50 <= radius <= 5000):
+        raise ValueError("Radius muss zwischen 50 und 5000 Metern liegen.")
 
 
 class AsyncCache:

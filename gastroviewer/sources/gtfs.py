@@ -22,6 +22,7 @@ import csv
 import datetime as dt
 import io
 import math
+import os
 import sqlite3
 import time
 import zipfile
@@ -60,8 +61,10 @@ CREATE TABLE meta (key TEXT PRIMARY KEY, value TEXT);
 
 INDEXES = """
 CREATE INDEX idx_stops_pos ON stops(stop_lat, stop_lon);
-CREATE INDEX idx_stop_times_stop ON stop_times(stop_id);
-CREATE INDEX idx_stop_times_trip ON stop_times(trip_id);
+-- (stop_id, departure_time): der Runden-Router fragt je Halt nur das
+-- Zeitfenster [Ankunft, Horizont) ab statt alle Abfahrten aller Tage.
+CREATE INDEX idx_stop_times_stop_dep ON stop_times(stop_id, departure_time);
+CREATE INDEX idx_stop_times_trip_dep ON stop_times(trip_id, departure_time);
 CREATE INDEX idx_calendar_dates ON calendar_dates(service_id, date);
 """
 
@@ -122,9 +125,15 @@ def import_feed(
     """
     settings.ensure_dirs()
     db_path = settings.gtfs_db_path
-    if db_path.exists():
-        db_path.unlink()
-    conn = sqlite3.connect(db_path)
+    # In eine Nebendatei importieren und erst am Ende an die Stelle der
+    # alten setzen: Vorher wurde die alte Datenbank gelöscht, BEVOR das ZIP
+    # geprüft war — ein fehlerhaftes ZIP hinterließ eine leere, „importierte"
+    # Datenbank. Bricht der Import ab, bleibt die alte unangetastet; die
+    # Nebendatei räumt der nächste Lauf weg.
+    tmp_path = db_path.with_name(db_path.name + ".neu")
+    if tmp_path.exists():
+        tmp_path.unlink()
+    conn = sqlite3.connect(tmp_path)
     conn.executescript(SCHEMA)
 
     started = time.perf_counter()
@@ -240,7 +249,7 @@ def import_feed(
             sid = r.get("stop_id") or ""
             if sid not in keep:
                 continue
-            dep = (r.get("departure_time") or "").strip()
+            dep = zeit_normalisieren((r.get("departure_time") or "").strip())
             if not dep:
                 continue
             batch.append((sid, r.get("trip_id"), dep))
@@ -261,6 +270,11 @@ def import_feed(
 
     ref = _reference_date(conn)
     meta = {
+        # Abfahrtszeiten liegen als „HH:MM:SS" mit zweistelliger Stunde vor
+        # (zeit_normalisieren). Erst dann darf einzugsgebiet das Zeitfenster
+        # als Textvergleich in SQL legen; alte Datenbanken ohne die Marke
+        # nehmen den langsamen Weg über Python.
+        "zeiten_normalisiert": "1",
         "importiert_am": now_iso(),
         "quelle": quelle or str(zip_path),
         "bbox": ",".join(str(x) for x in bbox) if bbox else "",
@@ -277,6 +291,7 @@ def import_feed(
     conn.commit()
     conn.execute("PRAGMA journal_mode=WAL")
     conn.close()
+    os.replace(tmp_path, db_path)
 
     stats["dauer_s"] = round(time.perf_counter() - started, 1)
     stats["datenbank"] = str(db_path)
@@ -438,6 +453,14 @@ def load(settings: Settings, lat: float, lon: float, radius: int) -> SourceResul
         route_types: dict[str, int] = {}
         total = 0
 
+        # Aktive Verkehrstage als TEMP-Tabelle (geht auch bei mode=ro): so
+        # filtert SQLite die Fahrten fremder Tage, statt dass Python jede
+        # Zeile erst materialisiert und dann verwirft — bei r=5000 war das
+        # gut die Hälfte der 2,6 s je Punktabruf.
+        conn.execute("CREATE TEMP TABLE IF NOT EXISTS aktiv(service_id TEXT PRIMARY KEY)")
+        conn.execute("DELETE FROM aktiv")
+        conn.executemany("INSERT INTO aktiv VALUES (?)", [(sid,) for sid in services])
+
         chunk = 500
         for i in range(0, len(stop_ids), chunk):
             part = stop_ids[i : i + chunk]
@@ -446,12 +469,11 @@ def load(settings: Settings, lat: float, lon: float, radius: int) -> SourceResul
                 "SELECT st.stop_id, st.departure_time, t.service_id, r.route_type, "
                 "r.route_short_name FROM stop_times st "
                 "JOIN trips t ON t.trip_id = st.trip_id "
+                "JOIN aktiv a ON a.service_id = t.service_id "
                 "LEFT JOIN routes r ON r.route_id = t.route_id "
                 f"WHERE st.stop_id IN ({qmarks})"
             )
             for row in conn.execute(sql, part):
-                if row["service_id"] not in services:
-                    continue
                 dep = row["departure_time"]
                 try:
                     hh = int(str(dep).split(":")[0]) % 24
@@ -599,6 +621,76 @@ def _sekunden(zeit: str | None) -> int | None:
         return None
 
 
+def zeit_normalisieren(zeit: str) -> str:
+    """„8:05:00" → „08:05:00". GTFS erlaubt einstellige Stunden; für einen
+    Textvergleich in SQL müssen alle Zeiten gleich lang sein. Unlesbares
+    bleibt, wie es ist — _sekunden weist es später ab."""
+    teile = zeit.split(":")
+    if len(teile) == 3 and all(t.isdigit() for t in teile):
+        return f"{int(teile[0]):02d}:{int(teile[1]):02d}:{int(teile[2]):02d}"
+    return zeit
+
+
+def _als_zeit(sekunden: int) -> str:
+    h, rest = divmod(max(sekunden, 0), 3600)
+    m, s = divmod(rest, 60)
+    return f"{h:02d}:{m:02d}:{s:02d}"
+
+
+def einwohner_nahe_halten(
+    zellen: list[dict[str, Any]], halte: list[dict[str, Any]], max_m: float = 700.0,
+) -> tuple[float, int]:
+    """Einwohner der Gitterzellen, deren Mittelpunkt höchstens ``max_m`` von
+    einem Halt liegt — (Summe, Zellenzahl).
+
+    Halte liegen in einem Grad-Raster; je Zelle werden nur die 3×3
+    Nachbarmaschen geprüft statt aller Halte (Zellen × Halte war bei einem
+    Großstadt-Einzugsgebiet über eine Sekunde Rechenzeit)."""
+    # Maschenweite in Grad, je Achse: ein Längengrad ist kürzer als ein
+    # Breitengrad, 700 m sind also MEHR Grad Länge als Grad Breite. Die
+    # Masche muss in beiden Richtungen mindestens max_m fassen, sonst
+    # fehlen Halte am Maschenrand.
+    m_lat = max_m / 111_320.0 * 1.05
+    try:
+        mitte_lat = sum(float(h["lat"]) for h in halte) / len(halte)
+    except (KeyError, TypeError, ValueError, ZeroDivisionError):
+        mitte_lat = 51.0
+    m_lon = m_lat / max(math.cos(math.radians(mitte_lat)), 0.2)
+    raster: dict[tuple[int, int], list[tuple[float, float]]] = {}
+    for h in halte:
+        try:
+            hlat, hlon = float(h["lat"]), float(h["lon"])
+        except (KeyError, TypeError, ValueError):
+            continue
+        raster.setdefault((int(hlat // m_lat), int(hlon // m_lon)), []).append((hlat, hlon))
+    einwohner = 0.0
+    treffer = 0
+    for z in zellen:
+        ring = z.get("ring") or []
+        if not ring:
+            continue
+        clat = sum(p[1] for p in ring) / len(ring)
+        clon = sum(p[0] for p in ring) / len(ring)
+        zi, zj = int(clat // m_lat), int(clon // m_lon)
+        nahe = False
+        for di in (-1, 0, 1):
+            for dj in (-1, 0, 1):
+                for hlat, hlon in raster.get((zi + di, zj + dj), ()):
+                    if haversine_m(clat, clon, hlat, hlon) <= max_m:
+                        nahe = True
+                        break
+                if nahe:
+                    break
+            if nahe:
+                break
+        if nahe:
+            treffer += 1
+            ew = z.get("einwohner")
+            if isinstance(ew, (int, float)) and ew > 0:
+                einwohner += ew
+    return einwohner, treffer
+
+
 def einzugsgebiet(
     settings: Settings, lat: float, lon: float,
     minuten: int = 30, abfahrt: str = "12:00:00",
@@ -647,6 +739,13 @@ def einzugsgebiet(
             start_s = 12 * 3600
         horizont_s = start_s + minuten * 60
 
+        # Zeitfenster als Textvergleich in SQL — nur, wenn der Import die
+        # Zeiten auf „HH:MM:SS" normalisiert hat (Marke in meta). Vorher las
+        # der Router je Halt alle Abfahrten aller Tage und verwarf sie in
+        # Python: gemessen 14,8 s statt 0,3 s bei 45 Minuten Horizont.
+        fenster = meta.get("zeiten_normalisiert") == "1"
+        horizont_txt = _als_zeit(horizont_s)
+
         alle_halte = [dict(r) for r in conn.execute(
             "SELECT stop_id, stop_name, stop_lat, stop_lon FROM stops "
             "WHERE stop_lat IS NOT NULL AND stop_lon IS NOT NULL")]
@@ -694,12 +793,21 @@ def einzugsgebiet(
                 ab = ankunft[stop_id] + 60  # eine Minute zum Einsteigen
                 if ab >= horizont_s:
                     continue
-                for r in conn.execute(
-                    "SELECT st.trip_id, st.departure_time, t.route_id, "
-                    "t.service_id FROM stop_times st "
-                    "JOIN trips t ON t.trip_id = st.trip_id "
-                    "WHERE st.stop_id = ?", (stop_id,),
-                ):
+                if fenster:
+                    abfahrten = conn.execute(
+                        "SELECT st.trip_id, st.departure_time, t.route_id, "
+                        "t.service_id FROM stop_times st "
+                        "JOIN trips t ON t.trip_id = st.trip_id "
+                        "WHERE st.stop_id = ? AND st.departure_time >= ? "
+                        "AND st.departure_time < ?",
+                        (stop_id, _als_zeit(ab), horizont_txt))
+                else:
+                    abfahrten = conn.execute(
+                        "SELECT st.trip_id, st.departure_time, t.route_id, "
+                        "t.service_id FROM stop_times st "
+                        "JOIN trips t ON t.trip_id = st.trip_id "
+                        "WHERE st.stop_id = ?", (stop_id,))
+                for r in abfahrten:
                     dep = _sekunden(r["departure_time"])
                     if (dep is None or dep < ab or dep >= horizont_s
                             or r["trip_id"] in benutzte_trips
@@ -707,10 +815,17 @@ def einzugsgebiet(
                         continue
                     benutzte_trips.add(r["trip_id"])
                     linien.add(r["route_id"])
-                    for halt in conn.execute(
-                        "SELECT stop_id, departure_time FROM stop_times "
-                        "WHERE trip_id = ?", (r["trip_id"],),
-                    ):
+                    if fenster:
+                        halte_der_fahrt = conn.execute(
+                            "SELECT stop_id, departure_time FROM stop_times "
+                            "WHERE trip_id = ? AND departure_time > ? "
+                            "AND departure_time <= ?",
+                            (r["trip_id"], _als_zeit(dep), horizont_txt))
+                    else:
+                        halte_der_fahrt = conn.execute(
+                            "SELECT stop_id, departure_time FROM stop_times "
+                            "WHERE trip_id = ?", (r["trip_id"],))
+                    for halt in halte_der_fahrt:
                         t = _sekunden(halt["departure_time"])
                         if t is None or t <= dep or t > horizont_s:
                             continue

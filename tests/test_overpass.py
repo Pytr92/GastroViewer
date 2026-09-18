@@ -389,3 +389,23 @@ def test_cuisine_ohne_typ_wird_gastronomie():
     g = cls["gastronomie"][0]
     assert g["name"] == "Kilians"
     assert g["typ_label"] == "Gastronomie (Typ unbestimmt)"
+
+
+# ------------------------------------------- remark bei Teilergebnissen
+
+
+async def test_remark_bei_teilergebnis_wird_zur_warnung(settings):
+    """Overpass bricht im zweiten Teil der Abfrage ab, die POIs sind schon
+    da: kein Fehler, aber eine Warnung — sonst sieht „0 Linien" aus wie
+    „keine Linien"."""
+    from gastroviewer.sources.overpass import run_query
+
+    class FakeOut:
+        async def post_json(self, source, url, **kw):
+            return {"elements": [{"type": "node", "id": 1, "tags": {"amenity": "cafe"}}],
+                    "remark": "runtime error: Query run out of memory"}
+
+    payload, endpoint, problems = await run_query(FakeOut(), settings, "…")
+    assert payload["elements"]
+    assert len(problems) == 1 and "unvollständig" in problems[0]
+    assert "out of memory" in problems[0]
