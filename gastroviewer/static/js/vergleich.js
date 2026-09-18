@@ -15,6 +15,7 @@ import { NF, NF1, nfFest, zahl } from './format.js';
 import { el, kennzahl, fehlerbox, hinweisZeile } from './dom.js';
 import { ueberlappungen } from './geometrie.js';
 import { kriterienBereich } from './kriterien.js';
+import { state } from './state.js';
 
 let nachPunkteAenderung = () => {};
 

@@ -322,7 +322,9 @@ async function start() {
         L.circleMarker([g.lat, g.lon], {
           radius: 4, color: '#a32020', weight: 1, fillColor: '#d94b4b',
           fillOpacity: 0.85,
-        }).bindTooltip(`${g.name || '(ohne Name)'} · ${g.typ_label || ''}`)
+          // Als Knoten, nicht als String: Leaflet setzt Strings per innerHTML,
+          // und der Name kommt aus OSM.
+        }).bindTooltip(el('span', {}, `${g.name || '(ohne Name)'} · ${g.typ_label || ''}`))
           .addTo(karte);
       }
       karte.fitBounds(kreis.getBounds().pad(0.08));

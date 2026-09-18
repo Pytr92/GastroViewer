@@ -90,7 +90,9 @@ function zeigeOepnvEinzug(d, minuten) {
       fillColor: farben[stufe(h.minuten)],
       fillOpacity: 0.7 * state.deckkraft, opacity: state.deckkraft,
       weight: 1, _basisDeckkraft: 0.7, _basisRand: 1,
-    }).bindTooltip(`${h.name} — ${h.minuten} min`));
+      // Knoten statt String — Leaflet setzt Strings per innerHTML, der
+      // Haltestellenname kommt aus dem importierten Fahrplan.
+    }).bindTooltip(el('span', {}, `${h.name} — ${h.minuten} min`)));
   }
   if (!karte.hasLayer(state.ebenen.oepnveinzug)) {
     state.ebenen.oepnveinzug.addTo(karte);

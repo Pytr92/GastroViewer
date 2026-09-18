@@ -40,7 +40,7 @@ async function ladePunkteEbene() {
     const marker = L.circleMarker([p.lat, p.lon], {
       radius: 7, color: '#5a2f73', weight: 2, fillColor: '#9a6cb1', fillOpacity: 0.95,
     });
-    marker.bindTooltip(p.label, { permanent: true, direction: 'top', offset: [0, -8],
+    marker.bindTooltip(el('span', {}, p.label), { permanent: true, direction: 'top', offset: [0, -8],
       className: 'punkt-etikett' });
     marker.bindPopup(() => el('div', {},
       el('h4', {}, p.label),

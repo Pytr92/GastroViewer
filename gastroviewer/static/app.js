@@ -97,7 +97,7 @@ function lade(refresh = false) {
   hole('/api/point/adresse', { lat, lon, ...(refresh ? { refresh: 'true' } : {}) })
     .then((d) => {
       if (aktuell()) {
-        state.daten.adresse = d; zeigeKopf(); ladeLinks();
+        state.daten.adresse = d; zeigeKopf(); ladeLinks(lauf);
         ladeRegister(d.data?.plz, lauf);
       }
     })
@@ -112,7 +112,7 @@ function lade(refresh = false) {
   hole('/api/point/zensus', p)
     .then((d) => {
       if (aktuell()) {
-        state.daten.zensus = d; zeigeZensus(d); zeigeKopf(); ladeLinks();
+        state.daten.zensus = d; zeigeZensus(d); zeigeKopf(); ladeLinks(lauf);
         ladeEinkommen(d.data?.ags, lauf);
         ladeKreisprofil(d.data?.ags, lauf);
         ladePendler(d.data?.ags, lauf);
@@ -133,7 +133,7 @@ function lade(refresh = false) {
       // dauerhaft im Ladezustand hängen.
       state.daten.zensus = { ok: false, error: { message: e.message } };
       zeigeKopf();
-      ladeLinks();
+      ladeLinks(lauf);
       // Die Folgeblöcke hängen am Gemeindeschlüssel aus dieser Antwort. Ohne
       // den Aufruf hier blieben sie bei Zensus-Ausfall für immer auf „lädt …“.
       ladeEinkommen(null, lauf);
@@ -235,9 +235,10 @@ function lade(refresh = false) {
 }
 
 let linksGeladen = false;
-function ladeLinks() {
+function ladeLinks(lauf) {
   // Braucht Gemeinde (Nominatim) und AGS/Bundesland (Zensus) — sobald beide da sind.
   if (linksGeladen || !state.daten.adresse || !state.daten.zensus) return;
+  if (lauf !== state.ladeLauf) return;
   linksGeladen = true;
   const a = state.daten.adresse.data || {};
   const z = state.daten.zensus.data || {};
@@ -245,7 +246,13 @@ function ladeLinks() {
     lat: state.lat, lon: state.lon, r: state.radius,
     gemeinde: a.gemeinde || '', plz: a.plz || '',
     ags: z.ags || '', bundesland_code: z.bundesland_code || '',
-  }).then(zeigeLinks).catch((e) => zeigeBlockFehler('quellen', e));
+  }).then((d) => {
+    // Wie jeder andere Abruf in lade(): Antwort eines früheren Punkts
+    // verwerfen — sonst landen Portale, Bodenrichtwert-Ebene und ein
+    // zweiter Bodenrichtwert-Block des alten Punkts im neuen Gerüst.
+    if (lauf !== state.ladeLauf) return;
+    zeigeLinks(d);
+  }).catch((e) => { if (lauf === state.ladeLauf) zeigeBlockFehler('quellen', e); });
 }
 
 

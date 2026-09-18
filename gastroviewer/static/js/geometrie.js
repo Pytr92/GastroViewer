@@ -9,7 +9,6 @@
  * damit ein globaler Name.
  */
 
-/* eslint-disable no-undef */
 export function ueberlappungen(zeilen) {
   const paare = [];
   for (let i = 0; i < zeilen.length; i += 1) {
