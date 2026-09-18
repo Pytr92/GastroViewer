@@ -20,8 +20,9 @@ def test_fixture_ist_die_echte_antwort(zensus_600):
 
 
 def test_alle_spec_felder_existieren_im_dienst(zensus_meta):
-    """§4.1 listet die Feldnamen. Phase 0 hat sie bestätigt — hier festgehalten,
-    damit eine Umbenennung beim Anbieter sofort auffällt."""
+    """§4.1 listet die Feldnamen. Geprüft wird gegen die aufgezeichnete
+    Feldliste aus Phase 0 (Fixture gegen Fixture) — die Live-Gegenprobe
+    beim Dienst macht scripts/kontrakt_check.py (monatlicher Workflow)."""
     vorhanden = {f["name"] for f in zensus_meta["fields"]}
     fehlend = [f for f in zensus.FIELDS if f not in vorhanden]
     assert not fehlend, f"Diese Felder gibt es im Dienst nicht mehr: {fehlend}"
