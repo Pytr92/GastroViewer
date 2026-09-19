@@ -1371,6 +1371,136 @@ def r7(c):
 TEILE.update({"r7": r7})
 
 
+# ------------------------------------------------------------------ Runde 8
+# Zwei Zwecke: (a) die Erkennungspfade für den Kontrakt-Check — mehrere der
+# in 0.6.0 gebauten Quellen tragen ein Jahr oder ein Datum in der Kennung
+# (MobiData-SVZ-Dateiname, Hamburg ``_dtv_hvs_2019``, Berlin
+# ``verkehrsmengen_2023``, Wien ``REALNUT2022OGD``); der Check braucht eine
+# Liste, aus der er den Nachfolger ablesen kann. (b) die neun Nachzügler
+# aus den Runden 5–7 noch einmal, mit anderen Wegen.
+
+def r8(c):
+    # --- (a) Nachfolger-Erkennung -------------------------------------
+    # Wien: Capabilities des GeoServers, daraus alle Layernamen.
+    daten = hole(c, "r8_wien_caps", "https://data.wien.gv.at/daten/geo",
+                 params={"service": "WFS", "request": "GetCapabilities", "version": "1.1.0"},
+                 speichern=False)
+    if daten:
+        namen = re.findall(r"<Name>(ogdwien:[A-Z0-9_]+)</Name>", daten.decode("utf-8", "replace"))
+        manifest.append({"name": "r8_wien_layer", "anzahl": len(namen),
+                         "realnut": [n for n in namen if "REALNUT" in n],
+                         "dauerzaehl": [n for n in namen if "DAUERZAEHL" in n],
+                         "luft": [n for n in namen if "LUFT" in n],
+                         "zaehlbezirk": [n for n in namen if "ZAEHLBEZIRK" in n]})
+    # Salzburg und Stuttgart: dieselbe Frage.
+    for name, url, muster in (
+            ("r8_salzburg_caps", "https://data.stadt-salzburg.at/geodaten/wfs", r"<Name>(ogdsbg:[a-z0-9_]+)</Name>"),
+            ("r8_stuttgart_caps", "https://geoserver.stuttgart.de/gdc/Verkehr_Mobilitaet/ows",
+             r"<Name>(Verkehr_Mobilitaet:[A-Za-z0-9_]+)</Name>"),
+            ("r8_mobidata_caps", "https://api.mobidata-bw.de/geoserver/MobiData-BW/ows",
+             r"<Name>(MobiData-BW:[a-z0-9_]+)</Name>")):
+        daten = hole(c, name, url, params={"service": "WFS", "request": "GetCapabilities", "version": "1.1.0"},
+                     speichern=False)
+        if daten:
+            namen = re.findall(muster, daten.decode("utf-8", "replace"))
+            manifest.append({"name": f"{name}_layer", "anzahl": len(namen), "namen": namen[:60]})
+    # Hamburg: die Sammlungen je Datensatz nennen das Jahr im Bezeichner.
+    for ds in ("verkehrsmengen", "verkehrsstaerken", "regionalstatistische_daten_stadtteile", "parkhaeuser"):
+        daten = hole(c, f"r8_hh_{ds}_collections", f"https://api.hamburg.de/datasets/v1/{ds}/collections",
+                     params={"f": "json"}, speichern=False)
+        if daten:
+            try:
+                ids = [x.get("id") for x in json.loads(daten).get("collections", [])]
+            except Exception:  # noqa: BLE001
+                ids = []
+            manifest.append({"name": f"r8_hh_{ds}_ids", "ids": ids})
+    # Berlin: Verkehrsmengen-Dienst je Jahr — gibt es schon einen neueren?
+    for jahr in (2025, 2024, 2023):
+        hole(c, f"r8_berlin_vm_{jahr}", f"https://gdi.berlin.de/services/wfs/verkehrsmengen_{jahr}",
+             params={"REQUEST": "GetCapabilities", "SERVICE": "WFS"}, speichern=False)
+    # MobiData SVZ: der Dateiname trägt ein Datum. Verzeichnis und Datensatzseite.
+    hole(c, "r8_mobidata_svz_verzeichnis", "https://mobidata-bw.de/vm/Karte_Strassenverkehrszaehlung_BW/",
+         speichern=False)
+    daten = hole(c, "r8_mobidata_svz_kopf", SVZ_2026, methode="HEAD", speichern=False)
+    manifest.append({"name": "r8_mobidata_svz_bekannt", "url": SVZ_2026})
+    hole(c, "r8_mobidata_ckan_svz", "https://www.mobidata-bw.de/api/3/action/package_search",
+         params={"q": "Strassenverkehrszaehlung", "rows": 5})
+    # Statistik Austria: gibt es die Preisdateien schon für 2025/2026?
+    for jahr in ("2026", "2025"):
+        for art in ("Haeuserpreise", "Wohnungspreise", "Baugrundstueckspreise"):
+            hole(c, f"r8_stat_{art.lower()}{jahr}", f"https://www.statistik.at/fileadmin/pages/222/{art}{jahr}.ods",
+                 methode="HEAD", speichern=False)
+    # BKG-Starkregen und Gemeindegrenzen: Capabilities als Vertragsprobe.
+    daten = hole(c, "r8_bkg_starkregen_caps", "https://sgx.geodatenzentrum.de/wms_starkregen",
+                 params={"service": "WMS", "request": "GetCapabilities", "version": "1.3.0"}, speichern=False)
+    if daten:
+        namen = re.findall(r"<Name>([a-z_0-9]+)</Name>", daten.decode("utf-8", "replace"))
+        manifest.append({"name": "r8_bkg_layer", "anzahl": len(namen), "namen": namen[:40]})
+    daten = hole(c, "r8_stat_geodata_caps", "https://www.statistik.gv.at/gs-open/GEODATA/ows",
+                 params={"service": "WFS", "request": "GetCapabilities", "version": "1.1.0"}, speichern=False)
+    if daten:
+        namen = re.findall(r"<Name>(GEODATA:[A-Z_0-9]+)</Name>", daten.decode("utf-8", "replace"))
+        manifest.append({"name": "r8_geodata_layer", "anzahl": len(namen),
+                         "gem": [n for n in namen if "_GEM_" in n]})
+
+    # --- (b) die neun Nachzügler --------------------------------------
+    # AMS und GISA über die CKAN-API von data.gv.at (Runde 6 nutzte die HTML-Suche).
+    for name, q in (("ams", "Arbeitslose Gemeinden"), ("gisa", "Gewerbeinformationssystem"),
+                    ("gisa2", "GISA"), ("ams2", "Arbeitsmarktdaten")):
+        hole(c, f"r8_datagv_suche_{name}", "https://www.data.gv.at/katalog/api/3/action/package_search",
+             params={"q": q, "rows": 8})
+    for pid in ("gisa-gewerbeinformationssystem-austria", "arbeitslose-und-schulungsteilnehmerinnen-nach-gemeinden",
+                "stat_arbeitsmarkt"):
+        hole(c, f"r8_datagv_show_{pid[:28]}", "https://www.data.gv.at/katalog/api/3/action/package_show",
+             params={"id": pid})
+    hole(c, "r8_gisa_direkt", "https://www.gisa.gv.at/opendata/", speichern=False)
+    # Straßen.NRW: Runde 7 bekam eine leere Sammlung. Ohne bbox und mit anderer Version.
+    for name, p in (("ohne_bbox", {"service": "WFS", "version": "2.0.0", "request": "GetFeature",
+                                   "typeNames": "ms:Zaehlstellen", "count": 5}),
+                    ("v110", {"service": "WFS", "version": "1.1.0", "request": "GetFeature",
+                              "typeName": "ms:Zaehlstellen", "maxFeatures": 5}),
+                    ("caps", {"service": "WFS", "version": "2.0.0", "request": "GetCapabilities"})):
+        hole(c, f"r8_nrw_{name}", "https://www.wfs.nrw.de/wfs/strassen_nrw", params=p)
+    # ohsome-Qualität: Runde 6 bekam HTML. Anderer Pfad, expliziter Accept.
+    for name, url in (("meta", "https://api.quality.ohsome.org/v1/metadata"),
+                      ("topics", "https://api.quality.ohsome.org/v1/metadata/topics"),
+                      ("indicators", "https://api.quality.ohsome.org/v1/metadata/indicators")):
+        hole(c, f"r8_ohsome_{name}", url, headers={"Accept": "application/json"})
+    # Regionaldatenbank: Gastzugang über die GET-Variante der REST-Schnittstelle.
+    hole(c, "r8_regionaldb_get", "https://www.regionalstatistik.de/genesisws/rest/2020/catalogue/tables",
+         params={"username": "GAST", "password": "GAST", "selection": "73111*", "pagelength": 20,
+                 "language": "de", "format": "json"})
+    hole(c, "r8_regionaldb_hello", "https://www.regionalstatistik.de/genesisws/rest/2020/helloworld/logincheck",
+         params={"username": "GAST", "password": "GAST", "language": "de"})
+    # Köln und Frankfurt: beide Schreibweisen.
+    for name, url in (("koeln_www", "https://www.offenedaten-koeln.de/api/3/action/package_search"),
+                      ("koeln", "https://offenedaten-koeln.de/api/3/action/package_search")):
+        hole(c, f"r8_{name}", url, params={"q": "Baustellen", "rows": 3})
+    for name, url in (("ffm_https", "https://offenedaten.frankfurt.de/api/3/action/package_search"),
+                      ("ffm_www", "https://www.offenedaten.frankfurt.de/api/3/action/package_search")):
+        hole(c, f"r8_{name}", url, params={"q": "Stadtteil", "rows": 3})
+    # BNetzA-Ladesäulen: die offene CSV statt des ArcGIS-Dienstes mit Token.
+    for name, url in (("csv", "https://data.bundesnetzagentur.de/Bundesnetzagentur/SharedDocs/Downloads/DE/Sachgebiete/Energie/Unternehmen_Institutionen/E_Mobilitaet/Ladesaeulenregister.csv"),
+                      ("api", "https://ladestationen.api.bund.dev/")):
+        daten = hole(c, f"r8_bnetza_{name}", url, speichern=False)
+        if daten:
+            kopf(f"r8_bnetza_{name}_kopf", daten, 8)
+            manifest.append({"name": f"r8_bnetza_{name}_umfang", "bytes": len(daten)})
+    # Autobahn-GmbH: die Straßenliste, damit der Block die Kennung am Punkt findet.
+    daten = hole(c, "r8_autobahn_liste", "https://verkehr.autobahn.de/o/autobahn/", speichern=False)
+    if daten:
+        manifest.append({"name": "r8_autobahn_strassen", "auszug": daten.decode("utf-8", "replace")[:400]})
+    hole(c, "r8_autobahn_a8_baustellen", "https://verkehr.autobahn.de/o/autobahn/A8/services/roadworks",
+         speichern=False)
+
+
+SVZ_2026 = ("https://mobidata-bw.de/vm/Karte_Strassenverkehrszaehlung_BW/"
+            "SVZ-Zaehlstellen_2026-06-26_augmented_SVZ2024.csv")
+
+TEILE.update({"r8": r8})
+
+
+
 if __name__ == "__main__":
     sys.exit(main(sys.argv))
 
