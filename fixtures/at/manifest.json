@@ -1,0 +1,246 @@
+{
+ "erzeugt": "2026-09-19T05:32:57Z",
+ "eintraege": [
+  {
+   "name": "r9_wien_realnut2024ogd",
+   "url": "https://data.wien.gv.at/daten/geo",
+   "params": {
+    "service": "WFS",
+    "version": "1.1.0",
+    "request": "GetFeature",
+    "srsName": "EPSG:4326",
+    "outputFormat": "application/json",
+    "maxFeatures": 50,
+    "count": 50,
+    "bbox": "16.373300,48.207700,16.374300,48.208700,EPSG:4326",
+    "typeName": "ogdwien:REALNUT2024OGD"
+   },
+   "methode": "GET",
+   "status": 200,
+   "content_type": "application/json;charset=UTF-8",
+   "bytes": 101964,
+   "dauer_ms": 970,
+   "final_url": "https://data.wien.gv.at/daten/geo?service=WFS&version=1.1.0&request=GetFeature&srsName=EPSG%3A4326&outputFormat=application%2Fjson&maxFeatures=50&count=50&bbox=16.373300%2C48.207700%2C16.374300%2C48.208700%2CEPSG%3A4326&typeName=ogdwien%3AREALNUT2024OGD",
+   "datei": "r9_wien_realnut2024ogd.json"
+  },
+  {
+   "name": "r9_wien_realnut2022ogd",
+   "url": "https://data.wien.gv.at/daten/geo",
+   "params": {
+    "service": "WFS",
+    "version": "1.1.0",
+    "request": "GetFeature",
+    "srsName": "EPSG:4326",
+    "outputFormat": "application/json",
+    "maxFeatures": 50,
+    "count": 50,
+    "bbox": "16.373300,48.207700,16.374300,48.208700,EPSG:4326",
+    "typeName": "ogdwien:REALNUT2022OGD"
+   },
+   "methode": "GET",
+   "status": 200,
+   "content_type": "application/json;charset=UTF-8",
+   "bytes": 95367,
+   "dauer_ms": 614,
+   "final_url": "https://data.wien.gv.at/daten/geo?service=WFS&version=1.1.0&request=GetFeature&srsName=EPSG%3A4326&outputFormat=application%2Fjson&maxFeatures=50&count=50&bbox=16.373300%2C48.207700%2C16.374300%2C48.208700%2CEPSG%3A4326&typeName=ogdwien%3AREALNUT2022OGD",
+   "datei": "r9_wien_realnut2022ogd.json"
+  },
+  {
+   "name": "r9_geodata_caps",
+   "url": "https://www.statistik.gv.at/gs-open/GEODATA/ows",
+   "params": {
+    "service": "WFS",
+    "request": "GetCapabilities",
+    "version": "1.1.0"
+   },
+   "methode": "GET",
+   "status": 200,
+   "content_type": "application/xml",
+   "bytes": 98541,
+   "dauer_ms": 1176,
+   "final_url": "https://www.statistik.at/gs-open/GEODATA/ows?service=WFS&request=GetCapabilities&version=1.1.0"
+  },
+  {
+   "name": "r9_geodata_alle",
+   "gem": [
+    "GEODATA:STATISTIK_AUSTRIA_GEM_20110101",
+    "GEODATA:STATISTIK_AUSTRIA_GEM_20120101",
+    "GEODATA:STATISTIK_AUSTRIA_GEM_20130101",
+    "GEODATA:STATISTIK_AUSTRIA_GEM_20140101",
+    "GEODATA:STATISTIK_AUSTRIA_GEM_20150101",
+    "GEODATA:STATISTIK_AUSTRIA_GEM_20160101",
+    "GEODATA:STATISTIK_AUSTRIA_GEM_20170101",
+    "GEODATA:STATISTIK_AUSTRIA_GEM_20180101",
+    "GEODATA:STATISTIK_AUSTRIA_GEM_20190101",
+    "GEODATA:STATISTIK_AUSTRIA_GEM_20200101",
+    "GEODATA:STATISTIK_AUSTRIA_GEM_20210101",
+    "GEODATA:STATISTIK_AUSTRIA_GEM_20220101",
+    "GEODATA:STATISTIK_AUSTRIA_GEM_20230101",
+    "GEODATA:STATISTIK_AUSTRIA_GEM_20240101",
+    "GEODATA:STATISTIK_AUSTRIA_GEM_20250101",
+    "GEODATA:STATISTIK_AUSTRIA_GEM_20260101",
+    "GEODATA:STATISTIK_AUSTRIA_GEM_MP_20200101",
+    "GEODATA:STATISTIK_AUSTRIA_GEM_MP_20210101",
+    "GEODATA:STATISTIK_AUSTRIA_GEM_MP_20220101",
+    "GEODATA:STATISTIK_AUSTRIA_GEM_MP_20230101",
+    "GEODATA:STATISTIK_AUSTRIA_GEM_MP_20240101",
+    "GEODATA:STATISTIK_AUSTRIA_GEM_MP_20250101",
+    "GEODATA:STATISTIK_AUSTRIA_GEM_MP_20260101"
+   ]
+  },
+  {
+   "name": "r9_geodata_gem_2026",
+   "url": "https://www.statistik.gv.at/gs-open/GEODATA/ows",
+   "params": {
+    "service": "WFS",
+    "version": "1.1.0",
+    "request": "GetFeature",
+    "srsName": "EPSG:4326",
+    "outputFormat": "application/json",
+    "maxFeatures": 50,
+    "count": 50,
+    "bbox": "16.373300,48.207700,16.374300,48.208700,EPSG:4326",
+    "typeName": "GEODATA:STATISTIK_AUSTRIA_GEM_20260101"
+   },
+   "methode": "GET",
+   "status": 200,
+   "content_type": "application/json;charset=UTF-8",
+   "bytes": 89463,
+   "dauer_ms": 465,
+   "final_url": "https://www.statistik.at/gs-open/GEODATA/ows?service=WFS&version=1.1.0&request=GetFeature&srsName=EPSG%3A4326&outputFormat=application%2Fjson&maxFeatures=50&count=50&bbox=16.373300%2C48.207700%2C16.374300%2C48.208700%2CEPSG%3A4326&typeName=GEODATA%3ASTATISTIK_AUSTRIA_GEM_20260101",
+   "datei": "r9_geodata_gem_2026.json"
+  },
+  {
+   "name": "r9_nrw_bbox_ohne_crs",
+   "url": "https://www.wfs.nrw.de/wfs/strassen_nrw",
+   "params": {
+    "service": "WFS",
+    "version": "2.0.0",
+    "request": "GetFeature",
+    "typeNames": "ms:Zaehlstellen",
+    "count": 20,
+    "bbox": "6.9083000000000006,50.8913,7.0083,50.991299999999995"
+   },
+   "methode": "GET",
+   "status": 200,
+   "content_type": "text/xml; subtype=\"gml/3.2.1\"; charset=UTF-8",
+   "bytes": 780,
+   "dauer_ms": 1939,
+   "final_url": "https://www.wfs.nrw.de/wfs/strassen_nrw?service=WFS&version=2.0.0&request=GetFeature&typeNames=ms%3AZaehlstellen&count=20&bbox=6.9083000000000006%2C50.8913%2C7.0083%2C50.991299999999995",
+   "datei": "r9_nrw_bbox_ohne_crs.xml"
+  },
+  {
+   "name": "r9_nrw_bbox_25832",
+   "url": "https://www.wfs.nrw.de/wfs/strassen_nrw",
+   "params": {
+    "service": "WFS",
+    "version": "2.0.0",
+    "request": "GetFeature",
+    "typeNames": "ms:Zaehlstellen",
+    "count": 20,
+    "srsName": "EPSG:25832",
+    "bbox": "352000,5640000,362000,5650000,EPSG:25832"
+   },
+   "methode": "GET",
+   "status": 200,
+   "content_type": "text/xml; subtype=\"gml/3.2.1\"; charset=UTF-8",
+   "bytes": 9286,
+   "dauer_ms": 146,
+   "final_url": "https://www.wfs.nrw.de/wfs/strassen_nrw?service=WFS&version=2.0.0&request=GetFeature&typeNames=ms%3AZaehlstellen&count=20&srsName=EPSG%3A25832&bbox=352000%2C5640000%2C362000%2C5650000%2CEPSG%3A25832",
+   "datei": "r9_nrw_bbox_25832.xml"
+  },
+  {
+   "name": "r9_nrw_erste20",
+   "url": "https://www.wfs.nrw.de/wfs/strassen_nrw",
+   "params": {
+    "service": "WFS",
+    "version": "2.0.0",
+    "request": "GetFeature",
+    "typeNames": "ms:Zaehlstellen",
+    "count": 20
+   },
+   "methode": "GET",
+   "status": 200,
+   "content_type": "text/xml; subtype=\"gml/3.2.1\"; charset=UTF-8",
+   "bytes": 22256,
+   "dauer_ms": 143,
+   "final_url": "https://www.wfs.nrw.de/wfs/strassen_nrw?service=WFS&version=2.0.0&request=GetFeature&typeNames=ms%3AZaehlstellen&count=20",
+   "datei": "r9_nrw_erste20.xml"
+  },
+  {
+   "name": "r9_nrw_describe",
+   "url": "https://www.wfs.nrw.de/wfs/strassen_nrw",
+   "params": {
+    "service": "WFS",
+    "version": "2.0.0",
+    "request": "DescribeFeatureType",
+    "typeNames": "ms:Zaehlstellen"
+   },
+   "methode": "GET",
+   "status": 200,
+   "content_type": "application/gml+xml; version=3.2; charset=UTF-8",
+   "bytes": 1428,
+   "dauer_ms": 128,
+   "final_url": "https://www.wfs.nrw.de/wfs/strassen_nrw?service=WFS&version=2.0.0&request=DescribeFeatureType&typeNames=ms%3AZaehlstellen",
+   "datei": "r9_nrw_describe.xml"
+  },
+  {
+   "name": "r9_datagv_suche_ams",
+   "url": "https://www.data.gv.at/katalog/api/action/package_search",
+   "params": {
+    "q": "Arbeitslose",
+    "rows": 8
+   },
+   "methode": "GET",
+   "status": 404,
+   "content_type": "text/html",
+   "bytes": 5122,
+   "dauer_ms": 728,
+   "final_url": "https://www.data.gv.at/katalog/api/action/package_search?q=Arbeitslose&rows=8",
+   "datei": "r9_datagv_suche_ams.txt"
+  },
+  {
+   "name": "r9_datagv_suche_gisa",
+   "url": "https://www.data.gv.at/katalog/api/action/package_search",
+   "params": {
+    "q": "GISA",
+    "rows": 8
+   },
+   "methode": "GET",
+   "status": 404,
+   "content_type": "text/html",
+   "bytes": 5122,
+   "dauer_ms": 111,
+   "final_url": "https://www.data.gv.at/katalog/api/action/package_search?q=GISA&rows=8",
+   "datei": "r9_datagv_suche_gisa.txt"
+  },
+  {
+   "name": "r9_datagv_show_gisa-gewerbeinformations",
+   "url": "https://www.data.gv.at/katalog/api/action/package_show",
+   "params": {
+    "id": "gisa-gewerbeinformationssystem-austria"
+   },
+   "methode": "GET",
+   "status": 404,
+   "content_type": null,
+   "bytes": 17,
+   "dauer_ms": 246,
+   "final_url": "https://www.data.gv.at/api/hub/repo/datasets/gisa-gewerbeinformationssystem-austria",
+   "datei": "r9_datagv_show_gisa-gewerbeinformations.txt"
+  },
+  {
+   "name": "r9_datagv_show_arbeitsmarktdaten-arbeit",
+   "url": "https://www.data.gv.at/katalog/api/action/package_show",
+   "params": {
+    "id": "arbeitsmarktdaten-arbeitslose-und-schulungsteilnehmerinnen-nach-gemeinden"
+   },
+   "methode": "GET",
+   "status": 404,
+   "content_type": null,
+   "bytes": 17,
+   "dauer_ms": 226,
+   "final_url": "https://www.data.gv.at/api/hub/repo/datasets/arbeitsmarktdaten-arbeitslose-und-schulungsteilnehmerinnen-nach-gemeinden",
+   "datei": "r9_datagv_show_arbeitsmarktdaten-arbeit.txt"
+  }
+ ]
+}

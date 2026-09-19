@@ -1,0 +1,477 @@
+<?xml version='1.0' encoding="UTF-8" ?>
+<wfs:FeatureCollection
+   xmlns:ms="http://mapserver.gis.umn.edu/mapserver"
+   xmlns:gml="http://www.opengis.net/gml/3.2"
+   xmlns:wfs="http://www.opengis.net/wfs/2.0"
+   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+   xsi:schemaLocation="http://mapserver.gis.umn.edu/mapserver https://www.wfs.nrw.de/wfs/strassen_nrw?SERVICE=WFS&amp;VERSION=2.0.0&amp;REQUEST=DescribeFeatureType&amp;TYPENAME=ms:Zaehlstellen&amp;OUTPUTFORMAT=application%2Fgml%2Bxml%3B%20version%3D3.2 http://www.opengis.net/wfs/2.0 http://www.wfs.nrw.de/schemas/wfs/2.0/wfs.xsd http://www.opengis.net/gml/3.2 http://www.wfs.nrw.de/schemas/gml/3.2.1/gml.xsd"
+   timeStamp="2026-09-19T07:32:55" numberMatched="unknown" numberReturned="20"
+   next="https://www.wfs.nrw.de/wfs/strassen_nrw?service=WFS&amp;version=2.0.0&amp;request=GetFeature&amp;typeNames=ms%3AZaehlstellen&amp;count=20&amp;STARTINDEX=20">
+      <wfs:boundedBy>
+      	<gml:Envelope srsName="urn:ogc:def:crs:EPSG::25832">
+      		<gml:lowerCorner>305806.996247 5613562.104688</gml:lowerCorner>
+      		<gml:upperCorner>464337.856522 5744296.200937</gml:upperCorner>
+      	</gml:Envelope>
+      </wfs:boundedBy>
+    <wfs:member>
+      <ms:Zaehlstellen gml:id="Zaehlstellen.5309024B5309023O">
+        <gml:boundedBy>
+        	<gml:Envelope srsName="urn:ogc:def:crs:EPSG::25832">
+        		<gml:lowerCorner>380010.176800 5613562.104688</gml:lowerCorner>
+        		<gml:upperCorner>380010.176800 5613562.104688</gml:upperCorner>
+        	</gml:Envelope>
+        </gml:boundedBy>
+        <ms:Shape>
+          <gml:Point gml:id="Zaehlstellen.5309024B5309023O.1" srsName="urn:ogc:def:crs:EPSG::25832">
+            <gml:pos>380010.176800 5613562.104688</gml:pos>
+          </gml:Point>
+        </ms:Shape>
+        <ms:ABS>5309024B5309023O</ms:ABS>
+        <ms:STAT>1100.000000000000000</ms:STAT>
+        <ms:ZSTNR>53091309</ms:ZSTNR>
+        <ms:ZSTART>temporäre Messstelle (TM)</ms:ZSTART>
+        <ms:ZSTARTKNZ>02</ms:ZSTARTKNZ>
+        <ms:ERFASSART> Fortgeschriebene TM-Zählstelle aus Jahr (2019), tageweise TM Hochrechnung</ms:ERFASSART>
+        <ms:BZUSTAND>aktiv (in Betrieb)</ms:BZUSTAND>
+        <ms:NETZSTAND>20260531190000</ms:NETZSTAND>
+      </ms:Zaehlstellen>
+    </wfs:member>
+    <wfs:member>
+      <ms:Zaehlstellen gml:id="Zaehlstellen.4313017O4313027O">
+        <gml:boundedBy>
+        	<gml:Envelope srsName="urn:ogc:def:crs:EPSG::25832">
+        		<gml:lowerCorner>420068.301893 5721373.079832</gml:lowerCorner>
+        		<gml:upperCorner>420068.301893 5721373.079832</gml:upperCorner>
+        	</gml:Envelope>
+        </gml:boundedBy>
+        <ms:Shape>
+          <gml:Point gml:id="Zaehlstellen.4313017O4313027O.1" srsName="urn:ogc:def:crs:EPSG::25832">
+            <gml:pos>420068.301893 5721373.079832</gml:pos>
+          </gml:Point>
+        </ms:Shape>
+        <ms:ABS>4313017O4313027O</ms:ABS>
+        <ms:STAT>1000.000000000000000</ms:STAT>
+        <ms:ZSTNR>43132202</ms:ZSTNR>
+        <ms:ZSTART>manuelle Zählstelle (SVZ)</ms:ZSTART>
+        <ms:ZSTARTKNZ>03</ms:ZSTARTKNZ>
+        <ms:ERFASSART>manuelle Zählung A-Zählstelle</ms:ERFASSART>
+        <ms:BZUSTAND>aktiv (in Betrieb)</ms:BZUSTAND>
+        <ms:NETZSTAND>20260531190000</ms:NETZSTAND>
+      </ms:Zaehlstellen>
+    </wfs:member>
+    <wfs:member>
+      <ms:Zaehlstellen gml:id="Zaehlstellen.4606059B4606060O">
+        <gml:boundedBy>
+        	<gml:Envelope srsName="urn:ogc:def:crs:EPSG::25832">
+        		<gml:lowerCorner>347848.685194 5689927.578891</gml:lowerCorner>
+        		<gml:upperCorner>347848.685194 5689927.578891</gml:upperCorner>
+        	</gml:Envelope>
+        </gml:boundedBy>
+        <ms:Shape>
+          <gml:Point gml:id="Zaehlstellen.4606059B4606060O.1" srsName="urn:ogc:def:crs:EPSG::25832">
+            <gml:pos>347848.685194 5689927.578891</gml:pos>
+          </gml:Point>
+        </ms:Shape>
+        <ms:ABS>4606059B4606060O</ms:ABS>
+        <ms:STAT>1818.000000000000000</ms:STAT>
+        <ms:ZSTNR>46062310</ms:ZSTNR>
+        <ms:ZSTART>temporäre Messstelle (TM)</ms:ZSTART>
+        <ms:ZSTARTKNZ>02</ms:ZSTARTKNZ>
+        <ms:ERFASSART> Fortgeschriebene TM-Zählstelle aus Jahr (2018), tageweise TM Hochrechnung</ms:ERFASSART>
+        <ms:BZUSTAND>aktiv (in Betrieb)</ms:BZUSTAND>
+        <ms:NETZSTAND>20260531190000</ms:NETZSTAND>
+      </ms:Zaehlstellen>
+    </wfs:member>
+    <wfs:member>
+      <ms:Zaehlstellen gml:id="Zaehlstellen.4606059C4606025A">
+        <gml:boundedBy>
+        	<gml:Envelope srsName="urn:ogc:def:crs:EPSG::25832">
+        		<gml:lowerCorner>346169.303910 5689966.384887</gml:lowerCorner>
+        		<gml:upperCorner>346169.303910 5689966.384887</gml:upperCorner>
+        	</gml:Envelope>
+        </gml:boundedBy>
+        <ms:Shape>
+          <gml:Point gml:id="Zaehlstellen.4606059C4606025A.1" srsName="urn:ogc:def:crs:EPSG::25832">
+            <gml:pos>346169.303910 5689966.384887</gml:pos>
+          </gml:Point>
+        </ms:Shape>
+        <ms:ABS>4606059C4606025A</ms:ABS>
+        <ms:STAT>782.000000000000000</ms:STAT>
+        <ms:ZSTNR>46062313</ms:ZSTNR>
+        <ms:ZSTART>temporäre Messstelle (TM)</ms:ZSTART>
+        <ms:ZSTARTKNZ>02</ms:ZSTARTKNZ>
+        <ms:ERFASSART> Fortgeschriebene TM-Zählstelle aus Jahr (2016/2017/2018/2019/2020), tageweise TM Hochrechnung</ms:ERFASSART>
+        <ms:BZUSTAND>aktiv (in Betrieb)</ms:BZUSTAND>
+        <ms:NETZSTAND>20260531190000</ms:NETZSTAND>
+      </ms:Zaehlstellen>
+    </wfs:member>
+    <wfs:member>
+      <ms:Zaehlstellen gml:id="Zaehlstellen.4607023O4507045O">
+        <gml:boundedBy>
+        	<gml:Envelope srsName="urn:ogc:def:crs:EPSG::25832">
+        		<gml:lowerCorner>354055.357701 5695873.148564</gml:lowerCorner>
+        		<gml:upperCorner>354055.357701 5695873.148564</gml:upperCorner>
+        	</gml:Envelope>
+        </gml:boundedBy>
+        <ms:Shape>
+          <gml:Point gml:id="Zaehlstellen.4607023O4507045O.1" srsName="urn:ogc:def:crs:EPSG::25832">
+            <gml:pos>354055.357701 5695873.148564</gml:pos>
+          </gml:Point>
+        </ms:Shape>
+        <ms:ABS>4607023O4507045O</ms:ABS>
+        <ms:STAT>3600.000000000000000</ms:STAT>
+        <ms:ZSTNR>46071302</ms:ZSTNR>
+        <ms:ZSTART>manuelle Zählstelle (SVZ)</ms:ZSTART>
+        <ms:ZSTARTKNZ>03</ms:ZSTARTKNZ>
+        <ms:ERFASSART>manuelle Zählung B-Zählstelle</ms:ERFASSART>
+        <ms:BZUSTAND>aktiv (in Betrieb)</ms:BZUSTAND>
+        <ms:NETZSTAND>20260531190000</ms:NETZSTAND>
+      </ms:Zaehlstellen>
+    </wfs:member>
+    <wfs:member>
+      <ms:Zaehlstellen gml:id="Zaehlstellen.4607053A4507076O">
+        <gml:boundedBy>
+        	<gml:Envelope srsName="urn:ogc:def:crs:EPSG::25832">
+        		<gml:lowerCorner>360232.610469 5696399.440887</gml:lowerCorner>
+        		<gml:upperCorner>360232.610469 5696399.440887</gml:upperCorner>
+        	</gml:Envelope>
+        </gml:boundedBy>
+        <ms:Shape>
+          <gml:Point gml:id="Zaehlstellen.4607053A4507076O.1" srsName="urn:ogc:def:crs:EPSG::25832">
+            <gml:pos>360232.610469 5696399.440887</gml:pos>
+          </gml:Point>
+        </ms:Shape>
+        <ms:ABS>4607053A4507076O</ms:ABS>
+        <ms:STAT>900.000000000000000</ms:STAT>
+        <ms:ZSTNR>45072205</ms:ZSTNR>
+        <ms:ZSTART>manuelle Zählstelle (SVZ)</ms:ZSTART>
+        <ms:ZSTARTKNZ>03</ms:ZSTARTKNZ>
+        <ms:ERFASSART>manuelle Zählung A-Zählstelle</ms:ERFASSART>
+        <ms:BZUSTAND>aktiv (in Betrieb)</ms:BZUSTAND>
+        <ms:NETZSTAND>20260531190000</ms:NETZSTAND>
+      </ms:Zaehlstellen>
+    </wfs:member>
+    <wfs:member>
+      <ms:Zaehlstellen gml:id="Zaehlstellen.4608076O4608077O">
+        <gml:boundedBy>
+        	<gml:Envelope srsName="urn:ogc:def:crs:EPSG::25832">
+        		<gml:lowerCorner>365673.320517 5694022.116016</gml:lowerCorner>
+        		<gml:upperCorner>365673.320517 5694022.116016</gml:upperCorner>
+        	</gml:Envelope>
+        </gml:boundedBy>
+        <ms:Shape>
+          <gml:Point gml:id="Zaehlstellen.4608076O4608077O.1" srsName="urn:ogc:def:crs:EPSG::25832">
+            <gml:pos>365673.320517 5694022.116016</gml:pos>
+          </gml:Point>
+        </ms:Shape>
+        <ms:ABS>4608076O4608077O</ms:ABS>
+        <ms:STAT>2394.000000000000000</ms:STAT>
+        <ms:ZSTNR>46082301</ms:ZSTNR>
+        <ms:ZSTART>manuelle Zählstelle (SVZ)</ms:ZSTART>
+        <ms:ZSTARTKNZ>03</ms:ZSTARTKNZ>
+        <ms:ERFASSART>manuelle Zählung B-Zählstelle</ms:ERFASSART>
+        <ms:BZUSTAND>aktiv (in Betrieb)</ms:BZUSTAND>
+        <ms:NETZSTAND>20260531190000</ms:NETZSTAND>
+      </ms:Zaehlstellen>
+    </wfs:member>
+    <wfs:member>
+      <ms:Zaehlstellen gml:id="Zaehlstellen.4208021O4208028O">
+        <gml:boundedBy>
+        	<gml:Envelope srsName="urn:ogc:def:crs:EPSG::25832">
+        		<gml:lowerCorner>370322.200241 5732152.051169</gml:lowerCorner>
+        		<gml:upperCorner>370322.200241 5732152.051169</gml:upperCorner>
+        	</gml:Envelope>
+        </gml:boundedBy>
+        <ms:Shape>
+          <gml:Point gml:id="Zaehlstellen.4208021O4208028O.1" srsName="urn:ogc:def:crs:EPSG::25832">
+            <gml:pos>370322.200241 5732152.051169</gml:pos>
+          </gml:Point>
+        </ms:Shape>
+        <ms:ABS>4208021O4208028O</ms:ABS>
+        <ms:STAT>800.000000000000000</ms:STAT>
+        <ms:ZSTNR>42082321</ms:ZSTNR>
+        <ms:ZSTART>manuelle Zählstelle (SVZ)</ms:ZSTART>
+        <ms:ZSTARTKNZ>03</ms:ZSTARTKNZ>
+        <ms:ERFASSART>manuelle Zählung B-Zählstelle</ms:ERFASSART>
+        <ms:BZUSTAND>aktiv (in Betrieb)</ms:BZUSTAND>
+        <ms:NETZSTAND>20260531190000</ms:NETZSTAND>
+      </ms:Zaehlstellen>
+    </wfs:member>
+    <wfs:member>
+      <ms:Zaehlstellen gml:id="Zaehlstellen.5006085O5006012B">
+        <gml:boundedBy>
+        	<gml:Envelope srsName="urn:ogc:def:crs:EPSG::25832">
+        		<gml:lowerCorner>337946.401283 5646530.028819</gml:lowerCorner>
+        		<gml:upperCorner>337946.401283 5646530.028819</gml:upperCorner>
+        	</gml:Envelope>
+        </gml:boundedBy>
+        <ms:Shape>
+          <gml:Point gml:id="Zaehlstellen.5006085O5006012B.1" srsName="urn:ogc:def:crs:EPSG::25832">
+            <gml:pos>337946.401283 5646530.028819</gml:pos>
+          </gml:Point>
+        </ms:Shape>
+        <ms:ABS>5006085O5006012B</ms:ABS>
+        <ms:STAT>1250.000000000000000</ms:STAT>
+        <ms:ZSTNR>50062307</ms:ZSTNR>
+        <ms:ZSTART>temporäre Messstelle (TM)</ms:ZSTART>
+        <ms:ZSTARTKNZ>02</ms:ZSTARTKNZ>
+        <ms:ERFASSART> Fortgeschriebene TM-Zählstelle aus Jahr (2016/2017/2018/2019/2020), tageweise TM Hochrechnung</ms:ERFASSART>
+        <ms:BZUSTAND>aktiv (in Betrieb)</ms:BZUSTAND>
+        <ms:NETZSTAND>20260531190000</ms:NETZSTAND>
+      </ms:Zaehlstellen>
+    </wfs:member>
+    <wfs:member>
+      <ms:Zaehlstellen gml:id="Zaehlstellen.4210052A4210062O">
+        <gml:boundedBy>
+        	<gml:Envelope srsName="urn:ogc:def:crs:EPSG::25832">
+        		<gml:lowerCorner>392569.844389 5736378.013218</gml:lowerCorner>
+        		<gml:upperCorner>392569.844389 5736378.013218</gml:upperCorner>
+        	</gml:Envelope>
+        </gml:boundedBy>
+        <ms:Shape>
+          <gml:Point gml:id="Zaehlstellen.4210052A4210062O.1" srsName="urn:ogc:def:crs:EPSG::25832">
+            <gml:pos>392569.844389 5736378.013218</gml:pos>
+          </gml:Point>
+        </ms:Shape>
+        <ms:ABS>4210052A4210062O</ms:ABS>
+        <ms:STAT>400.000000000000000</ms:STAT>
+        <ms:ZSTNR>42104403</ms:ZSTNR>
+        <ms:ZSTART>manuelle Zählstelle (SVZ)</ms:ZSTART>
+        <ms:ZSTARTKNZ>03</ms:ZSTARTKNZ>
+        <ms:ERFASSART>manuelle Zählung A-Zählstelle</ms:ERFASSART>
+        <ms:BZUSTAND>aktiv (in Betrieb)</ms:BZUSTAND>
+        <ms:NETZSTAND>20260531190000</ms:NETZSTAND>
+      </ms:Zaehlstellen>
+    </wfs:member>
+    <wfs:member>
+      <ms:Zaehlstellen gml:id="Zaehlstellen.4210062A4210060A">
+        <gml:boundedBy>
+        	<gml:Envelope srsName="urn:ogc:def:crs:EPSG::25832">
+        		<gml:lowerCorner>393378.253353 5736278.710238</gml:lowerCorner>
+        		<gml:upperCorner>393378.253353 5736278.710238</gml:upperCorner>
+        	</gml:Envelope>
+        </gml:boundedBy>
+        <ms:Shape>
+          <gml:Point gml:id="Zaehlstellen.4210062A4210060A.1" srsName="urn:ogc:def:crs:EPSG::25832">
+            <gml:pos>393378.253353 5736278.710238</gml:pos>
+          </gml:Point>
+        </ms:Shape>
+        <ms:ABS>4210062A4210060A</ms:ABS>
+        <ms:STAT>188.000000000000000</ms:STAT>
+        <ms:ZSTNR>42104402</ms:ZSTNR>
+        <ms:ZSTART>manuelle Zählstelle (SVZ)</ms:ZSTART>
+        <ms:ZSTARTKNZ>03</ms:ZSTARTKNZ>
+        <ms:ERFASSART>manuelle Zählung A-Zählstelle</ms:ERFASSART>
+        <ms:BZUSTAND>aktiv (in Betrieb)</ms:BZUSTAND>
+        <ms:NETZSTAND>20260531190000</ms:NETZSTAND>
+      </ms:Zaehlstellen>
+    </wfs:member>
+    <wfs:member>
+      <ms:Zaehlstellen gml:id="Zaehlstellen.4210062B4210065O">
+        <gml:boundedBy>
+        	<gml:Envelope srsName="urn:ogc:def:crs:EPSG::25832">
+        		<gml:lowerCorner>393057.162288 5736923.219473</gml:lowerCorner>
+        		<gml:upperCorner>393057.162288 5736923.219473</gml:upperCorner>
+        	</gml:Envelope>
+        </gml:boundedBy>
+        <ms:Shape>
+          <gml:Point gml:id="Zaehlstellen.4210062B4210065O.1" srsName="urn:ogc:def:crs:EPSG::25832">
+            <gml:pos>393057.162288 5736923.219473</gml:pos>
+          </gml:Point>
+        </ms:Shape>
+        <ms:ABS>4210062B4210065O</ms:ABS>
+        <ms:STAT>588.000000000000000</ms:STAT>
+        <ms:ZSTNR>42103408</ms:ZSTNR>
+        <ms:ZSTART>manuelle Zählstelle (SVZ)</ms:ZSTART>
+        <ms:ZSTARTKNZ>03</ms:ZSTARTKNZ>
+        <ms:ERFASSART>manuelle Zählung A-Zählstelle</ms:ERFASSART>
+        <ms:BZUSTAND>aktiv (in Betrieb)</ms:BZUSTAND>
+        <ms:NETZSTAND>20260531190000</ms:NETZSTAND>
+      </ms:Zaehlstellen>
+    </wfs:member>
+    <wfs:member>
+      <ms:Zaehlstellen gml:id="Zaehlstellen.5104074B5104022A">
+        <gml:boundedBy>
+        	<gml:Envelope srsName="urn:ogc:def:crs:EPSG::25832">
+        		<gml:lowerCorner>322079.323760 5634178.457605</gml:lowerCorner>
+        		<gml:upperCorner>322079.323760 5634178.457605</gml:upperCorner>
+        	</gml:Envelope>
+        </gml:boundedBy>
+        <ms:Shape>
+          <gml:Point gml:id="Zaehlstellen.5104074B5104022A.1" srsName="urn:ogc:def:crs:EPSG::25832">
+            <gml:pos>322079.323760 5634178.457605</gml:pos>
+          </gml:Point>
+        </ms:Shape>
+        <ms:ABS>5104074B5104022A</ms:ABS>
+        <ms:STAT>86.000000000000000</ms:STAT>
+        <ms:ZSTNR>51041306</ms:ZSTNR>
+        <ms:ZSTART>temporäre Messstelle (TM)</ms:ZSTART>
+        <ms:ZSTARTKNZ>02</ms:ZSTARTKNZ>
+        <ms:ERFASSART>Temporäre Messung, Jahr 2017</ms:ERFASSART>
+        <ms:BZUSTAND>aktiv (in Betrieb)</ms:BZUSTAND>
+        <ms:NETZSTAND>20260531190000</ms:NETZSTAND>
+      </ms:Zaehlstellen>
+    </wfs:member>
+    <wfs:member>
+      <ms:Zaehlstellen gml:id="Zaehlstellen.4311082C4311064O">
+        <gml:boundedBy>
+        	<gml:Envelope srsName="urn:ogc:def:crs:EPSG::25832">
+        		<gml:lowerCorner>405466.791682 5724217.505860</gml:lowerCorner>
+        		<gml:upperCorner>405466.791682 5724217.505860</gml:upperCorner>
+        	</gml:Envelope>
+        </gml:boundedBy>
+        <ms:Shape>
+          <gml:Point gml:id="Zaehlstellen.4311082C4311064O.1" srsName="urn:ogc:def:crs:EPSG::25832">
+            <gml:pos>405466.791682 5724217.505860</gml:pos>
+          </gml:Point>
+        </ms:Shape>
+        <ms:ABS>4311082C4311064O</ms:ABS>
+        <ms:STAT>49.000000000000000</ms:STAT>
+        <ms:ZSTNR>43114218</ms:ZSTNR>
+        <ms:ZSTART>manuelle Zählstelle (SVZ)</ms:ZSTART>
+        <ms:ZSTARTKNZ>03</ms:ZSTARTKNZ>
+        <ms:ERFASSART>manuelle Zählung A-Zählstelle</ms:ERFASSART>
+        <ms:BZUSTAND>aktiv (in Betrieb)</ms:BZUSTAND>
+        <ms:NETZSTAND>20260531190000</ms:NETZSTAND>
+      </ms:Zaehlstellen>
+    </wfs:member>
+    <wfs:member>
+      <ms:Zaehlstellen gml:id="Zaehlstellen.4616008O4616026O">
+        <gml:boundedBy>
+        	<gml:Envelope srsName="urn:ogc:def:crs:EPSG::25832">
+        		<gml:lowerCorner>464337.856522 5687385.898655</gml:lowerCorner>
+        		<gml:upperCorner>464337.856522 5687385.898655</gml:upperCorner>
+        	</gml:Envelope>
+        </gml:boundedBy>
+        <ms:Shape>
+          <gml:Point gml:id="Zaehlstellen.4616008O4616026O.1" srsName="urn:ogc:def:crs:EPSG::25832">
+            <gml:pos>464337.856522 5687385.898655</gml:pos>
+          </gml:Point>
+        </ms:Shape>
+        <ms:ABS>4616008O4616026O</ms:ABS>
+        <ms:STAT>600.000000000000000</ms:STAT>
+        <ms:ZSTNR>46162203</ms:ZSTNR>
+        <ms:ZSTART>temporäre Messstelle (TM)</ms:ZSTART>
+        <ms:ZSTARTKNZ>02</ms:ZSTARTKNZ>
+        <ms:ERFASSART> Fortgeschriebene TM-Zählstelle aus Jahr (2016/2017/2018/2019/2020), tageweise TM Hochrechnung</ms:ERFASSART>
+        <ms:BZUSTAND>aktiv (in Betrieb)</ms:BZUSTAND>
+        <ms:NETZSTAND>20260531190000</ms:NETZSTAND>
+      </ms:Zaehlstellen>
+    </wfs:member>
+    <wfs:member>
+      <ms:Zaehlstellen gml:id="Zaehlstellen.5006073A5006070O">
+        <gml:boundedBy>
+        	<gml:Envelope srsName="urn:ogc:def:crs:EPSG::25832">
+        		<gml:lowerCorner>345994.187748 5650776.016164</gml:lowerCorner>
+        		<gml:upperCorner>345994.187748 5650776.016164</gml:upperCorner>
+        	</gml:Envelope>
+        </gml:boundedBy>
+        <ms:Shape>
+          <gml:Point gml:id="Zaehlstellen.5006073A5006070O.1" srsName="urn:ogc:def:crs:EPSG::25832">
+            <gml:pos>345994.187748 5650776.016164</gml:pos>
+          </gml:Point>
+        </ms:Shape>
+        <ms:ABS>5006073A5006070O</ms:ABS>
+        <ms:STAT>473.000000000000000</ms:STAT>
+        <ms:ZSTNR>50062342</ms:ZSTNR>
+        <ms:ZSTART>temporäre Messstelle (TM)</ms:ZSTART>
+        <ms:ZSTARTKNZ>02</ms:ZSTARTKNZ>
+        <ms:ERFASSART> Fortgeschriebene TM-Zählstelle aus Jahr (2016/2017/2018/2019/2020), tageweise TM Hochrechnung</ms:ERFASSART>
+        <ms:BZUSTAND>aktiv (in Betrieb)</ms:BZUSTAND>
+        <ms:NETZSTAND>20260531190000</ms:NETZSTAND>
+      </ms:Zaehlstellen>
+    </wfs:member>
+    <wfs:member>
+      <ms:Zaehlstellen gml:id="Zaehlstellen.4106010O4106016O">
+        <gml:boundedBy>
+        	<gml:Envelope srsName="urn:ogc:def:crs:EPSG::25832">
+        		<gml:lowerCorner>350106.225366 5743865.591624</gml:lowerCorner>
+        		<gml:upperCorner>350106.225366 5743865.591624</gml:upperCorner>
+        	</gml:Envelope>
+        </gml:boundedBy>
+        <ms:Shape>
+          <gml:Point gml:id="Zaehlstellen.4106010O4106016O.1" srsName="urn:ogc:def:crs:EPSG::25832">
+            <gml:pos>350106.225366 5743865.591624</gml:pos>
+          </gml:Point>
+        </ms:Shape>
+        <ms:ABS>4106010O4106016O</ms:ABS>
+        <ms:STAT>1300.000000000000000</ms:STAT>
+        <ms:ZSTNR>41061402</ms:ZSTNR>
+        <ms:ZSTART>temporäre Messstelle (TM)</ms:ZSTART>
+        <ms:ZSTARTKNZ>02</ms:ZSTARTKNZ>
+        <ms:ERFASSART> Fortgeschriebene TM-Zählstelle aus Jahr (2018), tageweise TM Hochrechnung</ms:ERFASSART>
+        <ms:BZUSTAND>aktiv (in Betrieb)</ms:BZUSTAND>
+        <ms:NETZSTAND>20260531190000</ms:NETZSTAND>
+      </ms:Zaehlstellen>
+    </wfs:member>
+    <wfs:member>
+      <ms:Zaehlstellen gml:id="Zaehlstellen.4106002O4106016O">
+        <gml:boundedBy>
+        	<gml:Envelope srsName="urn:ogc:def:crs:EPSG::25832">
+        		<gml:lowerCorner>346129.629097 5743617.825806</gml:lowerCorner>
+        		<gml:upperCorner>346129.629097 5743617.825806</gml:upperCorner>
+        	</gml:Envelope>
+        </gml:boundedBy>
+        <ms:Shape>
+          <gml:Point gml:id="Zaehlstellen.4106002O4106016O.1" srsName="urn:ogc:def:crs:EPSG::25832">
+            <gml:pos>346129.629097 5743617.825806</gml:pos>
+          </gml:Point>
+        </ms:Shape>
+        <ms:ABS>4106002O4106016O</ms:ABS>
+        <ms:STAT>4000.000000000000000</ms:STAT>
+        <ms:ZSTNR>41062350</ms:ZSTNR>
+        <ms:ZSTART>manuelle Zählstelle (SVZ)</ms:ZSTART>
+        <ms:ZSTARTKNZ>03</ms:ZSTARTKNZ>
+        <ms:ERFASSART>manuelle Zählung A-Zählstelle</ms:ERFASSART>
+        <ms:BZUSTAND>aktiv (in Betrieb)</ms:BZUSTAND>
+        <ms:NETZSTAND>20260531190000</ms:NETZSTAND>
+      </ms:Zaehlstellen>
+    </wfs:member>
+    <wfs:member>
+      <ms:Zaehlstellen gml:id="Zaehlstellen.4106016O4107035O">
+        <gml:boundedBy>
+        	<gml:Envelope srsName="urn:ogc:def:crs:EPSG::25832">
+        		<gml:lowerCorner>350895.994092 5744296.200937</gml:lowerCorner>
+        		<gml:upperCorner>350895.994092 5744296.200937</gml:upperCorner>
+        	</gml:Envelope>
+        </gml:boundedBy>
+        <ms:Shape>
+          <gml:Point gml:id="Zaehlstellen.4106016O4107035O.1" srsName="urn:ogc:def:crs:EPSG::25832">
+            <gml:pos>350895.994092 5744296.200937</gml:pos>
+          </gml:Point>
+        </ms:Shape>
+        <ms:ABS>4106016O4107035O</ms:ABS>
+        <ms:STAT>500.000000000000000</ms:STAT>
+        <ms:ZSTNR>41072350</ms:ZSTNR>
+        <ms:ZSTART>manuelle Zählstelle (SVZ)</ms:ZSTART>
+        <ms:ZSTARTKNZ>03</ms:ZSTARTKNZ>
+        <ms:ERFASSART>manuelle Zählung A-Zählstelle</ms:ERFASSART>
+        <ms:BZUSTAND>aktiv (in Betrieb)</ms:BZUSTAND>
+        <ms:NETZSTAND>20260531190000</ms:NETZSTAND>
+      </ms:Zaehlstellen>
+    </wfs:member>
+    <wfs:member>
+      <ms:Zaehlstellen gml:id="Zaehlstellen.5103092C5103029O">
+        <gml:boundedBy>
+        	<gml:Envelope srsName="urn:ogc:def:crs:EPSG::25832">
+        		<gml:lowerCorner>305806.996247 5633707.697046</gml:lowerCorner>
+        		<gml:upperCorner>305806.996247 5633707.697046</gml:upperCorner>
+        	</gml:Envelope>
+        </gml:boundedBy>
+        <ms:Shape>
+          <gml:Point gml:id="Zaehlstellen.5103092C5103029O.1" srsName="urn:ogc:def:crs:EPSG::25832">
+            <gml:pos>305806.996247 5633707.697046</gml:pos>
+          </gml:Point>
+        </ms:Shape>
+        <ms:ABS>5103092C5103029O</ms:ABS>
+        <ms:STAT>4422.000000000000000</ms:STAT>
+        <ms:ZSTNR>51034206</ms:ZSTNR>
+        <ms:ZSTART>temporäre Messstelle (TM)</ms:ZSTART>
+        <ms:ZSTARTKNZ>02</ms:ZSTARTKNZ>
+        <ms:ERFASSART> Fortgeschriebene TM-Zählstelle aus Jahr (2017), tageweise TM Hochrechnung</ms:ERFASSART>
+        <ms:BZUSTAND>aktiv (in Betrieb)</ms:BZUSTAND>
+        <ms:NETZSTAND>20260531190000</ms:NETZSTAND>
+      </ms:Zaehlstellen>
+    </wfs:member>
+</wfs:FeatureCollection>
+
