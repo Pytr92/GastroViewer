@@ -1130,13 +1130,28 @@ def pruefe_wien(page) -> str:
     g = text(page, "#inhalt-gtfs")
     fordere("Wiener Linien" in g and "Jetzt laden" in g,
             f"der Knopf für den Wiener Fahrplan fehlt im ÖPNV-Block: {g[-160:]}")
-    for block in ("luft", "einkommen", "pks", "register", "verkehrsmenge"):
+    lg = text(page, "#inhalt-lage")
+    fordere("Kurzparkzone" in lg and "Fußgängerzone" in lg and "Geschäftsstraße" in lg,
+            f"Lage-Block ohne Wiener Zonen: {lg[:120]}")
+    ind = text(page, "#inhalt-indikatoren")
+    fordere("Zählbezirk 01.01" in ind and "Wien gesamt" in ind,
+            f"Viertel-Steckbrief ohne Wiener Zählbezirk: {ind[:120]}")
+    kp = text(page, "#inhalt-kreisprofil")
+    fordere("Wien" in kp and "Beschäftigte" in kp, f"Gemeindeprofil fehlt: {kp[:120]}")
+    im = text(page, "#inhalt-immobilien")
+    fordere("Eigentumswohnungen" in im and "Innere Stadt" in im, f"Immobilienpreise fehlen: {im[:120]}")
+    vm = text(page, "#inhalt-verkehrsmenge")
+    fordere("Franz-Josefs-Kai" in vm and "MA 46" in vm, f"Wiener Dauerzählstellen fehlen: {vm[:120]}")
+    lu = text(page, "#inhalt-luft")
+    fordere("Stephansplatz" in lu and "STEF" in lu and "MA 22" in lu, f"Wiener Luftstation fehlt: {lu[:120]}")
+    for block in ("einkommen", "pks", "register"):
         t = text(page, f"#inhalt-{block}")
         fordere("Nur für Deutschland" in t, f"{block}: deutsche Quelle nicht ehrlich leer: {t[:80]}")
     fordere(page.eval_on_selector_all(".status.laedt", "e=>e.length") == 0,
             "Blöcke bleiben in Wien im Ladezustand")
     setze_punkt(page, *MARIENPLATZ)
-    return "Stephansplatz: Land, Schutzzone, Widmung GB, NRW 2024, GeoSphere, lärminfo — deutsche Blöcke ehrlich leer"
+    return ("Stephansplatz: Land, Schutzzone, Widmung GB, NRW 2024, GeoSphere, lärminfo, Lage, Zählbezirk, "
+            "Gemeindeprofil, Immobilienpreise, Dauerzählstellen, Luft — deutsche Blöcke ehrlich leer")
 
 PRUEFUNGEN = [
     ("Grundgerüst und Blöcke", pruefe_grundgeruest),

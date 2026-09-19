@@ -92,13 +92,21 @@ async def einkommen(
 @router.get("/api/kreisprofil")
 async def kreisprofil(
     request: Request,
-    ags: str = Query(..., min_length=5, max_length=8),
+    ags: str = Query("", max_length=8),
+    lat: float | None = None, lon: float | None = None,
 ):
     """Kreisprofil aus dem Regionalatlas: Übernachtungen, Erwerbstätige
-    am Arbeitsort, Arbeitsmarkt, Bevölkerungsbewegung — Kreiswerte."""
-    if not ags.isdigit():
-        raise HTTPException(422, "Der Gemeindeschlüssel besteht aus Ziffern.")
-    return (await svc(request).kreisprofil(ags)).to_dict()
+    am Arbeitsort, Arbeitsmarkt, Bevölkerungsbewegung — Kreiswerte. Ohne
+    Schlüssel, mit Koordinaten (Österreich): das Gemeindeprofil von
+    Statistik Austria über die Adresse des Punkts."""
+    if ags:
+        if not ags.isdigit() or len(ags) < 5:
+            raise HTTPException(422, "Der Gemeindeschlüssel besteht aus 5 bis 8 Ziffern.")
+        return (await svc(request).kreisprofil(ags)).to_dict()
+    if lat is None or lon is None:
+        raise HTTPException(422, "Gemeindeschlüssel oder Koordinaten angeben.")
+    _validate(lat, lon, 600)
+    return (await svc(request).kreisprofil_ohne_schluessel(lat, lon)).to_dict()
 
 
 @router.get("/api/kalender")

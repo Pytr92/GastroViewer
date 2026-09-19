@@ -776,5 +776,601 @@ TEILE.update({"hochwasser4": hochwasser_r4, "wien4": wien_r4, "statistik4": stat
               "nrw4": nrw_r4})
 
 
+# ------------------------------------------------------------------ Runde 5
+# Kandidaten aus docs/erweiterungen-oesterreich.md und -deutschland.md.
+# Deutsche Antworten heißen de_* und wandern kuratiert nach fixtures/de.
+
+KOELN = (50.9413, 6.9583)
+BERLIN = (52.5200, 13.4050)
+HAMBURG = (53.5503, 9.9937)
+STUTTGART = (48.7758, 9.1829)
+MUENCHEN = (48.1372, 11.5755)
+GRAZ_HBF = (47.0730, 15.4160)
+
+
+def _dcat_ressourcen(daten: bytes) -> list[dict]:
+    try:
+        graph = json.loads(daten).get("@graph", [])
+    except Exception:  # noqa: BLE001
+        return []
+    out = []
+    for g in graph:
+        if g.get("@type") == "dcat:Distribution":
+            titel = g.get("dct:title")
+            if isinstance(titel, list):
+                titel = (titel[0] or {}).get("@value") if titel else None
+            elif isinstance(titel, dict):
+                titel = titel.get("@value")
+            fmt = g.get("dct:format")
+            if isinstance(fmt, dict):
+                fmt = fmt.get("@id", "").rsplit("/", 1)[-1]
+            out.append({"titel": titel, "format": fmt,
+                        "url": (g.get("dcat:accessURL") or {}).get("@id")})
+    return out
+
+
+def _ckan_show(c, name: str, pid: str) -> list[dict]:
+    daten = hole(c, f"ckan_r5_{name}", "https://www.data.gv.at/katalog/api/action/package_show",
+                 params={"id": pid})
+    res = _dcat_ressourcen(daten) if daten else []
+    manifest.append({"name": f"ckan_r5_{name}_ressourcen", "ressourcen": res[:12]})
+    return res
+
+
+def _ckan_suche(c, name: str, q: str) -> list[dict]:
+    daten = hole(c, f"ckan_r5_suche_{name}", "https://www.data.gv.at/katalog/api/action/package_search",
+                 params={"q": q, "rows": 5})
+    treffer = []
+    if daten:
+        try:
+            d = json.loads(daten)
+            for r in (d.get("result") or {}).get("results") or []:
+                treffer.append({"id": r.get("id"), "name": r.get("name"), "title": r.get("title"),
+                                "ressourcen": [{"url": x.get("url"), "format": x.get("format"),
+                                                "name": x.get("name")} for x in r.get("resources") or []][:6]})
+        except Exception as exc:  # noqa: BLE001
+            manifest.append({"name": f"ckan_r5_suche_{name}_fehler", "fehler": str(exc)})
+    manifest.append({"name": f"ckan_r5_suche_{name}_treffer", "treffer": treffer})
+    return treffer
+
+
+def _erste_csv(res: list[dict]) -> str | None:
+    for r in res:
+        u = (r.get("url") or "")
+        if u.lower().endswith(".csv") or "csv" in str(r.get("format") or "").lower():
+            return u
+    return res[0]["url"] if res else None
+
+
+def gemeinde_r5(c):
+    """Statistik Austria Gemeindeebene, AMS, Dauersiedlungsraum, Gemeindegrenzen."""
+    for ds in ("OGDEXT_AEST_GEMTAB_1", "OGD_bevstandjbab2002_BevStand_2025",
+               "OGD_bevstandjbab2002_BevStand_2024", "OGDEXT_GEM_1", "OGDEXT_DSR_1",
+               "OGD_hpivr_HPI_VR_1"):
+        hole(c, f"stat_r5_{ds}_meta", "https://data.statistik.gv.at/ogd/json", params={"dataset": ds})
+        hole(c, f"stat_r5_{ds}_header", f"https://data.statistik.gv.at/data/{ds}_HEADER.csv")
+    for ds in ("OGDEXT_AEST_GEMTAB_1", "OGD_bevstandjbab2002_BevStand_2025"):
+        daten = hole(c, f"stat_r5_{ds}_csv", f"https://data.statistik.gv.at/data/{ds}.csv", speichern=False)
+        if daten:
+            kopf(f"stat_r5_{ds}_kopf", daten, 60)
+            manifest.append({"name": f"stat_r5_{ds}_umfang", "bytes": len(daten), "zeilen": daten.count(b"\n")})
+            if ds == "OGDEXT_AEST_GEMTAB_1":
+                _speichern(f"stat_r5_{ds}.csv", daten)
+    for kl in ("C-GRGEMAKT-0", "C-GALTEJ112-0", "C-C11-0"):
+        hole(c, f"stat_r5_bevstand2025_{kl}", f"https://data.statistik.gv.at/data/OGD_bevstandjbab2002_BevStand_2025_{kl}.csv")
+    treffer = _ckan_suche(c, "ams_gemeinden", "Arbeitslose Schulungsteilnehmer Gemeinden Geschlecht")
+    for t in treffer[:2]:
+        url = _erste_csv(t["ressourcen"])
+        if url:
+            daten = hole(c, f"ams_r5_{re.sub(r'[^a-z0-9]+', '_', (t['name'] or '')[:30])}", url, speichern=False)
+            if daten:
+                kopf(f"ams_r5_{re.sub(r'[^a-z0-9]+', '_', (t['name'] or '')[:30])}_kopf", daten, 30)
+                manifest.append({"name": "ams_r5_umfang", "url": url, "bytes": len(daten),
+                                 "zeilen": daten.count(b"\n"), "utf8": _ist_utf8(daten)})
+    _ckan_show(c, "gemeindegrenzen", "stat_gliederung-osterreichs-in-gemeinden")
+    _ckan_suche(c, "gemeindegrenzen", "Gliederung Österreichs in Gemeinden Gemeindegrenzen")
+
+
+def wien_r5(c):
+    """Wiener Datensätze: Radzählungen (voll), Kfz-Dauerzählstellen, Lage-Layer, Zählbezirke."""
+    wfs = "https://data.wien.gv.at/daten/geo"
+    daten = hole(c, "wien_r5_radzaehlungen_csv", "https://www.wien.gv.at/data/ogd/ma46/radverkehrszaehlungen.csv",
+                 speichern=False)
+    if daten:
+        text = daten.decode("utf-8-sig", "replace")
+        zeilen = text.splitlines()
+        _speichern("wien_r5_radverkehrszaehlungen_ab2024.csv",
+                   "\n".join([zeilen[0]] + [z for z in zeilen[1:] if z[:4] >= "2024"]).encode("utf-8"))
+        manifest.append({"name": "wien_r5_radzaehlungen_umfang", "bytes": len(daten), "zeilen": len(zeilen),
+                         "erste": zeilen[1][:60] if len(zeilen) > 1 else None, "letzte": zeilen[-1][:60]})
+    daten = hole(c, "wien_r5_dauerzaehlstellen_csv", "https://www.wien.gv.at/data/ogd/ma46/dauerzaehlstellen.csv",
+                 speichern=False)
+    if daten:
+        kopf("wien_r5_dauerzaehlstellen_kopf", daten, 30)
+        manifest.append({"name": "wien_r5_dauerzaehlstellen_umfang", "bytes": len(daten), "zeilen": daten.count(b"\n")})
+    lat, lon = WIEN
+    d = 0.0005
+    box_punkt = f"{lon-d:.6f},{lat-d:.6f},{lon+d:.6f},{lat+d:.6f},EPSG:4326"
+    d2 = 0.004
+    box_600 = f"{lon-d2:.6f},{lat-d2:.6f},{lon+d2:.6f},{lat+d2:.6f},EPSG:4326"
+    wuensche = {"RADVERKEHRSZAEHLUNGENOGD": None, "DAUERZAEHLSTELLENOGD": None,
+                "KURZPARKZONEOGD": box_punkt, "FUSSGEHERZONEOGD": box_600, "BEGEGNUNGSZONEOGD": box_600,
+                "STRUKGESCHSTROGD": box_600, "GEBAEUDEINFOOGD": box_600, "ZAEHLBEZIRKOGD": box_punkt,
+                "BAUPERIODEOGD": box_punkt, "BAUTYPOLOGIEOGD": box_punkt, "REALNUT2022OGD": box_punkt,
+                "GEHSTEIGOGD": box_punkt}
+    for typ, bbox in wuensche.items():
+        p = {"service": "WFS", "request": "GetFeature", "version": "1.1.0", "typeName": f"ogdwien:{typ}",
+             "srsName": "EPSG:4326", "outputFormat": "json", "maxFeatures": 60}
+        if bbox:
+            p["bbox"] = bbox
+        hole(c, f"wien_r5_{typ.lower()}", wfs, params=p)
+    caps = hole(c, "wien_r5_wfs_capabilities", wfs,
+                params={"service": "WFS", "request": "GetCapabilities", "version": "1.1.0"}, speichern=False)
+    if caps:
+        typen = re.findall(r"<Name>(ogdwien:[^<]+)</Name>", caps.decode("utf-8", "replace"))
+        manifest.append({"name": "wien_r5_typen", "treffer": [t for t in typen if re.search(
+            r"ZAEHL|PARK|FUSS|BEGEGN|GESCH|GEBAEUDE|BAUPER|BAUTYP|REALNUT|LUFT|KRIMI|RAD|BEZIRK", t)]})
+    daten = hole(c, "wien_r5_bev_zaehlbezirk_csv", "https://www.wien.gv.at/gogv/l9ogdviezbzpopsexagr3stknatgeo22008f",
+                 speichern=False)
+    if daten:
+        kopf("wien_r5_bev_zaehlbezirk_kopf", daten, 40)
+        manifest.append({"name": "wien_r5_bev_zaehlbezirk_umfang", "bytes": len(daten), "zeilen": daten.count(b"\n")})
+        _speichern("wien_r5_bev_zaehlbezirk.csv", daten)
+    for name, url in (("prognose_gebiete", "https://www.wien.gv.at/data/ogd/ma23/vieprgprojpopsexagepgeo22025.csv"),
+                      ("zb_prognose_304", "https://www.wien.gv.at/data/ogd/ma23/vie_304.csv"),
+                      ("wohnungen_404", "https://www.wien.gv.at/data/ogd/ma23/vie-404-2021.csv")):
+        daten = hole(c, f"wien_r5_{name}", url, speichern=False)
+        if daten:
+            kopf(f"wien_r5_{name}_kopf", daten, 25)
+    for name, pid in (("wien_luft", "d9ae1245-158e-4d79-86a4-2d9b3defbedc"),
+                      ("wien_kriminalitaet", "76d09d69-4258-49e3-88ea-d87668fc30d2"),
+                      ("wien_bauperioden", "38aac30b-6b79-4fee-88f0-a37b2e6c0f92"),
+                      ("wien_kurzparkzonen", "stadt-wien_kurzparkzonenwien"),
+                      ("wien_radzaehlungen", "2e9f926c-f688-4889-856d-5e6935440c28")):
+        res = _ckan_show(c, name, pid)
+        for r in res[:3]:
+            u = r.get("url") or ""
+            if u.lower().endswith((".csv", ".json")) and "wfs" not in u.lower():
+                daten = hole(c, f"{name}_r5_{re.sub(r'[^a-z0-9]+', '_', u.rsplit('/', 1)[-1].lower())[:30]}", u, speichern=False)
+                if daten:
+                    kopf(f"{name}_r5_{re.sub(r'[^a-z0-9]+', '_', u.rsplit('/', 1)[-1].lower())[:30]}_kopf", daten, 30)
+
+
+def staedte_r5(c):
+    """Graz, Linz, Salzburg, Innsbruck: Bevölkerung, Baustellen, WFS-Muster."""
+    for name, q in (("graz_bev", "Grazer Bevölkerung nach Bezirk und Alter"),
+                    ("linz_bev", "Linz Altersschichtung statistische Bezirke"),
+                    ("salzburg_bev", "Salzburg Einwohner Zählbezirk Alter Geschlecht"),
+                    ("innsbruck_statbez", "Innsbruck statistische Bezirke Hauptwohnsitzbevölkerung"),
+                    ("vorarlberg_tourismus", "Tourismusstatistik Vorarlberg Gemeinden Nächtigungen"),
+                    ("noe_no2", "Land Niederösterreich Stickstoffdioxid NO2 Luftgüte"),
+                    ("linz_luft", "Luftgüte und meteorologische Messwerte Linz"),
+                    ("gisa", "Gewerbe in Österreich GISA"),
+                    ("denkmal_ooe", "Denkmalliste Oberösterreich"),
+                    ("noe_jdtv", "Straßenverkehrszählung Niederösterreich Dauerzählstellen JDTV")):
+        treffer = _ckan_suche(c, name, q)
+        for t in treffer[:1]:
+            url = _erste_csv(t["ressourcen"])
+            if url:
+                daten = hole(c, f"{name}_r5_daten", url, speichern=False)
+                if daten:
+                    kopf(f"{name}_r5_kopf", daten, 30)
+                    manifest.append({"name": f"{name}_r5_umfang", "url": url, "bytes": len(daten),
+                                     "zeilen": daten.count(b"\n"), "utf8": _ist_utf8(daten)})
+    sbg = "https://data.stadt-salzburg.at/geodaten/wfs"
+    caps = hole(c, "salzburg_r5_wfs_capabilities", sbg,
+                params={"service": "WFS", "request": "GetCapabilities", "version": "1.1.0"}, speichern=False)
+    if caps:
+        typen = re.findall(r"<Name>(ogdsbg:[^<]+)</Name>", caps.decode("utf-8", "replace"))
+        manifest.append({"name": "salzburg_r5_typen", "anzahl": len(typen), "alle": typen[:200]})
+    hole(c, "salzburg_r5_baustelle", sbg,
+         params={"service": "WFS", "version": "1.1.0", "request": "GetFeature", "srsName": "EPSG:4326",
+                 "outputFormat": "application/json", "typeName": "ogdsbg:baustelle", "maxFeatures": 30})
+    for name, url in (("doris_hvd", "https://ags.doris.at/arcgis/services/HVD/MapServer/WFSServer"),
+                      ("noe_ogd", "https://sdi.noe.gv.at/at.gv.noe.geoserver/OGD/wfs"),
+                      ("sagis_gewaesser", "https://service.salzburg.gv.at/arcgis/services/OGD/OGD_Gewaesser_Land_Salzburg/MapServer/WFSServer"),
+                      ("stmk_hale", "https://haleconnect.com/ows/services/org.926.4be5ef1f-2eea-42c8-b9ea-e393835f28c2_wfs")):
+        caps = hole(c, f"landeswfs_r5_{name}", url,
+                    params={"service": "WFS", "request": "GetCapabilities", "version": "2.0.0"}, speichern=False)
+        if caps:
+            t = caps.decode("utf-8", "replace")
+            namen = re.findall(r"<(?:wfs:)?Name>([^<]+)</(?:wfs:)?Name>", t)
+            manifest.append({"name": f"landeswfs_r5_{name}_typen", "anzahl": len(namen),
+                             "widmung": [n for n in namen if re.search(r"widm|flw|nutzung|plan", n, re.I)][:40],
+                             "erste": namen[:25]})
+    for jahr in ("2025", "2024"):
+        for art in ("Baugrundstueckspreise", "Haeuserpreise", "Wohnungspreise"):
+            hole(c, f"stat_r5_immo_{art.lower()}{jahr}", f"https://www.statistik.at/fileadmin/pages/222/{art}{jahr}.ods",
+                 methode="HEAD")
+    daten = hole(c, "stat_r5_immo_haeuser2024_ods", "https://www.statistik.at/fileadmin/pages/222/Haeuserpreise2024.ods",
+                 speichern=False)
+    if daten:
+        _speichern("stat_r5_haeuserpreise2024.ods", daten)
+    daten = hole(c, "stat_r5_immo_bauland2024_ods", "https://www.statistik.at/fileadmin/pages/222/Baugrundstueckspreise2024.ods",
+                 speichern=False)
+    if daten:
+        _speichern("stat_r5_baugrundstueckspreise2024.ods", daten)
+
+
+def _gfi(c, name, url, layers, lat, lon, info_format="application/json", extra=None):
+    d = 0.0004
+    p = {"service": "WMS", "version": "1.3.0", "request": "GetFeatureInfo", "layers": layers,
+         "query_layers": layers, "crs": "CRS:84", "bbox": f"{lon-d},{lat-d},{lon+d},{lat+d}",
+         "width": 101, "height": 101, "i": 50, "j": 50, "info_format": info_format, "styles": "",
+         "feature_count": 10}
+    p.update(extra or {})
+    return hole(c, name, url, params=p)
+
+
+def de_r5(c):
+    """Deutsche Kandidaten (docs/erweiterungen-deutschland.md)."""
+    # Starkregen BKG
+    caps = hole(c, "de_starkregen_capabilities", "https://sgx.geodatenzentrum.de/wms_starkregen",
+                params={"request": "GetCapabilities", "service": "WMS"}, speichern=True)
+    layer = []
+    if caps:
+        t = caps.decode("utf-8", "replace")
+        layer = re.findall(r'<Layer[^>]*queryable="1"[^>]*>\s*<Name>([^<]+)</Name>', t)
+        manifest.append({"name": "de_starkregen_layer", "queryable": layer[:30],
+                         "alle": re.findall(r"<Name>([^<]+)</Name>", t)[:40]})
+    for ort, (lat, lon) in (("marienplatz", MUENCHEN), ("koeln", KOELN), ("isarauen", (48.1050, 11.5530))):
+        for ly in (layer[:3] or ["starkregen"]):
+            for fmt in ("application/json", "text/plain"):
+                _gfi(c, f"de_starkregen_gfi_{re.sub(r'[^a-z0-9]+', '_', ly.lower())[:20]}_{ort}_{fmt.split('/')[1]}",
+                     "https://sgx.geodatenzentrum.de/wms_starkregen", ly, lat, lon, fmt)
+    # Berlin: Starkregen, DTVw, Wohnlagen — Dienste über GetCapabilities entdecken
+    for name in ("starkregengefahrenkarte", "starkregenhinweiskarte", "verkehrsmengen_2023", "verkehrsmengen",
+                 "wohnlagen_2024", "wohnlagen", "radzaehlstellen", "dtvw2023", "verkehrsmengen_dtvw_2023"):
+        hole(c, f"de_berlin_wfs_{name}", f"https://gdi.berlin.de/services/wfs/{name}",
+             params={"REQUEST": "GetCapabilities", "SERVICE": "WFS"}, speichern=False)
+        hole(c, f"de_berlin_wms_{name}", f"https://gdi.berlin.de/services/wms/{name}",
+             params={"REQUEST": "GetCapabilities", "SERVICE": "WMS"}, speichern=False)
+    # Autobahn GmbH
+    hole(c, "de_autobahn_liste", "https://verkehr.autobahn.de/o/autobahn/")
+    hole(c, "de_autobahn_a8_roadworks", "https://verkehr.autobahn.de/o/autobahn/A8/services/roadworks")
+    hole(c, "de_autobahn_a99_closure", "https://verkehr.autobahn.de/o/autobahn/A99/services/closure")
+    # MobiData BW
+    hole(c, "de_mobidata_roadworks", "https://api.mobidata-bw.de/datasets/traffic/roadworks/roadworks_geojson.json",
+         speichern=False)
+    for pid in ("eco-counter-fahrradzahler", "baustelleninformationen-baden-wurttemberg", "e-ladesaulen",
+                "karte_strassenverkehrszaehlung"):
+        hole(c, f"de_mobidata_ckan_{pid[:30]}", "https://mobidata-bw.de/api/3/action/package_show", params={"id": pid})
+    # Ladesäulenregister
+    for name, url in (("de_ladesaeulen_csv", "https://www.bundesnetzagentur.de/SharedDocs/Downloads/DE/Sachgebiete/Energie/Unternehmen_Institutionen/E_Mobilitaet/Ladesaeulenregister.csv"),
+                      ("de_ladesaeulen_xlsx", "https://www.bundesnetzagentur.de/SharedDocs/Downloads/DE/Sachgebiete/Energie/Unternehmen_Institutionen/E_Mobilitaet/Ladesaeulenregister.xlsx"),
+                      ("de_ladesaeulen_api", "https://ladestationen.api.bund.dev/openapi.yaml")):
+        daten = hole(c, name, url, speichern=False)
+        if daten:
+            kopf(f"{name}_kopf", daten[:200000], 15)
+            manifest.append({"name": f"{name}_umfang", "bytes": len(daten)})
+    # ParkAPI
+    hole(c, "de_parkapi_index", "https://api.parkendd.de/")
+    hole(c, "de_parkapi_dresden", "https://api.parkendd.de/Dresden")
+    hole(c, "de_parkapi_koeln", "https://api.parkendd.de/Koeln")
+    # NRW
+    for name, url in (("de_nrw_strassen_wfs", "https://www.wfs.nrw.de/wfs/strassen_nrw"),
+                      ("de_nrw_denkmal_wfs", "https://www.wfs.nrw.de/kultur/denkmal"),
+                      ("de_nrw_bauleitplanung_wfs", "https://www.wfs.nrw.de/wfs/bauleitplanung")):
+        hole(c, name, url, params={"REQUEST": "GetCapabilities", "SERVICE": "WFS", "VERSION": "2.0.0"})
+    hole(c, "de_nrw_starkregen_caps", "https://www.wms.nrw.de/umwelt/starkregen",
+         params={"REQUEST": "GetCapabilities", "SERVICE": "WMS"}, speichern=False)
+    # Hamburg
+    hole(c, "de_hh_verkehrsstaerken_caps", "https://geodienste.hamburg.de/HH_WMS_Verkehrsstaerken",
+         params={"SERVICE": "WMS", "REQUEST": "GetCapabilities"})
+    daten = hole(c, "de_hh_api_collections", "https://api.hamburg.de/datasets/v1/", params={"f": "json"}, speichern=False)
+    if daten:
+        t = daten.decode("utf-8", "replace")
+        ids = re.findall(r'"id"\s*:\s*"([^"]+)"', t)
+        manifest.append({"name": "de_hh_api_ids", "anzahl": len(ids),
+                         "treffer": [i for i in ids if re.search(r"verkehr|stadtteil|fahrgast|profil|statistik|parken|park", i, re.I)][:40]})
+    for pid in ("stadtteil-profile-hamburg10", "hvv-fahrgastzahlen1",
+                "regionalstatistische-daten-der-bezirke-hamburgs-und-hamburg-insgesamt20"):
+        hole(c, f"de_hh_ckan_{pid[:28]}", "https://suche.transparenz.hamburg.de/api/3/action/package_show", params={"id": pid})
+    # Köln, Frankfurt, Stuttgart
+    for pid in ("statistischer-datenkatalog-koeln", "baustellen-koeln", "parkhausbelegung",
+                "fahrrad-verkehrsdaten-koeln-0", "wochenmaerkte-koeln"):
+        hole(c, f"de_koeln_ckan_{pid[:28]}", "https://www.offenedaten-koeln.de/api/3/action/package_show", params={"id": pid})
+    hole(c, "de_koeln_ckan_suche_tourismus", "https://www.offenedaten-koeln.de/api/3/action/package_search",
+         params={"q": "Monatserhebung Tourismus", "rows": 3})
+    hole(c, "de_ffm_ckan_stadtteilprofile", "https://www.offenedaten.frankfurt.de/api/3/action/package_show",
+         params={"id": "stadtteilprofile-bevoelkerung"})
+    hole(c, "de_stuttgart_ckan_suche_baustellen", "https://opendata.stuttgart.de/api/3/action/package_search",
+         params={"q": "Baustellen", "rows": 3})
+    # DB Stationsdaten, ohsome quality, Regionaldatenbank-Gastzugang, Landesdatenbank NRW
+    hole(c, "de_db_stationsdaten", "https://download-data.deutschebahn.com/static/datasets/stationsdaten/DBSuS-Uebersicht_Bahnhoefe-Stand2020-03.csv",
+         speichern=False)
+    hole(c, "de_ohsome_quality_meta", "https://api.quality.ohsome.org/v1/metadata")
+    hole(c, "de_ohsome_quality_indikator", "https://api.quality.ohsome.org/v1/indicators/mapping-saturation",
+         methode="POST", headers={"Content-Type": "application/json"},
+         data=json.dumps({"topic": "poi", "bpolys": {"type": "FeatureCollection", "features": [{"type": "Feature", "properties": {},
+                          "geometry": {"type": "Polygon", "coordinates": [[[11.565, 48.13], [11.585, 48.13], [11.585, 48.145], [11.565, 48.145], [11.565, 48.13]]]}}]}}))
+    hole(c, "de_regionaldb_gast_73111", "https://www.regionalstatistik.de/genesisws/rest/2020/catalogue/tables",
+         params={"username": "GAST", "password": "GAST", "selection": "73111*", "pagelength": 20, "language": "de"})
+    hole(c, "de_ldb_nrw_45412", "https://www.landesdatenbank.nrw.de/ldbnrw/online",
+         params={"operation": "download", "code": "45412-02i", "option": "csv"}, speichern=False)
+
+
+TEILE.update({"gemeinde5": gemeinde_r5, "wien5": wien_r5, "staedte5": staedte_r5, "de5": de_r5})
+
+
+# ------------------------------------------------------------------ Runde 6
+# Lücken aus Runde 5 schließen und Punktantworten für die Module holen.
+
+LINZ = (48.3064, 14.2861)
+DRESDEN = (51.0504, 13.7373)
+ALEXANDERPLATZ = (52.5219, 13.4132)
+HH_MOENCKEBERG = (53.5506, 9.9960)
+
+
+def _wfs_json(c, name, url, typ, lat, lon, d=0.004, version="1.1.0", extra=None, fmt="application/json"):
+    p = {"service": "WFS", "version": version, "request": "GetFeature", "srsName": "EPSG:4326",
+         "outputFormat": fmt, "maxFeatures": 50, "count": 50,
+         "bbox": f"{lon-d:.6f},{lat-d:.6f},{lon+d:.6f},{lat+d:.6f},EPSG:4326"}
+    p["typeNames" if version.startswith("2") else "typeName"] = typ
+    p.update(extra or {})
+    return hole(c, name, url, params=p)
+
+
+def _slugs(daten: bytes) -> list[str]:
+    t = daten.decode("utf-8", "replace")
+    return list(dict.fromkeys(re.findall(r'/katalog/dataset/([a-z0-9][a-z0-9_\-]{6,})"', t)))
+
+
+def _datagv_html_suche(c, name: str, q: str) -> list[str]:
+    daten = hole(c, f"datagv_r6_suche_{name}", "https://www.data.gv.at/katalog/dataset/", params={"q": q},
+                 speichern=False)
+    slugs = _slugs(daten) if daten else []
+    manifest.append({"name": f"datagv_r6_suche_{name}_slugs", "slugs": slugs[:10]})
+    return slugs
+
+
+def at_r6(c):
+    # Punkt → Gemeindekennziffer über den GeoServer von Statistik Austria
+    for ort, (lat, lon) in (("stephansplatz", WIEN), ("graz", GRAZ), ("krems", (48.4020, 15.6100))):
+        _wfs_json(c, f"stat_r6_gem_{ort}", "https://www.statistik.gv.at/gs-open/GEODATA/ows",
+                  "GEODATA:STATISTIK_AUSTRIA_GEM_20250101", lat, lon, d=0.0005)
+    hole(c, "stat_r6_gem_caps", "https://www.statistik.gv.at/gs-open/GEODATA/ows",
+         params={"service": "WFS", "request": "GetCapabilities", "version": "1.1.0"}, speichern=False)
+    hole(c, "stat_r6_hpi_csv", "https://data.statistik.gv.at/data/OGD_hpivr_HPI_VR_1.csv")
+    for art in ("Baugrundstueckspreise", "Wohnungspreise"):
+        daten = hole(c, f"stat_r6_immo_{art.lower()}2024_ods", f"https://www.statistik.at/fileadmin/pages/222/{art}2024.ods",
+                     speichern=False)
+        if daten:
+            _speichern(f"stat_r6_{art.lower()}2024.ods", daten)
+    # data.gv.at: Suche über die HTML-Seite, dann package_show
+    for name, q in (("ams", "Arbeitslos vorgemerkte Personen Schulungsteilnehmer Gemeinden Geschlecht"),
+                    ("gisa", "Gewerbe in Österreich GISA"), ("graz_bev", "Grazer Bevölkerung nach Bezirk und Alter"),
+                    ("linz_bev", "Altersschichtung statistische Bezirke Linz"),
+                    ("salzburg_bev", "Einwohner Zählbezirk Alter Geschlecht Salzburg"),
+                    ("vbg_tourismus", "Tourismusstatistik Vorarlberg"), ("noe_no2", "Stickstoffdioxid NO2 Niederösterreich"),
+                    ("linz_luft", "Luftgüte meteorologische Messwerte Linz"), ("denkmal_ooe", "Denkmalliste Oberösterreich"),
+                    ("noe_jdtv", "Straßenverkehrszählung Dauerzählstellen JDTV Niederösterreich")):
+        slugs = _datagv_html_suche(c, name, q)
+        for slug in slugs[:2]:
+            res = _ckan_show(c, f"{name}_{slug[:24]}", slug)
+            url = _erste_csv(res)
+            if url and not url.lower().endswith((".zip", ".pdf")):
+                daten = hole(c, f"{name}_r6_{slug[:20]}_daten", url, speichern=False)
+                if daten:
+                    kopf(f"{name}_r6_{slug[:20]}_kopf", daten, 30)
+                    manifest.append({"name": f"{name}_r6_{slug[:20]}_umfang", "url": url, "bytes": len(daten),
+                                     "zeilen": daten.count(b"\n"), "utf8": _ist_utf8(daten)})
+    # Wien: Kfz-Dauerzählstellen (Lage), Luftgütenetz, Zählgebiet, Luft-CSV, Wohnungen je Zählbezirk voll
+    wfs = "https://data.wien.gv.at/daten/geo"
+    for typ in ("DAUERZAEHLOGD", "LUFTGUETENETZOGD"):
+        hole(c, f"wien_r6_{typ.lower()}", wfs, params={"service": "WFS", "request": "GetFeature", "version": "1.1.0",
+             "typeName": f"ogdwien:{typ}", "srsName": "EPSG:4326", "outputFormat": "json"})
+    _wfs_json(c, "wien_r6_zaehlgebietogd", wfs, "ogdwien:ZAEHLGEBIETOGD", *WIEN, d=0.0005)
+    daten = hole(c, "wien_r6_luft_csv", "https://go.gv.at/l9lumesakt", speichern=False)
+    if daten:
+        kopf("wien_r6_luft_kopf", daten, 40)
+    daten = hole(c, "wien_r6_wohnungen_404", "https://www.wien.gv.at/data/ogd/ma23/vie-404-2021.csv", speichern=False)
+    if daten:
+        _speichern("wien_r6_wohnungen_zaehlbezirk_2021.csv", daten)
+    # Salzburg: Widmung, Bebauungsplan, Altstadtschutzzone, Kurzparkzone am Punkt; Märkte, Radzählstellen stadtweit
+    sbg = "https://data.stadt-salzburg.at/geodaten/wfs"
+    for typ in ("flaechenwidmung", "bebauungsplan_rechtswirksam", "altstadtschutzzone", "kurzparkzone", "bewohnerparkzone"):
+        _wfs_json(c, f"salzburg_r6_{typ}", sbg, f"ogdsbg:{typ}", *SALZBURG, d=0.0006)
+    for typ in ("markt", "radzaehlstelle", "baustelle_aktuell"):
+        hole(c, f"salzburg_r6_{typ}", sbg, params={"service": "WFS", "version": "1.1.0", "request": "GetFeature",
+             "srsName": "EPSG:4326", "outputFormat": "application/json", "typeName": f"ogdsbg:{typ}", "maxFeatures": 60})
+    # DORIS (OÖ): Widmung am Linzer Hauptplatz, ArcGIS WFSServer 2.0
+    doris = "https://ags.doris.at/arcgis/services/HVD/MapServer/WFSServer"
+    for fmt in ("GEOJSON", "application/json"):
+        _wfs_json(c, f"doris_r6_flwi_linz_{fmt[:4].lower()}", doris, "HVD:FLWI_Widmungen_Flächen", *LINZ, d=0.001,
+                  version="2.0.0", fmt=fmt)
+    p = {"service": "WFS", "version": "2.0.0", "request": "GetFeature", "typeNames": "HVD:FLWI_Widmungen_Flächen",
+         "count": 5, "bbox": f"{LINZ[0]-0.001},{LINZ[1]-0.001},{LINZ[0]+0.001},{LINZ[1]+0.001},urn:ogc:def:crs:EPSG::4326"}
+    hole(c, "doris_r6_flwi_linz_gml", doris, params=p)
+    hole(c, "doris_r6_describe", doris, params={"service": "WFS", "version": "2.0.0", "request": "DescribeFeatureType",
+                                              "typeNames": "HVD:FLWI_Widmungen_Flächen"})
+    hole(c, "stmk_r6_hale_caps", "https://haleconnect.com/ows/services/org.926.4be5ef1f-2eea-42c8-b9ea-e393835f28c2_wfs",
+         params={"SERVICE": "WFS", "REQUEST": "GetCapabilities", "VERSION": "2.0.0"})
+
+
+def de_r6(c):
+    # Berlin: Verkehrsmengen 2023 — Capabilities speichern, dann GetFeature
+    caps = hole(c, "de_berlin_r6_verkehrsmengen_caps", "https://gdi.berlin.de/services/wfs/verkehrsmengen_2023",
+                params={"REQUEST": "GetCapabilities", "SERVICE": "WFS"})
+    typen = re.findall(r"<Name>([^<]+)</Name>", caps.decode("utf-8", "replace")) if caps else []
+    manifest.append({"name": "de_berlin_r6_typen", "typen": typen[:20]})
+    for typ in [t for t in typen if ":" in t][:4]:
+        _wfs_json(c, f"de_berlin_r6_{re.sub(r'[^a-z0-9]+', '_', typ.lower())[:30]}",
+                  "https://gdi.berlin.de/services/wfs/verkehrsmengen_2023", typ, *ALEXANDERPLATZ, d=0.004, version="2.0.0")
+    for name in ("wohnlagen_2024", "mietspiegel_wohnlagen_2024", "wohnlagen_mietspiegel_2024", "starkregen_gefahrenkarte",
+                 "starkregenhinweiskarte_2024", "radzaehlstellen_2024"):
+        hole(c, f"de_berlin_r6_caps_{name}", f"https://gdi.berlin.de/services/wfs/{name}",
+             params={"REQUEST": "GetCapabilities", "SERVICE": "WFS"}, speichern=False)
+    # Starkregen: Wassertiefe und Geschwindigkeit an Punkten in fünf Ländern
+    for ort, (lat, lon) in (("koeln", KOELN), ("berlin", ALEXANDERPLATZ), ("hamburg", HH_MOENCKEBERG),
+                            ("dresden", DRESDEN), ("isarauen", (48.1050, 11.5530))):
+        for ly in ("tiefe_agw", "tiefe_extrem", "geschwindigkeit_agw", "geschwindigkeit_extrem"):
+            _gfi(c, f"de_starkregen_r6_{ly}_{ort}", "https://sgx.geodatenzentrum.de/wms_starkregen", ly, lat, lon)
+    # Autobahn: zwei weitere Strecken, Warnungen
+    hole(c, "de_autobahn_r6_a99_roadworks", "https://verkehr.autobahn.de/o/autobahn/A99/services/roadworks")
+    hole(c, "de_autobahn_r6_a9_warning", "https://verkehr.autobahn.de/o/autobahn/A9/services/warning")
+    # MobiData BW: Baustellen (Ausschnitt speichern), Eco-Counter Tages-/Stundenwerte, SVZ-Grunddaten, Ladesäulen
+    daten = hole(c, "de_mobidata_r6_roadworks", "https://api.mobidata-bw.de/datasets/traffic/roadworks/roadworks_geojson.json",
+                 speichern=False)
+    if daten:
+        try:
+            d = json.loads(daten)
+            fs = d.get("features", [])
+            nah = [f for f in fs if _nahe(f, STUTTGART, 0.06)]
+            _speichern("de_mobidata_r6_roadworks_stuttgart.json", json.dumps(
+                {"type": "FeatureCollection", "features": nah[:80]}, ensure_ascii=False).encode())
+            manifest.append({"name": "de_mobidata_r6_roadworks_umfang", "features": len(fs), "stuttgart": len(nah),
+                             "properties": sorted((fs[0].get("properties") or {}).keys())[:40] if fs else []})
+        except Exception as exc:  # noqa: BLE001
+            manifest.append({"name": "de_mobidata_r6_roadworks_fehler", "fehler": str(exc)})
+    for name, url in (("eco_tage", "https://mobidata-bw.de/daten/eco-counter/v2/fahrradzaehler_tageswerten.csv"),
+                      ("eco_stunden", "https://mobidata-bw.de/daten/eco-counter/v2/fahrradzaehler_stundenwerten.csv"),
+                      ("svz", "https://mobidata-bw.de/vm/Karte_Strassenverkehrszaehlung_BW/SVZ-Zaehlstellen_2026-06-26_augmented_SVZ2024.csv")):
+        daten = hole(c, f"de_mobidata_r6_{name}", url, speichern=False)
+        if daten:
+            kopf(f"de_mobidata_r6_{name}_kopf", daten, 25)
+            manifest.append({"name": f"de_mobidata_r6_{name}_umfang", "bytes": len(daten), "zeilen": daten.count(b"\n")})
+    _wfs_json(c, "de_mobidata_r6_ladesaeulen_stuttgart", "https://api.mobidata-bw.de/geoserver/MobiData-BW/ows",
+              "MobiData-BW:charge_points", *STUTTGART, d=0.01, version="1.0.0")
+    _wfs_json(c, "de_mobidata_r6_roadworks_wfs_stuttgart", "https://api.mobidata-bw.de/geoserver/MobiData-BW/ows",
+              "MobiData-BW:roadworks", *STUTTGART, d=0.03, version="1.0.0")
+    hole(c, "de_ladesaeulen_r6_api_yaml", "https://ladestationen.api.bund.dev/openapi.yaml")
+    # ParkAPI: Städte mit aktiver Pflege
+    daten = hole(c, "de_parkapi_r6_index", "https://api.parkendd.de/", speichern=False)
+    if daten:
+        try:
+            st = json.loads(daten).get("cities", {})
+            manifest.append({"name": "de_parkapi_r6_aktiv", "aktiv": sorted(k for k, v in st.items() if v.get("active_support"))})
+        except Exception:  # noqa: BLE001
+            pass
+    for stadt in ("Dresden", "Hamburg", "Muenchen", "Koeln", "Frankfurt", "Nuernberg"):
+        hole(c, f"de_parkapi_r6_{stadt.lower()}", f"https://api.parkendd.de/{stadt}")
+    # NRW Straßen.NRW: Zählstellen und Verkehrswerte um Köln
+    for typ in ("ms:Zaehlstellen", "ms:Verkehrswerte", "ms:Zaehlstellen2019HR"):
+        _wfs_json(c, f"de_nrw_r6_{typ.split(':')[1].lower()}", "https://www.wfs.nrw.de/wfs/strassen_nrw", typ, *KOELN,
+                  d=0.05, version="2.0.0", fmt="geojson")
+    # Hamburg: OGC API Features
+    for coll in ("verkehrsstaerken", "verkehrsmengen", "verkehrszaehlstellen", "statistik_stadtteile_bevoelkerung",
+                 "regionalstatistische_daten_stadtteile", "parkhaeuser", "statistik_stadtteile_wohnungsdaten", "parkraum"):
+        daten = hole(c, f"de_hh_r6_{coll}_collections", f"https://api.hamburg.de/datasets/v1/{coll}/collections",
+                     params={"f": "json"})
+        if daten:
+            try:
+                ids = [x.get("id") for x in json.loads(daten).get("collections", [])]
+            except Exception:  # noqa: BLE001
+                ids = []
+            manifest.append({"name": f"de_hh_r6_{coll}_ids", "ids": ids[:20]})
+            for cid in ids[:3]:
+                lat, lon = HH_MOENCKEBERG
+                d = 0.01
+                hole(c, f"de_hh_r6_{coll}_{cid[:24]}", f"https://api.hamburg.de/datasets/v1/{coll}/collections/{cid}/items",
+                     params={"f": "json", "limit": 20, "bbox": f"{lon-d},{lat-d},{lon+d},{lat+d}"})
+    hole(c, "de_hh_r6_verkehrsstaerken_gfi", "https://geodienste.hamburg.de/HH_WMS_Verkehrsstaerken",
+         params={"SERVICE": "WMS", "VERSION": "1.3.0", "REQUEST": "GetFeatureInfo", "LAYERS": "verkehrsstaerken",
+                 "QUERY_LAYERS": "verkehrsstaerken", "CRS": "EPSG:4326",
+                 "BBOX": f"{HH_MOENCKEBERG[0]-0.002},{HH_MOENCKEBERG[1]-0.003},{HH_MOENCKEBERG[0]+0.002},{HH_MOENCKEBERG[1]+0.003}",
+                 "WIDTH": 101, "HEIGHT": 101, "I": 50, "J": 50, "INFO_FORMAT": "text/plain", "FEATURE_COUNT": 10, "STYLES": ""})
+    # Köln CKAN ohne www, Suche
+    for pid in ("baustellen-koeln", "parkhausbelegung", "statistischer-datenkatalog-koeln", "wochenmaerkte-koeln"):
+        hole(c, f"de_koeln_r6_show_{pid[:24]}", "https://offenedaten-koeln.de/api/3/action/package_show", params={"id": pid})
+    hole(c, "de_koeln_r6_suche", "https://offenedaten-koeln.de/api/3/action/package_search", params={"q": "Baustellen", "rows": 3})
+    # Stuttgart Baustellen als GeoJSON in WGS84
+    _wfs_json(c, "de_stuttgart_r6_baustellen", "https://geoserver.stuttgart.de/gdc/Verkehr_Mobilitaet/ows",
+              "Verkehr_Mobilitaet:A66_BAUM_BAUSTELLEN_DATE_WEB_im_Bau_EPSG25832", *STUTTGART, d=0.03, version="1.0.0")
+    # Regionaldatenbank: Gastzugang per POST; ohsome quality mit JSON-Accept; Frankfurt über http
+    hole(c, "de_regionaldb_r6_gast_73111", "https://www.regionalstatistik.de/genesisws/rest/2020/catalogue/tables",
+         methode="POST", data={"username": "GAST", "password": "GAST", "selection": "73111*", "pagelength": 20, "language": "de"})
+    hole(c, "de_ohsome_r6_meta", "https://api.quality.ohsome.org/v1/metadata", headers={"Accept": "application/json"})
+    hole(c, "de_ohsome_r6_indikator", "https://api.quality.ohsome.org/v1/indicators/mapping-saturation", methode="POST",
+         headers={"Content-Type": "application/json", "Accept": "application/json"},
+         data=json.dumps({"topic": "poi", "bpolys": {"type": "FeatureCollection", "features": [{"type": "Feature", "properties": {},
+                          "geometry": {"type": "Polygon", "coordinates": [[[11.565, 48.13], [11.585, 48.13], [11.585, 48.145], [11.565, 48.145], [11.565, 48.13]]]}}]}}))
+    hole(c, "de_ffm_r6_stadtteilprofile", "http://www.offenedaten.frankfurt.de/api/3/action/package_show",
+         params={"id": "stadtteilprofile-bevoelkerung"})
+
+
+def _nahe(f, punkt, d):
+    g = f.get("geometry") or {}
+    c = g.get("coordinates")
+    while isinstance(c, list) and c and isinstance(c[0], list):
+        c = c[0]
+    if not (isinstance(c, list) and len(c) >= 2):
+        return False
+    try:
+        return abs(float(c[1]) - punkt[0]) < d and abs(float(c[0]) - punkt[1]) < d
+    except (TypeError, ValueError):
+        return False
+
+
+TEILE.update({"at6": at_r6, "de6": de_r6})
+
+
+# ------------------------------------------------------------------ Runde 7
+# Auszüge für Fixtures und drei Nachzügler (BNetzA-Ladesäulen, NRW-WFS).
+
+def r7(c):
+    daten = hole(c, "wien_r7_dauerzaehlstellen_csv", "https://www.wien.gv.at/data/ogd/ma46/dauerzaehlstellen.csv",
+                 speichern=False)
+    if daten:
+        zeilen = daten.decode("cp1252", "replace").splitlines()
+        aus = [zeilen[0]] + [z for z in zeilen[1:] if z.startswith("2025;")]
+        _speichern("wien_r7_dauerzaehlstellen_2025.csv", "\n".join(aus).encode("utf-8"))
+        manifest.append({"name": "wien_r7_dauerzaehlstellen_umfang", "zeilen": len(zeilen), "zeilen_2025": len(aus) - 1,
+                         "jahre": sorted({z[:4] for z in zeilen[1:]})})
+    daten = hole(c, "wien_r7_luft_csv", "https://go.gv.at/l9lumesakt", speichern=False)
+    if daten:
+        _speichern("wien_r7_luft_lumes.csv", daten)
+    daten = hole(c, "de_mobidata_r7_roadworks", "https://api.mobidata-bw.de/datasets/traffic/roadworks/roadworks_geojson.json",
+                 speichern=False)
+    if daten:
+        try:
+            d = json.loads(daten)
+            fs = d.get("features", [])
+            _speichern("de_mobidata_r7_roadworks_auszug.json", json.dumps(
+                {"type": "FeatureCollection", "features": fs[:60]}, ensure_ascii=False).encode())
+        except Exception as exc:  # noqa: BLE001
+            manifest.append({"name": "de_mobidata_r7_roadworks_fehler", "fehler": str(exc)})
+    daten = hole(c, "de_mobidata_r7_eco_tage", "https://mobidata-bw.de/daten/eco-counter/v2/fahrradzaehler_tageswerten.csv",
+                 speichern=False)
+    if daten:
+        zeilen = daten.decode("utf-8", "replace").splitlines()
+        _speichern("de_mobidata_r7_eco_tageswerte_auszug.csv", "\n".join([zeilen[0]] + zeilen[-400:]).encode("utf-8"))
+    daten = hole(c, "de_mobidata_r7_svz", "https://mobidata-bw.de/vm/Karte_Strassenverkehrszaehlung_BW/SVZ-Zaehlstellen_2026-06-26_augmented_SVZ2024.csv",
+                 speichern=False)
+    if daten:
+        zeilen = daten.decode("utf-8", "replace").splitlines()
+        def nah(z):
+            t = z.split(",")
+            try:
+                return 8.9 <= float(t[4]) <= 9.5 and 48.6 <= float(t[5]) <= 48.95
+            except (ValueError, IndexError):
+                return False
+        _speichern("de_mobidata_r7_svz_stuttgart.csv", "\n".join([zeilen[0]] + [z for z in zeilen[1:] if nah(z)]).encode("utf-8"))
+    # BNetzA Ladesäulenregister: ArcGIS FeatureServer aus der bund.dev-Doku
+    basis = "https://services6.arcgis.com/6jU7RmJig2Wwo1b0/ArcGIS/rest/services/Ladesaeulenregister/FeatureServer/7"
+    hole(c, "de_bnetza_r7_meta", basis, params={"f": "json"})
+    for ort, (lat, lon) in (("marienplatz", MUENCHEN), ("stephansplatz", WIEN), ("koeln", KOELN)):
+        hole(c, f"de_bnetza_r7_query_{ort}", f"{basis}/query",
+             params={"geometry": json.dumps({"x": lon, "y": lat, "spatialReference": {"wkid": 4326}}),
+                     "geometryType": "esriGeometryPoint", "inSR": 4326, "outSR": 4326, "distance": 600,
+                     "units": "esriSRUnit_Meter", "outFields": "*", "f": "json", "resultRecordCount": 50})
+    # NRW Straßen.NRW: Ausgabeformat
+    for fmt in (None, "application/json", "application/json; subtype=geojson", "GEOJSON"):
+        p = {"service": "WFS", "version": "2.0.0", "request": "GetFeature", "typeNames": "ms:Zaehlstellen",
+             "srsName": "EPSG:4326", "count": 20,
+             "bbox": f"{KOELN[1]-0.05},{KOELN[0]-0.05},{KOELN[1]+0.05},{KOELN[0]+0.05},EPSG:4326"}
+        if fmt:
+            p["outputFormat"] = fmt
+        hole(c, f"de_nrw_r7_zaehlstellen_{re.sub(r'[^a-z]+', '_', (fmt or 'gml').lower())[:20]}",
+             "https://www.wfs.nrw.de/wfs/strassen_nrw", params=p)
+    hole(c, "salzburg_r7_altstadtschutzzone", "https://data.stadt-salzburg.at/geodaten/wfs",
+         params={"service": "WFS", "version": "1.1.0", "request": "GetFeature", "srsName": "EPSG:4326",
+                 "outputFormat": "application/json", "typeName": "ogdsbg:altstadtschutzzone", "maxFeatures": 5})
+
+
+TEILE.update({"r7": r7})
+
+
 if __name__ == "__main__":
     sys.exit(main(sys.argv))
+

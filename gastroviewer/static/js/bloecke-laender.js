@@ -228,7 +228,7 @@ function zeigeRadzaehlung(d) {
     setInhalt(id, ...warnungen(d.warnings),
       el('div', { class: 'notiz' },
         'Gemessene Radfrequenz gibt es nur an den städtischen '
-        + 'Zählquerschnitten (München, Hamburg). Für diesen Punkt liegt '
+        + 'Zählquerschnitten (München, Hamburg, Baden-Württemberg). Für diesen Punkt liegt '
         + 'keine vor.'));
     setQuelle(id, d.provenance);
     return;
@@ -236,11 +236,16 @@ function zeigeRadzaehlung(d) {
 
   setStatus(id, 'ok', 'geladen');
   const n = r.naechste;
+  const woche = n.je_tag_letzte_woche !== undefined && n.je_tag_letzte_woche !== null;
   const kz = el('div', { class: 'kennzahlen' },
     kennzahl('Nächste Zählstelle', n.distanz_m, 'm'),
-    kennzahl(`Radfahrende ${n.summe_vorjahr_jahr || ''}`.trim(), n.summe_vorjahr),
-    kennzahl(n.je_tag_basis === 'messtage' ? 'davon je Messtag' : 'davon je Kalendertag (Summe ÷ 365)',
-      n.je_tag_vorjahr));
+    woche
+      ? kennzahl(`Radfahrende je Tag (${n.je_tag_basis || 'letzte Tage'})`, n.je_tag_letzte_woche)
+      : kennzahl(`Radfahrende ${n.summe_vorjahr_jahr || ''}`.trim(), n.summe_vorjahr),
+    woche
+      ? kennzahl(`letzter Tag (${n.letzter_tag || '?'})`, n.vortag)
+      : kennzahl(n.je_tag_basis === 'messtage' ? 'davon je Messtag' : 'davon je Kalendertag (Summe ÷ 365)',
+        n.je_tag_vorjahr));
 
   const tab = el('table', { class: 'daten' },
     el('tr', {}, el('th', {}, 'Zählstelle'), el('th', { class: 'num' }, 'm'),
@@ -249,7 +254,7 @@ function zeigeRadzaehlung(d) {
     tab.append(el('tr', {},
       el('td', {}, `${s.name}${s.richtungen.length ? ` (${s.richtungen.join('/')})` : ''}`),
       el('td', { class: 'num' }, NF.format(s.distanz_m)),
-      el('td', { class: 'num' }, s.je_tag_vorjahr === null ? '—' : NF.format(s.je_tag_vorjahr)),
+      el('td', { class: 'num' }, (s.je_tag_vorjahr ?? s.je_tag_letzte_woche) == null ? '—' : NF.format(s.je_tag_vorjahr ?? s.je_tag_letzte_woche)),
       el('td', { class: 'num' }, s.summe_vorjahr === null ? '—' : NF.format(s.summe_vorjahr))));
   }
 
@@ -291,8 +296,8 @@ function zeigeRadzaehlung(d) {
       + 'Die Zahl beschreibt die Achse an der Zählstelle, nicht das Umfeld dieses Punktes.'),
     el('div', { class: 'notiz' },
       el('a', { href: r.rohdaten, target: '_blank', rel: 'noopener' },
-        'Rohdaten im Open-Data-Portal München'),
-      ' — dort auch 15-Minuten-Werte und Tageswerte mit Wetter.'));
+        r.stadt ? `Rohdaten (${r.stadt})` : 'Rohdaten im Open-Data-Portal München'),
+      r.stadt ? '.' : ' — dort auch 15-Minuten-Werte und Tageswerte mit Wetter.'));
   setQuelle(id, d.provenance);
 }
 
@@ -496,6 +501,33 @@ function zeigePlanung(d) {
       ' — ein für das Risikomanagement ausgewiesener Abschnitt, keine berechnete Überflutungsfläche.'));
   }
 
+  /* Starkregen (BKG-Hinweiskarte, 13 Länder): Wassertiefe am Punkt in zwei
+     Szenarien — ergänzt das Flusshochwasser, ersetzt es nicht. */
+  const sr = p.starkregen;
+  if (sr) {
+    teile.push(el('h3', { class: 'hinweis-klein' }, 'Starkregen (BKG-Hinweiskarte)'));
+    if (!sr.abgefragt) {
+      teile.push(el('div', { class: 'notiz' }, sr.hinweis || 'nicht abgefragt'));
+    } else if (!sr.kartiert) {
+      teile.push(el('div', { class: 'notiz' }, sr.hinweis || 'kein Wert am Punkt'));
+    } else {
+      const tab = el('table', { class: 'daten' },
+        el('tr', {}, el('th', {}, 'Szenario'), el('th', { class: 'num' }, 'Wassertiefe'),
+          el('th', { class: 'num' }, 'Fließgeschwindigkeit'), el('th', {}, 'Einordnung')));
+      for (const s of Object.values(sr.szenarien || {})) {
+        tab.append(el('tr', {},
+          el('td', {}, s.titel),
+          el('td', { class: 'num' }, s.tiefe_cm === null || s.tiefe_cm === undefined ? '—' : `${NF.format(s.tiefe_cm)} cm`),
+          el('td', { class: 'num' }, s.geschwindigkeit_ms === null || s.geschwindigkeit_ms === undefined ? '—' : `${NF1.format(s.geschwindigkeit_ms)} m/s`),
+          el('td', {}, s.einordnung || '—')));
+      }
+      teile.push((sr.tiefe_max_cm || 0) >= 30
+        ? el('div', { class: 'warnung' }, el('strong', {}, 'Starkregen: '), `bis ${NF.format(sr.tiefe_max_cm)} cm Wasser am Punkt im Modell.`)
+        : el('div', { class: 'notiz' }, `Starkregen: höchstens ${NF.format(sr.tiefe_max_cm || 0)} cm Wassertiefe im Modell.`));
+      teile.push(tab);
+    }
+  }
+
   teile.push(el('h3', { class: 'hinweis-klein' }, 'Bebauungsplan'));
   if (bp === undefined || bp === null) {
     teile.push(el('div', { class: 'notiz' },
@@ -571,7 +603,7 @@ function zeigeVerkehrsmenge(d) {
     setQuelle(id, d.provenance);
     return;
   }
-  setStatus(id, 'ok', v.dienst === 'bast' ? `bundesweit (${v.jahr})` : 'geladen');
+  setStatus(id, 'ok', v.dienst === 'bast' ? `bundesweit (${v.jahr})` : (v.stadt ? `${v.stadt} (${v.jahr || '?'})` : 'geladen'));
   const s = v.staerkste || v.naechste;
   const kz = el('div', { class: 'kennzahlen' },
     kennzahl('Stärkste Zählstelle', s.dtv_kfz, 'Kfz/Tag'),
@@ -579,16 +611,21 @@ function zeigeVerkehrsmenge(d) {
     kennzahl('Entfernung', s.distanz_m, 'm'),
     kennzahl('Zählstellen im Umkreis', v.zaehlstellen.length));
 
+  const mitWoche = v.zaehlstellen.some((z) => z.dtv_werktag !== undefined && z.dtv_werktag !== null);
   const tab = el('table', { class: 'daten' },
     el('tr', {}, el('th', {}, 'Straße'), el('th', { class: 'num' }, 'm'),
-      el('th', { class: 'num' }, 'Kfz/Tag'), el('th', { class: 'num' }, 'SV %')));
+      el('th', { class: 'num' }, 'Kfz/Tag'), el('th', { class: 'num' }, 'SV %'),
+      ...(mitWoche ? [el('th', { class: 'num' }, 'Werktag'), el('th', { class: 'num' }, 'Sonntag')] : [])));
   for (const z of v.zaehlstellen.slice(0, 12)) {
     tab.append(el('tr', {},
       el('td', {}, `${z.strasse || '(ohne Angabe)'}${z.im_radius ? ' ✓' : ''}`),
       el('td', { class: 'num' }, NF.format(z.distanz_m)),
       el('td', { class: 'num' }, z.dtv_kfz === null ? '—' : NF.format(z.dtv_kfz)),
       el('td', { class: 'num' },
-        z.schwerverkehr_anteil === null ? '—' : NF1.format(z.schwerverkehr_anteil))));
+        z.schwerverkehr_anteil === null ? '—' : NF1.format(z.schwerverkehr_anteil)),
+      ...(mitWoche ? [
+        el('td', { class: 'num' }, z.dtv_werktag == null ? '—' : NF.format(z.dtv_werktag)),
+        el('td', { class: 'num' }, z.dtv_sonntag == null ? '—' : NF.format(z.dtv_sonntag))] : [])));
   }
 
   setInhalt(id, kz, tab,
@@ -600,13 +637,13 @@ function zeigeVerkehrsmenge(d) {
       + 'schadet sie eher. Der DTV ist ein Jahresmittel über alle Wochentage.'),
     ...(v.hinweise || []).map((h) => hinweisZeile(h)),
     el('div', { class: 'notiz' },
-      v.dienst === 'bast'
+      v.netz_hinweis || (v.dienst === 'bast'
         ? 'Gemessen werden bundesweit nur Autobahnen und Bundesstraßen '
           + '(BASt-Dauerzählstellen). Innerstädtische Straßen fehlen. '
         : 'Gezählt wird nur das klassifizierte Straßennetz (Autobahnen, Bundes-, Staats- '
-          + 'und Kreisstraßen). Innerstädtische Gemeindestraßen und Fußgängerzonen fehlen. ',
+          + 'und Kreisstraßen). Innerstädtische Gemeindestraßen und Fußgängerzonen fehlen. '),
       el('a', { href: v.portal, target: '_blank', rel: 'noopener' },
-        v.dienst === 'bast' ? 'Zählstellen bei der BASt' : 'Straßenverkehrszählung bei BAYSIS')));
+        v.portal_titel || (v.dienst === 'bast' ? 'Zählstellen bei der BASt' : 'Straßenverkehrszählung bei BAYSIS'))));
   setQuelle(id, d.provenance);
 }
 

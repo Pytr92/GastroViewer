@@ -88,7 +88,32 @@ def wien_wfs():
             "BAUSTELLENLINOGD": lies("wien_baustellenlinienogd.json"),
             # Punktkästen am Stephansplatz (Runde 4): Schutzzone Innere Stadt, GB5.
             "SCHUTZZONEOGD": lies("wien_r4_schutzzoneogd_stephansplatz.json"),
-            "GENFLWIDMUNGOGD": lies("wien_r4_genflwidmungogd_stephansplatz.json")}
+            "GENFLWIDMUNGOGD": lies("wien_r4_genflwidmungogd_stephansplatz.json"),
+            "KURZPARKZONEOGD": lies("wien_r5_kurzparkzoneogd.json"),
+            "FUSSGEHERZONEOGD": lies("wien_r5_fussgeherzoneogd.json"),
+            "BEGEGNUNGSZONEOGD": lies("wien_r5_begegnungszoneogd.json"),
+            "STRUKGESCHSTROGD": lies("wien_r5_strukgeschstrogd.json"),
+            "REALNUT2022OGD": lies("wien_r5_realnut2022ogd.json"),
+            "GEBAEUDEINFOOGD": lies("wien_r5_gebaeudeinfoogd.json"),
+            "ZAEHLBEZIRKOGD": lies("wien_r5_zaehlbezirkogd.json"),
+            # Runde 6: Kfz-Dauerzählstellen und Luftgütemessnetz stadtweit.
+            "DAUERZAEHLOGD": lies("wien_r6_dauerzaehlogd.json"),
+            "LUFTGUETENETZOGD": lies("wien_r6_luftguetenetzogd.json")}
+
+
+@pytest.fixture(scope="session")
+def salzburg_wfs():
+    """Stadt Salzburg WFS, live 18.09.2026 (Runden 6/7): Widmungs-Planblatt und
+    Bebauungspläne am Probepunkt, Altstadtschutzzonen (5 stadtweit), Kurzparkzonen,
+    Märkte stadtweit, Baustellen um den Probepunkt."""
+    wurzel = Path(__file__).resolve().parent.parent / "fixtures" / "at"
+    lies = lambda n: json.loads((wurzel / n).read_text("utf-8"))  # noqa: E731
+    return {"flaechenwidmung": lies("salzburg_r6_flaechenwidmung.json"),
+            "bebauungsplan_rechtswirksam": lies("salzburg_r6_bebauungsplan_rechtswirksam.json"),
+            "altstadtschutzzone": lies("salzburg_r7_altstadtschutzzone.json"),
+            "kurzparkzone": lies("salzburg_r6_kurzparkzone.json"),
+            "markt": lies("salzburg_r6_markt.json"),
+            "baustelle_aktuell": lies("salzburg_r6_baustelle_aktuell.json")}
 
 
 @pytest.fixture(scope="session")
@@ -101,12 +126,66 @@ def wahl_at_dateien():
 
 
 @pytest.fixture(scope="session")
+def geodata_stephansplatz():
+    """Gemeindegrenzen-WFS (GEODATA) am Stephansplatz, Runde 6: zwei Polygone
+    im Punktkasten, der Punkt liegt in 90101 Wien-Innere Stadt."""
+    wurzel = Path(__file__).resolve().parent.parent / "fixtures" / "at"
+    return json.loads((wurzel / "stat_r6_gem_stephansplatz.json").read_text("utf-8"))
+
+
+@pytest.fixture(scope="session")
+def immobilien_ods():
+    """Immobilien-Durchschnittspreise 2024 (Statistik Austria, Runden 5/6):
+    die drei ODS-Dateien als Bytes unter ihren Dateinamen."""
+    wurzel = Path(__file__).resolve().parent.parent / "fixtures" / "at"
+    return {"Haeuserpreise2024.ods": (wurzel / "stat_r5_haeuserpreise2024.ods").read_bytes(),
+            "Wohnungspreise2024.ods": (wurzel / "stat_r6_wohnungspreise2024.ods").read_bytes(),
+            "Baugrundstueckspreise2024.ods": (wurzel / "stat_r6_baugrundstueckspreise2024.ods").read_bytes()}
+
+
+@pytest.fixture(scope="session")
 def statistik_at():
     """Nächtigungsstatistik, live 18.09.2026: Herkunfts-Klassifikation und
     der Wien-Ausschnitt der Datendatei ab 2018."""
     wurzel = Path(__file__).resolve().parent.parent / "fixtures" / "at"
     return {"herkunft": (wurzel / "stat_OGD_touextsai_Tour_HKL_1_C-C93-2.txt").read_text("utf-8"),
-            "daten": (wurzel / "stat_OGD_touextsai_Tour_HKL_1_wien_ab2018.csv").read_text("utf-8")}
+            "daten": (wurzel / "stat_OGD_touextsai_Tour_HKL_1_wien_ab2018.csv").read_text("utf-8"),
+            "gemeinde": (wurzel / "stat_OGDEXT_AEST_GEMTAB_1_auszug.csv").read_text("utf-8")}
+
+
+@pytest.fixture(scope="session")
+def wien_lage_wfs():
+    """Wiener Lage-Layer am Stephansplatz (Runde 5) und der Zählbezirk am Punkt."""
+    wurzel = Path(__file__).resolve().parent.parent / "fixtures" / "at"
+    lies = lambda n: json.loads((wurzel / n).read_text("utf-8"))  # noqa: E731
+    return {"KURZPARKZONEOGD": lies("wien_r5_kurzparkzoneogd.json"),
+            "FUSSGEHERZONEOGD": lies("wien_r5_fussgeherzoneogd.json"),
+            "BEGEGNUNGSZONEOGD": lies("wien_r5_begegnungszoneogd.json"),
+            "STRUKGESCHSTROGD": lies("wien_r5_strukgeschstrogd.json"),
+            "REALNUT2022OGD": lies("wien_r5_realnut2022ogd.json"),
+            "GEBAEUDEINFOOGD": lies("wien_r5_gebaeudeinfoogd.json"),
+            "ZAEHLBEZIRKOGD": lies("wien_r5_zaehlbezirkogd.json")}
+
+
+@pytest.fixture(scope="session")
+def wien_zb_csv():
+    """Zählbezirks-Bevölkerung der MA 23, Auszug (Bezirk 1 komplett, ab 2022 alle)."""
+    wurzel = Path(__file__).resolve().parent.parent / "fixtures" / "at"
+    return {"l9ogdviezbz": (wurzel / "wien_bev_zaehlbezirk_auszug.csv").read_text("utf-8"),
+            # Runde 7: Dauerzählstellen 2025 und Lumes-Halbstundenwerte.
+            "dauerzaehlstellen.csv": (wurzel / "wien_r7_dauerzaehlstellen_2025.csv").read_text("utf-8"),
+            "l9lumesakt": (wurzel / "wien_r7_luft_lumes.csv").read_text("cp1252")}
+
+
+@pytest.fixture(scope="session")
+def starkregen_berlin():
+    """BKG-Starkregen am Alexanderplatz (Runde 6): 39 cm im außergewöhnlichen Szenario."""
+    wurzel = Path(__file__).resolve().parent.parent / "fixtures" / "de"
+    lies = lambda n: json.loads((wurzel / n).read_text("utf-8"))  # noqa: E731
+    return {"tiefe_agw": lies("de_starkregen_r6_tiefe_agw_berlin.json"),
+            "tiefe_extrem": lies("de_starkregen_r6_tiefe_extrem_berlin.json"),
+            "geschwindigkeit_agw": lies("de_starkregen_r6_geschwindigkeit_agw_berlin.json"),
+            "geschwindigkeit_extrem": lies("de_starkregen_r6_geschwindigkeit_extrem_berlin.json")}
 
 
 @pytest.fixture(scope="session")
@@ -118,6 +197,40 @@ def nominatim_reverse_wien():
 @pytest.fixture(scope="session")
 def nominatim_reverse():
     return load_fixture("raw_nominatim_reverse.json")
+
+
+@pytest.fixture(scope="session")
+def nominatim_reverse_bw():
+    """Die Münchner Antwort, auf Stuttgart umgeschrieben — für die
+    Bundesland-Weiche (DE-BW) reichen state und ISO-Code."""
+    import copy
+    d = copy.deepcopy(load_fixture("raw_nominatim_reverse.json"))
+    d["address"].update({"state": "Baden-Württemberg", "ISO3166-2-lvl4": "DE-BW", "city": "Stuttgart",
+                         "postcode": "70173", "suburb": "Stuttgart-Mitte"})
+    d["lat"], d["lon"] = "48.7758", "9.1829"
+    return d
+
+
+@pytest.fixture(scope="session")
+def de_dienste():
+    """Berlin-WFS, Hamburg-OAF, MobiData BW und Stuttgart (Runden 6/7, live 18.09.2026)."""
+    wurzel = Path(__file__).resolve().parent.parent / "fixtures" / "de"
+    lies = lambda n: json.loads((wurzel / n).read_text("utf-8"))  # noqa: E731
+    return {
+        "berlin_wfs": {"dtvw2023kfz": lies("de_berlin_r6_verkehrsmengen_2023_dtvw2023kf.json"),
+                       "dtvw2023lkw": lies("de_berlin_r6_verkehrsmengen_2023_dtvw2023lk.json"),
+                       "dtvw2023rad": lies("de_berlin_r6_verkehrsmengen_2023_dtvw2023ra.json")},
+        "hamburg_oaf": {"kfz_temporaere_zaehlungen": lies("de_hh_r6_verkehrsstaerken_kfz_temporaere_zaehlunge.json"),
+                        "verkehrsmengen_dtv_hvs_2019": lies("de_hh_r6_verkehrsmengen_verkehrsmengen_dtv_hvs_2.json"),
+                        "regionalstatistische_daten_stadtteile": lies("de_hh_r6_regionalstatistische_daten_stadtteile_regionalstatistische_dat.json"),
+                        "parkhaeuser": lies("de_hh_r6_parkhaeuser_parkhaeuser.json"),
+                        "parkraum": lies("de_hh_r6_parkraum_parkraum.json")},
+        "mobidata": {"roadworks": lies("de_mobidata_r7_roadworks_auszug.json"),
+                     "charge_points": lies("de_mobidata_r6_ladesaeulen_stuttgart.json"),
+                     "svz": (wurzel / "de_mobidata_r7_svz_stuttgart.csv").read_text("utf-8"),
+                     "eco": (wurzel / "de_mobidata_r7_eco_tageswerte_auszug.csv").read_text("utf-8")},
+        "stuttgart": lies("de_stuttgart_r6_baustellen.json"),
+    }
 
 
 @pytest.fixture(scope="session")

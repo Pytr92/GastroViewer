@@ -62,6 +62,13 @@ TTL_KLASSEN: dict[str, str | int] = {
     "muenchen_baustellen": "ttl_osm",  # rollierende Vier-Wochen-Vorschau
     "hamburg_baustellen": "ttl_osm",   # dito Hamburg
     "berlin_baustellen": "ttl_osm",    # dito Berlin
+    "stuttgart_baustellen": "ttl_osm", # dito Stuttgart
+    "mobidata_roadworks": "ttl_osm",   # Landesdatei BW, laufend
+    "mobidata_baustellen": "ttl_osm",
+    "mobidata_eco": "ttl_osm",         # Radzähler-Tageswerte der laufenden Woche
+    "mobidata_rad": "ttl_osm",
+    "mobidata_lage": "ttl_osm",        # Ladesäulen mit Belegung
+    "hamburg_lage": "ttl_osm",         # Parkhäuser mit Belegung
     "leerstandsmelder": "ttl_osm",     # Weltbestand, laufend gemeldet, 3 MB
     "leerstandsmelder_punkt": "ttl_osm",
     "muenchen_rad": "ttl_osm",      # Raddauerzählstellen mit laufendem Monat
@@ -89,6 +96,11 @@ TTL_KLASSEN: dict[str, str | int] = {
     "genesis": "ttl_zensus",        # Regionaldatenbank, jährlich
     "bast": "ttl_zensus",           # BASt-Jahresdatei, bundesweit
     "bast_punkt": "ttl_zensus",
+    "berlin_verkehrsmenge": "ttl_zensus",  # Verkehrsmodell 2023
+    "hamburg_verkehrsmenge": "ttl_zensus", # Zählungen mit Jahr
+    "mobidata_svz": "ttl_zensus",     # SVZ 2024, Landesdatei
+    "svz_bw_punkt": "ttl_zensus",
+    "hamburg_stadtteil": "ttl_zensus", # Regionalstatistik, jährlich
     "pks": "ttl_zensus",            # BKA-Kreistabelle, Berichtsjahr
     "pks_kreis": "ttl_zensus",
     "luft_stationen": "ttl_zensus",  # Stationsliste, selten geändert
@@ -109,12 +121,26 @@ TTL_KLASSEN: dict[str, str | int] = {
     "baurecht_at": "ttl_zensus",    # Wiener Flächenwidmung, Jahre in Kraft
     "wien_maerkte": "ttl_zensus",   # Wiener Marktliste, selten geändert
     "wien_baustellen": "ttl_osm",   # angemeldete Baustellen, laufend gepflegt
+    "salzburg_maerkte": "ttl_zensus",   # Salzburger Marktliste, selten geändert
+    "salzburg_baustellen": "ttl_osm",   # Baustellen und Grabungen, laufend gepflegt
+    "salzburg_lage": "ttl_osm",         # Kurzparkzonen
     "tourismus_at": "ttl_gehweg",   # Nächtigungsreihe je Bundesland, monatlich
     "tourismus_at_daten": "ttl_gehweg",  # die eingedampfte Gesamtdatei
     "wahl_at": "ttl_zensus",        # NRW 2024, endgültig
     "wahl_at_daten": "ttl_zensus",  # Ergebnisdatei und GKZ-Liste
+    "kreisprofil_at": "ttl_zensus", # Gemeindeprofil, jährliche Tabelle
+    "gemeinde_at_daten": "ttl_zensus",  # die eingedampfte Gemeindetabelle
+    "gemeinde_at_gkz": "ttl_zensus",    # Gemeindekennziffer am Punkt (GEODATA-WFS)
+    "immobilien_at_daten": "ttl_zensus", # drei ODS-Dateien, jährlich
+    "immobilien_at": "ttl_zensus",      # Bezirkswerte daraus
+    "wien_zaehlbezirk": "ttl_zensus",   # Zählbezirks-Steckbrief, jährlich
+    "wien_zb_daten": "ttl_zensus",      # die eingedampfte Zählbezirks-CSV
+    "wien_lage": "ttl_osm",             # Zonen und Nutzung, laufend gepflegt
+    "wien_kfz_daten": "ttl_zensus",     # Monats-CSV der Dauerzählstellen, monatlich fortgeschrieben
+    "wien_verkehrsmenge": "ttl_zensus", # Jahresmittel je Zählstelle
     # --- Stundenwerte
     "luft_punkt": 3600,             # Luftqualitätsindex, stündlich veröffentlicht
+    "wien_luft": 3600,              # Lumes-Halbstundenwerte
 }
 _TTL_GEWARNT: set[str] = set()
 

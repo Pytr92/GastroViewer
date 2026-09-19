@@ -31,7 +31,9 @@ class FakeOutbound:
                  kreisprofil=None, dwd=None, pendler=None, ohsome=None,
                  laerm=None, fehler: set[str] | None = None, photon=None,
                  geosphere=None, laerminfo=None, lfrz=None, wien=None,
-                 statistik_at=None, wahl_at=None,
+                 statistik_at=None, wahl_at=None, starkregen=None, wien_csv=None,
+                 salzburg=None, geodata=None, immobilien=None, berlin_wfs=None, hamburg_oaf=None,
+                 mobidata=None, stuttgart=None,
                  baustellen=None, maerkte=None, indikatoren=None,
                  airbnb=None, messe=None, tourismus=None,
                  uba=None, bfg_hochwasser=None,
@@ -58,6 +60,17 @@ class FakeOutbound:
         self.statistik_at = statistik_at
         # NRW 2024: {"ergebnisse": bytes, "gkz": bytes}.
         self.wahl_at = wahl_at
+        # BKG-Starkregen: GetFeatureInfo-Antwort je Layername.
+        self.starkregen = starkregen
+        # Wiener OGD-CSVs (MA 23): Text je URL-Bruchstück.
+        self.wien_csv = wien_csv or {}
+        self.salzburg = salzburg or {}
+        self.geodata = geodata
+        self.immobilien = immobilien or {}
+        self.berlin_wfs = berlin_wfs or {}
+        self.hamburg_oaf = hamburg_oaf or {}
+        self.mobidata = mobidata or {}
+        self.stuttgart = stuttgart
         self.einkommen = einkommen or {"features": []}
         # Fixture je Tabelle — Einkommen und Kreisprofil teilen sich Endpunkt
         # und URL, unterscheiden sich nur im layer-Parameter.
@@ -164,11 +177,52 @@ class FakeOutbound:
             if "geosphere" in self.fehler:
                 raise SourceError("timeout", "Zeitüberschreitung — Dienst antwortet nicht.")
             return self.geosphere["metadata"] if url.endswith("/metadata") else self.geosphere["daten"]
+        if "wms_starkregen" in url:
+            self.calls.append("starkregen")
+            if "starkregen" in self.fehler or self.starkregen is None:
+                raise SourceError("timeout", "Zeitüberschreitung — Dienst antwortet nicht.")
+            layer = str(((kw or {}).get("params") or {}).get("layers", ""))
+            return self.starkregen.get(layer) or {"type": "FeatureCollection", "features": []}
         if "inspire.lfrz.gv.at/000801" in url:
             self.calls.append("lfrz_hochwasser")
             if "lfrz_hochwasser" in self.fehler:
                 raise SourceError("timeout", "Zeitüberschreitung — Dienst antwortet nicht.")
             return self.lfrz
+        if "gdi.berlin.de/services/wfs" in url:
+            typ = str(((kw or {}).get("params") or {}).get("typeNames", "")).split(":")[-1]
+            self.calls.append(f"berlin_wfs_{typ}")
+            if "berlin_wfs" in self.fehler:
+                raise SourceError("timeout", "Zeitüberschreitung — Dienst antwortet nicht.")
+            return self.berlin_wfs.get(typ) or {"type": "FeatureCollection", "features": []}
+        if "api.hamburg.de/datasets" in url:
+            coll = url.rstrip("/").split("/collections/")[-1].split("/")[0]
+            self.calls.append(f"hamburg_{coll}")
+            if "hamburg" in self.fehler:
+                raise SourceError("timeout", "Zeitüberschreitung — Dienst antwortet nicht.")
+            return self.hamburg_oaf.get(coll) or {"type": "FeatureCollection", "features": []}
+        if "mobidata-bw.de" in url:
+            self.calls.append("mobidata")
+            if "mobidata" in self.fehler:
+                raise SourceError("timeout", "Zeitüberschreitung — Dienst antwortet nicht.")
+            if "roadworks_geojson" in url:
+                return self.mobidata.get("roadworks") or {"type": "FeatureCollection", "features": []}
+            return self.mobidata.get("charge_points") or {"type": "FeatureCollection", "features": []}
+        if "geoserver.stuttgart.de" in url:
+            self.calls.append("stuttgart_baustellen")
+            if "stuttgart" in self.fehler:
+                raise SourceError("timeout", "Zeitüberschreitung — Dienst antwortet nicht.")
+            return self.stuttgart or {"type": "FeatureCollection", "features": []}
+        if "statistik.gv.at/gs-open/GEODATA" in url:
+            self.calls.append("statistik_at_geodata")
+            if "statistik_at_geodata" in self.fehler or not self.geodata:
+                raise SourceError("timeout", "Zeitüberschreitung — Dienst antwortet nicht.")
+            return self.geodata
+        if "data.stadt-salzburg.at" in url:
+            typ = str(((kw or {}).get("params") or {}).get("typeName", "")).split(":")[-1]
+            self.calls.append(f"salzburg_{typ.lower()}")
+            if "salzburg" in self.fehler:
+                raise SourceError("timeout", "Zeitüberschreitung — Dienst antwortet nicht.")
+            return self.salzburg.get(typ) or {"type": "FeatureCollection", "features": []}
         if "data.wien.gv.at" in url:
             typ = str(((kw or {}).get("params") or {}).get("typeName", "")).split(":")[-1]
             self.calls.append(f"wien_{typ.lower()}")
@@ -295,10 +349,26 @@ class FakeOutbound:
         return self._dispatch(url, kw)
 
     async def get_text(self, source, url, **kw):
+        if "mobidata-bw.de" in url:
+            self.calls.append("mobidata_csv")
+            if "mobidata" in self.fehler:
+                raise SourceError("timeout", "Zeitüberschreitung — Dienst antwortet nicht.")
+            schluessel = "svz" if "SVZ" in url else "eco"
+            if schluessel not in self.mobidata:
+                raise SourceError("http_status", "HTTP 404")
+            return self.mobidata[schluessel]
+        if "wien.gv.at/gogv" in url or "wien.gv.at/data/ogd" in url or "go.gv.at/" in url:
+            self.calls.append("wien_csv")
+            for stueck, text in self.wien_csv.items():
+                if stueck in url:
+                    return text
+            raise SourceError("timeout", "Zeitüberschreitung — Dienst antwortet nicht.")
         if "data.statistik.gv.at" in url:
             self.calls.append("statistik_at")
             if "statistik_at" in self.fehler or self.statistik_at is None:
                 raise SourceError("timeout", "Zeitüberschreitung — Dienst antwortet nicht.")
+            if "OGDEXT_AEST_GEMTAB_1" in url:
+                return self.statistik_at["gemeinde"]
             return self.statistik_at["herkunft"] if "_C-C93-2" in url else self.statistik_at["daten"]
         if "dwd" in url:
             self.calls.append("dwd")
@@ -365,6 +435,14 @@ class FakeOutbound:
         raise AssertionError(f"unerwartete Text-URL: {url}")
 
     async def get_bytes(self, source, url, **kw):
+        if "statistik.at/fileadmin/pages/222/" in url:
+            self.calls.append("immobilien_at")
+            if "immobilien_at" in self.fehler or not self.immobilien:
+                raise SourceError("timeout", "Zeitüberschreitung — Dienst antwortet nicht.")
+            name = url.rsplit("/", 1)[-1]
+            if name not in self.immobilien:
+                raise SourceError("http_status", f"HTTP 404 — {name} fehlt.")
+            return self.immobilien[name]
         if "e40e3b00-1a98-4338-acb7-42547e6fee55" in url:
             self.calls.append("wahl_at")
             if "wahl_at" in self.fehler or self.wahl_at is None:
@@ -2348,14 +2426,17 @@ WIEN = (48.2082, 16.3738)
 def test_wiener_punkt_bekommt_ehrliche_antwort(client, zensus_600, overpass_combined,
                                                  nominatim_reverse_wien, geosphere_at, laerminfo_at,
                                                  lfrz_hochwasser_at, wien_wfs,
-                                                 wahl_at_dateien, statistik_at):
+                                                 wahl_at_dateien, statistik_at, wien_zb_csv, geodata_stephansplatz,
+                                                immobilien_ods):
     """Stephansplatz: Das Land kommt vom Geocoder (Kästen überlappen sich),
     länderunabhängige Quellen laufen, deutsche Dienste werden nicht
     gefragt — kein Zensus-Abruf, keine DWD-Station hinter der Grenze."""
     fake = FakeOutbound(zensus_600, overpass_combined, nominatim_reverse_wien,
                         geosphere=geosphere_at, laerminfo=laerminfo_at,
                         lfrz=lfrz_hochwasser_at, wien=wien_wfs,
-                        wahl_at=wahl_at_dateien, statistik_at=statistik_at)
+                        wahl_at=wahl_at_dateien, statistik_at=statistik_at,
+                        wien_csv=wien_zb_csv, geodata=geodata_stephansplatz,
+                        immobilien=immobilien_ods)
     c2 = client.make(fake)
     with c2:
         r = c2.get("/api/point", params={"lat": WIEN[0], "lon": WIEN[1], "r": 600})
@@ -2393,10 +2474,15 @@ def test_wiener_punkt_bekommt_ehrliche_antwort(client, zensus_600, overpass_comb
         assert bs["data"]["gesamt"] == bs["data"]["baumassnahmen"]
         assert "lfrz_hochwasser" in fake.calls and "wien_maerkteogd" in fake.calls
         assert "wien_baustellenpktogd" in fake.calls and "wien_baustellenlinogd" in fake.calls
-        for name in ("luft", "einkommen", "pks", "register"):
+        for name in ("einkommen", "pks", "register"):
             b = d["bloecke"][name]
             assert b["ok"] is True and b["data"] is None, name
             assert any("Nur für Deutschland" in w for w in b["warnings"]), (name, b["warnings"])
+        # Luft und Verkehrsmenge antworten in Wien aus den städtischen Netzen.
+        lu = d["bloecke"]["luft"]
+        assert lu["ok"] and lu["data"]["dienst"] == "wien" and lu["data"]["station"]["code"] == "STEF"
+        vm = d["bloecke"]["verkehrsmenge"]
+        assert vm["ok"] and vm["data"]["dienst"] == "wien" and vm["data"]["naechste"]["strasse"].startswith("Franz-Josefs-Kai")
         # Wahl: Nationalratswahl 2024 für die Gemeinde Wien (ohne Schlüssel,
         # über Bundesland und Namen); Tourismus: Nächtigungen Wien.
         w = d["bloecke"]["wahl"]
@@ -2406,7 +2492,7 @@ def test_wiener_punkt_bekommt_ehrliche_antwort(client, zensus_600, overpass_comb
         t = d["bloecke"]["tourismus"]
         assert t["ok"] and t["data"]["gebiet"] == "Wien" and t["data"]["uebernachtungen_12m"] > 15_000_000
         assert 0 < t["data"]["ausland_anteil_prozent"] < 100
-        assert fake.calls.count("wahl_at") == 2 and fake.calls.count("statistik_at") == 2
+        assert fake.calls.count("wahl_at") == 2 and fake.calls.count("statistik_at") == 3
         # Klima und Lärm kommen aus den österreichischen Diensten — in derselben Blockform.
         k = d["bloecke"]["klima"]
         assert k["ok"] and k["data"]["kennzahlen"][0]["station"]["name"] == "Wien Innere Stadt"

@@ -43,7 +43,12 @@ from .sources import (airbnb as airbnb_mod,
                       luft as luft_mod,
                       pendler as pendler_mod, pks as pks_mod, planung,
                       planung_at as planung_at_mod, tourismus_at as tourismus_at_mod,
-                      wahl_at as wahl_at_mod,
+                      wahl_at as wahl_at_mod, gemeinde_at as gemeinde_at_mod,
+                      wien_profil as wien_profil_mod,
+                      wien_verkehr as wien_verkehr_mod,
+                      salzburg as salzburg_mod,
+                      immobilien_at as immobilien_at_mod,
+                      mobidata_bw as mobidata_mod,
                       register as register_mod, scan as scan_mod,
                       sonne as sonne_mod,
                       tourismus as tourismus_mod, wahl as wahl_mod, zensus)
@@ -358,11 +363,159 @@ class PointService:
             lambda: genesis_mod.load(self.outbound, self.settings, ags),
         )
 
-    async def indikatoren(self, adresse: dict[str, Any] | None):
+    async def bundesland_iso(self, lat: float, lon: float) -> str | None:
+        """ISO-Code des Bundeslands aus der (gecachten) Adresse — ``None``,
+        wenn der Geocoder nicht antwortet."""
+        try:
+            res = await self.adresse(lat, lon)
+        except Exception:  # noqa: BLE001
+            return None
+        return (res.data or {}).get("bundesland_iso") if res.ok else None
+
+    async def _in_bw(self, lat: float, lon: float) -> bool:
+        iso = await self.bundesland_iso(lat, lon)
+        return iso == "DE-BW" or (iso is None and mobidata_mod.in_bw(lat, lon))
+
+    async def _mobidata_roadworks(self, refresh: bool = False) -> list[dict[str, Any]]:
+        async def laden() -> SourceResult:
+            payload = await self.outbound.get_json("mobidata_roadworks", mobidata_mod.ROADWORKS_URL, timeout=120.0,
+                                                   limiter="mobidata", min_interval=0.5)
+            features = payload.get("features") or [] if isinstance(payload, dict) else []
+            # nur Geometrie und die sechs Felder behalten — 1,2 MB werden so ein Bruchteil
+            schlank = [{"geometry": f.get("geometry"),
+                        "properties": {k: (f.get("properties") or {}).get(k)
+                                       for k in ("type", "subtype", "description", "street", "direction",
+                                                 "starttime", "endtime", "reference")}} for f in features]
+            return SourceResult(name="mobidata_roadworks", ok=True, data={"features": schlank})
+
+        res = await self._cached("mobidata_roadworks", "mobidata|roadworks", laden, refresh=refresh)
+        if not res.ok:
+            raise SourceError(res.error["kind"], res.error["message"])
+        return res.data["features"]
+
+    async def _mobidata_svz(self, refresh: bool = False) -> list[dict[str, Any]]:
+        async def laden() -> SourceResult:
+            text = await self.outbound.get_text("mobidata_svz", mobidata_mod.SVZ_URL, timeout=120.0,
+                                                limiter="mobidata", min_interval=0.5, encoding="utf-8")
+            return SourceResult(name="mobidata_svz", ok=True,
+                                data={"stellen": await asyncio.to_thread(mobidata_mod.svz_parsen, text)})
+
+        res = await self._cached("mobidata_svz", "mobidata|svz", laden, refresh=refresh)
+        if not res.ok:
+            raise SourceError(res.error["kind"], res.error["message"])
+        return res.data["stellen"]
+
+    async def _mobidata_eco(self, refresh: bool = False) -> dict[str, dict[str, Any]]:
+        async def laden() -> SourceResult:
+            text = await self.outbound.get_text("mobidata_eco", mobidata_mod.ECO_URL, timeout=120.0,
+                                                limiter="mobidata", min_interval=0.5, encoding="utf-8")
+            return SourceResult(name="mobidata_eco", ok=True,
+                                data={"sites": await asyncio.to_thread(mobidata_mod.eco_parsen, text)})
+
+        res = await self._cached("mobidata_eco", "mobidata|eco", laden, refresh=refresh)
+        if not res.ok:
+            raise SourceError(res.error["kind"], res.error["message"])
+        return res.data["sites"]
+
+    async def _wien_kfz_daten(self, refresh: bool = False):
+        """Monats-CSV der Wiener Dauerzählstellen (5 MB, cp1252), **einmal**
+        geladen und je Zählstelle auf das jüngste Jahr eingedampft."""
+
+        async def laden() -> SourceResult:
+            text = await self.outbound.get_text(
+                "wien_verkehr", wien_verkehr_mod.KFZ_CSV_URL, timeout=120.0,
+                limiter="wien", min_interval=0.5, encoding="cp1252")
+            return SourceResult(name="wien_kfz_daten", ok=True,
+                                data=await asyncio.to_thread(wien_verkehr_mod.kfz_reduzieren, text))
+
+        res = await self._cached("wien_kfz_daten", "wien_kfz|daten", laden, refresh=refresh)
+        if not res.ok:
+            raise SourceError(res.error["kind"], res.error["message"])
+        return res.data
+
+    async def _wien_zb_daten(self, refresh: bool = False):
+        """Zählbezirks-CSV der MA 23, **einmal** geladen und eingedampft."""
+
+        async def laden() -> SourceResult:
+            text = await self.outbound.get_text(
+                "wien_zaehlbezirk", wien_profil_mod.ZB_CSV_URL, timeout=120.0,
+                limiter="wien", min_interval=0.5)
+            return SourceResult(name="wien_zb_daten", ok=True,
+                                data=await asyncio.to_thread(wien_profil_mod.zb_reduzieren, text))
+
+        res = await self._cached("wien_zb_daten", "wien_zb|daten", laden, refresh=refresh)
+        if not res.ok:
+            raise SourceError(res.error["kind"], res.error["message"])
+        return res.data
+
+    async def lage(self, lat: float, lon: float, radius: int, refresh: bool = False):
+        """Lage-Indikatoren (Kurzparkzone, Fußgängerzonen, Geschäftsstraßen,
+        Realnutzung, Gebäudeinfo) — Wien vollständig, Salzburg nur die
+        Kurzparkzone; sonst ehrlich leer."""
+        if wien_mod.in_wien(lat, lon):
+            return await self._cached(
+                "wien_lage", cache_key("wien_lage", lat, lon, radius),
+                lambda: wien_profil_mod.lage_load(self.outbound, lat, lon, radius),
+                refresh=refresh,
+            )
+        if salzburg_mod.in_salzburg(lat, lon):
+            return await self._cached(
+                "salzburg_lage", cache_key("salzburg_lage", lat, lon, radius),
+                lambda: salzburg_mod.lage_load(self.outbound, lat, lon, radius),
+                refresh=refresh,
+            )
+        if hamburg_mod.in_hamburg(lat, lon):
+            return await self._cached(
+                "hamburg_lage", cache_key("hamburg_lage", lat, lon, radius),
+                lambda: hamburg_mod.lage_load(self.outbound, lat, lon, radius),
+                refresh=refresh,
+            )
+        if await self._in_bw(lat, lon):
+            return await self._cached(
+                "mobidata_lage", cache_key("mobidata_lage", lat, lon, radius),
+                lambda: self._lage_bw(lat, lon, radius),
+                refresh=refresh,
+            )
+        return SourceResult(name="lage", ok=True, data=None,
+                            warnings=["Lage-Indikatoren gibt es bisher für Wien (Zonen, Nutzung, Gebäude), "
+                                      "Salzburg (Kurzparkzone), Hamburg (Parkhäuser, Parkraum) und "
+                                      "Baden-Württemberg (Ladesäulen)."])
+
+    async def _lage_bw(self, lat: float, lon: float, radius: int) -> SourceResult:
+        """Lage-Block für Baden-Württemberg: nur die Ladesäulen (MobiData BW)."""
+        started = time.perf_counter()
+        try:
+            lade = await mobidata_mod.ladesaeulen(self.outbound, lat, lon, radius)
+        except SourceError as err:
+            return SourceResult.failed("lage", err, int((time.perf_counter() - started) * 1000))
+        data = {"stadt": "Baden-Württemberg", "kurzparkzone": None, "fussgaengerzonen": [], "begegnungszonen": [],
+                "geschaeftsstrasse": {"am_punkt": None, "naechste": None, "im_radius": 0, "ohne_dienst": True},
+                "realnutzung": None, "gebaeude": [], "ladesaeulen": lade,
+                "hinweise": ["Für Baden-Württemberg liegen im Lage-Block die **Ladesäulen** vor (MobiData BW, "
+                             "Register der Bundesnetzagentur mit Live-Belegung, wo gemeldet); Parkzonen und "
+                             "Fußgängerzonen gibt das Land nicht als Dienst frei."]}
+        return SourceResult(name="lage", ok=True, data=data, duration_ms=int((time.perf_counter() - started) * 1000),
+                            provenance=Provenance(source="Ladesäulen Baden-Württemberg (MobiData BW, WFS charge_points)",
+                                                  license=mobidata_mod.LIZENZ, endpoint=mobidata_mod.WFS_URL,
+                                                  retrieved_at=now_iso()))
+
+    async def indikatoren(self, adresse: dict[str, Any] | None,
+                          lat: float | None = None, lon: float | None = None):
         """Viertel-Steckbrief. Braucht Gemeinde und Ortsteil aus der schon
         geladenen Adresse — deshalb nach dem Sammeln, ohne eigene Anfrage
-        außerhalb Münchens."""
+        außerhalb Münchens. In Wien der Zählbezirk am Punkt."""
         a = adresse or {}
+        if lat is not None and lon is not None and wien_mod.in_wien(lat, lon):
+            return await self._cached(
+                "wien_zaehlbezirk", cache_key("wien_zaehlbezirk", lat, lon, 0),
+                lambda: wien_profil_mod.zaehlbezirk_load(
+                    self.outbound, lat, lon, a.get("ortsteil"), self._wien_zb_daten),
+            )
+        if lat is not None and lon is not None and hamburg_mod.in_hamburg(lat, lon):
+            return await self._cached(
+                "hamburg_stadtteil", cache_key("hamburg_stadtteil", lat, lon, 0),
+                lambda: hamburg_mod.stadtteil_load(self.outbound, lat, lon),
+            )
         return await indikatoren_mod.load(
             self.outbound, self.settings,
             a.get("gemeinde"), a.get("ortsteil"),
@@ -379,6 +532,13 @@ class PointService:
                 key,
                 lambda: hamburg_mod.rad_load(
                     self.outbound, self.settings, lat, lon, radius),
+                refresh=refresh,
+            )
+        if await self._in_bw(lat, lon):
+            key = cache_key("mobidata_rad", lat, lon, radius)
+            return await self._cached(
+                "mobidata_rad", key,
+                lambda: mobidata_mod.eco_load(self.outbound, lat, lon, radius, lambda: self._mobidata_eco(refresh)),
                 refresh=refresh,
             )
         key = cache_key("muenchen_rad", lat, lon, radius)
@@ -401,6 +561,13 @@ class PointService:
             return await self._cached(
                 "wien_maerkte", key,
                 lambda: wien_mod.maerkte_load(self.outbound, lat, lon, radius),
+                refresh=refresh,
+            )
+        if salzburg_mod.in_salzburg(lat, lon):
+            key = cache_key("salzburg_maerkte", lat, lon, radius)
+            return await self._cached(
+                "salzburg_maerkte", key,
+                lambda: salzburg_mod.maerkte_load(self.outbound, lat, lon, radius),
                 refresh=refresh,
             )
         if hamburg_mod.in_hamburg(lat, lon):
@@ -431,6 +598,13 @@ class PointService:
                 lambda: wien_mod.baustellen_load(self.outbound, lat, lon, radius),
                 refresh=refresh,
             )
+        if salzburg_mod.in_salzburg(lat, lon):
+            key = cache_key("salzburg_baustellen", lat, lon, radius)
+            return await self._cached(
+                "salzburg_baustellen", key,
+                lambda: salzburg_mod.baustellen_load(self.outbound, lat, lon, radius),
+                refresh=refresh,
+            )
         if hamburg_mod.in_hamburg(lat, lon):
             key = cache_key("hamburg_baustellen", lat, lon, radius)
             return await self._cached(
@@ -438,6 +612,21 @@ class PointService:
                 key,
                 lambda: hamburg_mod.baustellen_load(
                     self.outbound, self.settings, lat, lon, radius),
+                refresh=refresh,
+            )
+        if mobidata_mod.in_stuttgart(lat, lon):
+            key = cache_key("stuttgart_baustellen", lat, lon, radius)
+            return await self._cached(
+                "stuttgart_baustellen", key,
+                lambda: mobidata_mod.stuttgart_baustellen_load(self.outbound, lat, lon, radius),
+                refresh=refresh,
+            )
+        if await self._in_bw(lat, lon):
+            key = cache_key("mobidata_baustellen", lat, lon, radius)
+            return await self._cached(
+                "mobidata_baustellen", key,
+                lambda: mobidata_mod.roadworks_load(self.outbound, lat, lon, radius,
+                                                    lambda: self._mobidata_roadworks(refresh)),
                 refresh=refresh,
             )
         if berlin_mod.in_berlin(lat, lon):
@@ -545,10 +734,40 @@ class PointService:
 
     async def verkehrsmenge(self, lat: float, lon: float, radius: int, refresh: bool = False):
         """In Bayern BAYSIS (9 441 Zählstellen, ganzes klassifiziertes
-        Netz), sonst die bundesweiten BASt-Dauerzählstellen."""
+        Netz), sonst die bundesweiten BASt-Dauerzählstellen; in Wien die
+        Kfz-Dauerzählstellen der MA 46."""
+        if wien_verkehr_mod.in_wien(lat, lon):
+            key = cache_key("wien_verkehrsmenge", lat, lon, radius)
+            return await self._cached(
+                "wien_verkehrsmenge", key,
+                lambda: wien_verkehr_mod.kfz_load(
+                    self.outbound, lat, lon, radius, lambda: self._wien_kfz_daten(refresh)),
+                refresh=refresh,
+            )
         land = await self.land(lat, lon)
         if (leer := self._nur_in("verkehrsmenge", land)) is not None:
             return leer
+        if berlin_mod.in_berlin(lat, lon):
+            key = cache_key("berlin_verkehrsmenge", lat, lon, radius)
+            return await self._cached(
+                "berlin_verkehrsmenge", key,
+                lambda: berlin_mod.verkehrsmengen_load(self.outbound, self.settings, lat, lon, radius),
+                refresh=refresh,
+            )
+        if hamburg_mod.in_hamburg(lat, lon):
+            key = cache_key("hamburg_verkehrsmenge", lat, lon, radius)
+            return await self._cached(
+                "hamburg_verkehrsmenge", key,
+                lambda: hamburg_mod.verkehrsmengen_load(self.outbound, self.settings, lat, lon, radius),
+                refresh=refresh,
+            )
+        if await self._in_bw(lat, lon):
+            key = cache_key("svz_bw_punkt", lat, lon, radius)
+            return await self._cached(
+                "svz_bw_punkt", key,
+                lambda: mobidata_mod.svz_load(self.outbound, lat, lon, radius, lambda: self._mobidata_svz(refresh)),
+                refresh=refresh,
+            )
         if bayern.in_bayern(lat, lon):
             key = cache_key("baysis", lat, lon, radius)
             return await self._cached(
@@ -653,6 +872,13 @@ class PointService:
         return res.data["stationen"]
 
     async def luft(self, lat: float, lon: float, refresh: bool = False):
+        if wien_verkehr_mod.in_wien(lat, lon):
+            key = cache_key("wien_luft", lat, lon, 0)
+            return await self._cached(
+                "wien_luft", key,
+                lambda: wien_verkehr_mod.luft_load(self.outbound, lat, lon),
+                refresh=refresh,
+            )
         land = await self.land(lat, lon)
         if (leer := self._nur_in("luft", land)) is not None:
             return leer
@@ -763,15 +989,16 @@ class PointService:
         if (leer := self._nur_in("baurecht", land)) is not None:
             return leer
         if land.code == "AT":
-            # Flächenwidmung ist Landesrecht — offen und punktgenau nur in Wien.
-            if not wien_mod.in_wien(lat, lon):
+            # Flächenwidmung ist Landesrecht — offen und punktgenau in Wien,
+            # in Salzburg als Bebauungsplan-Umgriff mit Plan-PDF.
+            if wien_mod.in_wien(lat, lon):
+                laden = lambda: wien_mod.baurecht_load(self.outbound, lat, lon)  # noqa: E731
+            elif salzburg_mod.in_salzburg(lat, lon):
+                laden = lambda: salzburg_mod.baurecht_load(self.outbound, lat, lon)  # noqa: E731
+            else:
                 return planung_at_mod.baurecht_ohne_dienst(land.name)
             key = cache_key("baurecht_at", lat, lon, 0)
-            return await self._cached(
-                "baurecht_at", key,
-                lambda: wien_mod.baurecht_load(self.outbound, lat, lon),
-                refresh=refresh,
-            )
+            return await self._cached("baurecht_at", key, laden, refresh=refresh)
         key = cache_key("baurecht", lat, lon, 0)
         return await self._cached(
             "baurecht", key,
@@ -843,25 +1070,118 @@ class PointService:
             raise SourceError(res.error["kind"], res.error["message"])
         return res.data["ergebnisse"], res.data["gkz"]
 
+    async def _gemeinde_at_daten(self, refresh: bool = False):
+        """Gemeindetabelle von Statistik Austria, **einmal** geladen und
+        eingedampft (Gemeindezeilen plus gerechnete Landes-/Bundeswerte)."""
+
+        async def laden() -> SourceResult:
+            text = await self.outbound.get_text(
+                "gemeinde_at", gemeinde_at_mod.CSV_URL, timeout=120.0,
+                limiter="statistik_at", min_interval=1.0)
+            return SourceResult(name="gemeinde_at_daten", ok=True,
+                                data=await asyncio.to_thread(gemeinde_at_mod.reduzieren, text))
+
+        res = await self._cached("gemeinde_at_daten", "gemeinde_at|daten", laden, refresh=refresh)
+        if not res.ok:
+            raise SourceError(res.error["kind"], res.error["message"])
+        return res.data
+
+    async def gkz_at(self, lat: float, lon: float, refresh: bool = False) -> str | None:
+        """Gemeindekennziffer am Punkt (Gemeindegrenzen-WFS von Statistik
+        Austria), gecacht je Punkt; ein Ausfall ergibt ``None`` — dann
+        greift die Namenssuche über die Adresse."""
+        async def laden() -> SourceResult:
+            treffer = await gemeinde_at_mod.gkz_am_punkt(self.outbound, lat, lon)
+            return SourceResult(name="gemeinde_at_gkz", ok=True, data=treffer)
+
+        try:
+            res = await self._cached("gemeinde_at_gkz", cache_key("gemeinde_at_gkz", lat, lon, 0), laden,
+                                     refresh=refresh)
+        except Exception:  # noqa: BLE001 — Zuordnung ist Komfort, kein Blocker
+            return None
+        return (res.data or {}).get("gkz") if res.ok else None
+
+    async def _immobilien_at_daten(self, refresh: bool = False):
+        """Die drei ODS-Dateien der Immobilien-Durchschnittspreise, **einmal**
+        geladen (jüngstes Berichtsjahr, das der Server hat) und je Bezirk
+        eingedampft."""
+
+        async def laden() -> SourceResult:
+            fehler: SourceError | None = None
+            for jahr in immobilien_at_mod.JAHRE:
+                dateien: dict[str, bytes | None] = {}
+                try:
+                    for art, muster in immobilien_at_mod.DATEIEN.items():
+                        dateien[art] = await self.outbound.get_bytes(
+                            "immobilien_at", immobilien_at_mod.BASIS_URL + muster.format(jahr=jahr),
+                            timeout=120.0, limiter="statistik_at", min_interval=0.5)
+                except SourceError as err:
+                    fehler = err
+                    continue
+                daten = await asyncio.to_thread(
+                    immobilien_at_mod.reduzieren, dateien["haeuser"], dateien["wohnungen"], dateien["baugrund"])
+                return SourceResult(name="immobilien_at_daten", ok=True, data={"daten": daten, "jahr": jahr})
+            raise fehler or SourceError("api_error", "Keine Preisdatei abrufbar.")
+
+        res = await self._cached("immobilien_at_daten", "immobilien_at|daten", laden, refresh=refresh)
+        if not res.ok:
+            raise SourceError(res.error["kind"], res.error["message"])
+        return res.data["daten"], res.data["jahr"]
+
+    async def immobilien(self, lat: float, lon: float, refresh: bool = False):
+        """Immobilien-Durchschnittspreise je Bezirk (Statistik Austria) —
+        nur Österreich; Zuordnung über die Gemeindekennziffer am Punkt."""
+        land = await self.land(lat, lon)
+        if (leer := self._nur_in("immobilien", land)) is not None:
+            return leer
+        gkz = await self.gkz_at(lat, lon, refresh)
+        return await self._cached(
+            "immobilien_at", f"immobilien_at|{gkz or '-'}",
+            lambda: immobilien_at_mod.load(gkz, lambda: self._immobilien_at_daten(refresh)),
+            refresh=refresh,
+        )
+
+    async def kreisprofil_ohne_schluessel(self, lat: float, lon: float, refresh: bool = False):
+        """Kreisprofil für einen Punkt ohne Gemeindeschlüssel: in Österreich
+        das Gemeindeprofil aus der Statistik-Austria-Tabelle, sonst ehrlich leer."""
+        land = await self.land(lat, lon)
+        if land.code == "AT":
+            res = await self.adresse(lat, lon)
+            a = (res.data or {}) if res.ok else {}
+            gkz = await self.gkz_at(lat, lon, refresh)
+            key = (f"kreisprofil_at|{gkz or '-'}|{a.get('bundesland_iso') or '-'}|"
+                   f"{(a.get('gemeinde') or '-')[:40]}|{(a.get('ortsteil') or '-')[:40]}")
+            return await self._cached(
+                "kreisprofil_at", key,
+                lambda: gemeinde_at_mod.load(a, lambda: self._gemeinde_at_daten(refresh), gkz=gkz),
+                refresh=refresh,
+            )
+        return self._nur_in("kreisprofil", land) or SourceResult(
+            name="kreisprofil", ok=True, data=None,
+            warnings=["Ohne Gemeindeschlüssel lässt sich kein Kreiswert zuordnen."])
+
     async def wahl_ohne_schluessel(self, lat: float, lon: float, refresh: bool = False):
         """Wahl-Block für einen Punkt ohne Gemeindeschlüssel: in Österreich
         die Nationalratswahl über die Adresse, sonst ehrlich leer."""
         land = await self.land(lat, lon)
         if land.code == "AT":
             res = await self.adresse(lat, lon)
-            return await self.wahl_at((res.data or {}) if res.ok else {}, refresh)
+            return await self.wahl_at((res.data or {}) if res.ok else {}, refresh, lat, lon)
         return self._nur_in("wahl", land) or SourceResult(
             name="wahl", ok=True, data=None,
             warnings=["Ohne Gemeindeschlüssel lässt sich kein Wahlkreis zuordnen."])
 
-    async def wahl_at(self, adresse: dict[str, Any] | None, refresh: bool = False):
-        """Nationalratswahl 2024 je Gemeinde — Zuordnung über Bundesland und
-        Gemeindename aus der Adresse."""
+    async def wahl_at(self, adresse: dict[str, Any] | None, refresh: bool = False,
+                      lat: float | None = None, lon: float | None = None):
+        """Nationalratswahl 2024 je Gemeinde — Zuordnung über die
+        Gemeindekennziffer am Punkt, ersatzweise Bundesland und Gemeindename
+        aus der Adresse."""
         a = adresse or {}
-        key = f"wahl_at|{a.get('bundesland_iso') or '-'}|{(a.get('gemeinde') or '-')[:40]}"
+        gkz = await self.gkz_at(lat, lon, refresh) if lat is not None and lon is not None else None
+        key = f"wahl_at|{gkz or '-'}|{a.get('bundesland_iso') or '-'}|{(a.get('gemeinde') or '-')[:40]}"
         return await self._cached(
             "wahl_at", key,
-            lambda: wahl_at_mod.load(a, lambda: self._wahl_at_daten(refresh)),
+            lambda: wahl_at_mod.load(a, lambda: self._wahl_at_daten(refresh), gkz=gkz),
             refresh=refresh,
         )
 
@@ -1546,11 +1866,13 @@ class PointService:
             self.tourismus(lat, lon, refresh),
             self.leerstandsmelder(lat, lon, radius, refresh),
             self.luft(lat, lon, refresh),
+            self.lage(lat, lon, radius, refresh),
+            self.immobilien(lat, lon, refresh),
             return_exceptions=True,
         )
         names = ["adresse", "zensus", "osm", "gtfs", "radzaehlung", "verkehrsmenge",
                  "klima", "dynamik", "baustellen", "maerkte",
-                 "messe", "tourismus", "leerstandsmelder", "luft"]
+                 "messe", "tourismus", "leerstandsmelder", "luft", "lage", "immobilien"]
         blocks: dict[str, Any] = {}
         for name, res in zip(names, results):
             if isinstance(res, BaseException):
@@ -1579,7 +1901,7 @@ class PointService:
 
         # Viertel-Steckbrief: braucht Gemeinde/Ortsteil aus der Adresse.
         try:
-            blocks["indikatoren"] = (await self.indikatoren(adresse)).to_dict()
+            blocks["indikatoren"] = (await self.indikatoren(adresse, lat, lon)).to_dict()
         except Exception as exc:  # noqa: BLE001
             blocks["indikatoren"] = SourceResult.failed(
                 "indikatoren", SourceError("unknown", f"{type(exc).__name__}: {exc}")
@@ -1636,14 +1958,16 @@ class PointService:
                     warnings=["Ohne Gemeindeschlüssel lässt sich kein Kreiswert zuordnen."],
                 )).to_dict()
             if land.code == "AT":
-                # Nationalratswahl 2024 braucht keinen Schlüssel — Bundesland
-                # und Gemeindename kommen aus der Adresse.
-                try:
-                    blocks["wahl"] = (await self.wahl_at(adresse, refresh)).to_dict()
-                except Exception as exc:  # noqa: BLE001
-                    blocks["wahl"] = SourceResult.failed(
-                        "wahl", SourceError("unknown", f"{type(exc).__name__}: {exc}")
-                    ).to_dict()
+                # Nationalratswahl 2024 und Gemeindeprofil brauchen keinen
+                # Schlüssel — Bundesland und Gemeindename kommen aus der Adresse.
+                for name, lauf in (("wahl", self.wahl_at(adresse, refresh, lat, lon)),
+                                   ("kreisprofil", self.kreisprofil_ohne_schluessel(lat, lon, refresh))):
+                    try:
+                        blocks[name] = (await lauf).to_dict()
+                    except Exception as exc:  # noqa: BLE001
+                        blocks[name] = SourceResult.failed(
+                            name, SourceError("unknown", f"{type(exc).__name__}: {exc}")
+                        ).to_dict()
             # Der Lärmdienst braucht keinen Gemeindeschlüssel — der
             # UBA-Bundesdienst deckt ganz Deutschland ab.
             try:

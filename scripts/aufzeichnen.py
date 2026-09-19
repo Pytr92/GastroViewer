@@ -58,7 +58,7 @@ PUNKT_PFADE_MIT_RADIUS = [
     "/api/point/gtfs", "/api/point/radzaehlung", "/api/point/verkehrsmenge",
     "/api/point/planung", "/api/point/leerstandsmelder",
     "/api/point/dynamik", "/api/point/baustellen", "/api/point/maerkte",
-    "/api/point/airbnb", "/api/point/ihk-berlin",
+    "/api/point/airbnb", "/api/point/ihk-berlin", "/api/point/lage",
     "/api/schaetzung/vorgaben",
 ]
 
@@ -80,6 +80,7 @@ PUNKT_PFADE_OHNE_RADIUS = [
     "/api/point/adresse", "/api/point/klima", "/api/point/luft",
     "/api/point/sonne", "/api/point/frequenz", "/api/point/baurecht",
     "/api/point/indikatoren", "/api/point/messe", "/api/point/tourismus",
+    "/api/point/immobilien",
 ]
 
 # Pfade, die einen Gemeindeschlüssel brauchen; er stammt aus der zuvor

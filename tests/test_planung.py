@@ -150,8 +150,10 @@ async def test_ausserhalb_bayerns_kein_lfu_oder_muenchen_aufruf(settings, bfg_ho
         async def get_text(self, *a, **kw):
             return bfg_hochwasser["koeln_ring"]
 
-        async def get_json(self, *a, **kw):  # pragma: no cover
-            raise AssertionError("außerhalb Bayerns kein LfU-/München-Abruf")
+        async def get_json(self, source, url, **kw):
+            if "wms_starkregen" in url:  # Starkregen-Hinweiskarte darf laufen
+                return {"type": "FeatureCollection", "features": []}
+            raise AssertionError("außerhalb Bayerns kein LfU-/München-Abruf")  # pragma: no cover
 
     res = await planung.load(FakeOut(), settings, 50.9413, 6.9583, 600)
     assert res.ok
@@ -278,8 +280,10 @@ async def test_ausserhalb_bayerns_fragt_den_bundesdienst(settings, bfg_hochwasse
             assert params["crs"] == "CRS:84"
             return bfg_hochwasser["koeln_rheinufer"]
 
-        async def get_json(self, *a, **k):  # pragma: no cover
-            raise AssertionError("Außerhalb Bayerns darf kein LfU-Abruf laufen.")
+        async def get_json(self, source, url, **k):
+            if "wms_starkregen" in url:
+                return {"type": "FeatureCollection", "features": []}
+            raise AssertionError("Außerhalb Bayerns darf kein LfU-Abruf laufen.")  # pragma: no cover
 
     out = FakeOut()
     res = await planung.load(out, settings, 50.9370, 6.9600, 600)
@@ -322,8 +326,10 @@ async def test_ohne_code_laeuft_der_bundesdienst_auch_in_bayern(settings, bfg_ho
         async def get_text(self, source, url, **kw):
             return bfg_hochwasser["koeln_ring"]
 
-        async def get_json(self, source, url, **kw):  # pragma: no cover
-            raise AssertionError("ohne Bundesland-Code kein LfU-Abruf")
+        async def get_json(self, source, url, **kw):
+            if "wms_starkregen" in url:
+                return {"type": "FeatureCollection", "features": []}
+            raise AssertionError("ohne Bundesland-Code kein LfU-Abruf")  # pragma: no cover
 
     res = await planung.load(FakeOut(), settings, 48.1372, 11.5755, 600)
     assert res.ok and res.data["hochwasser"]["dienst"] == "bfg"

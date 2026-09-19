@@ -275,7 +275,7 @@ function zeigeLuft(d) {
       `Station: ${l.station?.name || '?'} (${l.station?.code || '?'}) — `
       + `${NF.format(l.station?.distanz_m ?? 0)} m ${l.station?.richtung || ''}. `,
       el('a', { href: l.portal, target: '_blank', rel: 'noopener' },
-        'Luftdaten-Portal des UBA')),
+        l.portal_titel || 'Luftdaten-Portal des UBA')),
     ...(l.hinweise || []).map((h) => hinweisZeile(h)),
     ...warnungen(d.warnings || []));
   setQuelle(id, d.provenance);
@@ -456,16 +456,26 @@ function zeigeBaurecht(d) {
     return;
   }
   const b = d.data;
+  const oesterreich = ['Wien', 'Salzburg'].includes(b.gebiet);
   const STUFEN = {
     gebietsart: 'Gebietsart bekannt',
+    plan: 'Bebauungsplan am Punkt',
     umring: 'Plan bekannt, Gebietsart nicht',
-    kein_plan: 'kein Bebauungsplan (§ 34 BauGB)',
+    kein_plan: oesterreich ? 'kein Bebauungsplan am Punkt' : 'kein Bebauungsplan (§ 34 BauGB)',
     kein_dienst: 'kein offener Dienst',
   };
-  setStatus(id, b.stufe === 'gebietsart' ? 'ok' : 'leer',
+  setStatus(id, ['gebietsart', 'plan'].includes(b.stufe) ? 'ok' : 'leer',
     STUFEN[b.stufe] || '');
 
   const teile = [];
+  if (b.planblatt) {
+    teile.push(el('div', { class: 'notiz' },
+      el('strong', {}, 'Flächenwidmung: '),
+      `Planblatt ${b.planblatt.nummer || ''} — die Widmungsart steht nur im `,
+      b.planblatt.pdf
+        ? el('a', { href: b.planblatt.pdf, target: '_blank', rel: 'noopener' }, 'Plan-PDF der Stadt')
+        : 'Plan der Stadt', '.'));
+  }
   for (const f of b.baugebiete || []) {
     const dt = f.deutung || {};
     teile.push(el('div', { class: 'notiz' },
@@ -1756,7 +1766,7 @@ function zeigeIndikatoren(d) {
       el('th', {}, 'Kennzahl'),
       el('th', { class: 'num' }, dat.bezirk || 'Bezirk'),
       el('th', { class: 'num' }, 'Trend (~5 J.)'),
-      el('th', { class: 'num' }, 'Stadt München'),
+      el('th', { class: 'num' }, dat.stadt_raum && dat.stadt_raum !== 'Stadt München' ? dat.stadt_raum : 'Stadt München'),
       el('th', { class: 'num' }, 'Jahr')));
   for (const z of zeilen) {
     const t = z.bezirk;
@@ -1867,12 +1877,10 @@ function zeigeDynamik(d) {
    Arbeitsort (Tagesbevölkerungs-Näherung), Arbeitsmarkt, Bevölkerungsbewegung.
    Kreiswerte mit je eigenem Datenjahr; Land und Bund als Maßstab daneben. */
 async function ladeKreisprofil(ags, lauf) {
-  if (!ags) {
-    ohneSchluessel('kreisprofil', 'kein Kreiswert', 'Kreiswerte kommen aus dem deutschen Regionalatlas.', lauf);
-    return;
-  }
+  // Ohne Gemeindeschlüssel (Österreich) liefert das Backend das Gemeindeprofil
+  // über die Adresse des Punkts — deshalb dann die Koordinaten.
   try {
-    const d = await hole('/api/kreisprofil', { ags });
+    const d = await hole('/api/kreisprofil', ags ? { ags } : { lat: state.lat, lon: state.lon });
     if (lauf !== state.ladeLauf) return;
     state.daten.kreisprofil = d;
     zeigeKreisprofil(d);
@@ -2077,3 +2085,178 @@ export {
   zeigeTourismus,
   zeigeWahl,
 };
+
+/* Block 6k — Lage (Wien): Kurzparkzone, Fußgänger- und Begegnungszonen,
+   Geschäftsstraßen des Stadtstrukturplans, Realnutzung und Gebäudeinfo.
+   Verkehrsrecht und Planung, keine Frequenz — deshalb ohne Score-Anker. */
+/* Block 3i — Immobilien-Durchschnittspreise je Bezirk (Statistik Austria).
+   Österreichs Gegenstück zu den Bodenrichtwerten: Euro je m² aus
+   Kaufverträgen, nach Bauperiode und Wohnfläche. */
+export function zeigeImmobilien(d) {
+  const id = 'immobilien';
+  if (!d.ok) {
+    setStatus(id, 'fehler', 'nicht erreichbar');
+    setInhalt(id, fehlerbox(d.error));
+    setQuelle(id, d.provenance);
+    return;
+  }
+  const m = d.data;
+  if (!m) {
+    setStatus(id, 'leer', 'kein Bezirk');
+    setInhalt(id, ...warnungen(d.warnings || []));
+    setQuelle(id, d.provenance);
+    return;
+  }
+  setStatus(id, 'ok', `${m.bezirk?.name || '?'} (${m.jahr || '?'})`);
+  const teile = [];
+  const kz = [];
+  const w0 = (m.wohnungen || [])[0];
+  const mittel = (t) => {
+    const v = (t?.perioden || []).flatMap((p) => p.klassen.map((k) => k.eur_m2)).filter((x) => x !== null && x !== undefined);
+    return v.length ? Math.round(v.reduce((a, b) => a + b, 0) / v.length) : null;
+  };
+  if (w0) kz.push(kennzahl('Eigentumswohnung (Mittel über Klassen)', mittel(w0), '€/m²'));
+  const hB = (m.haeuser || []).find((h) => h.kategorie === 'B') || (m.haeuser || [])[0];
+  if (hB) kz.push(kennzahl(`Haus, Kategorie ${hB.kategorie || '?'} (Mittel)`, mittel(hB), '€/m²'));
+  if (m.baugrund_bezirk_eur_m2 !== null && m.baugrund_bezirk_eur_m2 !== undefined) {
+    kz.push(kennzahl('Baugrund im Bezirk', m.baugrund_bezirk_eur_m2, '€/m²'));
+  }
+  if (m.gemeinde && m.gemeinde.baugrund_eur_m2 !== null && m.gemeinde.baugrund_eur_m2 !== undefined) {
+    kz.push(kennzahl(`Baugrund ${m.gemeinde.name}`, m.gemeinde.baugrund_eur_m2, '€/m²'));
+  }
+  if (kz.length) teile.push(el('div', { class: 'kennzahlen' }, ...kz));
+  const tabelle = (t) => {
+    const tab = el('table', { class: 'daten' },
+      el('tr', {}, el('th', { colspan: 4 }, t.titel)),
+      el('tr', {}, el('th', {}, 'Bauperiode'),
+        ...t.perioden[0].klassen.map((k) => el('th', { class: 'num' }, k.klasse || '—'))));
+    for (const p of t.perioden) {
+      tab.append(el('tr', {}, el('td', {}, p.periode),
+        ...p.klassen.map((k) => el('td', { class: 'num' },
+          k.eur_m2 === null || k.eur_m2 === undefined ? '—' : NF.format(k.eur_m2)))));
+    }
+    return tab;
+  };
+  for (const t of m.wohnungen || []) teile.push(tabelle(t));
+  for (const t of m.haeuser || []) teile.push(tabelle(t));
+  if (m.grundstuecksgroessen) {
+    teile.push(el('div', { class: 'notiz' },
+      `Grundstücksgrößen im Bezirk: A ${m.grundstuecksgroessen.A}, B ${m.grundstuecksgroessen.B}, C ${m.grundstuecksgroessen.C}.`));
+  }
+  teile.push(el('div', { class: 'notiz' },
+    `${m.land || ''} · Bezirk ${m.bezirk?.name || '?'}${m.gemeinde ? ` · Gemeinde ${m.gemeinde.name}` : ''} · Stand ${m.stand || m.jahr || '?'}. `,
+    el('a', { href: m.portal, target: '_blank', rel: 'noopener' }, 'Immobilien-Durchschnittspreise bei Statistik Austria')));
+  setInhalt(id, ...teile, ...(m.hinweise || []).map((h) => hinweisZeile(h)), ...warnungen(d.warnings || []));
+  setQuelle(id, d.provenance);
+}
+
+export function zeigeLage(d) {
+  const id = 'lage';
+  if (!d.ok) {
+    setStatus(id, 'fehler', 'nicht erreichbar');
+    setInhalt(id, fehlerbox(d.error));
+    setQuelle(id, d.provenance);
+    return;
+  }
+  const l = d.data;
+  if (!l) {
+    setStatus(id, 'leer', 'hier keine Lage-Dienste');
+    setInhalt(id, ...warnungen(d.warnings || []));
+    setQuelle(id, d.provenance);
+    return;
+  }
+  const teile = [];
+  const kp = l.kurzparkzone;
+  teile.push(el('div', { class: 'notiz' },
+    el('strong', {}, 'Kurzparkzone: '),
+    kp ? `${kp.art ? `${kp.art} ` : ''}${kp.bezirk ? `„${kp.bezirk}“ ` : ''}${kp.zeitraum || ''}${kp.dauer ? `, Höchstparkdauer ${kp.dauer}` : ''}` : 'keine am Punkt'));
+  const ph = l.parkhaeuser || [];
+  if (l.parkhaeuser) {
+    const ptab = el('table', { class: 'daten' },
+      el('tr', {}, el('th', {}, 'Parkhaus'), el('th', { class: 'num' }, 'frei'), el('th', { class: 'num' }, 'Plätze'),
+        el('th', {}, 'Öffnung'), el('th', { class: 'num' }, 'm')));
+    for (const h of ph.slice(0, 10)) {
+      ptab.append(el('tr', {},
+        el('td', {}, h.link ? el('a', { href: h.link, target: '_blank', rel: 'noopener' }, h.name || '?') : (h.name || '?')),
+        el('td', { class: 'num' }, h.frei == null ? '—' : NF.format(h.frei)),
+        el('td', { class: 'num' }, h.gesamt == null ? '—' : NF.format(h.gesamt)),
+        el('td', {}, h.oeffnungszeit || '—'),
+        el('td', { class: 'num' }, NF.format(h.distanz_m))));
+    }
+    teile.push(el('div', { class: 'notiz' }, el('strong', {}, 'Parkhäuser: '),
+      `${NF.format(l.parkhaeuser_im_radius || 0)} im Radius mit ${NF.format(l.stellplaetze_im_radius || 0)} Stellplätzen (Live-Belegung).`));
+    if (ph.length) teile.push(ptab);
+    if (l.parkraum && !l.parkraum.am_punkt) {
+      teile.push(el('div', { class: 'notiz' }, el('strong', {}, 'Parkraum in der Nähe: '),
+        `${l.parkraum.bewirtschaftung || '?'} (${l.parkraum.strasse || ''}).`));
+    }
+  }
+  const ls = l.ladesaeulen;
+  if (ls) {
+    teile.push(el('div', { class: 'notiz' }, el('strong', {}, 'Ladesäulen: '),
+      `${NF.format(ls.im_radius || 0)} Standorte mit ${NF.format(ls.ladepunkte || 0)} Ladepunkten im Radius`
+      + (ls.schnelllader ? `, davon ${NF.format(ls.schnelllader)} Schnelllader (≥ 50 kW)` : '')
+      + (ls.naechste ? `; nächster ${ls.naechste.betreiber || ''} in ${NF.format(ls.naechste.distanz_m)} m` : '') + '.'));
+    if ((ls.standorte || []).length) {
+      const ltab = el('table', { class: 'daten' },
+        el('tr', {}, el('th', {}, 'Betreiber'), el('th', {}, 'Adresse'), el('th', { class: 'num' }, 'Punkte'),
+          el('th', { class: 'num' }, 'frei'), el('th', { class: 'num' }, 'kW'), el('th', { class: 'num' }, 'm')));
+      for (const x of ls.standorte.slice(0, 10)) {
+        ltab.append(el('tr', {},
+          el('td', {}, x.betreiber || '—'), el('td', {}, x.adresse || '—'),
+          el('td', { class: 'num' }, NF.format(x.ladepunkte || 0)),
+          el('td', { class: 'num' }, x.frei == null ? '—' : NF.format(x.frei)),
+          el('td', { class: 'num' }, x.leistung_kw == null ? '—' : NF.format(x.leistung_kw)),
+          el('td', { class: 'num' }, NF.format(x.distanz_m))));
+      }
+      teile.push(ltab);
+    }
+  }
+  const gsOhne = (l.geschaeftsstrasse || {}).ohne_dienst;
+  if (gsOhne) {
+    setStatus(id, 'ok', kp ? 'Kurzparkzone' : (l.parkhaeuser ? `${NF.format(l.parkhaeuser_im_radius || 0)} Parkhäuser` : (ls ? `${NF.format(ls.ladepunkte || 0)} Ladepunkte` : 'geladen')));
+    setInhalt(id, ...teile, ...(l.hinweise || []).map((h) => hinweisZeile(h)), ...warnungen(d.warnings || []));
+    setQuelle(id, d.provenance);
+    return;
+  }
+  const fz = l.fussgaengerzonen || [];
+  const fzAm = fz.filter((z) => z.distanz_m === 0);
+  teile.push(el('div', { class: fzAm.length ? 'warnung' : 'notiz' },
+    el('strong', {}, 'Fußgängerzonen: '),
+    fzAm.length
+      ? `Der Punkt liegt in der Fußgängerzone ${fzAm[0].adresse || ''}${fzAm[0].zeitraum ? ` (${fzAm[0].zeitraum})` : ''}. `
+      : '',
+    `${NF.format(fz.filter((z) => z.im_radius).length)} im Radius` + (fz.length && !fzAm.length ? `, nächste ${fz[0].adresse || ''} in ${NF.format(fz[0].distanz_m)} m` : '') + '.'));
+  const bz = l.begegnungszonen || [];
+  if (bz.length) {
+    teile.push(el('div', { class: 'notiz' }, el('strong', {}, 'Begegnungszonen: '),
+      `${NF.format(bz.filter((z) => z.im_radius).length)} im Radius, nächste ${bz[0].adresse || ''} in ${NF.format(bz[0].distanz_m)} m.`));
+  }
+  const gs = l.geschaeftsstrasse || {};
+  teile.push(el('div', { class: 'notiz' }, el('strong', {}, 'Geschäftsstraße (Stadtstrukturplan): '),
+    gs.am_punkt ? `Der Punkt liegt in einer ausgewiesenen Geschäftsstraße (${gs.am_punkt.typ_text || ''}). `
+      : (gs.naechste ? `nächste in ${NF.format(gs.naechste.distanz_m)} m. ` : 'keine im Kasten. '),
+    `${NF.format(gs.im_radius || 0)} Flächen im Radius.`));
+  const rn = l.realnutzung;
+  teile.push(el('div', { class: 'notiz' }, el('strong', {}, 'Realnutzung 2022: '),
+    rn ? `${rn.stufe3 || rn.stufe2 || rn.stufe1}` : 'keine Fläche am Punkt'));
+  const geb = l.gebaeude || [];
+  if (geb.length) {
+    const tab = el('table', { class: 'daten' },
+      el('tr', {}, el('th', {}, 'Gebäude (Inventar)'), el('th', { class: 'num' }, 'Baujahr'),
+        el('th', { class: 'num' }, 'Geschosse'), el('th', {}, 'Nutzung'), el('th', { class: 'num' }, 'm')));
+    for (const g of geb) {
+      tab.append(el('tr', {},
+        el('td', {}, `${g.strasse || ''} ${g.von || ''}${g.bis && g.bis !== g.von ? `–${g.bis}` : ''}${g.name ? ` · ${g.name}` : ''}`),
+        el('td', { class: 'num' }, g.baujahr ?? '—'),
+        el('td', { class: 'num' }, g.geschosse ?? '—'),
+        el('td', {}, g.nutzung || '—'),
+        el('td', { class: 'num' }, NF.format(g.distanz_m))));
+    }
+    teile.push(tab);
+  }
+  setStatus(id, 'ok', fzAm.length ? 'Fußgängerzone' : (kp ? 'Kurzparkzone' : 'geladen'));
+  setInhalt(id, ...teile, ...(l.hinweise || []).map((h) => hinweisZeile(h)), ...warnungen(d.warnings || []));
+  setQuelle(id, d.provenance);
+}
+

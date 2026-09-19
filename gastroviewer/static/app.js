@@ -42,7 +42,7 @@ import {
   ladeRegister, zeigeKopf, zeigeLeerstandsmelder, zeigeOsm, zeigeZensus,
 } from './js/bloecke-gastro.js';
 import {
-  ladeEinkommen, ladeGenesis, ladeKalender, ladeKreisprofil, ladeLaerm, ladePendler, ladePks, ladeWahl, zeigeAirbnb, zeigeBaurecht, zeigeBaustellen, zeigeDynamik, zeigeFrequenz, zeigeGtfs, zeigeIhkAngebot, zeigeIndikatoren, zeigeKlima, zeigeLinks, zeigeLuft, zeigeMaerkte, zeigeMesse, zeigeOverture, zeigeSonne, zeigeTourismus,
+  ladeEinkommen, ladeGenesis, ladeKalender, ladeKreisprofil, ladeLaerm, ladePendler, ladePks, ladeWahl, zeigeAirbnb, zeigeBaurecht, zeigeBaustellen, zeigeDynamik, zeigeFrequenz, zeigeGtfs, zeigeIhkAngebot, zeigeImmobilien, zeigeIndikatoren, zeigeKlima, zeigeLage, zeigeLinks, zeigeLuft, zeigeMaerkte, zeigeMesse, zeigeOverture, zeigeSonne, zeigeTourismus,
 } from './js/bloecke-region.js';
 import {
   ladePlanung, zeigeRadzaehlung, zeigeVerkehrsmenge,
@@ -196,6 +196,10 @@ function lade(refresh = false) {
     .then((d) => { if (aktuell()) { state.daten.luft = d; zeigeLuft(d); } })
     .catch((e) => aktuell() && zeigeBlockFehler('luft', e));
 
+  hole('/api/point/immobilien', { lat, lon, ...(refresh ? { refresh: 'true' } : {}) })
+    .then((d) => { if (aktuell()) { state.daten.immobilien = d; zeigeImmobilien(d); } })
+    .catch((e) => aktuell() && zeigeBlockFehler('immobilien', e));
+
   hole('/api/point/sonne', { lat, lon, ...(refresh ? { refresh: 'true' } : {}) })
     .then((d) => { if (aktuell()) { state.daten.sonne = d; zeigeSonne(d); } })
     .catch((e) => aktuell() && zeigeBlockFehler('sonne', e));
@@ -223,6 +227,10 @@ function lade(refresh = false) {
   hole('/api/point/indikatoren', { lat, lon })
     .then((d) => { if (aktuell()) { state.daten.indikatoren = d; zeigeIndikatoren(d); } })
     .catch((e) => aktuell() && zeigeBlockFehler('indikatoren', e));
+
+  hole('/api/point/lage', p)
+    .then((d) => { if (aktuell()) { state.daten.lage = d; zeigeLage(d); } })
+    .catch((e) => aktuell() && zeigeBlockFehler('lage', e));
 
   hole('/api/point/airbnb', p)
     .then((d) => { if (aktuell()) { state.daten.airbnb = d; zeigeAirbnb(d); } })
@@ -269,7 +277,7 @@ function baueGeruest() {
     block('kopf', '1 · Standort'),
     block('score', '1b · Gesamt-Score (gewählte Anker, eigene Gewichte)'),
     block('bevoelkerung', '2 · Bevölkerung'),
-    block('indikatoren', '2b · Viertel-Steckbrief (Stadtbezirk München)'),
+    block('indikatoren', '2b · Viertel-Steckbrief (München, Hamburg, Wien)'),
     block('wohnen', '3 · Wohnen'),
     block('einkommen', '3b · Verfügbares Einkommen (Kreis)'),
     block('kreisprofil', '3c · Kreisprofil (Tourismus, Arbeit, Bevölkerung)'),
@@ -278,6 +286,7 @@ function baueGeruest() {
     block('tourismus', '3f · Tourismus-Saisonalität (München)'),
     block('pks', '3g · Sicherheitslage (Kriminalstatistik, Kreis)'),
     block('wahl', '3h · Wahlergebnis (Bundestagswahl 2025, Wahlkreis)'),
+    block('immobilien', '3i · Immobilienpreise je Bezirk (Statistik Austria, Österreich)'),
     block('gastronomie', '4 · Gastronomie'),
     block('gehweg', '4b · Erreichbarkeit zu Fuß'),
     block('liefergebiet', '4d · Rad-Liefergebiet'),
@@ -298,11 +307,12 @@ function baueGeruest() {
     block('gtfs', '6b · Abfahrten (GTFS)'),
     block('radzaehlung', '6c · Gemessene Radverkehrsfrequenz'),
     block('frequenz', '6i · Gemessene Passantenfrequenz (Tagesgang)'),
+    block('lage', '6k · Lage: Parken, Ladesäulen, Zonen, Nutzung (Wien, Salzburg, Hamburg, BW)'),
     block('verkehrsmenge', '6d · Verkehrsmenge (DTV)'),
     block('planung', '6e · Planungsrecht und Hochwasser'),
     block('baurecht', '6j · Baurecht am Punkt (BauNVO, Denkmal, Sanierung)'),
     block('laerm', '6f · Straßenlärm (EU-Umgebungslärmkartierung)'),
-    block('baustellen', '6g · Baustellen (München/Hamburg/Berlin)'),
+    block('baustellen', '6g · Baustellen (München, Hamburg, Berlin, Stuttgart, BW, Wien, Salzburg)'),
     block('oepnveinzug', '6h · ÖPNV-Einzugsgebiet (GTFS)'),
     block('leerstand', '7 · Leerstände'),
     block('leerstandsmelder', '7b · Leerstandsmelder (bürgerschaftlich gemeldet)'),

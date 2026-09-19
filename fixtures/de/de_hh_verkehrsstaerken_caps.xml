@@ -1,0 +1,511 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<WMS_Capabilities version="1.3.0" updateSequence="0" xmlns="http://www.opengis.net/wms" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xlink="http://www.w3.org/1999/xlink" xmlns:sld="http://www.opengis.net/sld" xsi:schemaLocation="http://www.opengis.net/wms https://schemas.opengis.net/wms/1.3.0/capabilities_1_3_0.xsd http://www.opengis.net/sld https://schemas.opengis.net/sld/1.1.0/sld_capabilities.xsd">
+  <Service>
+    <Name>WMS</Name>
+    <Title>WMS Verkehrsstärken Hamburg</Title>
+    <Abstract>Web Map Service (WMS) mit den durchschnittlichen werktäglichen Verkehrsstärken DTVw (Mo-Fr) und täglichen Verkehrsstärken DTV (Mo-So) in Hamburg.
+
+Zur genaueren Beschreibung der Daten und Datenverantwortung nutzen Sie bitte den Verweis zur Datensatzbeschreibung.</Abstract>
+    <OnlineResource xlink:type="simple" xlink:href="http://www.geoinfo.hamburg.de"/>
+    <ContactInformation>
+      <ContactPersonPrimary>
+        <ContactPerson></ContactPerson>
+        <ContactOrganization>LGV Hamburg</ContactOrganization>
+      </ContactPersonPrimary>
+      <ContactPosition>Geobasisinfrastruktur</ContactPosition>
+      <ContactAddress>
+        <AddressType>postal</AddressType>
+        <Address>Neuenfelder Straße 19</Address>
+        <City>Hamburg</City>
+        <StateOrProvince>HH</StateOrProvince>
+        <PostCode>21109</PostCode>
+        <Country>Germany</Country>
+      </ContactAddress>
+      <ContactVoiceTelephone></ContactVoiceTelephone>
+      <ContactFacsimileTelephone></ContactFacsimileTelephone>
+      <ContactElectronicMailAddress>udp-hilfe@gv.hamburg.de</ContactElectronicMailAddress>
+    </ContactInformation>
+    <Fees>Datenlizenz Deutschland Namensnennung 2.0, Quellenvermerk: Freie und Hansestadt Hamburg, Behörde für Verkehr und Mobilitätswende</Fees>
+    <AccessConstraints>Es gelten keine Zugriffsbeschränkungen</AccessConstraints>
+  </Service>
+  <Capability>
+    <Request>
+      <GetCapabilities>
+        <Format>text/xml</Format>
+        <DCPType>
+          <HTTP>
+            <Get>
+              <OnlineResource xlink:type="simple" xlink:href="https://geodienste.hamburg.de/HH_WMS_Verkehrsstaerken?"/>
+            </Get>
+            <Post>
+              <OnlineResource xlink:type="simple" xlink:href="https://geodienste.hamburg.de/HH_WMS_Verkehrsstaerken"/>
+            </Post>
+          </HTTP>
+        </DCPType>
+      </GetCapabilities>
+      <GetMap>
+        <Format>image/png</Format>
+        <Format>image/png; subtype=8bit</Format>
+        <Format>image/png; mode=8bit</Format>
+        <Format>image/gif</Format>
+        <Format>image/jpeg</Format>
+        <Format>image/tiff</Format>
+        <Format>image/x-ms-bmp</Format>
+        <Format>image/svg+xml</Format>
+        <DCPType>
+          <HTTP>
+            <Get>
+              <OnlineResource xlink:type="simple" xlink:href="https://geodienste.hamburg.de/HH_WMS_Verkehrsstaerken?"/>
+            </Get>
+            <Post>
+              <OnlineResource xlink:type="simple" xlink:href="https://geodienste.hamburg.de/HH_WMS_Verkehrsstaerken"/>
+            </Post>
+          </HTTP>
+        </DCPType>
+      </GetMap>
+      <GetFeatureInfo>
+        <Format>application/vnd.ogc.gml</Format>
+        <Format>text/xml</Format>
+        <Format>text/plain</Format>
+        <Format>text/html</Format>
+        <Format>application/gml+xml; version=2.1</Format>
+        <Format>application/gml+xml; version=3.0</Format>
+        <Format>application/gml+xml; version=3.1</Format>
+        <Format>application/gml+xml; version=3.2</Format>
+        <Format>text/xml; subtype=gml/2.1.2</Format>
+        <Format>text/xml; subtype=gml/3.0.1</Format>
+        <Format>text/xml; subtype=gml/3.1.1</Format>
+        <Format>text/xml; subtype=gml/3.2.1</Format>
+        <DCPType>
+          <HTTP>
+            <Get>
+              <OnlineResource xlink:type="simple" xlink:href="https://geodienste.hamburg.de/HH_WMS_Verkehrsstaerken?"/>
+            </Get>
+            <Post>
+              <OnlineResource xlink:type="simple" xlink:href="https://geodienste.hamburg.de/HH_WMS_Verkehrsstaerken"/>
+            </Post>
+          </HTTP>
+        </DCPType>
+      </GetFeatureInfo>
+      <sld:GetLegendGraphic>
+        <Format>image/png</Format>
+        <Format>image/png; subtype=8bit</Format>
+        <Format>image/png; mode=8bit</Format>
+        <Format>image/gif</Format>
+        <Format>image/jpeg</Format>
+        <Format>image/tiff</Format>
+        <Format>image/x-ms-bmp</Format>
+        <Format>image/svg+xml</Format>
+        <DCPType>
+          <HTTP>
+            <Get>
+              <OnlineResource xlink:type="simple" xlink:href="https://geodienste.hamburg.de/HH_WMS_Verkehrsstaerken?"/>
+            </Get>
+          </HTTP>
+        </DCPType>
+      </sld:GetLegendGraphic>
+    </Request>
+    <Exception>
+      <Format>BLANK</Format>
+      <Format>XML</Format>
+      <Format>INIMAGE</Format>
+    </Exception>
+    <inspire_vs:ExtendedCapabilities xmlns:inspire_vs="http://inspire.ec.europa.eu/schemas/inspire_vs/1.0" xmlns="http://www.deegree.org/services/metadata" xmlns:inspire_common="http://inspire.ec.europa.eu/schemas/common/1.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://inspire.ec.europa.eu/schemas/common/1.0 http://inspire.ec.europa.eu/schemas/common/1.0/common.xsd http://inspire.ec.europa.eu/schemas/inspire_vs/1.0 http://inspire.ec.europa.eu/schemas/inspire_vs/1.0/inspire_vs.xsd">
+      <inspire_common:MetadataUrl>
+        <inspire_common:URL>https://metaver.de/csw?Service=CSW&amp;Request=GetRecordById&amp;Version=2.0.2&amp;id=D34A14AB-5527-4E2C-A78D-FB98F83B1A40&amp;outputSchema=http://www.isotc211.org/2005/gmd&amp;elementSetName=full</inspire_common:URL>
+        <inspire_common:MediaType>application/vnd.ogc.csw.GetRecordByIdResponse_xml</inspire_common:MediaType>
+      
+      </inspire_common:MetadataUrl>
+      <inspire_common:SupportedLanguages>
+        <inspire_common:DefaultLanguage>
+          <inspire_common:Language>ger</inspire_common:Language>
+        
+        </inspire_common:DefaultLanguage>
+      
+      </inspire_common:SupportedLanguages>
+      <inspire_common:ResponseLanguage>
+        <inspire_common:Language>ger</inspire_common:Language>
+      
+      </inspire_common:ResponseLanguage>
+    
+    </inspire_vs:ExtendedCapabilities>
+    <soapwms:ExtendedCapabilities xmlns:soapwms="http://schemas.deegree.org/extensions/services/wms/1.3.0" xmlns:wms="http://www.opengis.net/wms" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xlink="http://www.w3.org/1999/xlink" xsi:schemaLocation="http://schemas.deegree.org/extensions/services/wms/1.3.0 https://schemas.deegree.org/extensions/services/wms/1.3.0/soapwms.xsd">
+      <soapwms:SOAP>
+        <OnlineResource xlink:type="simple" xlink:href="https://geodienste.hamburg.de/HH_WMS_Verkehrsstaerken"/>
+        <soapwms:Constraint name="SOAPVersion">
+          <soapwms:Value>1.1</soapwms:Value>
+          <soapwms:Value>1.2</soapwms:Value>
+        </soapwms:Constraint>
+        <soapwms:SupportedOperations>
+          <soapwms:Operation name="GetCapabilities"/>
+          <soapwms:Operation name="GetMap"/>
+          <soapwms:Operation name="GetFeatureInfo"/>
+        </soapwms:SupportedOperations>
+      </soapwms:SOAP>
+    </soapwms:ExtendedCapabilities>
+    <Layer queryable="1" cascaded="0" opaque="0" noSubsets="0" fixedWidth="0" fixedHeight="0">
+      <Name>verkehrsstaerken</Name>
+      <Title>WMS Verkehrsstärken Hamburg</Title>
+      <Abstract>WMS Verkehrsstärken Hamburg</Abstract>
+      <CRS>CRS:84</CRS>
+      <CRS>EPSG:25832</CRS>
+      <CRS>EPSG:25833</CRS>
+      <CRS>EPSG:4326</CRS>
+      <CRS>EPSG:4258</CRS>
+      <CRS>EPSG:31467</CRS>
+      <CRS>EPSG:3857</CRS>
+      <CRS>EPSG:3044</CRS>
+      <CRS>EPSG:3034</CRS>
+      <CRS>EPSG:3035</CRS>
+      <EX_GeographicBoundingBox>
+        <westBoundLongitude>9.32522123</westBoundLongitude>
+        <eastBoundLongitude>10.70435400</eastBoundLongitude>
+        <southBoundLatitude>53.23745361</southBoundLatitude>
+        <northBoundLatitude>53.90497716</northBoundLatitude>
+      </EX_GeographicBoundingBox>
+      <BoundingBox CRS="CRS:84" minx="9.32522123" miny="53.23745361" maxx="10.70435400" maxy="53.90497716"/>
+      <BoundingBox CRS="EPSG:25832" minx="521700.00000000" miny="5900000.00000000" maxx="612000.00000000" maxy="5973000.00000000"/>
+      <BoundingBox CRS="EPSG:25833" minx="121532.76206035" miny="5907405.76490243" maxx="217783.82529498" maxy="5987854.86897638"/>
+      <BoundingBox CRS="EPSG:4326" minx="53.23745361" miny="9.32522123" maxx="53.90497716" maxy="10.70435400"/>
+      <BoundingBox CRS="EPSG:4258" minx="53.23745361" miny="9.32522123" maxx="53.90497716" maxy="10.70435400"/>
+      <BoundingBox CRS="EPSG:31467" minx="5901921.35386264" miny="3521779.39159954" maxx="5974951.37675557" maxy="3612116.16924480"/>
+      <BoundingBox CRS="EPSG:3857" minx="1038078.87860431" miny="7027041.76308130" maxx="1191603.23651931" maxy="7152180.60524784"/>
+      <BoundingBox CRS="EPSG:3044" minx="5899999.99999976" miny="521700.00000000" maxx="5973000.00000000" maxy="612000.00000005"/>
+      <BoundingBox CRS="EPSG:3034" minx="2933237.11600542" miny="3956468.06923939" maxx="3005052.01565267" maxy="4044778.85578846"/>
+      <BoundingBox CRS="EPSG:3035" minx="3347909.93604678" miny="4275955.11295423" maxx="3422185.99786054" maxy="4367313.69350155"/>
+      <AuthorityURL name="LGV">
+        <OnlineResource xlink:type="simple" xlink:href="http://www.geoinfo.hamburg.de"/>
+      </AuthorityURL>
+      <Layer queryable="1" cascaded="0" opaque="0" noSubsets="0" fixedWidth="0" fixedHeight="0">
+        <Name>kfz_temporaere_zaehlungen</Name>
+        <Title>Kfz - Verkehrsstärken temporäre Verkehrszählungen</Title>
+        <Abstract>Kfz - Verkehrsstärken temporäre Verkehrszählungen</Abstract>
+        <CRS>CRS:84</CRS>
+        <CRS>EPSG:25832</CRS>
+        <CRS>EPSG:25833</CRS>
+        <CRS>EPSG:4326</CRS>
+        <CRS>EPSG:4258</CRS>
+        <CRS>EPSG:31467</CRS>
+        <CRS>EPSG:3857</CRS>
+        <CRS>EPSG:3044</CRS>
+        <CRS>EPSG:3034</CRS>
+        <CRS>EPSG:3035</CRS>
+        <EX_GeographicBoundingBox>
+          <westBoundLongitude>9.32522123</westBoundLongitude>
+          <eastBoundLongitude>10.70435400</eastBoundLongitude>
+          <southBoundLatitude>53.23745361</southBoundLatitude>
+          <northBoundLatitude>53.90497716</northBoundLatitude>
+        </EX_GeographicBoundingBox>
+        <BoundingBox CRS="CRS:84" minx="9.32522123" miny="53.23745361" maxx="10.70435400" maxy="53.90497716"/>
+        <BoundingBox CRS="EPSG:25832" minx="521700.00000000" miny="5900000.00000000" maxx="612000.00000000" maxy="5973000.00000000"/>
+        <BoundingBox CRS="EPSG:25833" minx="121532.76206035" miny="5907405.76490243" maxx="217783.82529498" maxy="5987854.86897638"/>
+        <BoundingBox CRS="EPSG:4326" minx="53.23745361" miny="9.32522123" maxx="53.90497716" maxy="10.70435400"/>
+        <BoundingBox CRS="EPSG:4258" minx="53.23745361" miny="9.32522123" maxx="53.90497716" maxy="10.70435400"/>
+        <BoundingBox CRS="EPSG:31467" minx="5901921.35386264" miny="3521779.39159954" maxx="5974951.37675557" maxy="3612116.16924480"/>
+        <BoundingBox CRS="EPSG:3857" minx="1038078.87860431" miny="7027041.76308130" maxx="1191603.23651931" maxy="7152180.60524784"/>
+        <BoundingBox CRS="EPSG:3044" minx="5899999.99999976" miny="521700.00000000" maxx="5973000.00000000" maxy="612000.00000005"/>
+        <BoundingBox CRS="EPSG:3034" minx="2933237.11600542" miny="3956468.06923939" maxx="3005052.01565267" maxy="4044778.85578846"/>
+        <BoundingBox CRS="EPSG:3035" minx="3347909.93604678" miny="4275955.11295423" maxx="3422185.99786054" maxy="4367313.69350155"/>
+        <AuthorityURL name="LGV">
+          <OnlineResource xlink:type="simple" xlink:href="http://www.geoinfo.hamburg.de"/>
+        </AuthorityURL>
+        <Identifier authority="LGV">https://registry.gdi-de.org/id/de.hh/6520CBEF-D2A6-11D5-88C8-000102DCCF41</Identifier>
+        <MetadataURL type="ISO19115:2003">
+          <Format>application/xml</Format>
+          <OnlineResource xlink:type="simple" xlink:href="https://metaver.de/csw?Service=CSW&amp;Request=GetRecordById&amp;Version=2.0.2&amp;id=6520CBEF-D2A6-11D5-88C8-000102DCCF41&amp;outputSchema=http://www.isotc211.org/2005/gmd&amp;elementSetName=full"/>
+        </MetadataURL>
+        <Style>
+          <Name>kfz_temporaere_zaehlungen</Name>
+          <Title>kfz_temporaere_zaehlungen</Title>
+          <LegendURL width="172" height="27">
+            <Format>image/png</Format>
+            <OnlineResource xlink:type="simple" xlink:href="https://geodienste.hamburg.de/HH_WMS_Verkehrsstaerken?request=GetLegendGraphic&amp;version=1.3.0&amp;service=WMS&amp;layer=kfz_temporaere_zaehlungen&amp;style=kfz_temporaere_zaehlungen&amp;format=image/png"/>
+          </LegendURL>
+        </Style>
+        <Style>
+          <Name>default</Name>
+          <Title>default</Title>
+          <LegendURL width="172" height="27">
+            <Format>image/png</Format>
+            <OnlineResource xlink:type="simple" xlink:href="https://geodienste.hamburg.de/HH_WMS_Verkehrsstaerken?request=GetLegendGraphic&amp;version=1.3.0&amp;service=WMS&amp;layer=kfz_temporaere_zaehlungen&amp;style=kfz_temporaere_zaehlungen&amp;format=image/png"/>
+          </LegendURL>
+        </Style>
+      </Layer>
+      <Layer queryable="1" cascaded="0" opaque="0" noSubsets="0" fixedWidth="0" fixedHeight="0">
+        <Name>radverkehr_dtv</Name>
+        <Title>Rad - Durchschnittliche tägliche Verkehrsstärken (Mo-So)</Title>
+        <Abstract>Rad - Durchschnittliche tägliche Verkehrsstärken (Mo-So)</Abstract>
+        <CRS>CRS:84</CRS>
+        <CRS>EPSG:25832</CRS>
+        <CRS>EPSG:25833</CRS>
+        <CRS>EPSG:4326</CRS>
+        <CRS>EPSG:4258</CRS>
+        <CRS>EPSG:31467</CRS>
+        <CRS>EPSG:3857</CRS>
+        <CRS>EPSG:3044</CRS>
+        <CRS>EPSG:3034</CRS>
+        <CRS>EPSG:3035</CRS>
+        <EX_GeographicBoundingBox>
+          <westBoundLongitude>9.32522123</westBoundLongitude>
+          <eastBoundLongitude>10.70435400</eastBoundLongitude>
+          <southBoundLatitude>53.23745361</southBoundLatitude>
+          <northBoundLatitude>53.90497716</northBoundLatitude>
+        </EX_GeographicBoundingBox>
+        <BoundingBox CRS="CRS:84" minx="9.32522123" miny="53.23745361" maxx="10.70435400" maxy="53.90497716"/>
+        <BoundingBox CRS="EPSG:25832" minx="521700.00000000" miny="5900000.00000000" maxx="612000.00000000" maxy="5973000.00000000"/>
+        <BoundingBox CRS="EPSG:25833" minx="121532.76206035" miny="5907405.76490243" maxx="217783.82529498" maxy="5987854.86897638"/>
+        <BoundingBox CRS="EPSG:4326" minx="53.23745361" miny="9.32522123" maxx="53.90497716" maxy="10.70435400"/>
+        <BoundingBox CRS="EPSG:4258" minx="53.23745361" miny="9.32522123" maxx="53.90497716" maxy="10.70435400"/>
+        <BoundingBox CRS="EPSG:31467" minx="5901921.35386264" miny="3521779.39159954" maxx="5974951.37675557" maxy="3612116.16924480"/>
+        <BoundingBox CRS="EPSG:3857" minx="1038078.87860431" miny="7027041.76308130" maxx="1191603.23651931" maxy="7152180.60524784"/>
+        <BoundingBox CRS="EPSG:3044" minx="5899999.99999976" miny="521700.00000000" maxx="5973000.00000000" maxy="612000.00000005"/>
+        <BoundingBox CRS="EPSG:3034" minx="2933237.11600542" miny="3956468.06923939" maxx="3005052.01565267" maxy="4044778.85578846"/>
+        <BoundingBox CRS="EPSG:3035" minx="3347909.93604678" miny="4275955.11295423" maxx="3422185.99786054" maxy="4367313.69350155"/>
+        <AuthorityURL name="LGV">
+          <OnlineResource xlink:type="simple" xlink:href="http://www.geoinfo.hamburg.de"/>
+        </AuthorityURL>
+        <Identifier authority="LGV">https://registry.gdi-de.org/id/de.hh/6520CBEF-D2A6-11D5-88C8-000102DCCF41</Identifier>
+        <MetadataURL type="ISO19115:2003">
+          <Format>application/xml</Format>
+          <OnlineResource xlink:type="simple" xlink:href="https://metaver.de/csw?Service=CSW&amp;Request=GetRecordById&amp;Version=2.0.2&amp;id=6520CBEF-D2A6-11D5-88C8-000102DCCF41&amp;outputSchema=http://www.isotc211.org/2005/gmd&amp;elementSetName=full"/>
+        </MetadataURL>
+        <Style>
+          <Name>radverkehr_dtv</Name>
+          <Title>radverkehr_dtv</Title>
+          <LegendURL width="230" height="73">
+            <Format>image/png</Format>
+            <OnlineResource xlink:type="simple" xlink:href="https://geodienste.hamburg.de/HH_WMS_Verkehrsstaerken?request=GetLegendGraphic&amp;version=1.3.0&amp;service=WMS&amp;layer=radverkehr_dtv&amp;style=radverkehr_dtv&amp;format=image/png"/>
+          </LegendURL>
+        </Style>
+        <Style>
+          <Name>default</Name>
+          <Title>default</Title>
+          <LegendURL width="230" height="73">
+            <Format>image/png</Format>
+            <OnlineResource xlink:type="simple" xlink:href="https://geodienste.hamburg.de/HH_WMS_Verkehrsstaerken?request=GetLegendGraphic&amp;version=1.3.0&amp;service=WMS&amp;layer=radverkehr_dtv&amp;style=radverkehr_dtv&amp;format=image/png"/>
+          </LegendURL>
+        </Style>
+      </Layer>
+      <Layer queryable="1" cascaded="0" opaque="0" noSubsets="0" fixedWidth="0" fixedHeight="0">
+        <Name>radverkehr_dtvw</Name>
+        <Title>Rad - Durchschnittliche werktägliche Verkehrsstärken (Mo-Fr)</Title>
+        <Abstract>Rad - Durchschnittliche werktägliche Verkehrsstärken (Mo-Fr)</Abstract>
+        <CRS>CRS:84</CRS>
+        <CRS>EPSG:25832</CRS>
+        <CRS>EPSG:25833</CRS>
+        <CRS>EPSG:4326</CRS>
+        <CRS>EPSG:4258</CRS>
+        <CRS>EPSG:31467</CRS>
+        <CRS>EPSG:3857</CRS>
+        <CRS>EPSG:3044</CRS>
+        <CRS>EPSG:3034</CRS>
+        <CRS>EPSG:3035</CRS>
+        <EX_GeographicBoundingBox>
+          <westBoundLongitude>9.32522123</westBoundLongitude>
+          <eastBoundLongitude>10.70435400</eastBoundLongitude>
+          <southBoundLatitude>53.23745361</southBoundLatitude>
+          <northBoundLatitude>53.90497716</northBoundLatitude>
+        </EX_GeographicBoundingBox>
+        <BoundingBox CRS="CRS:84" minx="9.32522123" miny="53.23745361" maxx="10.70435400" maxy="53.90497716"/>
+        <BoundingBox CRS="EPSG:25832" minx="521700.00000000" miny="5900000.00000000" maxx="612000.00000000" maxy="5973000.00000000"/>
+        <BoundingBox CRS="EPSG:25833" minx="121532.76206035" miny="5907405.76490243" maxx="217783.82529498" maxy="5987854.86897638"/>
+        <BoundingBox CRS="EPSG:4326" minx="53.23745361" miny="9.32522123" maxx="53.90497716" maxy="10.70435400"/>
+        <BoundingBox CRS="EPSG:4258" minx="53.23745361" miny="9.32522123" maxx="53.90497716" maxy="10.70435400"/>
+        <BoundingBox CRS="EPSG:31467" minx="5901921.35386264" miny="3521779.39159954" maxx="5974951.37675557" maxy="3612116.16924480"/>
+        <BoundingBox CRS="EPSG:3857" minx="1038078.87860431" miny="7027041.76308130" maxx="1191603.23651931" maxy="7152180.60524784"/>
+        <BoundingBox CRS="EPSG:3044" minx="5899999.99999976" miny="521700.00000000" maxx="5973000.00000000" maxy="612000.00000005"/>
+        <BoundingBox CRS="EPSG:3034" minx="2933237.11600542" miny="3956468.06923939" maxx="3005052.01565267" maxy="4044778.85578846"/>
+        <BoundingBox CRS="EPSG:3035" minx="3347909.93604678" miny="4275955.11295423" maxx="3422185.99786054" maxy="4367313.69350155"/>
+        <AuthorityURL name="LGV">
+          <OnlineResource xlink:type="simple" xlink:href="http://www.geoinfo.hamburg.de"/>
+        </AuthorityURL>
+        <Identifier authority="LGV">https://registry.gdi-de.org/id/de.hh/6520CBEF-D2A6-11D5-88C8-000102DCCF41</Identifier>
+        <MetadataURL type="ISO19115:2003">
+          <Format>application/xml</Format>
+          <OnlineResource xlink:type="simple" xlink:href="https://metaver.de/csw?Service=CSW&amp;Request=GetRecordById&amp;Version=2.0.2&amp;id=6520CBEF-D2A6-11D5-88C8-000102DCCF41&amp;outputSchema=http://www.isotc211.org/2005/gmd&amp;elementSetName=full"/>
+        </MetadataURL>
+        <Style>
+          <Name>radverkehr_dtvw</Name>
+          <Title>radverkehr_dtvw</Title>
+          <LegendURL width="230" height="73">
+            <Format>image/png</Format>
+            <OnlineResource xlink:type="simple" xlink:href="https://geodienste.hamburg.de/HH_WMS_Verkehrsstaerken?request=GetLegendGraphic&amp;version=1.3.0&amp;service=WMS&amp;layer=radverkehr_dtvw&amp;style=radverkehr_dtvw&amp;format=image/png"/>
+          </LegendURL>
+        </Style>
+        <Style>
+          <Name>default</Name>
+          <Title>default</Title>
+          <LegendURL width="230" height="73">
+            <Format>image/png</Format>
+            <OnlineResource xlink:type="simple" xlink:href="https://geodienste.hamburg.de/HH_WMS_Verkehrsstaerken?request=GetLegendGraphic&amp;version=1.3.0&amp;service=WMS&amp;layer=radverkehr_dtvw&amp;style=radverkehr_dtvw&amp;format=image/png"/>
+          </LegendURL>
+        </Style>
+      </Layer>
+      <Layer queryable="1" cascaded="0" opaque="0" noSubsets="0" fixedWidth="0" fixedHeight="0">
+        <Name>radverkehr_pegel</Name>
+        <Title>Rad - Verkehrsstärken historische Rad-Pegel</Title>
+        <Abstract>Rad - Verkehrsstärken historische Rad-Pegel</Abstract>
+        <CRS>CRS:84</CRS>
+        <CRS>EPSG:25832</CRS>
+        <CRS>EPSG:25833</CRS>
+        <CRS>EPSG:4326</CRS>
+        <CRS>EPSG:4258</CRS>
+        <CRS>EPSG:31467</CRS>
+        <CRS>EPSG:3857</CRS>
+        <CRS>EPSG:3044</CRS>
+        <CRS>EPSG:3034</CRS>
+        <CRS>EPSG:3035</CRS>
+        <EX_GeographicBoundingBox>
+          <westBoundLongitude>9.32522123</westBoundLongitude>
+          <eastBoundLongitude>10.70435400</eastBoundLongitude>
+          <southBoundLatitude>53.23745361</southBoundLatitude>
+          <northBoundLatitude>53.90497716</northBoundLatitude>
+        </EX_GeographicBoundingBox>
+        <BoundingBox CRS="CRS:84" minx="9.32522123" miny="53.23745361" maxx="10.70435400" maxy="53.90497716"/>
+        <BoundingBox CRS="EPSG:25832" minx="521700.00000000" miny="5900000.00000000" maxx="612000.00000000" maxy="5973000.00000000"/>
+        <BoundingBox CRS="EPSG:25833" minx="121532.76206035" miny="5907405.76490243" maxx="217783.82529498" maxy="5987854.86897638"/>
+        <BoundingBox CRS="EPSG:4326" minx="53.23745361" miny="9.32522123" maxx="53.90497716" maxy="10.70435400"/>
+        <BoundingBox CRS="EPSG:4258" minx="53.23745361" miny="9.32522123" maxx="53.90497716" maxy="10.70435400"/>
+        <BoundingBox CRS="EPSG:31467" minx="5901921.35386264" miny="3521779.39159954" maxx="5974951.37675557" maxy="3612116.16924480"/>
+        <BoundingBox CRS="EPSG:3857" minx="1038078.87860431" miny="7027041.76308130" maxx="1191603.23651931" maxy="7152180.60524784"/>
+        <BoundingBox CRS="EPSG:3044" minx="5899999.99999976" miny="521700.00000000" maxx="5973000.00000000" maxy="612000.00000005"/>
+        <BoundingBox CRS="EPSG:3034" minx="2933237.11600542" miny="3956468.06923939" maxx="3005052.01565267" maxy="4044778.85578846"/>
+        <BoundingBox CRS="EPSG:3035" minx="3347909.93604678" miny="4275955.11295423" maxx="3422185.99786054" maxy="4367313.69350155"/>
+        <AuthorityURL name="LGV">
+          <OnlineResource xlink:type="simple" xlink:href="http://www.geoinfo.hamburg.de"/>
+        </AuthorityURL>
+        <Identifier authority="LGV">https://registry.gdi-de.org/id/de.hh/6520CBEF-D2A6-11D5-88C8-000102DCCF41</Identifier>
+        <MetadataURL type="ISO19115:2003">
+          <Format>application/xml</Format>
+          <OnlineResource xlink:type="simple" xlink:href="https://metaver.de/csw?Service=CSW&amp;Request=GetRecordById&amp;Version=2.0.2&amp;id=6520CBEF-D2A6-11D5-88C8-000102DCCF41&amp;outputSchema=http://www.isotc211.org/2005/gmd&amp;elementSetName=full"/>
+        </MetadataURL>
+        <Style>
+          <Name>radverkehr_pegel</Name>
+          <Title>radverkehr_pegel</Title>
+          <LegendURL width="154" height="22">
+            <Format>image/png</Format>
+            <OnlineResource xlink:type="simple" xlink:href="https://geodienste.hamburg.de/HH_WMS_Verkehrsstaerken?request=GetLegendGraphic&amp;version=1.3.0&amp;service=WMS&amp;layer=radverkehr_pegel&amp;style=radverkehr_pegel&amp;format=image/png"/>
+          </LegendURL>
+        </Style>
+        <Style>
+          <Name>default</Name>
+          <Title>default</Title>
+          <LegendURL width="154" height="22">
+            <Format>image/png</Format>
+            <OnlineResource xlink:type="simple" xlink:href="https://geodienste.hamburg.de/HH_WMS_Verkehrsstaerken?request=GetLegendGraphic&amp;version=1.3.0&amp;service=WMS&amp;layer=radverkehr_pegel&amp;style=radverkehr_pegel&amp;format=image/png"/>
+          </LegendURL>
+        </Style>
+      </Layer>
+      <Layer queryable="1" cascaded="0" opaque="0" noSubsets="0" fixedWidth="0" fixedHeight="0">
+        <Name>verkehrsstaerken_dtv</Name>
+        <Title>Kfz - Durchschnittliche tägliche Verkehrsstärken (Mo-So)</Title>
+        <Abstract>Kfz - Durchschnittliche tägliche Verkehrsstärken (Mo-So)</Abstract>
+        <CRS>CRS:84</CRS>
+        <CRS>EPSG:25832</CRS>
+        <CRS>EPSG:25833</CRS>
+        <CRS>EPSG:4326</CRS>
+        <CRS>EPSG:4258</CRS>
+        <CRS>EPSG:31467</CRS>
+        <CRS>EPSG:3857</CRS>
+        <CRS>EPSG:3044</CRS>
+        <CRS>EPSG:3034</CRS>
+        <CRS>EPSG:3035</CRS>
+        <EX_GeographicBoundingBox>
+          <westBoundLongitude>9.32522123</westBoundLongitude>
+          <eastBoundLongitude>10.70435400</eastBoundLongitude>
+          <southBoundLatitude>53.23745361</southBoundLatitude>
+          <northBoundLatitude>53.90497716</northBoundLatitude>
+        </EX_GeographicBoundingBox>
+        <BoundingBox CRS="CRS:84" minx="9.32522123" miny="53.23745361" maxx="10.70435400" maxy="53.90497716"/>
+        <BoundingBox CRS="EPSG:25832" minx="521700.00000000" miny="5900000.00000000" maxx="612000.00000000" maxy="5973000.00000000"/>
+        <BoundingBox CRS="EPSG:25833" minx="121532.76206035" miny="5907405.76490243" maxx="217783.82529498" maxy="5987854.86897638"/>
+        <BoundingBox CRS="EPSG:4326" minx="53.23745361" miny="9.32522123" maxx="53.90497716" maxy="10.70435400"/>
+        <BoundingBox CRS="EPSG:4258" minx="53.23745361" miny="9.32522123" maxx="53.90497716" maxy="10.70435400"/>
+        <BoundingBox CRS="EPSG:31467" minx="5901921.35386264" miny="3521779.39159954" maxx="5974951.37675557" maxy="3612116.16924480"/>
+        <BoundingBox CRS="EPSG:3857" minx="1038078.87860431" miny="7027041.76308130" maxx="1191603.23651931" maxy="7152180.60524784"/>
+        <BoundingBox CRS="EPSG:3044" minx="5899999.99999976" miny="521700.00000000" maxx="5973000.00000000" maxy="612000.00000005"/>
+        <BoundingBox CRS="EPSG:3034" minx="2933237.11600542" miny="3956468.06923939" maxx="3005052.01565267" maxy="4044778.85578846"/>
+        <BoundingBox CRS="EPSG:3035" minx="3347909.93604678" miny="4275955.11295423" maxx="3422185.99786054" maxy="4367313.69350155"/>
+        <AuthorityURL name="LGV">
+          <OnlineResource xlink:type="simple" xlink:href="http://www.geoinfo.hamburg.de"/>
+        </AuthorityURL>
+        <Identifier authority="LGV">https://registry.gdi-de.org/id/de.hh/6520CBEF-D2A6-11D5-88C8-000102DCCF41</Identifier>
+        <MetadataURL type="ISO19115:2003">
+          <Format>application/xml</Format>
+          <OnlineResource xlink:type="simple" xlink:href="https://metaver.de/csw?Service=CSW&amp;Request=GetRecordById&amp;Version=2.0.2&amp;id=6520CBEF-D2A6-11D5-88C8-000102DCCF41&amp;outputSchema=http://www.isotc211.org/2005/gmd&amp;elementSetName=full"/>
+        </MetadataURL>
+        <Style>
+          <Name>verkehrsstaerken_dtv</Name>
+          <Title>verkehrsstaerken_dtv</Title>
+          <LegendURL width="233" height="56">
+            <Format>image/png</Format>
+            <OnlineResource xlink:type="simple" xlink:href="https://geodienste.hamburg.de/HH_WMS_Verkehrsstaerken?request=GetLegendGraphic&amp;version=1.3.0&amp;service=WMS&amp;layer=verkehrsstaerken_dtv&amp;style=verkehrsstaerken_dtv&amp;format=image/png"/>
+          </LegendURL>
+        </Style>
+        <Style>
+          <Name>default</Name>
+          <Title>default</Title>
+          <LegendURL width="233" height="56">
+            <Format>image/png</Format>
+            <OnlineResource xlink:type="simple" xlink:href="https://geodienste.hamburg.de/HH_WMS_Verkehrsstaerken?request=GetLegendGraphic&amp;version=1.3.0&amp;service=WMS&amp;layer=verkehrsstaerken_dtv&amp;style=verkehrsstaerken_dtv&amp;format=image/png"/>
+          </LegendURL>
+        </Style>
+      </Layer>
+      <Layer queryable="1" cascaded="0" opaque="0" noSubsets="0" fixedWidth="0" fixedHeight="0">
+        <Name>verkehrsstaerken_dtvw</Name>
+        <Title>Kfz - Durchschnittliche werktägliche Verkehrsstärken (Mo-Fr)</Title>
+        <Abstract>Kfz - Durchschnittliche werktägliche Verkehrsstärken (Mo-Fr)</Abstract>
+        <CRS>CRS:84</CRS>
+        <CRS>EPSG:25832</CRS>
+        <CRS>EPSG:25833</CRS>
+        <CRS>EPSG:4326</CRS>
+        <CRS>EPSG:4258</CRS>
+        <CRS>EPSG:31467</CRS>
+        <CRS>EPSG:3857</CRS>
+        <CRS>EPSG:3044</CRS>
+        <CRS>EPSG:3034</CRS>
+        <CRS>EPSG:3035</CRS>
+        <EX_GeographicBoundingBox>
+          <westBoundLongitude>9.32522123</westBoundLongitude>
+          <eastBoundLongitude>10.70435400</eastBoundLongitude>
+          <southBoundLatitude>53.23745361</southBoundLatitude>
+          <northBoundLatitude>53.90497716</northBoundLatitude>
+        </EX_GeographicBoundingBox>
+        <BoundingBox CRS="CRS:84" minx="9.32522123" miny="53.23745361" maxx="10.70435400" maxy="53.90497716"/>
+        <BoundingBox CRS="EPSG:25832" minx="521700.00000000" miny="5900000.00000000" maxx="612000.00000000" maxy="5973000.00000000"/>
+        <BoundingBox CRS="EPSG:25833" minx="121532.76206035" miny="5907405.76490243" maxx="217783.82529498" maxy="5987854.86897638"/>
+        <BoundingBox CRS="EPSG:4326" minx="53.23745361" miny="9.32522123" maxx="53.90497716" maxy="10.70435400"/>
+        <BoundingBox CRS="EPSG:4258" minx="53.23745361" miny="9.32522123" maxx="53.90497716" maxy="10.70435400"/>
+        <BoundingBox CRS="EPSG:31467" minx="5901921.35386264" miny="3521779.39159954" maxx="5974951.37675557" maxy="3612116.16924480"/>
+        <BoundingBox CRS="EPSG:3857" minx="1038078.87860431" miny="7027041.76308130" maxx="1191603.23651931" maxy="7152180.60524784"/>
+        <BoundingBox CRS="EPSG:3044" minx="5899999.99999976" miny="521700.00000000" maxx="5973000.00000000" maxy="612000.00000005"/>
+        <BoundingBox CRS="EPSG:3034" minx="2933237.11600542" miny="3956468.06923939" maxx="3005052.01565267" maxy="4044778.85578846"/>
+        <BoundingBox CRS="EPSG:3035" minx="3347909.93604678" miny="4275955.11295423" maxx="3422185.99786054" maxy="4367313.69350155"/>
+        <AuthorityURL name="LGV">
+          <OnlineResource xlink:type="simple" xlink:href="http://www.geoinfo.hamburg.de"/>
+        </AuthorityURL>
+        <Identifier authority="LGV">https://registry.gdi-de.org/id/de.hh/6520CBEF-D2A6-11D5-88C8-000102DCCF41</Identifier>
+        <MetadataURL type="ISO19115:2003">
+          <Format>application/xml</Format>
+          <OnlineResource xlink:type="simple" xlink:href="https://metaver.de/csw?Service=CSW&amp;Request=GetRecordById&amp;Version=2.0.2&amp;id=6520CBEF-D2A6-11D5-88C8-000102DCCF41&amp;outputSchema=http://www.isotc211.org/2005/gmd&amp;elementSetName=full"/>
+        </MetadataURL>
+        <Style>
+          <Name>verkehrsstaerken_dtvw</Name>
+          <Title>verkehrsstaerken_dtvw</Title>
+          <LegendURL width="233" height="98">
+            <Format>image/png</Format>
+            <OnlineResource xlink:type="simple" xlink:href="https://geodienste.hamburg.de/HH_WMS_Verkehrsstaerken?request=GetLegendGraphic&amp;version=1.3.0&amp;service=WMS&amp;layer=verkehrsstaerken_dtvw&amp;style=verkehrsstaerken_dtvw&amp;format=image/png"/>
+          </LegendURL>
+        </Style>
+        <Style>
+          <Name>default</Name>
+          <Title>default</Title>
+          <LegendURL width="233" height="98">
+            <Format>image/png</Format>
+            <OnlineResource xlink:type="simple" xlink:href="https://geodienste.hamburg.de/HH_WMS_Verkehrsstaerken?request=GetLegendGraphic&amp;version=1.3.0&amp;service=WMS&amp;layer=verkehrsstaerken_dtvw&amp;style=verkehrsstaerken_dtvw&amp;format=image/png"/>
+          </LegendURL>
+        </Style>
+      </Layer>
+    </Layer>
+  </Capability>
+</WMS_Capabilities>
