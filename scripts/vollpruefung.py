@@ -801,6 +801,189 @@ def t_wien():
         assert b[name]["data"] is None and "Nur für Deutschland" in b[name]["warnings"][0], name
     return "Stephansplatz live: LFRZ, Schutzzone, Widmung, GeoSphere, lärminfo, NRW 2024, Nächtigungen, Märkte"
 
+
+# --------------------------------------------------- Quellen aus 0.6.0
+# Jede dieser Prüfungen berührt einen Dienst, der bis zur Vollprüfung nur
+# gegen Aufzeichnungen lief. Sie sind bewusst tolerant, wo ein Dienst
+# legitim leer antworten darf (keine Zählstelle, keine Baustelle), und
+# streng bei dem, was immer stimmen muss: Dienstkennung, Quelle, Stand.
+
+STUTTGART = (48.7758, 9.1829)
+ALEXANDERPLATZ = (52.5219, 13.4132)
+MOENCKEBERG = (53.5511, 9.9937)
+SALZBURG = (47.8003, 13.0430)   # Getreidegasse, Altstadtschutzzone I
+
+
+def t_starkregen():
+    """BKG-Hinweiskarte im Planungsblock: Berlin ist abgedeckt, Bayern nicht."""
+    d, _, _ = hole("/api/point/planung", {"lat": ALEXANDERPLATZ[0], "lon": ALEXANDERPLATZ[1],
+                                          "r": 600, "bundesland_code": "11"})
+    sr = d["data"].get("starkregen")
+    assert sr, "kein Starkregen-Teilblock in Berlin"
+    assert sr["abgefragt"] is True and sr["dienst"] == "bkg", sr
+    agw = sr["szenarien"]["agw"]
+    assert agw["kartiert"] is True and isinstance(agw["tiefe_cm"], (int, float)), agw
+    assert agw["einordnung"], "Wassertiefe ohne Einordnung"
+    d, _, _ = hole("/api/point/planung", {"lat": M[0], "lon": M[1], "r": 600, "bundesland_code": "09"})
+    sr_by = d["data"].get("starkregen")
+    assert sr_by and sr_by["abgefragt"] is False and "Bayern" in sr_by["hinweis"], sr_by
+    return f"Alexanderplatz {agw['tiefe_cm']} cm (außergewöhnlich); Bayern ehrlich nicht abgedeckt"
+
+
+def t_verkehrsmenge_laender():
+    """Drei Landeswege im selben Block: Berlin (Modell), Hamburg (Zählung),
+    Baden-Württemberg (SVZ) — je eigene Dienstkennung."""
+    erwartet = {"berlin": ALEXANDERPLATZ, "hamburg": MOENCKEBERG, "svz_bw": STUTTGART}
+    teile = []
+    for dienst, (lat, lon) in erwartet.items():
+        d, _, _ = hole("/api/point/verkehrsmenge", {"lat": lat, "lon": lon, "r": 600})
+        assert d["ok"], (dienst, d.get("error"))
+        v = d["data"]
+        assert v["dienst"] == dienst, f"{dienst}: Dienst ist {v['dienst']}"
+        assert v["zaehlstellen"], f"{dienst}: keine Zählstelle im Umkreis"
+        n = v["naechste"]
+        assert n["distanz_m"] <= v["max_distanz_m"], n
+        assert d["provenance"]["source"] and d["provenance"]["license"], dienst
+        teile.append(f"{dienst}: {n['strasse']} {n['dtv_kfz']} Kfz/Tag in {n['distanz_m']} m")
+    return " · ".join(teile)
+
+
+def t_verkehrsmenge_wien():
+    """Wien: Lage aus dem WFS, Werte aus der 5-MB-Monatsdatei — der größte
+    Einzelabruf der neuen Quellen."""
+    d, dauer, _ = hole("/api/point/verkehrsmenge", {"lat": WIEN[0], "lon": WIEN[1], "r": 600,
+                                                    "refresh": "true"})
+    v = d["data"]
+    assert d["ok"] and v["dienst"] == "wien", d.get("error")
+    assert v["jahr"] and v["jahr"] >= 2024, f"jüngstes Jahr {v['jahr']}"
+    assert v["zaehlstellen"] and v["staerkste"]["dtv_kfz"] > 1000, v["staerkste"]
+    assert v["naechste"]["dtv_werktag"] is not None or v["naechste"]["dtv_kfz"] is None
+    return f"Wien {v['jahr']}: stärkste {v['staerkste']['strasse']} {v['staerkste']['dtv_kfz']} Kfz/Tag ({dauer:.1f} s)"
+
+
+def t_luft_wien():
+    """Lumes-Halbstundenwerte: Stand darf nicht älter als ein Tag sein."""
+    d, _, _ = hole("/api/point/luft", {"lat": WIEN[0], "lon": WIEN[1], "refresh": "true"})
+    l = d["data"]
+    assert d["ok"] and l, d.get("warnings")
+    assert l["dienst"] == "wien" and l["station"]["code"], l["station"]
+    assert l["komponenten"], "Station ohne Komponenten"
+    stand = l.get("stand")
+    assert stand and stand[:4].isdigit(), f"Stand unbrauchbar: {stand!r}"
+    alter = (dt.datetime.now() - dt.datetime.fromisoformat(stand)).total_seconds() / 3600
+    assert alter < 30, f"jüngster Wert {alter:.0f} h alt"
+    return f"{l['station']['name']}: Index {l['index_label'] or '—'}, Stand {stand} ({alter:.0f} h alt)"
+
+
+def t_lage_staedte():
+    """Lage-Block in vier Ausprägungen: Wien voll, Salzburg Kurzparkzone,
+    Hamburg Parkhäuser, Baden-Württemberg Ladesäulen."""
+    d, _, _ = hole("/api/point/lage", {"lat": WIEN[0], "lon": WIEN[1], "r": 600})
+    w = d["data"]
+    assert d["ok"] and w["stadt"] == "Wien", d.get("error")
+    assert w["fussgaengerzonen"] and w["realnutzung"], "Wien ohne Zonen oder Nutzung"
+    d, _, _ = hole("/api/point/lage", {"lat": SALZBURG[0], "lon": SALZBURG[1], "r": 600})
+    assert d["ok"] and d["data"]["stadt"] == "Salzburg", d.get("error")
+    d, _, _ = hole("/api/point/lage", {"lat": MOENCKEBERG[0], "lon": MOENCKEBERG[1], "r": 600})
+    h = d["data"]
+    assert d["ok"] and h["stadt"] == "Hamburg" and h["parkhaeuser"], d.get("error")
+    assert h["parkhaeuser"][0]["gesamt"], "Parkhaus ohne Stellplatzzahl"
+    d, _, _ = hole("/api/point/lage", {"lat": STUTTGART[0], "lon": STUTTGART[1], "r": 600})
+    bw = d["data"]
+    assert d["ok"] and bw["ladesaeulen"]["ladepunkte"] > 0, d.get("error")
+    return (f"Wien {len(w['fussgaengerzonen'])} Fußgängerzonen · Hamburg "
+            f"{h['parkhaeuser_im_radius']} Parkhäuser · Stuttgart {bw['ladesaeulen']['ladepunkte']} Ladepunkte")
+
+
+def t_indikatoren_hamburg_wien():
+    """Derselbe Block, drei Städte: München (Bezirk), Hamburg (Stadtteil),
+    Wien (Zählbezirk)."""
+    d, _, _ = hole("/api/point/indikatoren", {"lat": MOENCKEBERG[0], "lon": MOENCKEBERG[1]})
+    hh = d["data"]
+    assert d["ok"] and hh and hh["stadt_raum"] == "Hamburg gesamt", d.get("warnings")
+    assert hh["indikatoren"] and hh["indikatoren"][0]["bezirk"]["jahr"] >= 2013, hh["indikatoren"][:1]
+    d, _, _ = hole("/api/point/indikatoren", {"lat": WIEN[0], "lon": WIEN[1]})
+    w = d["data"]
+    assert d["ok"] and w and w["bezirk"].startswith("Zählbezirk"), d.get("warnings")
+    return f"Hamburg: {hh['bezirk']} ({len(hh['indikatoren'])} Kennzahlen) · Wien: {w['bezirk']}"
+
+
+def t_baustellen_laender():
+    """Stuttgart (Stadt-WFS) und Baden-Württemberg (Landesdatei) — beide
+    dürfen leer sein, aber nicht mit falscher Stadtkennung antworten."""
+    d, _, _ = hole("/api/point/baustellen", {"lat": STUTTGART[0], "lon": STUTTGART[1], "r": 3000})
+    st = d["data"]
+    assert d["ok"] and st["stadt"] == "Stuttgart", d.get("error")
+    d, _, _ = hole("/api/point/baustellen", {"lat": 47.607, "lon": 8.109, "r": 3000})
+    bw = d["data"]
+    assert d["ok"] and bw["stadt"] == "Baden-Württemberg", d.get("error")
+    d, _, _ = hole("/api/point/baustellen", {"lat": SALZBURG[0], "lon": SALZBURG[1], "r": 1500})
+    sb = d["data"]
+    assert d["ok"] and sb["stadt"] == "Salzburg", d.get("error")
+    return f"Stuttgart {st['gesamt']} · BW {bw['gesamt']} · Salzburg {sb['gesamt']} Maßnahmen"
+
+
+def t_radzaehlung_bw():
+    """Eco-Counter: die Landesdatei führt die laufende Woche — der letzte
+    Tageswert darf nicht älter als zwei Wochen sein."""
+    d, _, _ = hole("/api/point/radzaehlung", {"lat": 48.8838, "lon": 9.1906, "r": 600})
+    r = d["data"]
+    assert d["ok"] and r["stadt"] == "Baden-Württemberg", d.get("error")
+    assert r["in_reichweite"], "kein Radzähler bei Ludwigsburg"
+    n = r["naechste"]
+    assert n["letzter_tag"], "Zählstelle ohne Datum"
+    alter = (dt.date.today() - dt.date.fromisoformat(n["letzter_tag"])).days
+    assert alter <= 14, f"letzter Tageswert {alter} Tage alt"
+    return f"{n['name']}: {n['je_tag_letzte_woche']} je Tag, letzter Wert {n['letzter_tag']}"
+
+
+def t_salzburg_baurecht():
+    """Salzburg: Bebauungsplan mit PDF und Altstadtschutzzone im
+    Planungsblock, beides über den Stadt-WFS."""
+    d, _, _ = hole("/api/point/baurecht", {"lat": SALZBURG[0], "lon": SALZBURG[1]})
+    b = d["data"]
+    assert d["ok"] and b["gebiet"] == "Salzburg", d.get("error")
+    assert b["stufe"] in ("plan", "kein_plan"), b["stufe"]
+    if b["plaene"]:
+        assert b["plaene"][0]["pdf"], "Bebauungsplan ohne Plan-PDF"
+    d, _, _ = hole("/api/point/planung", {"lat": SALZBURG[0], "lon": SALZBURG[1], "r": 600})
+    e = d["data"]["erhaltungssatzung"]
+    assert e["betroffen"] is True and "Altstadtschutzzone" in e["titel"], e
+    return f"Getreidegasse: {len(b['plaene'])} Bebauungsplan/-pläne, {e['gebiete'][0]['name']}"
+
+
+def t_gemeindeprofil_und_immobilien():
+    """Gemeindekennziffer am Punkt (GEODATA-WFS) trägt zwei Blöcke:
+    Gemeindeprofil und Immobilienpreise."""
+    d, _, _ = hole("/api/kreisprofil", {"lat": WIEN[0], "lon": WIEN[1]})
+    k = d["data"]
+    assert d["ok"] and k["gebiete"]["kreis"]["gkz"] == "90101", k["gebiete"]
+    assert k.get("zuordnung") == "Gemeindegrenzen-WFS", k.get("zuordnung")
+    assert k["indikatoren"], "Gemeindeprofil ohne Kennzahlen"
+    d, _, _ = hole("/api/point/immobilien", {"lat": WIEN[0], "lon": WIEN[1]})
+    im = d["data"]
+    assert d["ok"] and im["bezirk"]["nummer"] == "901", im["bezirk"]
+    assert im["wohnungen"] and im["wohnungen"][0]["perioden"][0]["klassen"][0]["eur_m2"] > 1000, im["wohnungen"][:1]
+    d, _, _ = hole("/api/point/immobilien", {"lat": M[0], "lon": M[1]})
+    assert d["ok"] and d["data"] is None and "Nur für Österreich" in d["warnings"][0], d["warnings"]
+    return (f"Wien-Innere Stadt: {len(k['indikatoren'])} Kennzahlen, Eigentumswohnung "
+            f"{im['wohnungen'][0]['perioden'][0]['klassen'][0]['eur_m2']:.0f} €/m²")
+
+
+def t_datenstand_je_block():
+    """Jeder Block, der Daten liefert, nennt Quelle und Lizenz; wo ein
+    Stand geführt wird, ist er lesbar."""
+    d, _, _ = hole("/api/point", {"lat": M[0], "lon": M[1], "r": 600})
+    ohne_quelle = [n for n, b in d["bloecke"].items()
+                   if b.get("ok") and b.get("data") is not None and not (b.get("provenance") or {}).get("source")]
+    assert not ohne_quelle, f"Blöcke mit Daten ohne Quellenangabe: {ohne_quelle}"
+    ohne_lizenz = [n for n, b in d["bloecke"].items()
+                   if b.get("ok") and b.get("data") is not None and not (b.get("provenance") or {}).get("license")]
+    assert not ohne_lizenz, f"Blöcke ohne Lizenz: {ohne_lizenz}"
+    mit_stand = sum(1 for b in d["bloecke"].values() if (b.get("provenance") or {}).get("stand"))
+    return f"{len(d['bloecke'])} Blöcke, alle mit Quelle und Lizenz, {mit_stand} mit Stand"
+
+
 ALLE = [
     ("GET /api/health", t_health),
     ("GET /api/stats", t_stats),
@@ -864,6 +1047,18 @@ ALLE = [
     ("Erhaltungssatzung — Positiv- und Negativprobe live", t_erhaltungssatzung),
     ("Validierung (422-Pfade)", t_validierung),
     ("Cache-Nachweis", t_cache_wirkt),
+    # --- Quellen aus 0.6.0, erstmals live
+    ("Starkregen-Hinweiskarte (BKG) live", t_starkregen),
+    ("Verkehrsmenge Berlin, Hamburg, BW live", t_verkehrsmenge_laender),
+    ("Verkehrsmenge Wien — Monatsdatei live", t_verkehrsmenge_wien),
+    ("Luft Wien — Lumes-Aktualität", t_luft_wien),
+    ("Lage: Wien, Salzburg, Hamburg, BW live", t_lage_staedte),
+    ("Viertel-Steckbrief Hamburg und Wien live", t_indikatoren_hamburg_wien),
+    ("Baustellen Stuttgart, BW, Salzburg live", t_baustellen_laender),
+    ("Radzählung BW — Eco-Counter-Aktualität", t_radzaehlung_bw),
+    ("Salzburg: Baurecht und Altstadtschutzzone live", t_salzburg_baurecht),
+    ("Gemeindeprofil und Immobilienpreise (GKZ am Punkt)", t_gemeindeprofil_und_immobilien),
+    ("Quelle, Lizenz und Stand an jedem Block", t_datenstand_je_block),
 ]
 
 print(f"Vollprüfung gegen {BASIS} — {len(ALLE)} Prüfungen")

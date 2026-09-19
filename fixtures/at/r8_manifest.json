@@ -1,0 +1,868 @@
+{
+ "erzeugt": "2026-09-19T05:15:51Z",
+ "eintraege": [
+  {
+   "name": "r8_wien_caps",
+   "url": "https://data.wien.gv.at/daten/geo",
+   "params": {
+    "service": "WFS",
+    "request": "GetCapabilities",
+    "version": "1.1.0"
+   },
+   "methode": "GET",
+   "status": 200,
+   "content_type": "application/xml;charset=utf-8",
+   "bytes": 265425,
+   "dauer_ms": 1167,
+   "final_url": "https://data.wien.gv.at/daten/geo?service=WFS&request=GetCapabilities&version=1.1.0"
+  },
+  {
+   "name": "r8_wien_layer",
+   "anzahl": 377,
+   "realnut": [
+    "ogdwien:REALNUT2016GOGD",
+    "ogdwien:REALNUT1981OGD",
+    "ogdwien:REALNUT1985OGD",
+    "ogdwien:REALNUT1991OGD",
+    "ogdwien:REALNUT1994OGD",
+    "ogdwien:REALNUT1997OGD",
+    "ogdwien:REALNUT2001OGD",
+    "ogdwien:REALNUT2003OGD",
+    "ogdwien:REALNUT2005OGD",
+    "ogdwien:REALNUT200708OGD",
+    "ogdwien:REALNUT2009OGD",
+    "ogdwien:REALNUT2012OGD",
+    "ogdwien:REALNUT2018OGD",
+    "ogdwien:REALNUT2020OGD",
+    "ogdwien:REALNUT2022OGD",
+    "ogdwien:REALNUT2024OGD",
+    "ogdwien:REALNUT2014OGD"
+   ],
+   "dauerzaehl": [
+    "ogdwien:DAUERZAEHLOGD"
+   ],
+   "luft": [
+    "ogdwien:LUFTGUETENETZOGD"
+   ],
+   "zaehlbezirk": [
+    "ogdwien:ZAEHLBEZIRKOGD"
+   ]
+  },
+  {
+   "name": "r8_salzburg_caps",
+   "url": "https://data.stadt-salzburg.at/geodaten/wfs",
+   "params": {
+    "service": "WFS",
+    "request": "GetCapabilities",
+    "version": "1.1.0"
+   },
+   "methode": "GET",
+   "status": 200,
+   "content_type": "application/xml",
+   "bytes": 60015,
+   "dauer_ms": 2682,
+   "final_url": "https://data.stadt-salzburg.at/geodaten/wfs?service=WFS&request=GetCapabilities&version=1.1.0"
+  },
+  {
+   "name": "r8_salzburg_caps_layer",
+   "anzahl": 75,
+   "namen": [
+    "ogdsbg:abfallsammelstelle",
+    "ogdsbg:altstadtschutzzone",
+    "ogdsbg:amtsgebaeude",
+    "ogdsbg:anwohnerzone",
+    "ogdsbg:architektur",
+    "ogdsbg:archiv",
+    "ogdsbg:behindertenstellplatz",
+    "ogdsbg:baumkataster",
+    "ogdsbg:baustelle",
+    "ogdsbg:baustelle_aktuell",
+    "ogdsbg:bebauungsplan_auflage",
+    "ogdsbg:bebauungsplan_rechtswirksam",
+    "ogdsbg:beratungsstelle",
+    "ogdsbg:berufsberatung",
+    "ogdsbg:bewohnerparkzone",
+    "ogdsbg:bewohnerservicestelle",
+    "ogdsbg:bibliothek",
+    "ogdsbg:bikequality",
+    "ogdsbg:bikequality_schlag",
+    "ogdsbg:busspur",
+    "ogdsbg:dachtraufe",
+    "ogdsbg:defibrillator",
+    "ogdsbg:orthofoto",
+    "ogdsbg:medienkunst",
+    "ogdsbg:flaechenwidmung",
+    "ogdsbg:forschung",
+    "ogdsbg:musikerin",
+    "ogdsbg:wlanhotspot",
+    "ogdsbg:freizeiteinrichtung",
+    "ogdsbg:hochschule",
+    "ogdsbg:hundeeinrichtung",
+    "ogdsbg:hoehenlinie",
+    "ogdsbg:kindergarten",
+    "ogdsbg:kriseneinrichtung",
+    "ogdsbg:kurzparkzone",
+    "ogdsbg:laufstrecke",
+    "ogdsbg:graffitiflaeche",
+    "ogdsbg:literatur",
+    "ogdsbg:markt",
+    "ogdsbg:museum",
+    "ogdsbg:musik",
+    "ogdsbg:naturdenkmal",
+    "ogdsbg:parkplatz",
+    "ogdsbg:parkscheinautomat",
+    "ogdsbg:poller",
+    "ogdsbg:radbaumassnahme_aktuell",
+    "ogdsbg:radinformation",
+    "ogdsbg:radzaehlstelle",
+    "ogdsbg:reusestandort",
+    "ogdsbg:schule",
+    "ogdsbg:seniorenwohnhaus",
+    "ogdsbg:sexualpaedagogik",
+    "ogdsbg:smartcity",
+    "ogdsbg:spielplatz",
+    "ogdsbg:bewegungsangebot",
+    "ogdsbg:stadtteil",
+    "ogdsbg:stellplatzverordnung",
+    "ogdsbg:strassenmusikantenverordnung",
+    "ogdsbg:gip_edge",
+    "ogdsbg:friedhofseingang"
+   ]
+  },
+  {
+   "name": "r8_stuttgart_caps",
+   "url": "https://geoserver.stuttgart.de/gdc/Verkehr_Mobilitaet/ows",
+   "params": {
+    "service": "WFS",
+    "request": "GetCapabilities",
+    "version": "1.1.0"
+   },
+   "methode": "GET",
+   "status": 200,
+   "content_type": "application/xml",
+   "bytes": 27103,
+   "dauer_ms": 1408,
+   "final_url": "https://geoserver.stuttgart.de/gdc/Verkehr_Mobilitaet/ows?service=WFS&request=GetCapabilities&version=1.1.0"
+  },
+  {
+   "name": "r8_stuttgart_caps_layer",
+   "anzahl": 4,
+   "namen": [
+    "Verkehr_Mobilitaet:A66_BAUM_BAUSTELLEN_DATE_WEB_im_Bau_EPSG25832",
+    "Verkehr_Mobilitaet:A66_BAUM_BAUSTELLEN_DATE_WEB_geplant_EPSG25832",
+    "Verkehr_Mobilitaet:A61_RAD_HAUPTRADROUTEN_EPSG25832",
+    "Verkehr_Mobilitaet:A61_RAD_RADEMPFEHLUNGEN_EPSG25832"
+   ]
+  },
+  {
+   "name": "r8_mobidata_caps",
+   "url": "https://api.mobidata-bw.de/geoserver/MobiData-BW/ows",
+   "params": {
+    "service": "WFS",
+    "request": "GetCapabilities",
+    "version": "1.1.0"
+   },
+   "methode": "GET",
+   "status": 200,
+   "content_type": "application/xml",
+   "bytes": 31014,
+   "dauer_ms": 857,
+   "final_url": "https://api.mobidata-bw.de/geoserver/MobiData-BW/ows?service=WFS&request=GetCapabilities&version=1.1.0"
+  },
+  {
+   "name": "r8_mobidata_caps_layer",
+   "anzahl": 9,
+   "namen": [
+    "MobiData-BW:roadworks",
+    "MobiData-BW:charge_points",
+    "MobiData-BW:sharing_vehicles",
+    "MobiData-BW:transit_stops",
+    "MobiData-BW:transit_stations_with_served_routes",
+    "MobiData-BW:radvis_cycle_network",
+    "MobiData-BW:bicycle_service_points",
+    "MobiData-BW:sharing_stations",
+    "MobiData-BW:transit_shapes_with_routes"
+   ]
+  },
+  {
+   "name": "r8_hh_verkehrsmengen_collections",
+   "url": "https://api.hamburg.de/datasets/v1/verkehrsmengen/collections",
+   "params": {
+    "f": "json"
+   },
+   "methode": "GET",
+   "status": 200,
+   "content_type": "application/json",
+   "bytes": 7253,
+   "dauer_ms": 1020,
+   "final_url": "https://api.hamburg.de/datasets/v1/verkehrsmengen/collections?f=json"
+  },
+  {
+   "name": "r8_hh_verkehrsmengen_ids",
+   "ids": [
+    "verkehrsmengen_dtv_bab_2019",
+    "verkehrsmengen_dtv_hvs_2019",
+    "verkehrsmengen_dtvw_bab_2013",
+    "verkehrsmengen_dtvw_hvs_2014"
+   ]
+  },
+  {
+   "name": "r8_hh_verkehrsstaerken_collections",
+   "url": "https://api.hamburg.de/datasets/v1/verkehrsstaerken/collections",
+   "params": {
+    "f": "json"
+   },
+   "methode": "GET",
+   "status": 200,
+   "content_type": "application/json",
+   "bytes": 7128,
+   "dauer_ms": 149,
+   "final_url": "https://api.hamburg.de/datasets/v1/verkehrsstaerken/collections?f=json"
+  },
+  {
+   "name": "r8_hh_verkehrsstaerken_ids",
+   "ids": [
+    "kfz_temporaere_zaehlungen",
+    "radverkehr_dtv_dtvw",
+    "radverkehr_pegel",
+    "verkehrsstaerken_dtv_dtvw"
+   ]
+  },
+  {
+   "name": "r8_hh_regionalstatistische_daten_stadtteile_collections",
+   "url": "https://api.hamburg.de/datasets/v1/regionalstatistische_daten_stadtteile/collections",
+   "params": {
+    "f": "json"
+   },
+   "methode": "GET",
+   "status": 200,
+   "content_type": "application/json",
+   "bytes": 2871,
+   "dauer_ms": 149,
+   "final_url": "https://api.hamburg.de/datasets/v1/regionalstatistische_daten_stadtteile/collections?f=json"
+  },
+  {
+   "name": "r8_hh_regionalstatistische_daten_stadtteile_ids",
+   "ids": [
+    "regionalstatistische_daten_stadtteile"
+   ]
+  },
+  {
+   "name": "r8_hh_parkhaeuser_collections",
+   "url": "https://api.hamburg.de/datasets/v1/parkhaeuser/collections",
+   "params": {
+    "f": "json"
+   },
+   "methode": "GET",
+   "status": 200,
+   "content_type": "application/json",
+   "bytes": 2611,
+   "dauer_ms": 148,
+   "final_url": "https://api.hamburg.de/datasets/v1/parkhaeuser/collections?f=json"
+  },
+  {
+   "name": "r8_hh_parkhaeuser_ids",
+   "ids": [
+    "parkhaeuser"
+   ]
+  },
+  {
+   "name": "r8_berlin_vm_2025",
+   "url": "https://gdi.berlin.de/services/wfs/verkehrsmengen_2025",
+   "params": {
+    "REQUEST": "GetCapabilities",
+    "SERVICE": "WFS"
+   },
+   "methode": "GET",
+   "status": 404,
+   "content_type": "text/html; charset=iso-8859-1",
+   "bytes": 236,
+   "dauer_ms": 588,
+   "final_url": "https://gdi.berlin.de/services/wfs/verkehrsmengen_2025?REQUEST=GetCapabilities&SERVICE=WFS"
+  },
+  {
+   "name": "r8_berlin_vm_2024",
+   "url": "https://gdi.berlin.de/services/wfs/verkehrsmengen_2024",
+   "params": {
+    "REQUEST": "GetCapabilities",
+    "SERVICE": "WFS"
+   },
+   "methode": "GET",
+   "status": 404,
+   "content_type": "text/html; charset=iso-8859-1",
+   "bytes": 236,
+   "dauer_ms": 146,
+   "final_url": "https://gdi.berlin.de/services/wfs/verkehrsmengen_2024?REQUEST=GetCapabilities&SERVICE=WFS"
+  },
+  {
+   "name": "r8_berlin_vm_2023",
+   "url": "https://gdi.berlin.de/services/wfs/verkehrsmengen_2023",
+   "params": {
+    "REQUEST": "GetCapabilities",
+    "SERVICE": "WFS"
+   },
+   "methode": "GET",
+   "status": 200,
+   "content_type": "application/xml",
+   "bytes": 99264,
+   "dauer_ms": 205,
+   "final_url": "https://gdi.berlin.de/services/wfs/verkehrsmengen_2023?REQUEST=GetCapabilities&SERVICE=WFS"
+  },
+  {
+   "name": "r8_mobidata_svz_verzeichnis",
+   "url": "https://mobidata-bw.de/vm/Karte_Strassenverkehrszaehlung_BW/",
+   "params": null,
+   "methode": "GET",
+   "status": 403,
+   "content_type": "text/html",
+   "bytes": 153,
+   "dauer_ms": 760,
+   "final_url": "https://mobidata-bw.de/vm/Karte_Strassenverkehrszaehlung_BW/"
+  },
+  {
+   "name": "r8_mobidata_svz_kopf",
+   "url": "https://mobidata-bw.de/vm/Karte_Strassenverkehrszaehlung_BW/SVZ-Zaehlstellen_2026-06-26_augmented_SVZ2024.csv",
+   "params": null,
+   "methode": "HEAD",
+   "status": 200,
+   "content_type": "application/octet-stream",
+   "bytes": 0,
+   "dauer_ms": 135,
+   "final_url": "https://mobidata-bw.de/vm/Karte_Strassenverkehrszaehlung_BW/SVZ-Zaehlstellen_2026-06-26_augmented_SVZ2024.csv"
+  },
+  {
+   "name": "r8_mobidata_svz_bekannt",
+   "url": "https://mobidata-bw.de/vm/Karte_Strassenverkehrszaehlung_BW/SVZ-Zaehlstellen_2026-06-26_augmented_SVZ2024.csv"
+  },
+  {
+   "name": "r8_mobidata_ckan_svz",
+   "url": "https://www.mobidata-bw.de/api/3/action/package_search",
+   "params": {
+    "q": "Strassenverkehrszaehlung",
+    "rows": 5
+   },
+   "methode": "GET",
+   "status": 200,
+   "content_type": "application/json;charset=utf-8",
+   "bytes": 103844,
+   "dauer_ms": 1160,
+   "final_url": "https://mobidata-bw.de/api/3/action/package_search?q=Strassenverkehrszaehlung&rows=5",
+   "datei": "r8_mobidata_ckan_svz.json"
+  },
+  {
+   "name": "r8_stat_haeuserpreise2026",
+   "url": "https://www.statistik.at/fileadmin/pages/222/Haeuserpreise2026.ods",
+   "params": null,
+   "methode": "HEAD",
+   "status": 404,
+   "content_type": "text/html; charset=utf-8",
+   "bytes": 0,
+   "dauer_ms": 1041,
+   "final_url": "https://www.statistik.at/fileadmin/pages/222/Haeuserpreise2026.ods"
+  },
+  {
+   "name": "r8_stat_wohnungspreise2026",
+   "url": "https://www.statistik.at/fileadmin/pages/222/Wohnungspreise2026.ods",
+   "params": null,
+   "methode": "HEAD",
+   "status": 404,
+   "content_type": "text/html; charset=utf-8",
+   "bytes": 0,
+   "dauer_ms": 347,
+   "final_url": "https://www.statistik.at/fileadmin/pages/222/Wohnungspreise2026.ods"
+  },
+  {
+   "name": "r8_stat_baugrundstueckspreise2026",
+   "url": "https://www.statistik.at/fileadmin/pages/222/Baugrundstueckspreise2026.ods",
+   "params": null,
+   "methode": "HEAD",
+   "status": 404,
+   "content_type": "text/html; charset=utf-8",
+   "bytes": 0,
+   "dauer_ms": 316,
+   "final_url": "https://www.statistik.at/fileadmin/pages/222/Baugrundstueckspreise2026.ods"
+  },
+  {
+   "name": "r8_stat_haeuserpreise2025",
+   "url": "https://www.statistik.at/fileadmin/pages/222/Haeuserpreise2025.ods",
+   "params": null,
+   "methode": "HEAD",
+   "status": 200,
+   "content_type": "application/vnd.oasis.opendocument.spreadsheet",
+   "bytes": 0,
+   "dauer_ms": 144,
+   "final_url": "https://www.statistik.at/fileadmin/pages/222/Haeuserpreise2025.ods"
+  },
+  {
+   "name": "r8_stat_wohnungspreise2025",
+   "url": "https://www.statistik.at/fileadmin/pages/222/Wohnungspreise2025.ods",
+   "params": null,
+   "methode": "HEAD",
+   "status": 200,
+   "content_type": "application/vnd.oasis.opendocument.spreadsheet",
+   "bytes": 0,
+   "dauer_ms": 144,
+   "final_url": "https://www.statistik.at/fileadmin/pages/222/Wohnungspreise2025.ods"
+  },
+  {
+   "name": "r8_stat_baugrundstueckspreise2025",
+   "url": "https://www.statistik.at/fileadmin/pages/222/Baugrundstueckspreise2025.ods",
+   "params": null,
+   "methode": "HEAD",
+   "status": 200,
+   "content_type": "application/vnd.oasis.opendocument.spreadsheet",
+   "bytes": 0,
+   "dauer_ms": 145,
+   "final_url": "https://www.statistik.at/fileadmin/pages/222/Baugrundstueckspreise2025.ods"
+  },
+  {
+   "name": "r8_bkg_starkregen_caps",
+   "url": "https://sgx.geodatenzentrum.de/wms_starkregen",
+   "params": {
+    "service": "WMS",
+    "request": "GetCapabilities",
+    "version": "1.3.0"
+   },
+   "methode": "GET",
+   "status": 200,
+   "content_type": "text/xml",
+   "bytes": 447619,
+   "dauer_ms": 3769,
+   "final_url": "https://sgx.geodatenzentrum.de/wms_starkregen?service=WMS&request=GetCapabilities&version=1.3.0"
+  },
+  {
+   "name": "r8_bkg_layer",
+   "anzahl": 182,
+   "namen": [
+    "geschwindigkeit_agw",
+    "bb_geschw_agw",
+    "velocity",
+    "be_geschw_agw",
+    "velocity",
+    "hb_geschw_agw",
+    "velocity",
+    "hh_geschw_agw",
+    "velocity",
+    "mv_geschw_agw",
+    "velocity",
+    "ni_geschw_agw",
+    "velocity",
+    "nw_geschw_agw",
+    "velocity",
+    "rp_geschw_agw",
+    "velocity",
+    "sh_geschw_agw",
+    "velocity",
+    "sl_geschw_agw",
+    "velocity",
+    "sn_geschw_agw",
+    "velocity",
+    "st_geschw_agw",
+    "velocity",
+    "th_geschw_agw",
+    "velocity",
+    "geschwindigkeit_extrem",
+    "bb_geschw_extrem",
+    "velocity",
+    "be_geschw_extrem",
+    "velocity",
+    "hb_geschw_extrem",
+    "velocity",
+    "hh_geschw_extrem",
+    "velocity",
+    "mv_geschw_extrem",
+    "velocity",
+    "ni_geschw_extrem",
+    "velocity"
+   ]
+  },
+  {
+   "name": "r8_stat_geodata_caps",
+   "url": "https://www.statistik.gv.at/gs-open/GEODATA/ows",
+   "params": {
+    "service": "WFS",
+    "request": "GetCapabilities",
+    "version": "1.1.0"
+   },
+   "methode": "GET",
+   "status": 200,
+   "content_type": "application/xml",
+   "bytes": 98541,
+   "dauer_ms": 1947,
+   "final_url": "https://www.statistik.at/gs-open/GEODATA/ows?service=WFS&request=GetCapabilities&version=1.1.0"
+  },
+  {
+   "name": "r8_geodata_layer",
+   "anzahl": 146,
+   "gem": [
+    "GEODATA:STATISTIK_AUSTRIA_GEM_20110101",
+    "GEODATA:STATISTIK_AUSTRIA_GEM_20120101",
+    "GEODATA:STATISTIK_AUSTRIA_GEM_20130101",
+    "GEODATA:STATISTIK_AUSTRIA_GEM_20140101",
+    "GEODATA:STATISTIK_AUSTRIA_GEM_20150101",
+    "GEODATA:STATISTIK_AUSTRIA_GEM_20160101",
+    "GEODATA:STATISTIK_AUSTRIA_GEM_20170101",
+    "GEODATA:STATISTIK_AUSTRIA_GEM_20180101",
+    "GEODATA:STATISTIK_AUSTRIA_GEM_20190101",
+    "GEODATA:STATISTIK_AUSTRIA_GEM_20200101",
+    "GEODATA:STATISTIK_AUSTRIA_GEM_20210101",
+    "GEODATA:STATISTIK_AUSTRIA_GEM_20220101",
+    "GEODATA:STATISTIK_AUSTRIA_GEM_20230101",
+    "GEODATA:STATISTIK_AUSTRIA_GEM_20240101",
+    "GEODATA:STATISTIK_AUSTRIA_GEM_20250101",
+    "GEODATA:STATISTIK_AUSTRIA_GEM_20260101",
+    "GEODATA:STATISTIK_AUSTRIA_GEM_MP_20200101",
+    "GEODATA:STATISTIK_AUSTRIA_GEM_MP_20210101",
+    "GEODATA:STATISTIK_AUSTRIA_GEM_MP_20220101",
+    "GEODATA:STATISTIK_AUSTRIA_GEM_MP_20230101",
+    "GEODATA:STATISTIK_AUSTRIA_GEM_MP_20240101",
+    "GEODATA:STATISTIK_AUSTRIA_GEM_MP_20250101",
+    "GEODATA:STATISTIK_AUSTRIA_GEM_MP_20260101"
+   ]
+  },
+  {
+   "name": "r8_datagv_suche_ams",
+   "url": "https://www.data.gv.at/katalog/api/3/action/package_search",
+   "params": {
+    "q": "Arbeitslose Gemeinden",
+    "rows": 8
+   },
+   "methode": "GET",
+   "status": 404,
+   "content_type": "text/html",
+   "bytes": 5122,
+   "dauer_ms": 735,
+   "final_url": "https://www.data.gv.at/katalog/api/3/action/package_search?q=Arbeitslose+Gemeinden&rows=8",
+   "datei": "r8_datagv_suche_ams.txt"
+  },
+  {
+   "name": "r8_datagv_suche_gisa",
+   "url": "https://www.data.gv.at/katalog/api/3/action/package_search",
+   "params": {
+    "q": "Gewerbeinformationssystem",
+    "rows": 8
+   },
+   "methode": "GET",
+   "status": 404,
+   "content_type": "text/html",
+   "bytes": 5122,
+   "dauer_ms": 152,
+   "final_url": "https://www.data.gv.at/katalog/api/3/action/package_search?q=Gewerbeinformationssystem&rows=8",
+   "datei": "r8_datagv_suche_gisa.txt"
+  },
+  {
+   "name": "r8_datagv_suche_gisa2",
+   "url": "https://www.data.gv.at/katalog/api/3/action/package_search",
+   "params": {
+    "q": "GISA",
+    "rows": 8
+   },
+   "methode": "GET",
+   "status": 404,
+   "content_type": "text/html",
+   "bytes": 5122,
+   "dauer_ms": 149,
+   "final_url": "https://www.data.gv.at/katalog/api/3/action/package_search?q=GISA&rows=8",
+   "datei": "r8_datagv_suche_gisa2.txt"
+  },
+  {
+   "name": "r8_datagv_suche_ams2",
+   "url": "https://www.data.gv.at/katalog/api/3/action/package_search",
+   "params": {
+    "q": "Arbeitsmarktdaten",
+    "rows": 8
+   },
+   "methode": "GET",
+   "status": 404,
+   "content_type": "text/html",
+   "bytes": 5122,
+   "dauer_ms": 151,
+   "final_url": "https://www.data.gv.at/katalog/api/3/action/package_search?q=Arbeitsmarktdaten&rows=8",
+   "datei": "r8_datagv_suche_ams2.txt"
+  },
+  {
+   "name": "r8_datagv_show_gisa-gewerbeinformationssyst",
+   "url": "https://www.data.gv.at/katalog/api/3/action/package_show",
+   "params": {
+    "id": "gisa-gewerbeinformationssystem-austria"
+   },
+   "methode": "GET",
+   "status": 404,
+   "content_type": "text/html",
+   "bytes": 5122,
+   "dauer_ms": 149,
+   "final_url": "https://www.data.gv.at/katalog/api/3/action/package_show?id=gisa-gewerbeinformationssystem-austria",
+   "datei": "r8_datagv_show_gisa-gewerbeinformationssyst.txt"
+  },
+  {
+   "name": "r8_datagv_show_arbeitslose-und-schulungstei",
+   "url": "https://www.data.gv.at/katalog/api/3/action/package_show",
+   "params": {
+    "id": "arbeitslose-und-schulungsteilnehmerinnen-nach-gemeinden"
+   },
+   "methode": "GET",
+   "status": 404,
+   "content_type": "text/html",
+   "bytes": 5122,
+   "dauer_ms": 149,
+   "final_url": "https://www.data.gv.at/katalog/api/3/action/package_show?id=arbeitslose-und-schulungsteilnehmerinnen-nach-gemeinden",
+   "datei": "r8_datagv_show_arbeitslose-und-schulungstei.txt"
+  },
+  {
+   "name": "r8_datagv_show_stat_arbeitsmarkt",
+   "url": "https://www.data.gv.at/katalog/api/3/action/package_show",
+   "params": {
+    "id": "stat_arbeitsmarkt"
+   },
+   "methode": "GET",
+   "status": 404,
+   "content_type": "text/html",
+   "bytes": 5122,
+   "dauer_ms": 150,
+   "final_url": "https://www.data.gv.at/katalog/api/3/action/package_show?id=stat_arbeitsmarkt",
+   "datei": "r8_datagv_show_stat_arbeitsmarkt.txt"
+  },
+  {
+   "name": "r8_gisa_direkt",
+   "url": "https://www.gisa.gv.at/opendata/",
+   "params": null,
+   "methode": "GET",
+   "status": 404,
+   "content_type": "text/html;charset=utf-8",
+   "bytes": 1962,
+   "dauer_ms": 1029,
+   "final_url": "https://www.gisa.gv.at/opendata/"
+  },
+  {
+   "name": "r8_nrw_ohne_bbox",
+   "url": "https://www.wfs.nrw.de/wfs/strassen_nrw",
+   "params": {
+    "service": "WFS",
+    "version": "2.0.0",
+    "request": "GetFeature",
+    "typeNames": "ms:Zaehlstellen",
+    "count": 5
+   },
+   "methode": "GET",
+   "status": 200,
+   "content_type": "text/xml; subtype=\"gml/3.2.1\"; charset=UTF-8",
+   "bytes": 6522,
+   "dauer_ms": 2243,
+   "final_url": "https://www.wfs.nrw.de/wfs/strassen_nrw?service=WFS&version=2.0.0&request=GetFeature&typeNames=ms%3AZaehlstellen&count=5",
+   "datei": "r8_nrw_ohne_bbox.xml"
+  },
+  {
+   "name": "r8_nrw_v110",
+   "url": "https://www.wfs.nrw.de/wfs/strassen_nrw",
+   "params": {
+    "service": "WFS",
+    "version": "1.1.0",
+    "request": "GetFeature",
+    "typeName": "ms:Zaehlstellen",
+    "maxFeatures": 5
+   },
+   "methode": "GET",
+   "status": 200,
+   "content_type": "text/xml; subtype=gml/3.1.1; charset=UTF-8",
+   "bytes": 5899,
+   "dauer_ms": 186,
+   "final_url": "https://www.wfs.nrw.de/wfs/strassen_nrw?service=WFS&version=1.1.0&request=GetFeature&typeName=ms%3AZaehlstellen&maxFeatures=5",
+   "datei": "r8_nrw_v110.xml"
+  },
+  {
+   "name": "r8_nrw_caps",
+   "url": "https://www.wfs.nrw.de/wfs/strassen_nrw",
+   "params": {
+    "service": "WFS",
+    "version": "2.0.0",
+    "request": "GetCapabilities"
+   },
+   "methode": "GET",
+   "status": 200,
+   "content_type": "text/xml; charset=UTF-8",
+   "bytes": 29358,
+   "dauer_ms": 320,
+   "final_url": "https://www.wfs.nrw.de/wfs/strassen_nrw?service=WFS&version=2.0.0&request=GetCapabilities",
+   "datei": "r8_nrw_caps.xml"
+  },
+  {
+   "name": "r8_ohsome_meta",
+   "url": "https://api.quality.ohsome.org/v1/metadata",
+   "params": null,
+   "methode": "GET",
+   "status": 200,
+   "content_type": "text/html; charset=UTF-8",
+   "bytes": 205143,
+   "dauer_ms": 1812,
+   "final_url": "https://heigit.org/technology/#osm-data",
+   "datei": "r8_ohsome_meta.txt"
+  },
+  {
+   "name": "r8_ohsome_topics",
+   "url": "https://api.quality.ohsome.org/v1/metadata/topics",
+   "params": null,
+   "methode": "GET",
+   "status": 200,
+   "content_type": "text/html; charset=UTF-8",
+   "bytes": 205143,
+   "dauer_ms": 584,
+   "final_url": "https://heigit.org/technology/#osm-data",
+   "datei": "r8_ohsome_topics.txt"
+  },
+  {
+   "name": "r8_ohsome_indicators",
+   "url": "https://api.quality.ohsome.org/v1/metadata/indicators",
+   "params": null,
+   "methode": "GET",
+   "status": 200,
+   "content_type": "text/html; charset=UTF-8",
+   "bytes": 205143,
+   "dauer_ms": 577,
+   "final_url": "https://heigit.org/technology/#osm-data",
+   "datei": "r8_ohsome_indicators.txt"
+  },
+  {
+   "name": "r8_regionaldb_get",
+   "url": "https://www.regionalstatistik.de/genesisws/rest/2020/catalogue/tables",
+   "params": {
+    "username": "GAST",
+    "password": "GAST",
+    "selection": "73111*",
+    "pagelength": 20,
+    "language": "de",
+    "format": "json"
+   },
+   "methode": "GET",
+   "status": 405,
+   "content_type": "text/html;charset=utf-8",
+   "bytes": 449,
+   "dauer_ms": 1103,
+   "final_url": "https://www.regionalstatistik.de/genesisws/rest/2020/catalogue/tables?username=GAST&password=GAST&selection=73111%2A&pagelength=20&language=de&format=json",
+   "datei": "r8_regionaldb_get.txt"
+  },
+  {
+   "name": "r8_regionaldb_hello",
+   "url": "https://www.regionalstatistik.de/genesisws/rest/2020/helloworld/logincheck",
+   "params": {
+    "username": "GAST",
+    "password": "GAST",
+    "language": "de"
+   },
+   "methode": "GET",
+   "status": 405,
+   "content_type": "text/html;charset=utf-8",
+   "bytes": 449,
+   "dauer_ms": 146,
+   "final_url": "https://www.regionalstatistik.de/genesisws/rest/2020/helloworld/logincheck?username=GAST&password=GAST&language=de",
+   "datei": "r8_regionaldb_hello.txt"
+  },
+  {
+   "name": "r8_koeln_www",
+   "url": "https://www.offenedaten-koeln.de/api/3/action/package_search",
+   "params": {
+    "q": "Baustellen",
+    "rows": 3
+   },
+   "methode": "GET",
+   "status": 404,
+   "content_type": "text/html; charset=UTF-8",
+   "bytes": 20104,
+   "dauer_ms": 4868,
+   "final_url": "https://www.offenedaten-koeln.de/api/3/action/package_search?q=Baustellen&rows=3",
+   "datei": "r8_koeln_www.txt"
+  },
+  {
+   "name": "r8_koeln",
+   "url": "https://offenedaten-koeln.de/api/3/action/package_search",
+   "params": {
+    "q": "Baustellen",
+    "rows": 3
+   },
+   "methode": "GET",
+   "status": 404,
+   "content_type": "text/html; charset=UTF-8",
+   "bytes": 20104,
+   "dauer_ms": 5019,
+   "final_url": "https://offenedaten-koeln.de/api/3/action/package_search?q=Baustellen&rows=3",
+   "datei": "r8_koeln.txt"
+  },
+  {
+   "name": "r8_ffm_https",
+   "url": "https://offenedaten.frankfurt.de/api/3/action/package_search",
+   "params": {
+    "q": "Stadtteil",
+    "rows": 3
+   },
+   "methode": "GET",
+   "status": 404,
+   "content_type": "text/html;charset=utf-8",
+   "bytes": 817,
+   "dauer_ms": 965,
+   "final_url": "https://offenedaten.frankfurt.de/api/3/action/package_search?q=Stadtteil&rows=3",
+   "datei": "r8_ffm_https.txt"
+  },
+  {
+   "name": "r8_ffm_www",
+   "url": "https://www.offenedaten.frankfurt.de/api/3/action/package_search",
+   "params": {
+    "q": "Stadtteil",
+    "rows": 3
+   },
+   "methode": "GET",
+   "fehler": "ConnectError: [SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed: Hostname mismatch, certificate is not valid for 'www.offenedaten.frankfurt.de'. (_ssl.c:1010)",
+   "dauer_ms": 796
+  },
+  {
+   "name": "r8_bnetza_csv",
+   "url": "https://data.bundesnetzagentur.de/Bundesnetzagentur/SharedDocs/Downloads/DE/Sachgebiete/Energie/Unternehmen_Institutionen/E_Mobilitaet/Ladesaeulenregister.csv",
+   "params": null,
+   "methode": "GET",
+   "status": 404,
+   "content_type": "text/html",
+   "bytes": 1261,
+   "dauer_ms": 859,
+   "final_url": "https://data.bundesnetzagentur.de/Bundesnetzagentur/SharedDocs/Downloads/DE/Sachgebiete/Energie/Unternehmen_Institutionen/E_Mobilitaet/Ladesaeulenregister.csv"
+  },
+  {
+   "name": "r8_bnetza_api",
+   "url": "https://ladestationen.api.bund.dev/",
+   "params": null,
+   "methode": "GET",
+   "status": 200,
+   "content_type": "text/html; charset=utf-8",
+   "bytes": 696,
+   "dauer_ms": 270,
+   "final_url": "https://ladestationen.api.bund.dev/"
+  },
+  {
+   "name": "r8_bnetza_api_umfang",
+   "bytes": 696
+  },
+  {
+   "name": "r8_autobahn_liste",
+   "url": "https://verkehr.autobahn.de/o/autobahn/",
+   "params": null,
+   "methode": "GET",
+   "status": 200,
+   "content_type": "application/json; charset=utf-8",
+   "bytes": 707,
+   "dauer_ms": 612,
+   "final_url": "https://verkehr.autobahn.de/o/autobahn/"
+  },
+  {
+   "name": "r8_autobahn_strassen",
+   "auszug": "{\"roads\":[\"A1\",\"A2\",\"A3\",\"A4\",\"A5\",\"A6\",\"A7\",\"A8\",\"A9\",\"A10\",\"A11\",\"A12\",\"A13\",\"A14\",\"A15\",\"A17\",\"A19\",\"A20\",\"A21\",\"A23\",\"A24\",\"A25\",\"A26\",\"A27\",\"A28\",\"A29\",\"A30\",\"A31\",\"A33\",\"A34\",\"A36\",\"A37\",\"A38\",\"A39\",\"A40\",\"A42\",\"A43\",\"A44\",\"A45\",\"A46\",\"A48\",\"A49\",\"A52\",\"A57\",\"A59\",\"A60\",\"A60 \",\"A61\",\"A62\",\"A63\",\"A64\",\"A65\",\"A66\",\"A67\",\"A70\",\"A71\",\"A72\",\"A73\",\"A81\",\"A92\",\"A93\",\"A94\",\"A95\",\"A96\",\"A98\",\"A99\",\"A"
+  },
+  {
+   "name": "r8_autobahn_a8_baustellen",
+   "url": "https://verkehr.autobahn.de/o/autobahn/A8/services/roadworks",
+   "params": null,
+   "methode": "GET",
+   "status": 200,
+   "content_type": "application/json; charset=utf-8",
+   "bytes": 260709,
+   "dauer_ms": 740,
+   "final_url": "https://verkehr.autobahn.de/o/autobahn/A8/services/roadworks"
+  }
+ ]
+}

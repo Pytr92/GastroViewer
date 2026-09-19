@@ -43,14 +43,36 @@ Kfz-Dauerzählstellen im Verkehrsmengen-Block, Luftgütemessnetz im
 Luft-Block; Salzburg: Bebauungspläne und Planblatt, Altstadtschutzzone,
 Märkte mit Öffnungszeiten, Baustellen, Kurzparkzone.
 
-**Nicht belegbar, deshalb nicht gebaut** (Stand der Probe-Runden): AMS-
-Arbeitslose je Gemeinde und GISA (data.gv.at-Suche 404), Wiener
-Radzählungen ohne Standortdatei, Häuserpreisindex-Klassifikation, BNetzA-
-ArcGIS-Dienst (Token nötig), Straßen.NRW-WFS (leere Antwort), Köln und
-Frankfurt (CKAN 404 / TLS), ohsome-Qualitäts-API (HTML statt JSON),
-Regionaldatenbank-Gastzugang (401), Autobahn-GmbH (braucht die Straßen-
-kennung des Punkts). Sie stehen unten mit ihren Fundstellen und werden
-in einer späteren Probe-Runde erneut geprüft.
+**Nicht gebaut, weil nicht belegbar.** Probe-Runde 8 (19.09.2026) hat die
+neun Nachzügler noch einmal auf anderen Wegen gefragt. Ergebnis:
+
+| Quelle | Stand nach Runde 8 |
+|---|---|
+| ohsome-Qualitäts-API | endgültig nicht nutzbar: Alle drei Metadaten-Pfade liefern die HeiGIT-Webseite, kein JSON |
+| Regionaldatenbank (Gastzugang) | GET wird mit 405 abgewiesen, POST mit 401 — der Gastzugang ist zu |
+| Köln (CKAN), Frankfurt | Köln 404 in beiden Schreibweisen; Frankfurt hat ein falsch ausgestelltes Zertifikat |
+| BNetzA-Ladesäulen direkt | CSV-Download 404, ArcGIS weiter mit Token; die Daten kommen ohnehin über MobiData BW |
+| AMS, GISA | Der benutzte API-Pfad ist falsch (`/katalog/api/3/action/…` statt `/katalog/api/action/…`) — Runde 9 fragt nach |
+| Straßen.NRW | **antwortet jetzt**: ohne `bbox` kommen Zählstellen als GML; die leere Antwort lag an der bbox-Syntax. Kandidat für einen eigenen Block |
+| Autobahn-GmbH | Straßenliste (A1–A99) ist abrufbar, Baustellen je Autobahn auch — es fehlt weiter die Zuordnung Punkt → Autobahn |
+| Wiener Radzählungen | unverändert ohne Standortdatei |
+
+Runde 8 hat außerdem die **Nachfolger-Erkennung** für den Kontrakt-Check
+belegt — und dabei gleich drei überholte Kennungen gefunden. Runde 9 hat
+sie einzeln nachgefragt, bevor etwas umgestellt wurde:
+
+| Fund | Was Runde 9 ergab | Folge |
+|---|---|---|
+| Wien führt `REALNUT2024OGD`, der Lage-Block nutzte `REALNUT2022OGD` | Der neue Jahrgang hat **andere Feldnamen** (`LEV1..3` statt `NUTZUNG_LEVEL1..3`, Zählgebiet statt Baublock) | umgestellt, beide Schemata werden gelesen — ein blindes Umstellen hätte den Block geleert |
+| Statistik Austria führt Gemeindegrenzen bis `20260101`, benutzt wurde `20250101` | gleiche Felder `g_id`/`g_name` | umgestellt |
+| Immobilien-Durchschnittspreise für 2025 sind da | — | das Modul nimmt ohnehin das jüngste Jahr; die Fixtures bleiben bei 2024 |
+| Straßen.NRW liefert leer mit `bbox` in EPSG:4326 | mit `bbox` in **EPSG:25832** kommen Zählstellen | belegter Kandidat für einen NRW-Verkehrsmengen-Block, noch nicht gebaut |
+| AMS und GISA über die CKAN-API | auch der Pfad ohne `3` gibt 404 | bleibt offen |
+
+Berlin, Hamburg, MobiData BW, Salzburg, Stuttgart und der BKG führen
+unverändert die Kennungen, die der Code benutzt. Genau dafür läuft der
+Kontrakt-Check jetzt monatlich: Diese drei Funde wären sonst erst
+aufgefallen, wenn jemand die Zahlen angezweifelt hätte.
 
 ## Reihenfolge, die ich vorschlage
 

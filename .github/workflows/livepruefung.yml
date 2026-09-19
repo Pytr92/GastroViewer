@@ -1,0 +1,62 @@
+# Live-Vollprüfung: die fertige Anwendung einmal gegen die echten Dienste
+# (scripts/vollpruefung.py). Die pytest-Suite läuft offline gegen
+# Aufzeichnungen, die Browserprüfung gegen die Attrappe — hier antwortet
+# zum ersten Mal wieder der echte Anbieter. Nur per Handstart, weil jeder
+# Lauf fremde Dienste belastet.
+
+name: Live-Vollprüfung
+
+on:
+  workflow_dispatch:
+    inputs:
+      hinweis:
+        description: "Notiz für das Protokoll (optional)"
+        required: false
+        default: ""
+
+jobs:
+  vollpruefung:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Paket installieren
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install .
+
+      - name: Server starten
+        env:
+          GASTROVIEWER_CONTACT: ${{ secrets.GASTROVIEWER_CONTACT }}
+        run: |
+          gastroviewer serve --port 8011 > server.log 2>&1 &
+          for i in $(seq 1 60); do
+            curl -sf http://127.0.0.1:8011/api/health > /dev/null && break
+            sleep 1
+          done
+          curl -sf http://127.0.0.1:8011/api/health || (cat server.log; exit 1)
+
+      - name: Vollprüfung
+        id: pruefung
+        continue-on-error: true
+        run: python scripts/vollpruefung.py http://127.0.0.1:8011 | tee vollpruefung.log
+
+      - name: Protokoll sichern
+        uses: actions/upload-artifact@v4
+        with:
+          name: vollpruefung
+          path: |
+            vollpruefung.log
+            server.log
+
+      - name: Befunde melden
+        if: steps.pruefung.outcome == 'failure'
+        run: |
+          echo "Die Vollprüfung meldet Befunde — siehe Artefakt vollpruefung.log."
+          tail -40 vollpruefung.log
+          exit 1

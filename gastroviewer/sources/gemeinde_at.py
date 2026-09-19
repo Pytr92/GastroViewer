@@ -194,7 +194,9 @@ def auswerten(daten: dict[str, Any], schluessel: str, gcd: str | None, land_name
 
 
 GEODATA_WFS_URL = "https://www.statistik.gv.at/gs-open/GEODATA/ows"
-GEODATA_GEM_TYP = "GEODATA:STATISTIK_AUSTRIA_GEM_20250101"
+#: Statistik Austria legt die Gemeindegrenzen je Stichtag ab; der
+#: jüngste Jahrgang gilt. 20260101 live belegt am 19.09.2026 (Runde 9).
+GEODATA_GEM_TYP = "GEODATA:STATISTIK_AUSTRIA_GEM_20260101"
 GEODATA_BOX = 0.0005
 
 

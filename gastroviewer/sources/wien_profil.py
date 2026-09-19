@@ -17,7 +17,8 @@ und ab 65 — als Jahresreihe des Zählbezirks gegen ganz Wien.
 ``DAUER``), ``FUSSGEHERZONEOGD`` (``ADRESSE``, ``ZEITRAUM``,
 ``AUSN_TEXT``), ``BEGEGNUNGSZONEOGD`` (``ADRESSE``), ``STRUKGESCHSTROGD``
 (Geschäftsstraßen des Stadtstrukturplans, ``TYP``/``TYP_TXT``),
-``REALNUT2022OGD`` (Realnutzungskartierung, ``NUTZUNG_LEVEL1..3``),
+``REALNUT2024OGD`` (Realnutzungskartierung, Felder ``LEV1..3``;
+  der Vorgänger 2022 hieß sie ``NUTZUNG_LEVEL1..3`` — beide werden gelesen),
 ``GEBAEUDEINFOOGD`` (Kulturgut-Gebäudeinventar: ``BAUJAHR``, ``GESCH_ANZ``,
 ``L_NUTZUNG``, ``L_BAUTYP`` — nicht flächendeckend). Am Stephansplatz:
 Kurzparkzone „Mo.–Fr. 9–22 Uhr, 2 h“, 60 Fußgängerzonen im 400-m-Kasten,
@@ -212,6 +213,27 @@ def _naechste(features: list[dict[str, Any]], lat: float, lon: float, felder: di
     return out
 
 
+#: Die Stadt kartiert die Realnutzung alle zwei Jahre und legt jeden
+#: Jahrgang als eigenen Layer ab. Mit dem Jahrgang 2024 hat sie die Felder
+#: umbenannt (``NUTZUNG_LEVEL1`` → ``LEV1``) und den Baublock durch das
+#: Zählgebiet ersetzt — deshalb liest ``realnutzung_aufbereiten`` beide
+#: Schemata. Live belegt am 19.09.2026 (Probe-Runde 9).
+REALNUT_TYP = "REALNUT2024OGD"
+REALNUT_JAHR = 2024
+
+
+def realnutzung_aufbereiten(feature: dict[str, Any]) -> dict[str, Any]:
+    p = feature.get("properties") or {}
+    return {
+        "stufe1": p.get("LEV1") or p.get("NUTZUNG_LEVEL1"),
+        "stufe2": p.get("LEV2") or p.get("NUTZUNG_LEVEL2"),
+        "stufe3": p.get("LEV3") or p.get("NUTZUNG_LEVEL3"),
+        "baublock": p.get("BLK"),
+        "zaehlgebiet": p.get("ZGEB"),
+        "jahr": REALNUT_JAHR,
+    }
+
+
 async def lage_load(out: Outbound, lat: float, lon: float, radius: int) -> SourceResult:
     started = time.perf_counter()
     if not in_wien(lat, lon):
@@ -242,11 +264,8 @@ async def lage_load(out: Outbound, lat: float, lon: float, radius: int) -> Sourc
     gs = _naechste(await hol("STRUKGESCHSTROGD", bbox, 200), lat, lon, {"typ": "TYP", "typ_text": "TYP_TXT"}, radius)
     data["geschaeftsstrasse"] = {"am_punkt": next((g for g in gs if g["distanz_m"] == 0), None),
                                  "naechste": gs[0] if gs else None, "im_radius": sum(1 for g in gs if g["im_radius"])}
-    rn = [f for f in await hol("REALNUT2022OGD", _punkt_box(lat, lon), 5) if _enthaelt(f, lat, lon)]
-    data["realnutzung"] = ({"stufe1": rn[0]["properties"].get("NUTZUNG_LEVEL1"),
-                            "stufe2": rn[0]["properties"].get("NUTZUNG_LEVEL2"),
-                            "stufe3": rn[0]["properties"].get("NUTZUNG_LEVEL3"),
-                            "baublock": rn[0]["properties"].get("BLK"), "jahr": 2022} if rn else None)
+    rn = [f for f in await hol(REALNUT_TYP, _punkt_box(lat, lon), 5) if _enthaelt(f, lat, lon)]
+    data["realnutzung"] = realnutzung_aufbereiten(rn[0]) if rn else None
     geb = _naechste(await hol("GEBAEUDEINFOOGD", _bbox_um(lat, lon, 150), 60), lat, lon,
                     {"strasse": "STRNAML", "von": "VONN", "bis": "BISN", "name": "HA_NAME", "baujahr": "BAUJAHR",
                      "geschosse": "GESCH_ANZ", "nutzung": "L_NUTZUNG", "bautyp": "L_BAUTYP", "architekt": "ARCHITEKT"}, 150)
@@ -264,6 +283,6 @@ async def lage_load(out: Outbound, lat: float, lon: float, radius: int) -> Sourc
         provenance=Provenance(
             source="Stadt Wien — Kurzparkzonen, Fußgänger-/Begegnungszonen (MA 46), Stadtstrukturplan und "
                    "Realnutzungskartierung (MA 18), Gebäudeinformation (MA 19)",
-            license=LIZENZ, endpoint=WFS_URL, stand="laufend gepflegt (Realnutzung 2022)",
+            license=LIZENZ, endpoint=WFS_URL, stand=f"laufend gepflegt (Realnutzung {REALNUT_JAHR})",
             retrieved_at=now_iso(), note="Punkt-in-Fläche für Zonen und Nutzung, Umkreis für Fußgängerzonen und Gebäude."),
     )

@@ -538,7 +538,8 @@ async def verkehrsmengen_load(out: Outbound, settings: Settings, lat: float, lon
         name="verkehrsmenge", ok=True, data=data,
         duration_ms=int((time.perf_counter() - started) * 1000), warnings=warnungen,
         provenance=Provenance(source="Verkehrsstärken (temporäre Zählungen) und Verkehrsmengen DTV 2019 Hamburg (Urban Data Platform, OGC API)",
-                              license=VM_LIZENZ, endpoint=f"{OAF_BASE}/verkehrsstaerken", retrieved_at=now_iso()),
+                              license=VM_LIZENZ, endpoint=f"{OAF_BASE}/verkehrsstaerken",
+                              stand=f"jüngste Zählung {data['jahr']}", retrieved_at=now_iso()),
     )
 
 
@@ -640,6 +641,8 @@ async def stadtteil_load(out: Outbound, lat: float, lon: float) -> SourceResult:
         duration_ms=int((time.perf_counter() - started) * 1000), warnings=warnungen,
         provenance=Provenance(source="Regionalstatistische Daten der Stadtteile Hamburg (Statistikamt Nord, Urban Data Platform)",
                               license=LIZENZ, endpoint=f"{OAF_BASE}/regionalstatistische_daten_stadtteile",
+                              stand=(f"Jahresreihen bis {max(i['bezirk']['jahr'] for i in data['indikatoren'])}"
+                                     if data and data.get("indikatoren") else None),
                               retrieved_at=now_iso(), note="Punktkasten-Abfrage, Stadtteil über Punkt-in-Fläche; Jahresreihen lokal gebildet."),
     )
 

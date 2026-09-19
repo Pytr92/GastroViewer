@@ -106,6 +106,54 @@ export function setQuelle(id, prov) {
   b.querySelector('.quelle')?.remove();
   const z = quellenzeile(prov);
   if (z) b.append(z);
+  setStand(id, prov);
+}
+
+/* Datenstand als Chip im Blockkopf — Spec §5 verlangt Quelle und Stand an
+   jedem Block; beides stand bisher nur klein in der Fußzeile. Wer einen
+   Standort prüft, soll ohne Scrollen sehen, aus welchem Jahr eine Zahl
+   stammt: Eine Verkehrszählung von 2021 wiegt anders als ein Stundenwert.
+
+   Der Stand ist Fließtext der Quelle („Berichtsjahr 2024", „Normalperiode
+   1991–2020"), deshalb wird die jüngste Jahreszahl daraus gelesen. */
+const LAUFEND = /laufend|stündlich|täglich|monatlich|wöchentlich|aktuell|fortlaufend|gepflegt/i;
+/* Bezugszeiträume, die per Definition feststehen und nicht „veralten":
+   die Klima-Normalperiode, der Zensus-Stichtag, die Fünfjahresrunden der
+   EU-Lärmkartierung, ein endgültiges Wahlergebnis. */
+const FESTE_PERIODE = /normalperiode|stichtag|kartierungsrunde|endgültig/i;
+/* Ab vier Jahren Rückstand wird der Chip gelb. Jahresstatistiken
+   erscheinen regulär mit ein bis drei Jahren Verzug — das ist normal und
+   bleibt unmarkiert. */
+const ALT_AB_JAHREN = 4;
+
+export function standInfo(stand) {
+  if (!stand) return null;
+  const text = String(stand);
+  const jahre = (text.match(/(?:19|20)\d{2}/g) || []).map(Number);
+  const jahr = jahre.length ? Math.max(...jahre) : null;
+  if (jahr === null) return LAUFEND.test(text) ? { text: 'laufend', alt: false, titel: text } : null;
+  const alter = new Date().getFullYear() - jahr;
+  const fest = FESTE_PERIODE.test(text);
+  /* Sagt die Quelle selbst, dass sie laufend gepflegt wird, gilt das —
+     auch wenn im Text eine ältere Jahreszahl steht. Der Messe-Kalender
+     nennt mit „Veranstaltungen ab 2018" seinen Anfang, nicht sein Ende. */
+  if (LAUFEND.test(text)) return { text: 'laufend', alt: false, titel: text };
+  return {
+    text: `Stand ${jahr}`,
+    alt: !fest && alter >= ALT_AB_JAHREN,
+    titel: text + (!fest && alter >= ALT_AB_JAHREN ? ` — ${alter} Jahre alt` : ''),
+  };
+}
+
+export function setStand(id, prov) {
+  const kopf = document.getElementById(`block-${id}`)?.querySelector('h2');
+  if (!kopf) return;
+  kopf.querySelector('.stand')?.remove();
+  const info = standInfo(prov?.stand);
+  if (!info) return;
+  kopf.append(el('span', {
+    class: `stand${info.alt ? ' alt' : ''}`, id: `stand-${id}`, title: info.titel,
+  }, info.text));
 }
 
 /** Fehleranzeige mit konkreter Ursache — Spec §5. */

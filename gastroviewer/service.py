@@ -19,14 +19,13 @@ from .cache import AsyncCache, cache_key
 from .config import Settings
 from .http import Outbound
 from .laender import AT, DE, Land, land_aus_code, land_aus_iso, laender_fuer_punkt, quelle_fehlt
+from . import orte as orte_mod
 from .sources import (airbnb as airbnb_mod,
                       bast as bast_mod,
                       baurecht as baurecht_mod,
-                      baustellen as baustellen_mod, bayern,
-                      berlin as berlin_mod, boris,
+                      baustellen as baustellen_mod, boris,
                       dynamik as dynamik_mod,
                       frequenz as frequenz_mod,
-                      hamburg as hamburg_mod,
                       einkommen as einkommen_mod, gehweg,
                       genesis as genesis_mod,
                       ihk_berlin as ihk_mod,
@@ -35,7 +34,6 @@ from .sources import (airbnb as airbnb_mod,
                       klima as klima_mod, kreisprofil as kreisprofil_mod,
                       laerm as laerm_mod, links,
                       maerkte as maerkte_mod,
-                      wien as wien_mod,
                       marke as marke_mod, messe as messe_mod,
                       muenchen, nominatim, overpass,
                       overture as overture_mod,
@@ -46,7 +44,6 @@ from .sources import (airbnb as airbnb_mod,
                       wahl_at as wahl_at_mod, gemeinde_at as gemeinde_at_mod,
                       wien_profil as wien_profil_mod,
                       wien_verkehr as wien_verkehr_mod,
-                      salzburg as salzburg_mod,
                       immobilien_at as immobilien_at_mod,
                       mobidata_bw as mobidata_mod,
                       register as register_mod, scan as scan_mod,
@@ -372,9 +369,33 @@ class PointService:
             return None
         return (res.data or {}).get("bundesland_iso") if res.ok else None
 
-    async def _in_bw(self, lat: float, lon: float) -> bool:
-        iso = await self.bundesland_iso(lat, lon)
-        return iso == "DE-BW" or (iso is None and mobidata_mod.in_bw(lat, lon))
+    async def _ort_quelle(self, block: str, lat: float, lon: float, radius: int = 0,
+                          refresh: bool = False, adresse: dict[str, Any] | None = None,
+                          land: Land | None = None):
+        """Die Ortsweiche: bedient eine Stadt oder Region diesen Block am
+        Punkt, liefert sie das Ergebnis — sonst ``None`` und die aufrufende
+        Methode nimmt ihre Auffangquelle.
+
+        Die Tabelle steht in ``orte.py``. Geprüft wird in ihrer Reihenfolge
+        (feinerer Dienst zuerst) und immer erst der Kasten, dann das Land;
+        ein Bundesland-Code kostet nur dann eine Adressabfrage, wenn der
+        Kasten schon passt."""
+        land = land or await self.land(lat, lon)
+        for ort in orte_mod.fuer_block(block, land.code):
+            if not ort.im_kasten(lat, lon):
+                continue
+            if ort.bundesland_iso:
+                iso = await self.bundesland_iso(lat, lon)
+                if iso is not None and iso != ort.bundesland_iso:
+                    continue
+            q = ort.quellen[block]
+            key = cache_key(q.cache, lat, lon, radius if q.mit_radius else 0)
+            return await self._cached(
+                q.cache, key,
+                lambda: q.laden(self, lat, lon, radius, refresh, adresse),
+                refresh=refresh,
+            )
+        return None
 
     async def _mobidata_roadworks(self, refresh: bool = False) -> list[dict[str, Any]]:
         async def laden() -> SourceResult:
@@ -452,30 +473,8 @@ class PointService:
         """Lage-Indikatoren (Kurzparkzone, Fußgängerzonen, Geschäftsstraßen,
         Realnutzung, Gebäudeinfo) — Wien vollständig, Salzburg nur die
         Kurzparkzone; sonst ehrlich leer."""
-        if wien_mod.in_wien(lat, lon):
-            return await self._cached(
-                "wien_lage", cache_key("wien_lage", lat, lon, radius),
-                lambda: wien_profil_mod.lage_load(self.outbound, lat, lon, radius),
-                refresh=refresh,
-            )
-        if salzburg_mod.in_salzburg(lat, lon):
-            return await self._cached(
-                "salzburg_lage", cache_key("salzburg_lage", lat, lon, radius),
-                lambda: salzburg_mod.lage_load(self.outbound, lat, lon, radius),
-                refresh=refresh,
-            )
-        if hamburg_mod.in_hamburg(lat, lon):
-            return await self._cached(
-                "hamburg_lage", cache_key("hamburg_lage", lat, lon, radius),
-                lambda: hamburg_mod.lage_load(self.outbound, lat, lon, radius),
-                refresh=refresh,
-            )
-        if await self._in_bw(lat, lon):
-            return await self._cached(
-                "mobidata_lage", cache_key("mobidata_lage", lat, lon, radius),
-                lambda: self._lage_bw(lat, lon, radius),
-                refresh=refresh,
-            )
+        if (res := await self._ort_quelle("lage", lat, lon, radius, refresh)) is not None:
+            return res
         return SourceResult(name="lage", ok=True, data=None,
                             warnings=["Lage-Indikatoren gibt es bisher für Wien (Zonen, Nutzung, Gebäude), "
                                       "Salzburg (Kurzparkzone), Hamburg (Parkhäuser, Parkraum) und "
@@ -505,17 +504,10 @@ class PointService:
         geladenen Adresse — deshalb nach dem Sammeln, ohne eigene Anfrage
         außerhalb Münchens. In Wien der Zählbezirk am Punkt."""
         a = adresse or {}
-        if lat is not None and lon is not None and wien_mod.in_wien(lat, lon):
-            return await self._cached(
-                "wien_zaehlbezirk", cache_key("wien_zaehlbezirk", lat, lon, 0),
-                lambda: wien_profil_mod.zaehlbezirk_load(
-                    self.outbound, lat, lon, a.get("ortsteil"), self._wien_zb_daten),
-            )
-        if lat is not None and lon is not None and hamburg_mod.in_hamburg(lat, lon):
-            return await self._cached(
-                "hamburg_stadtteil", cache_key("hamburg_stadtteil", lat, lon, 0),
-                lambda: hamburg_mod.stadtteil_load(self.outbound, lat, lon),
-            )
+        if lat is not None and lon is not None:
+            res = await self._ort_quelle("indikatoren", lat, lon, adresse=a)
+            if res is not None:
+                return res
         return await indikatoren_mod.load(
             self.outbound, self.settings,
             a.get("gemeinde"), a.get("ortsteil"),
@@ -525,22 +517,8 @@ class PointService:
     async def radzaehlung(self, lat: float, lon: float, radius: int, refresh: bool = False):
         # Zählstellen ändern sich nicht stündlich; der Cache-Schlüssel
         # rundet ohnehin auf 4 Nachkommastellen. TTL wie OSM: 24 h.
-        if hamburg_mod.in_hamburg(lat, lon):
-            key = cache_key("hamburg_rad", lat, lon, radius)
-            return await self._cached(
-                "hamburg_rad",
-                key,
-                lambda: hamburg_mod.rad_load(
-                    self.outbound, self.settings, lat, lon, radius),
-                refresh=refresh,
-            )
-        if await self._in_bw(lat, lon):
-            key = cache_key("mobidata_rad", lat, lon, radius)
-            return await self._cached(
-                "mobidata_rad", key,
-                lambda: mobidata_mod.eco_load(self.outbound, lat, lon, radius, lambda: self._mobidata_eco(refresh)),
-                refresh=refresh,
-            )
+        if (res := await self._ort_quelle("radzaehlung", lat, lon, radius, refresh)) is not None:
+            return res
         key = cache_key("muenchen_rad", lat, lon, radius)
         return await self._cached(
             "muenchen_rad",
@@ -556,29 +534,8 @@ class PointService:
         """Städtische Märkte (München oder Hamburg). Außerhalb der
         Stadtgebiete entscheidet die Quelle selbst — dann geht keine
         Anfrage hinaus."""
-        if wien_mod.in_wien(lat, lon):
-            key = cache_key("wien_maerkte", lat, lon, radius)
-            return await self._cached(
-                "wien_maerkte", key,
-                lambda: wien_mod.maerkte_load(self.outbound, lat, lon, radius),
-                refresh=refresh,
-            )
-        if salzburg_mod.in_salzburg(lat, lon):
-            key = cache_key("salzburg_maerkte", lat, lon, radius)
-            return await self._cached(
-                "salzburg_maerkte", key,
-                lambda: salzburg_mod.maerkte_load(self.outbound, lat, lon, radius),
-                refresh=refresh,
-            )
-        if hamburg_mod.in_hamburg(lat, lon):
-            key = cache_key("hamburg_maerkte", lat, lon, radius)
-            return await self._cached(
-                "hamburg_maerkte",
-                key,
-                lambda: hamburg_mod.maerkte_load(
-                    self.outbound, self.settings, lat, lon, radius),
-                refresh=refresh,
-            )
+        if (res := await self._ort_quelle("maerkte", lat, lon, radius, refresh)) is not None:
+            return res
         key = cache_key("muenchen_maerkte", lat, lon, radius)
         return await self._cached(
             "muenchen_maerkte",
@@ -591,53 +548,8 @@ class PointService:
         """Baustellen: München (Vier-Wochen-Vorschau), Hamburg
         („Bauweiser"-Steckbriefe) oder Berlin (VIZ). Außerhalb entscheidet
         die Münchner Quelle selbst — dann geht keine Anfrage hinaus."""
-        if wien_mod.in_wien(lat, lon):
-            key = cache_key("wien_baustellen", lat, lon, radius)
-            return await self._cached(
-                "wien_baustellen", key,
-                lambda: wien_mod.baustellen_load(self.outbound, lat, lon, radius),
-                refresh=refresh,
-            )
-        if salzburg_mod.in_salzburg(lat, lon):
-            key = cache_key("salzburg_baustellen", lat, lon, radius)
-            return await self._cached(
-                "salzburg_baustellen", key,
-                lambda: salzburg_mod.baustellen_load(self.outbound, lat, lon, radius),
-                refresh=refresh,
-            )
-        if hamburg_mod.in_hamburg(lat, lon):
-            key = cache_key("hamburg_baustellen", lat, lon, radius)
-            return await self._cached(
-                "hamburg_baustellen",
-                key,
-                lambda: hamburg_mod.baustellen_load(
-                    self.outbound, self.settings, lat, lon, radius),
-                refresh=refresh,
-            )
-        if mobidata_mod.in_stuttgart(lat, lon):
-            key = cache_key("stuttgart_baustellen", lat, lon, radius)
-            return await self._cached(
-                "stuttgart_baustellen", key,
-                lambda: mobidata_mod.stuttgart_baustellen_load(self.outbound, lat, lon, radius),
-                refresh=refresh,
-            )
-        if await self._in_bw(lat, lon):
-            key = cache_key("mobidata_baustellen", lat, lon, radius)
-            return await self._cached(
-                "mobidata_baustellen", key,
-                lambda: mobidata_mod.roadworks_load(self.outbound, lat, lon, radius,
-                                                    lambda: self._mobidata_roadworks(refresh)),
-                refresh=refresh,
-            )
-        if berlin_mod.in_berlin(lat, lon):
-            key = cache_key("berlin_baustellen", lat, lon, radius)
-            return await self._cached(
-                "berlin_baustellen",
-                key,
-                lambda: berlin_mod.baustellen_load(
-                    self.outbound, self.settings, lat, lon, radius),
-                refresh=refresh,
-            )
+        if (res := await self._ort_quelle("baustellen", lat, lon, radius, refresh)) is not None:
+            return res
         key = cache_key("muenchen_baustellen", lat, lon, radius)
         return await self._cached(
             "muenchen_baustellen",
@@ -736,46 +648,12 @@ class PointService:
         """In Bayern BAYSIS (9 441 Zählstellen, ganzes klassifiziertes
         Netz), sonst die bundesweiten BASt-Dauerzählstellen; in Wien die
         Kfz-Dauerzählstellen der MA 46."""
-        if wien_verkehr_mod.in_wien(lat, lon):
-            key = cache_key("wien_verkehrsmenge", lat, lon, radius)
-            return await self._cached(
-                "wien_verkehrsmenge", key,
-                lambda: wien_verkehr_mod.kfz_load(
-                    self.outbound, lat, lon, radius, lambda: self._wien_kfz_daten(refresh)),
-                refresh=refresh,
-            )
         land = await self.land(lat, lon)
+        res = await self._ort_quelle("verkehrsmenge", lat, lon, radius, refresh, land=land)
+        if res is not None:
+            return res
         if (leer := self._nur_in("verkehrsmenge", land)) is not None:
             return leer
-        if berlin_mod.in_berlin(lat, lon):
-            key = cache_key("berlin_verkehrsmenge", lat, lon, radius)
-            return await self._cached(
-                "berlin_verkehrsmenge", key,
-                lambda: berlin_mod.verkehrsmengen_load(self.outbound, self.settings, lat, lon, radius),
-                refresh=refresh,
-            )
-        if hamburg_mod.in_hamburg(lat, lon):
-            key = cache_key("hamburg_verkehrsmenge", lat, lon, radius)
-            return await self._cached(
-                "hamburg_verkehrsmenge", key,
-                lambda: hamburg_mod.verkehrsmengen_load(self.outbound, self.settings, lat, lon, radius),
-                refresh=refresh,
-            )
-        if await self._in_bw(lat, lon):
-            key = cache_key("svz_bw_punkt", lat, lon, radius)
-            return await self._cached(
-                "svz_bw_punkt", key,
-                lambda: mobidata_mod.svz_load(self.outbound, lat, lon, radius, lambda: self._mobidata_svz(refresh)),
-                refresh=refresh,
-            )
-        if bayern.in_bayern(lat, lon):
-            key = cache_key("baysis", lat, lon, radius)
-            return await self._cached(
-                "baysis",
-                key,
-                lambda: bayern.verkehrsmengen(self.outbound, self.settings, lat, lon, radius),
-                refresh=refresh,
-            )
         key = cache_key("bast_punkt", lat, lon, radius)
         return await self._cached(
             "bast_punkt",
@@ -872,14 +750,10 @@ class PointService:
         return res.data["stationen"]
 
     async def luft(self, lat: float, lon: float, refresh: bool = False):
-        if wien_verkehr_mod.in_wien(lat, lon):
-            key = cache_key("wien_luft", lat, lon, 0)
-            return await self._cached(
-                "wien_luft", key,
-                lambda: wien_verkehr_mod.luft_load(self.outbound, lat, lon),
-                refresh=refresh,
-            )
         land = await self.land(lat, lon)
+        res = await self._ort_quelle("luft", lat, lon, refresh=refresh, land=land)
+        if res is not None:
+            return res
         if (leer := self._nur_in("luft", land)) is not None:
             return leer
         key = cache_key("luft_punkt", lat, lon, 0)
@@ -991,14 +865,8 @@ class PointService:
         if land.code == "AT":
             # Flächenwidmung ist Landesrecht — offen und punktgenau in Wien,
             # in Salzburg als Bebauungsplan-Umgriff mit Plan-PDF.
-            if wien_mod.in_wien(lat, lon):
-                laden = lambda: wien_mod.baurecht_load(self.outbound, lat, lon)  # noqa: E731
-            elif salzburg_mod.in_salzburg(lat, lon):
-                laden = lambda: salzburg_mod.baurecht_load(self.outbound, lat, lon)  # noqa: E731
-            else:
-                return planung_at_mod.baurecht_ohne_dienst(land.name)
-            key = cache_key("baurecht_at", lat, lon, 0)
-            return await self._cached("baurecht_at", key, laden, refresh=refresh)
+            res = await self._ort_quelle("baurecht", lat, lon, refresh=refresh, land=land)
+            return res if res is not None else planung_at_mod.baurecht_ohne_dienst(land.name)
         key = cache_key("baurecht", lat, lon, 0)
         return await self._cached(
             "baurecht", key,

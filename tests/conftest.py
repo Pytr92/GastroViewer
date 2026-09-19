@@ -93,7 +93,7 @@ def wien_wfs():
             "FUSSGEHERZONEOGD": lies("wien_r5_fussgeherzoneogd.json"),
             "BEGEGNUNGSZONEOGD": lies("wien_r5_begegnungszoneogd.json"),
             "STRUKGESCHSTROGD": lies("wien_r5_strukgeschstrogd.json"),
-            "REALNUT2022OGD": lies("wien_r5_realnut2022ogd.json"),
+            "REALNUT2024OGD": lies("wien_r9_realnut2024ogd.json"),
             "GEBAEUDEINFOOGD": lies("wien_r5_gebaeudeinfoogd.json"),
             "ZAEHLBEZIRKOGD": lies("wien_r5_zaehlbezirkogd.json"),
             # Runde 6: Kfz-Dauerzählstellen und Luftgütemessnetz stadtweit.
@@ -162,7 +162,7 @@ def wien_lage_wfs():
             "FUSSGEHERZONEOGD": lies("wien_r5_fussgeherzoneogd.json"),
             "BEGEGNUNGSZONEOGD": lies("wien_r5_begegnungszoneogd.json"),
             "STRUKGESCHSTROGD": lies("wien_r5_strukgeschstrogd.json"),
-            "REALNUT2022OGD": lies("wien_r5_realnut2022ogd.json"),
+            "REALNUT2024OGD": lies("wien_r9_realnut2024ogd.json"),
             "GEBAEUDEINFOOGD": lies("wien_r5_gebaeudeinfoogd.json"),
             "ZAEHLBEZIRKOGD": lies("wien_r5_zaehlbezirkogd.json")}
 

@@ -12,16 +12,31 @@ from gastroviewer.config import TTL_KLASSEN, Settings
 SERVICE = Path(__file__).resolve().parents[1] / "gastroviewer" / "service.py"
 
 
+# Die Ortsweiche (``service._ort_quelle``) holt den Cache-Namen aus der
+# Registry statt aus einem Literal. Das ist die einzige erlaubte Ausnahme;
+# ihre Namen kommen unten aus ``orte`` dazu.
+CACHE_AUS_REGISTRY = "q.cache"
+
+
 def quellen_aus_service() -> set[str]:
     """Erstes Argument jedes ``self._cached(...)``-Aufrufs — per AST, nicht
-    per grep: ein Kommentar oder ein f-String soll den Test nicht täuschen."""
-    namen = set()
+    per grep: ein Kommentar oder ein f-String soll den Test nicht täuschen.
+
+    Dazu die Cache-Namen der Orts-Registry: seit 0.6.1 steht die Ortsweiche
+    als Tabelle in ``orte.py``, ihre Namen erreichen ``_cached`` über eine
+    Variable. Beide Wege zusammen sind der vollständige Bestand."""
+    from gastroviewer import orte
+
+    namen = {q.cache for ort in orte.ORTE for q in ort.quellen.values()}
     for node in ast.walk(ast.parse(SERVICE.read_text(encoding="utf-8"))):
         if (isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute)
                 and node.func.attr == "_cached" and node.args):
             erstes = node.args[0]
+            if (isinstance(erstes, ast.Attribute)
+                    and ast.unparse(erstes) == CACHE_AUS_REGISTRY):
+                continue
             assert isinstance(erstes, ast.Constant) and isinstance(erstes.value, str), (
-                f"Quellenname muss ein Literal sein (Zeile {node.lineno})")
+                f"Quellenname muss ein Literal oder {CACHE_AUS_REGISTRY} sein (Zeile {node.lineno})")
             namen.add(erstes.value)
     return namen
 
