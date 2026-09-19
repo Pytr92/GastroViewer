@@ -32,6 +32,7 @@ class FakeOutbound:
                  laerm=None, fehler: set[str] | None = None, photon=None,
                  geosphere=None, laerminfo=None, lfrz=None, wien=None,
                  statistik_at=None, wahl_at=None, starkregen=None, wien_csv=None,
+                 salzburg=None,
                  baustellen=None, maerkte=None, indikatoren=None,
                  airbnb=None, messe=None, tourismus=None,
                  uba=None, bfg_hochwasser=None,
@@ -62,6 +63,7 @@ class FakeOutbound:
         self.starkregen = starkregen
         # Wiener OGD-CSVs (MA 23): Text je URL-Bruchstück.
         self.wien_csv = wien_csv or {}
+        self.salzburg = salzburg or {}
         self.einkommen = einkommen or {"features": []}
         # Fixture je Tabelle — Einkommen und Kreisprofil teilen sich Endpunkt
         # und URL, unterscheiden sich nur im layer-Parameter.
@@ -179,6 +181,12 @@ class FakeOutbound:
             if "lfrz_hochwasser" in self.fehler:
                 raise SourceError("timeout", "Zeitüberschreitung — Dienst antwortet nicht.")
             return self.lfrz
+        if "data.stadt-salzburg.at" in url:
+            typ = str(((kw or {}).get("params") or {}).get("typeName", "")).split(":")[-1]
+            self.calls.append(f"salzburg_{typ.lower()}")
+            if "salzburg" in self.fehler:
+                raise SourceError("timeout", "Zeitüberschreitung — Dienst antwortet nicht.")
+            return self.salzburg.get(typ) or {"type": "FeatureCollection", "features": []}
         if "data.wien.gv.at" in url:
             typ = str(((kw or {}).get("params") or {}).get("typeName", "")).split(":")[-1]
             self.calls.append(f"wien_{typ.lower()}")

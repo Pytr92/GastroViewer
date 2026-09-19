@@ -48,6 +48,7 @@ from typing import Any
 
 from ..http import Outbound
 from .base import Provenance, SourceError, SourceResult, now_iso
+from . import salzburg as salzburg_mod
 from . import wien as wien_mod
 
 HOCHWASSER_URL = "https://inspire.lfrz.gv.at/000801/ows"
@@ -181,8 +182,8 @@ TEXTE = {
         "Abbruch, Umbau und Fassadenänderungen sind hier bewilligungspflichtig "
         "und werden nach dem Stadtbild beurteilt (§ 7 BO für Wien)."),
     "erhaltungssatzung_nicht_abgefragt": (
-        "Schutzzonen sind hier nur für Wien eingebunden — außerhalb sagt der "
-        "Block dazu nichts."),
+        "Schutzzonen sind nur für Wien und Salzburg (Altstadtschutzzone) eingebunden — "
+        "außerhalb sagt der Block dazu nichts."),
 }
 
 
@@ -207,6 +208,18 @@ async def load(out: Outbound, lat: float, lon: float) -> SourceResult:
             data["erhaltungssatzung"] = await wien_mod.schutzzonen(out, lat, lon)
         except SourceError as err:
             warnungen.append(f"Schutzzonen der Stadt Wien nicht abrufbar: {err.message}")
+    elif salzburg_mod.in_salzburg(lat, lon):
+        try:
+            data["erhaltungssatzung"] = await salzburg_mod.altstadtschutzzone(out, lat, lon)
+            data["texte"] = {**TEXTE,
+                             "erhaltungssatzung_titel": data["erhaltungssatzung"]["titel"],
+                             "erhaltungssatzung_leer": "Der Punkt liegt in keiner Altstadtschutzzone.",
+                             "erhaltungssatzung_treffer": (
+                                 "Im Geltungsbereich des Altstadterhaltungsgesetzes prüft die "
+                                 "Sachverständigenkommission Umbauten, Fassaden, Werbung und "
+                                 "Schanigärten — Auflagen sind die Regel.")}
+        except SourceError as err:
+            warnungen.append(f"Altstadtschutzzone der Stadt Salzburg nicht abrufbar: {err.message}")
     else:
         warnungen.append(TEXTE["erhaltungssatzung_nicht_abgefragt"])
     return SourceResult(
@@ -216,9 +229,12 @@ async def load(out: Outbound, lat: float, lon: float) -> SourceResult:
         provenance=Provenance(
             source=("Hochwassergefahren- und -risikokarten Österreich (BML/WISA, "
                     "INSPIRE-Dienst LFRZ)" + (" · Schutzzonen: Stadt Wien (WFS data.wien.gv.at)"
-                                              if wien_mod.in_wien(lat, lon) else "")),
+                                              if wien_mod.in_wien(lat, lon) else
+                                              " · Altstadtschutzzone: Stadt Salzburg (WFS)"
+                                              if salzburg_mod.in_salzburg(lat, lon) else "")),
             license=HOCHWASSER_LIZENZ + (" · " + wien_mod.LIZENZ if wien_mod.in_wien(lat, lon)
-                                         else ""),
+                                         else " · " + salzburg_mod.LIZENZ
+                                         if salzburg_mod.in_salzburg(lat, lon) else ""),
             endpoint=HOCHWASSER_URL,
             retrieved_at=now_iso(),
             note=("Punktabfrage über GetFeatureInfo (CRS:84). HQ30 ≙ HQhäufig, "

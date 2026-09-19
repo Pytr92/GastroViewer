@@ -456,16 +456,26 @@ function zeigeBaurecht(d) {
     return;
   }
   const b = d.data;
+  const oesterreich = ['Wien', 'Salzburg'].includes(b.gebiet);
   const STUFEN = {
     gebietsart: 'Gebietsart bekannt',
+    plan: 'Bebauungsplan am Punkt',
     umring: 'Plan bekannt, Gebietsart nicht',
-    kein_plan: 'kein Bebauungsplan (§ 34 BauGB)',
+    kein_plan: oesterreich ? 'kein Bebauungsplan am Punkt' : 'kein Bebauungsplan (§ 34 BauGB)',
     kein_dienst: 'kein offener Dienst',
   };
-  setStatus(id, b.stufe === 'gebietsart' ? 'ok' : 'leer',
+  setStatus(id, ['gebietsart', 'plan'].includes(b.stufe) ? 'ok' : 'leer',
     STUFEN[b.stufe] || '');
 
   const teile = [];
+  if (b.planblatt) {
+    teile.push(el('div', { class: 'notiz' },
+      el('strong', {}, 'Flächenwidmung: '),
+      `Planblatt ${b.planblatt.nummer || ''} — die Widmungsart steht nur im `,
+      b.planblatt.pdf
+        ? el('a', { href: b.planblatt.pdf, target: '_blank', rel: 'noopener' }, 'Plan-PDF der Stadt')
+        : 'Plan der Stadt', '.'));
+  }
   for (const f of b.baugebiete || []) {
     const dt = f.deutung || {};
     teile.push(el('div', { class: 'notiz' },
@@ -2089,16 +2099,23 @@ export function zeigeLage(d) {
   }
   const l = d.data;
   if (!l) {
-    setStatus(id, 'leer', 'nur Wien');
+    setStatus(id, 'leer', 'nur Wien und Salzburg');
     setInhalt(id, ...warnungen(d.warnings || []));
     setQuelle(id, d.provenance);
     return;
   }
   const teile = [];
   const kp = l.kurzparkzone;
-  teile.push(el('div', { class: kp ? 'notiz' : 'notiz' },
+  teile.push(el('div', { class: 'notiz' },
     el('strong', {}, 'Kurzparkzone: '),
-    kp ? `${kp.zeitraum || ''}${kp.dauer ? `, Höchstparkdauer ${kp.dauer}` : ''}` : 'keine am Punkt'));
+    kp ? `${kp.art ? `${kp.art} ` : ''}${kp.bezirk ? `„${kp.bezirk}“ ` : ''}${kp.zeitraum || ''}${kp.dauer ? `, Höchstparkdauer ${kp.dauer}` : ''}` : 'keine am Punkt'));
+  const gsOhne = (l.geschaeftsstrasse || {}).ohne_dienst;
+  if (gsOhne) {
+    setStatus(id, 'ok', kp ? 'Kurzparkzone' : 'geladen');
+    setInhalt(id, ...teile, ...(l.hinweise || []).map((h) => hinweisZeile(h)), ...warnungen(d.warnings || []));
+    setQuelle(id, d.provenance);
+    return;
+  }
   const fz = l.fussgaengerzonen || [];
   const fzAm = fz.filter((z) => z.distanz_m === 0);
   teile.push(el('div', { class: fzAm.length ? 'warnung' : 'notiz' },

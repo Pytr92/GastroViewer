@@ -503,9 +503,11 @@ Antworten liegen als Fixtures unter `fixtures/at/`):
 | Klima | GeoSphere Austria, Jahreswerte 1991–2020 der nächsten Station | dieselben fünf Kennzahlen wie DWD |
 | Straßenlärm | lärminfo.at (EU-Umgebungslärmkartierung 2022) | 5-dB-Klassen Lden/Lnight, Straße und Schiene |
 | Hochwasser | BML/LFRZ INSPIRE-Dienst (HQ30/100/300, Gefahrenzonen, Risikogebiete) | bundesweit; Risikogebiete getrennt ausgewiesen |
-| Baurecht | Flächenwidmung der Stadt Wien mit Gastronomie-Einordnung nach der Bauordnung für Wien | nur Wien; anderswo „kein offener Dienst“ |
-| Schutzzonen | Stadt Wien (§ 7 BO) — unter dem Schlüssel „Erhaltungssatzung“ | nur Wien |
-| Märkte, Baustellen | Stadt Wien (WFS) | nur Wien; Märkte ohne Öffnungszeiten |
+| Baurecht | Flächenwidmung der Stadt Wien mit Gastronomie-Einordnung nach der Bauordnung für Wien; Salzburg: rechtswirksame Bebauungspläne mit Plan-PDF, Widmung als Planblatt | nur Wien und Salzburg; anderswo „kein offener Dienst“ |
+| Schutzzonen | Stadt Wien (§ 7 BO), Salzburg (Altstadtschutzzone I/II) — unter dem Schlüssel „Erhaltungssatzung“ | nur Wien und Salzburg |
+| Märkte, Baustellen | Stadt Wien (WFS), Stadt Salzburg (WFS, Märkte mit Öffnungszeiten) | nur Wien und Salzburg; Wiener Märkte ohne Öffnungszeiten |
+| Verkehrsmenge, Luft | Wien: Kfz-Dauerzählstellen (MA 46), Luftgütemessnetz (MA 22) | nur Wien |
+| Lage (Block 6k) | Wien: Kurzparkzone, Fußgänger-/Begegnungszonen, Geschäftsstraßen, Realnutzung, Gebäudeinfo; Salzburg: Kurzparkzone | nur Wien und Salzburg |
 | Wahl | Nationalratswahl 2024 je Gemeinde (BMI über data.gv.at) | Zuordnung über Bundesland und Gemeindename |
 | Tourismus | Statistik Austria, Nächtigungen je Bundesland | landesweit (für Wien die Stadt) |
 | Kurzzeitvermietung | Inside Airbnb Wien | wie München/Berlin |

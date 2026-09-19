@@ -18,6 +18,7 @@ Antworten liegen unter `fixtures/at/`, die Tests rechnen darauf.
 | Lärm (lärminfo.at 2022) | ✅ umgesetzt | `laerm_at.py` |
 | Hochwasser (LFRZ), Schutzzonen Wien | ✅ umgesetzt | `planung_at.py`, `wien.py` |
 | Flächenwidmung Wien im Baurecht-Block | ✅ umgesetzt, nur Wien | `wien.py` |
+| Salzburg: Bebauungspläne + Planblatt (Baurecht), Altstadtschutzzone (Planung), Märkte, Baustellen, Kurzparkzone (Lage) | ✅ umgesetzt, nur Stadt Salzburg | `salzburg.py` |
 | Märkte, Baustellen Wien | ✅ umgesetzt, nur Wien | `wien.py` |
 | Nationalratswahl 2024 je Gemeinde | ✅ umgesetzt | `wahl_at.py` |
 | Nächtigungsstatistik je Bundesland | ✅ umgesetzt | `tourismus_at.py` |

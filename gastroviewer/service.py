@@ -46,6 +46,7 @@ from .sources import (airbnb as airbnb_mod,
                       wahl_at as wahl_at_mod, gemeinde_at as gemeinde_at_mod,
                       wien_profil as wien_profil_mod,
                       wien_verkehr as wien_verkehr_mod,
+                      salzburg as salzburg_mod,
                       register as register_mod, scan as scan_mod,
                       sonne as sonne_mod,
                       tourismus as tourismus_mod, wahl as wahl_mod, zensus)
@@ -393,16 +394,23 @@ class PointService:
 
     async def lage(self, lat: float, lon: float, radius: int, refresh: bool = False):
         """Lage-Indikatoren (Kurzparkzone, Fußgängerzonen, Geschäftsstraßen,
-        Realnutzung, Gebäudeinfo) — bisher nur Wien; sonst ehrlich leer."""
+        Realnutzung, Gebäudeinfo) — Wien vollständig, Salzburg nur die
+        Kurzparkzone; sonst ehrlich leer."""
         if wien_mod.in_wien(lat, lon):
             return await self._cached(
                 "wien_lage", cache_key("wien_lage", lat, lon, radius),
                 lambda: wien_profil_mod.lage_load(self.outbound, lat, lon, radius),
                 refresh=refresh,
             )
+        if salzburg_mod.in_salzburg(lat, lon):
+            return await self._cached(
+                "salzburg_lage", cache_key("salzburg_lage", lat, lon, radius),
+                lambda: salzburg_mod.lage_load(self.outbound, lat, lon, radius),
+                refresh=refresh,
+            )
         return SourceResult(name="lage", ok=True, data=None,
                             warnings=["Lage-Indikatoren (Kurzparkzone, Fußgängerzonen, Geschäftsstraßen, "
-                                      "Realnutzung, Gebäudeinfo) gibt es bisher nur für Wien."])
+                                      "Realnutzung, Gebäudeinfo) gibt es bisher nur für Wien und Salzburg."])
 
     async def indikatoren(self, adresse: dict[str, Any] | None,
                           lat: float | None = None, lon: float | None = None):
@@ -456,6 +464,13 @@ class PointService:
                 lambda: wien_mod.maerkte_load(self.outbound, lat, lon, radius),
                 refresh=refresh,
             )
+        if salzburg_mod.in_salzburg(lat, lon):
+            key = cache_key("salzburg_maerkte", lat, lon, radius)
+            return await self._cached(
+                "salzburg_maerkte", key,
+                lambda: salzburg_mod.maerkte_load(self.outbound, lat, lon, radius),
+                refresh=refresh,
+            )
         if hamburg_mod.in_hamburg(lat, lon):
             key = cache_key("hamburg_maerkte", lat, lon, radius)
             return await self._cached(
@@ -482,6 +497,13 @@ class PointService:
             return await self._cached(
                 "wien_baustellen", key,
                 lambda: wien_mod.baustellen_load(self.outbound, lat, lon, radius),
+                refresh=refresh,
+            )
+        if salzburg_mod.in_salzburg(lat, lon):
+            key = cache_key("salzburg_baustellen", lat, lon, radius)
+            return await self._cached(
+                "salzburg_baustellen", key,
+                lambda: salzburg_mod.baustellen_load(self.outbound, lat, lon, radius),
                 refresh=refresh,
             )
         if hamburg_mod.in_hamburg(lat, lon):
@@ -832,15 +854,16 @@ class PointService:
         if (leer := self._nur_in("baurecht", land)) is not None:
             return leer
         if land.code == "AT":
-            # Flächenwidmung ist Landesrecht — offen und punktgenau nur in Wien.
-            if not wien_mod.in_wien(lat, lon):
+            # Flächenwidmung ist Landesrecht — offen und punktgenau in Wien,
+            # in Salzburg als Bebauungsplan-Umgriff mit Plan-PDF.
+            if wien_mod.in_wien(lat, lon):
+                laden = lambda: wien_mod.baurecht_load(self.outbound, lat, lon)  # noqa: E731
+            elif salzburg_mod.in_salzburg(lat, lon):
+                laden = lambda: salzburg_mod.baurecht_load(self.outbound, lat, lon)  # noqa: E731
+            else:
                 return planung_at_mod.baurecht_ohne_dienst(land.name)
             key = cache_key("baurecht_at", lat, lon, 0)
-            return await self._cached(
-                "baurecht_at", key,
-                lambda: wien_mod.baurecht_load(self.outbound, lat, lon),
-                refresh=refresh,
-            )
+            return await self._cached("baurecht_at", key, laden, refresh=refresh)
         key = cache_key("baurecht", lat, lon, 0)
         return await self._cached(
             "baurecht", key,

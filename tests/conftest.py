@@ -102,6 +102,21 @@ def wien_wfs():
 
 
 @pytest.fixture(scope="session")
+def salzburg_wfs():
+    """Stadt Salzburg WFS, live 18.09.2026 (Runden 6/7): Widmungs-Planblatt und
+    Bebauungspläne am Probepunkt, Altstadtschutzzonen (5 stadtweit), Kurzparkzonen,
+    Märkte stadtweit, Baustellen um den Probepunkt."""
+    wurzel = Path(__file__).resolve().parent.parent / "fixtures" / "at"
+    lies = lambda n: json.loads((wurzel / n).read_text("utf-8"))  # noqa: E731
+    return {"flaechenwidmung": lies("salzburg_r6_flaechenwidmung.json"),
+            "bebauungsplan_rechtswirksam": lies("salzburg_r6_bebauungsplan_rechtswirksam.json"),
+            "altstadtschutzzone": lies("salzburg_r7_altstadtschutzzone.json"),
+            "kurzparkzone": lies("salzburg_r6_kurzparkzone.json"),
+            "markt": lies("salzburg_r6_markt.json"),
+            "baustelle_aktuell": lies("salzburg_r6_baustelle_aktuell.json")}
+
+
+@pytest.fixture(scope="session")
 def wahl_at_dateien():
     """NRW 2024 (BMI, data.gv.at), live 18.09.2026: Ergebnisdatei (cp1252)
     und GKZ-Liste (UTF-8 mit BOM) als Bytes."""

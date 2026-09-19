@@ -109,6 +109,9 @@ TTL_KLASSEN: dict[str, str | int] = {
     "baurecht_at": "ttl_zensus",    # Wiener Flächenwidmung, Jahre in Kraft
     "wien_maerkte": "ttl_zensus",   # Wiener Marktliste, selten geändert
     "wien_baustellen": "ttl_osm",   # angemeldete Baustellen, laufend gepflegt
+    "salzburg_maerkte": "ttl_zensus",   # Salzburger Marktliste, selten geändert
+    "salzburg_baustellen": "ttl_osm",   # Baustellen und Grabungen, laufend gepflegt
+    "salzburg_lage": "ttl_osm",         # Kurzparkzonen
     "tourismus_at": "ttl_gehweg",   # Nächtigungsreihe je Bundesland, monatlich
     "tourismus_at_daten": "ttl_gehweg",  # die eingedampfte Gesamtdatei
     "wahl_at": "ttl_zensus",        # NRW 2024, endgültig
