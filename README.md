@@ -298,6 +298,15 @@ Antworten unter `fixtures/`.
 | Bodenrichtwert-WMS von 7 Ländern | Kartenebene und Wert am Punkt | je Land, siehe unten | kein Cache |
 | [Raddauerzählstellen München](https://opendata.muenchen.de/dataset/daten-der-raddauerzaehlstellen-muenchen-jahreszahlen) | gemessene Radverkehrsfrequenz | dl-de/by-2-0, © LH München | 24 h |
 | [Baustellen-Servicekarte München](https://opendata.muenchen.de/dataset/baustellen_4_weeks_opendata) | Baustellen/Haltverbote im Umkreis, Vier-Wochen-Vorschau | dl-de/by-2-0, © LH München, Mobilitätsreferat | 24 h |
+| [Verkehrsmengen 2023 Berlin (WFS)](https://gdi.berlin.de/services/wfs/verkehrsmengen_2023) | DTVw Kfz, Lkw, Rad je Streckenabschnitt (Verkehrsmodell) | dl-de/by-2-0, © SenMVKU Berlin | 30 Tage |
+| [Urban Data Platform Hamburg (OGC API)](https://api.hamburg.de/datasets/v1/) | temporäre Kfz-Zählungen und Verkehrsmengen 2019, Regionalstatistik der Stadtteile (Viertel-Steckbrief), Parkhäuser mit Live-Belegung, Parkraum | dl-de/by-2-0, © FHH | 30 Tage / 24 h |
+| [MobiData BW](https://www.mobidata-bw.de/) | Baustellen und Sperrungen (GeoJSON), Straßenverkehrszählung 2024 (CSV), Eco-Counter-Radzähler (Tageswerte), Ladesäulen (WFS `charge_points`) | dl-de/by-2-0, © MobiData BW / NVBW | 30 Tage / 24 h |
+| [Baustellen Stuttgart (GeoServer WFS)](https://geoserver.stuttgart.de/gdc/Verkehr_Mobilitaet/ows) | Baustellen im Bau mit Verkehrsauswirkung | dl-de/by-2-0, © LH Stuttgart | 24 h |
+| [Starkregen-Hinweiskarte (BKG, WMS)](https://sgx.geodatenzentrum.de/wms_starkregen) | Wassertiefe und Fließgeschwindigkeit am Punkt, 13 Länder, im Planungsblock | dl-de/by-2-0, © GeoBasis-DE / BKG | 14 Tage |
+| [Stadt Wien — Dauerzählstellen (MA 46), Luftgütemessnetz (MA 22)](https://data.wien.gv.at/) | Kfz-DTV je Zählstelle (Monats-CSV), Luft-Halbstundenwerte (Lumes) | CC BY 4.0, Stadt Wien | 30 Tage / 1 h |
+| [Stadt Wien — Zählbezirke, Lage-Layer (MA 23, MA 46, MA 21)](https://data.wien.gv.at/) | Zählbezirks-Steckbrief, Kurzparkzone, Fußgänger-/Begegnungszonen, Geschäftsstraßen, Realnutzung, Gebäudeinfo | CC BY 4.0, Stadt Wien | 30 Tage / 24 h |
+| [Stadt Salzburg (WFS)](https://data.stadt-salzburg.at/) | Bebauungspläne, Flächenwidmungs-Planblatt, Altstadtschutzzone, Märkte, Baustellen, Kurzparkzone | CC BY 4.0, Stadt Salzburg | 30 Tage / 24 h |
+| [Statistik Austria — Gemeindetabelle, Gemeindegrenzen (GEODATA-WFS), Immobilien-Durchschnittspreise (ODS)](https://www.statistik.at/) | Gemeindeprofil, Gemeindekennziffer am Punkt, Häuser-/Wohnungs-/Baugrundpreise je Bezirk | CC BY 4.0, Statistik Austria | 30 Tage |
 | [Märkte der LH München](https://opendata.muenchen.de/dataset/maerkte) | Wochen-/Bauernmärkte mit Öffnungszeiten | dl-de/by-2-0, © LH München, GeodatenService | 30 Tage |
 | [Indikatorenatlas München](https://opendata.muenchen.de/dataset?q=indikatorenatlas) | Stadtbezirks-Jahresreihen (Viertel-Steckbrief) | dl-de/by-2-0, © LH München, Statistisches Amt | 30 Tage |
 | [Inside Airbnb](https://insideairbnb.com/get-the-data/) | Kurzzeitvermietung im Umkreis (München, Berlin) — Touristen-Nachfrage-Signal | CC BY 4.0, © Inside Airbnb | 30 Tage |
@@ -508,7 +517,10 @@ Antworten liegen als Fixtures unter `fixtures/at/`):
 | Märkte, Baustellen | Stadt Wien (WFS), Stadt Salzburg (WFS, Märkte mit Öffnungszeiten) | nur Wien und Salzburg; Wiener Märkte ohne Öffnungszeiten |
 | Verkehrsmenge, Luft | Wien: Kfz-Dauerzählstellen (MA 46), Luftgütemessnetz (MA 22) | nur Wien |
 | Lage (Block 6k) | Wien: Kurzparkzone, Fußgänger-/Begegnungszonen, Geschäftsstraßen, Realnutzung, Gebäudeinfo; Salzburg: Kurzparkzone | nur Wien und Salzburg |
-| Wahl | Nationalratswahl 2024 je Gemeinde (BMI über data.gv.at) | Zuordnung über Bundesland und Gemeindename |
+| Wahl | Nationalratswahl 2024 je Gemeinde (BMI über data.gv.at) | Zuordnung über die Gemeindekennziffer am Punkt (Gemeindegrenzen-WFS), ersatzweise Bundesland und Name |
+| Gemeindeprofil (Kreisprofil-Block) | Statistik Austria, Gemeindetabelle der Erwerbsstatistik 2011–2021 | Gemeinde gegen Land und Bund; Wien je Gemeindebezirk |
+| Immobilienpreise (Block 3i) | Statistik Austria, Durchschnittspreise aus Kaufverträgen je Bezirk (Häuser, Eigentumswohnungen, Baugrund) | ganz Österreich; in Deutschland bleibt der Block leer (Bodenrichtwerte auf der Karte) |
+| Viertel-Steckbrief | Wien: Zählbezirks-Bevölkerung der MA 23 | nur Wien |
 | Tourismus | Statistik Austria, Nächtigungen je Bundesland | landesweit (für Wien die Stadt) |
 | Kurzzeitvermietung | Inside Airbnb Wien | wie München/Berlin |
 | ÖPNV | Wiener Linien GTFS | Knopf im ÖPNV-Block oder `import-gtfs --region wien` (91 MB); mit `calendar.txt` |

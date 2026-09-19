@@ -48,6 +48,7 @@ from .sources import (airbnb as airbnb_mod,
                       wien_verkehr as wien_verkehr_mod,
                       salzburg as salzburg_mod,
                       immobilien_at as immobilien_at_mod,
+                      mobidata_bw as mobidata_mod,
                       register as register_mod, scan as scan_mod,
                       sonne as sonne_mod,
                       tourismus as tourismus_mod, wahl as wahl_mod, zensus)
@@ -362,6 +363,60 @@ class PointService:
             lambda: genesis_mod.load(self.outbound, self.settings, ags),
         )
 
+    async def bundesland_iso(self, lat: float, lon: float) -> str | None:
+        """ISO-Code des Bundeslands aus der (gecachten) Adresse — ``None``,
+        wenn der Geocoder nicht antwortet."""
+        try:
+            res = await self.adresse(lat, lon)
+        except Exception:  # noqa: BLE001
+            return None
+        return (res.data or {}).get("bundesland_iso") if res.ok else None
+
+    async def _in_bw(self, lat: float, lon: float) -> bool:
+        iso = await self.bundesland_iso(lat, lon)
+        return iso == "DE-BW" or (iso is None and mobidata_mod.in_bw(lat, lon))
+
+    async def _mobidata_roadworks(self, refresh: bool = False) -> list[dict[str, Any]]:
+        async def laden() -> SourceResult:
+            payload = await self.outbound.get_json("mobidata_roadworks", mobidata_mod.ROADWORKS_URL, timeout=120.0,
+                                                   limiter="mobidata", min_interval=0.5)
+            features = payload.get("features") or [] if isinstance(payload, dict) else []
+            # nur Geometrie und die sechs Felder behalten — 1,2 MB werden so ein Bruchteil
+            schlank = [{"geometry": f.get("geometry"),
+                        "properties": {k: (f.get("properties") or {}).get(k)
+                                       for k in ("type", "subtype", "description", "street", "direction",
+                                                 "starttime", "endtime", "reference")}} for f in features]
+            return SourceResult(name="mobidata_roadworks", ok=True, data={"features": schlank})
+
+        res = await self._cached("mobidata_roadworks", "mobidata|roadworks", laden, refresh=refresh)
+        if not res.ok:
+            raise SourceError(res.error["kind"], res.error["message"])
+        return res.data["features"]
+
+    async def _mobidata_svz(self, refresh: bool = False) -> list[dict[str, Any]]:
+        async def laden() -> SourceResult:
+            text = await self.outbound.get_text("mobidata_svz", mobidata_mod.SVZ_URL, timeout=120.0,
+                                                limiter="mobidata", min_interval=0.5, encoding="utf-8")
+            return SourceResult(name="mobidata_svz", ok=True,
+                                data={"stellen": await asyncio.to_thread(mobidata_mod.svz_parsen, text)})
+
+        res = await self._cached("mobidata_svz", "mobidata|svz", laden, refresh=refresh)
+        if not res.ok:
+            raise SourceError(res.error["kind"], res.error["message"])
+        return res.data["stellen"]
+
+    async def _mobidata_eco(self, refresh: bool = False) -> dict[str, dict[str, Any]]:
+        async def laden() -> SourceResult:
+            text = await self.outbound.get_text("mobidata_eco", mobidata_mod.ECO_URL, timeout=120.0,
+                                                limiter="mobidata", min_interval=0.5, encoding="utf-8")
+            return SourceResult(name="mobidata_eco", ok=True,
+                                data={"sites": await asyncio.to_thread(mobidata_mod.eco_parsen, text)})
+
+        res = await self._cached("mobidata_eco", "mobidata|eco", laden, refresh=refresh)
+        if not res.ok:
+            raise SourceError(res.error["kind"], res.error["message"])
+        return res.data["sites"]
+
     async def _wien_kfz_daten(self, refresh: bool = False):
         """Monats-CSV der Wiener Dauerzählstellen (5 MB, cp1252), **einmal**
         geladen und je Zählstelle auf das jüngste Jahr eingedampft."""
@@ -409,9 +464,40 @@ class PointService:
                 lambda: salzburg_mod.lage_load(self.outbound, lat, lon, radius),
                 refresh=refresh,
             )
+        if hamburg_mod.in_hamburg(lat, lon):
+            return await self._cached(
+                "hamburg_lage", cache_key("hamburg_lage", lat, lon, radius),
+                lambda: hamburg_mod.lage_load(self.outbound, lat, lon, radius),
+                refresh=refresh,
+            )
+        if await self._in_bw(lat, lon):
+            return await self._cached(
+                "mobidata_lage", cache_key("mobidata_lage", lat, lon, radius),
+                lambda: self._lage_bw(lat, lon, radius),
+                refresh=refresh,
+            )
         return SourceResult(name="lage", ok=True, data=None,
-                            warnings=["Lage-Indikatoren (Kurzparkzone, Fußgängerzonen, Geschäftsstraßen, "
-                                      "Realnutzung, Gebäudeinfo) gibt es bisher nur für Wien und Salzburg."])
+                            warnings=["Lage-Indikatoren gibt es bisher für Wien (Zonen, Nutzung, Gebäude), "
+                                      "Salzburg (Kurzparkzone), Hamburg (Parkhäuser, Parkraum) und "
+                                      "Baden-Württemberg (Ladesäulen)."])
+
+    async def _lage_bw(self, lat: float, lon: float, radius: int) -> SourceResult:
+        """Lage-Block für Baden-Württemberg: nur die Ladesäulen (MobiData BW)."""
+        started = time.perf_counter()
+        try:
+            lade = await mobidata_mod.ladesaeulen(self.outbound, lat, lon, radius)
+        except SourceError as err:
+            return SourceResult.failed("lage", err, int((time.perf_counter() - started) * 1000))
+        data = {"stadt": "Baden-Württemberg", "kurzparkzone": None, "fussgaengerzonen": [], "begegnungszonen": [],
+                "geschaeftsstrasse": {"am_punkt": None, "naechste": None, "im_radius": 0, "ohne_dienst": True},
+                "realnutzung": None, "gebaeude": [], "ladesaeulen": lade,
+                "hinweise": ["Für Baden-Württemberg liegen im Lage-Block die **Ladesäulen** vor (MobiData BW, "
+                             "Register der Bundesnetzagentur mit Live-Belegung, wo gemeldet); Parkzonen und "
+                             "Fußgängerzonen gibt das Land nicht als Dienst frei."]}
+        return SourceResult(name="lage", ok=True, data=data, duration_ms=int((time.perf_counter() - started) * 1000),
+                            provenance=Provenance(source="Ladesäulen Baden-Württemberg (MobiData BW, WFS charge_points)",
+                                                  license=mobidata_mod.LIZENZ, endpoint=mobidata_mod.WFS_URL,
+                                                  retrieved_at=now_iso()))
 
     async def indikatoren(self, adresse: dict[str, Any] | None,
                           lat: float | None = None, lon: float | None = None):
@@ -424,6 +510,11 @@ class PointService:
                 "wien_zaehlbezirk", cache_key("wien_zaehlbezirk", lat, lon, 0),
                 lambda: wien_profil_mod.zaehlbezirk_load(
                     self.outbound, lat, lon, a.get("ortsteil"), self._wien_zb_daten),
+            )
+        if lat is not None and lon is not None and hamburg_mod.in_hamburg(lat, lon):
+            return await self._cached(
+                "hamburg_stadtteil", cache_key("hamburg_stadtteil", lat, lon, 0),
+                lambda: hamburg_mod.stadtteil_load(self.outbound, lat, lon),
             )
         return await indikatoren_mod.load(
             self.outbound, self.settings,
@@ -441,6 +532,13 @@ class PointService:
                 key,
                 lambda: hamburg_mod.rad_load(
                     self.outbound, self.settings, lat, lon, radius),
+                refresh=refresh,
+            )
+        if await self._in_bw(lat, lon):
+            key = cache_key("mobidata_rad", lat, lon, radius)
+            return await self._cached(
+                "mobidata_rad", key,
+                lambda: mobidata_mod.eco_load(self.outbound, lat, lon, radius, lambda: self._mobidata_eco(refresh)),
                 refresh=refresh,
             )
         key = cache_key("muenchen_rad", lat, lon, radius)
@@ -514,6 +612,21 @@ class PointService:
                 key,
                 lambda: hamburg_mod.baustellen_load(
                     self.outbound, self.settings, lat, lon, radius),
+                refresh=refresh,
+            )
+        if mobidata_mod.in_stuttgart(lat, lon):
+            key = cache_key("stuttgart_baustellen", lat, lon, radius)
+            return await self._cached(
+                "stuttgart_baustellen", key,
+                lambda: mobidata_mod.stuttgart_baustellen_load(self.outbound, lat, lon, radius),
+                refresh=refresh,
+            )
+        if await self._in_bw(lat, lon):
+            key = cache_key("mobidata_baustellen", lat, lon, radius)
+            return await self._cached(
+                "mobidata_baustellen", key,
+                lambda: mobidata_mod.roadworks_load(self.outbound, lat, lon, radius,
+                                                    lambda: self._mobidata_roadworks(refresh)),
                 refresh=refresh,
             )
         if berlin_mod.in_berlin(lat, lon):
@@ -634,6 +747,27 @@ class PointService:
         land = await self.land(lat, lon)
         if (leer := self._nur_in("verkehrsmenge", land)) is not None:
             return leer
+        if berlin_mod.in_berlin(lat, lon):
+            key = cache_key("berlin_verkehrsmenge", lat, lon, radius)
+            return await self._cached(
+                "berlin_verkehrsmenge", key,
+                lambda: berlin_mod.verkehrsmengen_load(self.outbound, self.settings, lat, lon, radius),
+                refresh=refresh,
+            )
+        if hamburg_mod.in_hamburg(lat, lon):
+            key = cache_key("hamburg_verkehrsmenge", lat, lon, radius)
+            return await self._cached(
+                "hamburg_verkehrsmenge", key,
+                lambda: hamburg_mod.verkehrsmengen_load(self.outbound, self.settings, lat, lon, radius),
+                refresh=refresh,
+            )
+        if await self._in_bw(lat, lon):
+            key = cache_key("svz_bw_punkt", lat, lon, radius)
+            return await self._cached(
+                "svz_bw_punkt", key,
+                lambda: mobidata_mod.svz_load(self.outbound, lat, lon, radius, lambda: self._mobidata_svz(refresh)),
+                refresh=refresh,
+            )
         if bayern.in_bayern(lat, lon):
             key = cache_key("baysis", lat, lon, radius)
             return await self._cached(

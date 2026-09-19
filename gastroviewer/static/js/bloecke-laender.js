@@ -228,7 +228,7 @@ function zeigeRadzaehlung(d) {
     setInhalt(id, ...warnungen(d.warnings),
       el('div', { class: 'notiz' },
         'Gemessene Radfrequenz gibt es nur an den städtischen '
-        + 'Zählquerschnitten (München, Hamburg). Für diesen Punkt liegt '
+        + 'Zählquerschnitten (München, Hamburg, Baden-Württemberg). Für diesen Punkt liegt '
         + 'keine vor.'));
     setQuelle(id, d.provenance);
     return;
@@ -236,11 +236,16 @@ function zeigeRadzaehlung(d) {
 
   setStatus(id, 'ok', 'geladen');
   const n = r.naechste;
+  const woche = n.je_tag_letzte_woche !== undefined && n.je_tag_letzte_woche !== null;
   const kz = el('div', { class: 'kennzahlen' },
     kennzahl('Nächste Zählstelle', n.distanz_m, 'm'),
-    kennzahl(`Radfahrende ${n.summe_vorjahr_jahr || ''}`.trim(), n.summe_vorjahr),
-    kennzahl(n.je_tag_basis === 'messtage' ? 'davon je Messtag' : 'davon je Kalendertag (Summe ÷ 365)',
-      n.je_tag_vorjahr));
+    woche
+      ? kennzahl(`Radfahrende je Tag (${n.je_tag_basis || 'letzte Tage'})`, n.je_tag_letzte_woche)
+      : kennzahl(`Radfahrende ${n.summe_vorjahr_jahr || ''}`.trim(), n.summe_vorjahr),
+    woche
+      ? kennzahl(`letzter Tag (${n.letzter_tag || '?'})`, n.vortag)
+      : kennzahl(n.je_tag_basis === 'messtage' ? 'davon je Messtag' : 'davon je Kalendertag (Summe ÷ 365)',
+        n.je_tag_vorjahr));
 
   const tab = el('table', { class: 'daten' },
     el('tr', {}, el('th', {}, 'Zählstelle'), el('th', { class: 'num' }, 'm'),
@@ -249,7 +254,7 @@ function zeigeRadzaehlung(d) {
     tab.append(el('tr', {},
       el('td', {}, `${s.name}${s.richtungen.length ? ` (${s.richtungen.join('/')})` : ''}`),
       el('td', { class: 'num' }, NF.format(s.distanz_m)),
-      el('td', { class: 'num' }, s.je_tag_vorjahr === null ? '—' : NF.format(s.je_tag_vorjahr)),
+      el('td', { class: 'num' }, (s.je_tag_vorjahr ?? s.je_tag_letzte_woche) == null ? '—' : NF.format(s.je_tag_vorjahr ?? s.je_tag_letzte_woche)),
       el('td', { class: 'num' }, s.summe_vorjahr === null ? '—' : NF.format(s.summe_vorjahr))));
   }
 
@@ -291,8 +296,8 @@ function zeigeRadzaehlung(d) {
       + 'Die Zahl beschreibt die Achse an der Zählstelle, nicht das Umfeld dieses Punktes.'),
     el('div', { class: 'notiz' },
       el('a', { href: r.rohdaten, target: '_blank', rel: 'noopener' },
-        'Rohdaten im Open-Data-Portal München'),
-      ' — dort auch 15-Minuten-Werte und Tageswerte mit Wetter.'));
+        r.stadt ? `Rohdaten (${r.stadt})` : 'Rohdaten im Open-Data-Portal München'),
+      r.stadt ? '.' : ' — dort auch 15-Minuten-Werte und Tageswerte mit Wetter.'));
   setQuelle(id, d.provenance);
 }
 

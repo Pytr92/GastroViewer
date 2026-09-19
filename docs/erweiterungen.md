@@ -17,16 +17,40 @@ Stil des Projekts: erst die Live-Probe (wie `scripts/at_probe.py` für
 
 ## Was jetzt konkret umgesetzt ist
 
-Der in der Sitzung vorgeschlagene Umfang ist vollständig gebaut, geprüft und
-veröffentlicht (v0.4.0 plus Knopf-Import): Länder-Registry, österreichischer
-Geocoder-, Feiertags- und Kartenpfad, Eurostat-Raster als lokaler Import,
-GeoSphere-Klima, lärminfo-Lärm, LFRZ-Hochwasser, Wiener Schutzzonen,
-Widmung, Märkte und Baustellen, Nationalratswahl 2024, Nächtigungsstatistik,
-Inside Airbnb Wien, GTFS Wiener Linien, österreichische Linkliste, ehrlich
-leere Blöcke mit Begründung, Browser- und Vollprüfung mit Wiener Punkt,
-Knopf-Import für Raster und Fahrplan. Offen aus dem eigenen Vorrat: Wiener
-Radzählungen, Zählbezirks-Steckbrief und GISA — die Daten liegen schon als
-Fixtures unter `fixtures/at/`, sie tauchen unten wieder auf.
+Stand 19. September 2026 (Version 0.6.0). Alles Datenseitige, was sich in
+den Probe-Runden 5–7 live belegen ließ, ist gebaut, getestet und in der
+Browserprüfung; die Rechen- und Darstellungsfunktionen aus
+`erweiterungen-funktionen.md` bleiben bewusst außen vor.
+
+**Deutschland:** Starkregen-Hinweiskarte des BKG im Planungsblock (13
+Länder, BY/BW/HE ehrlich als nicht abgedeckt); Verkehrsmengen Berlin
+(Verkehrsmodell 2023: Kfz, Lkw, Rad je Abschnitt), Hamburg (temporäre
+Zählungen und Verkehrsmengenkarte) und Baden-Württemberg (SVZ 2024 mit
+Landes- und Kreisstraßen); Baustellen Stuttgart (Stadt-WFS) und
+Baden-Württemberg (MobiData); Radzähler Baden-Württemberg (Eco-Counter,
+laufende Woche); Viertel-Steckbrief Hamburg (Regionalstatistik der
+Stadtteile, 15 Kennzahlen mit Fünfjahrestrend); Lage-Block mit Hamburger
+Parkhäusern (Live-Belegung) und Parkraum sowie Ladesäulen in
+Baden-Württemberg (BNetzA-Register über MobiData).
+
+**Österreich:** Gemeindeprofil aus der Gemeindetabelle von Statistik
+Austria (Kreisprofil-Block), Gemeindekennziffer am Punkt über den
+Gemeindegrenzen-WFS (auch für die Nationalratswahl), Immobilien-
+Durchschnittspreise je Bezirk (Häuser, Eigentumswohnungen, Baugrund) als
+Block 3i, Wien: Zählbezirks-Steckbrief, Lage-Block (Kurzparkzone, Fußgänger-
+und Begegnungszonen, Geschäftsstraßen, Realnutzung, Gebäudeinfo),
+Kfz-Dauerzählstellen im Verkehrsmengen-Block, Luftgütemessnetz im
+Luft-Block; Salzburg: Bebauungspläne und Planblatt, Altstadtschutzzone,
+Märkte mit Öffnungszeiten, Baustellen, Kurzparkzone.
+
+**Nicht belegbar, deshalb nicht gebaut** (Stand der Probe-Runden): AMS-
+Arbeitslose je Gemeinde und GISA (data.gv.at-Suche 404), Wiener
+Radzählungen ohne Standortdatei, Häuserpreisindex-Klassifikation, BNetzA-
+ArcGIS-Dienst (Token nötig), Straßen.NRW-WFS (leere Antwort), Köln und
+Frankfurt (CKAN 404 / TLS), ohsome-Qualitäts-API (HTML statt JSON),
+Regionaldatenbank-Gastzugang (401), Autobahn-GmbH (braucht die Straßen-
+kennung des Punkts). Sie stehen unten mit ihren Fundstellen und werden
+in einer späteren Probe-Runde erneut geprüft.
 
 ## Reihenfolge, die ich vorschlage
 

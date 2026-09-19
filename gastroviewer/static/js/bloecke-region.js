@@ -2160,7 +2160,7 @@ export function zeigeLage(d) {
   }
   const l = d.data;
   if (!l) {
-    setStatus(id, 'leer', 'nur Wien und Salzburg');
+    setStatus(id, 'leer', 'hier keine Lage-Dienste');
     setInhalt(id, ...warnungen(d.warnings || []));
     setQuelle(id, d.provenance);
     return;
@@ -2170,9 +2170,51 @@ export function zeigeLage(d) {
   teile.push(el('div', { class: 'notiz' },
     el('strong', {}, 'Kurzparkzone: '),
     kp ? `${kp.art ? `${kp.art} ` : ''}${kp.bezirk ? `„${kp.bezirk}“ ` : ''}${kp.zeitraum || ''}${kp.dauer ? `, Höchstparkdauer ${kp.dauer}` : ''}` : 'keine am Punkt'));
+  const ph = l.parkhaeuser || [];
+  if (l.parkhaeuser) {
+    const ptab = el('table', { class: 'daten' },
+      el('tr', {}, el('th', {}, 'Parkhaus'), el('th', { class: 'num' }, 'frei'), el('th', { class: 'num' }, 'Plätze'),
+        el('th', {}, 'Öffnung'), el('th', { class: 'num' }, 'm')));
+    for (const h of ph.slice(0, 10)) {
+      ptab.append(el('tr', {},
+        el('td', {}, h.link ? el('a', { href: h.link, target: '_blank', rel: 'noopener' }, h.name || '?') : (h.name || '?')),
+        el('td', { class: 'num' }, h.frei == null ? '—' : NF.format(h.frei)),
+        el('td', { class: 'num' }, h.gesamt == null ? '—' : NF.format(h.gesamt)),
+        el('td', {}, h.oeffnungszeit || '—'),
+        el('td', { class: 'num' }, NF.format(h.distanz_m))));
+    }
+    teile.push(el('div', { class: 'notiz' }, el('strong', {}, 'Parkhäuser: '),
+      `${NF.format(l.parkhaeuser_im_radius || 0)} im Radius mit ${NF.format(l.stellplaetze_im_radius || 0)} Stellplätzen (Live-Belegung).`));
+    if (ph.length) teile.push(ptab);
+    if (l.parkraum && !l.parkraum.am_punkt) {
+      teile.push(el('div', { class: 'notiz' }, el('strong', {}, 'Parkraum in der Nähe: '),
+        `${l.parkraum.bewirtschaftung || '?'} (${l.parkraum.strasse || ''}).`));
+    }
+  }
+  const ls = l.ladesaeulen;
+  if (ls) {
+    teile.push(el('div', { class: 'notiz' }, el('strong', {}, 'Ladesäulen: '),
+      `${NF.format(ls.im_radius || 0)} Standorte mit ${NF.format(ls.ladepunkte || 0)} Ladepunkten im Radius`
+      + (ls.schnelllader ? `, davon ${NF.format(ls.schnelllader)} Schnelllader (≥ 50 kW)` : '')
+      + (ls.naechste ? `; nächster ${ls.naechste.betreiber || ''} in ${NF.format(ls.naechste.distanz_m)} m` : '') + '.'));
+    if ((ls.standorte || []).length) {
+      const ltab = el('table', { class: 'daten' },
+        el('tr', {}, el('th', {}, 'Betreiber'), el('th', {}, 'Adresse'), el('th', { class: 'num' }, 'Punkte'),
+          el('th', { class: 'num' }, 'frei'), el('th', { class: 'num' }, 'kW'), el('th', { class: 'num' }, 'm')));
+      for (const x of ls.standorte.slice(0, 10)) {
+        ltab.append(el('tr', {},
+          el('td', {}, x.betreiber || '—'), el('td', {}, x.adresse || '—'),
+          el('td', { class: 'num' }, NF.format(x.ladepunkte || 0)),
+          el('td', { class: 'num' }, x.frei == null ? '—' : NF.format(x.frei)),
+          el('td', { class: 'num' }, x.leistung_kw == null ? '—' : NF.format(x.leistung_kw)),
+          el('td', { class: 'num' }, NF.format(x.distanz_m))));
+      }
+      teile.push(ltab);
+    }
+  }
   const gsOhne = (l.geschaeftsstrasse || {}).ohne_dienst;
   if (gsOhne) {
-    setStatus(id, 'ok', kp ? 'Kurzparkzone' : 'geladen');
+    setStatus(id, 'ok', kp ? 'Kurzparkzone' : (l.parkhaeuser ? `${NF.format(l.parkhaeuser_im_radius || 0)} Parkhäuser` : (ls ? `${NF.format(ls.ladepunkte || 0)} Ladepunkte` : 'geladen')));
     setInhalt(id, ...teile, ...(l.hinweise || []).map((h) => hinweisZeile(h)), ...warnungen(d.warnings || []));
     setQuelle(id, d.provenance);
     return;

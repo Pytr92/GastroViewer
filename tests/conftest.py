@@ -200,6 +200,40 @@ def nominatim_reverse():
 
 
 @pytest.fixture(scope="session")
+def nominatim_reverse_bw():
+    """Die Münchner Antwort, auf Stuttgart umgeschrieben — für die
+    Bundesland-Weiche (DE-BW) reichen state und ISO-Code."""
+    import copy
+    d = copy.deepcopy(load_fixture("raw_nominatim_reverse.json"))
+    d["address"].update({"state": "Baden-Württemberg", "ISO3166-2-lvl4": "DE-BW", "city": "Stuttgart",
+                         "postcode": "70173", "suburb": "Stuttgart-Mitte"})
+    d["lat"], d["lon"] = "48.7758", "9.1829"
+    return d
+
+
+@pytest.fixture(scope="session")
+def de_dienste():
+    """Berlin-WFS, Hamburg-OAF, MobiData BW und Stuttgart (Runden 6/7, live 18.09.2026)."""
+    wurzel = Path(__file__).resolve().parent.parent / "fixtures" / "de"
+    lies = lambda n: json.loads((wurzel / n).read_text("utf-8"))  # noqa: E731
+    return {
+        "berlin_wfs": {"dtvw2023kfz": lies("de_berlin_r6_verkehrsmengen_2023_dtvw2023kf.json"),
+                       "dtvw2023lkw": lies("de_berlin_r6_verkehrsmengen_2023_dtvw2023lk.json"),
+                       "dtvw2023rad": lies("de_berlin_r6_verkehrsmengen_2023_dtvw2023ra.json")},
+        "hamburg_oaf": {"kfz_temporaere_zaehlungen": lies("de_hh_r6_verkehrsstaerken_kfz_temporaere_zaehlunge.json"),
+                        "verkehrsmengen_dtv_hvs_2019": lies("de_hh_r6_verkehrsmengen_verkehrsmengen_dtv_hvs_2.json"),
+                        "regionalstatistische_daten_stadtteile": lies("de_hh_r6_regionalstatistische_daten_stadtteile_regionalstatistische_dat.json"),
+                        "parkhaeuser": lies("de_hh_r6_parkhaeuser_parkhaeuser.json"),
+                        "parkraum": lies("de_hh_r6_parkraum_parkraum.json")},
+        "mobidata": {"roadworks": lies("de_mobidata_r7_roadworks_auszug.json"),
+                     "charge_points": lies("de_mobidata_r6_ladesaeulen_stuttgart.json"),
+                     "svz": (wurzel / "de_mobidata_r7_svz_stuttgart.csv").read_text("utf-8"),
+                     "eco": (wurzel / "de_mobidata_r7_eco_tageswerte_auszug.csv").read_text("utf-8")},
+        "stuttgart": lies("de_stuttgart_r6_baustellen.json"),
+    }
+
+
+@pytest.fixture(scope="session")
 def einkommen_muenchen():
     return load_fixture("raw_einkommen_muenchen.json")
 

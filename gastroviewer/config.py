@@ -62,6 +62,13 @@ TTL_KLASSEN: dict[str, str | int] = {
     "muenchen_baustellen": "ttl_osm",  # rollierende Vier-Wochen-Vorschau
     "hamburg_baustellen": "ttl_osm",   # dito Hamburg
     "berlin_baustellen": "ttl_osm",    # dito Berlin
+    "stuttgart_baustellen": "ttl_osm", # dito Stuttgart
+    "mobidata_roadworks": "ttl_osm",   # Landesdatei BW, laufend
+    "mobidata_baustellen": "ttl_osm",
+    "mobidata_eco": "ttl_osm",         # Radzähler-Tageswerte der laufenden Woche
+    "mobidata_rad": "ttl_osm",
+    "mobidata_lage": "ttl_osm",        # Ladesäulen mit Belegung
+    "hamburg_lage": "ttl_osm",         # Parkhäuser mit Belegung
     "leerstandsmelder": "ttl_osm",     # Weltbestand, laufend gemeldet, 3 MB
     "leerstandsmelder_punkt": "ttl_osm",
     "muenchen_rad": "ttl_osm",      # Raddauerzählstellen mit laufendem Monat
@@ -89,6 +96,11 @@ TTL_KLASSEN: dict[str, str | int] = {
     "genesis": "ttl_zensus",        # Regionaldatenbank, jährlich
     "bast": "ttl_zensus",           # BASt-Jahresdatei, bundesweit
     "bast_punkt": "ttl_zensus",
+    "berlin_verkehrsmenge": "ttl_zensus",  # Verkehrsmodell 2023
+    "hamburg_verkehrsmenge": "ttl_zensus", # Zählungen mit Jahr
+    "mobidata_svz": "ttl_zensus",     # SVZ 2024, Landesdatei
+    "svz_bw_punkt": "ttl_zensus",
+    "hamburg_stadtteil": "ttl_zensus", # Regionalstatistik, jährlich
     "pks": "ttl_zensus",            # BKA-Kreistabelle, Berichtsjahr
     "pks_kreis": "ttl_zensus",
     "luft_stationen": "ttl_zensus",  # Stationsliste, selten geändert

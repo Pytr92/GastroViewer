@@ -32,7 +32,8 @@ class FakeOutbound:
                  laerm=None, fehler: set[str] | None = None, photon=None,
                  geosphere=None, laerminfo=None, lfrz=None, wien=None,
                  statistik_at=None, wahl_at=None, starkregen=None, wien_csv=None,
-                 salzburg=None, geodata=None, immobilien=None,
+                 salzburg=None, geodata=None, immobilien=None, berlin_wfs=None, hamburg_oaf=None,
+                 mobidata=None, stuttgart=None,
                  baustellen=None, maerkte=None, indikatoren=None,
                  airbnb=None, messe=None, tourismus=None,
                  uba=None, bfg_hochwasser=None,
@@ -66,6 +67,10 @@ class FakeOutbound:
         self.salzburg = salzburg or {}
         self.geodata = geodata
         self.immobilien = immobilien or {}
+        self.berlin_wfs = berlin_wfs or {}
+        self.hamburg_oaf = hamburg_oaf or {}
+        self.mobidata = mobidata or {}
+        self.stuttgart = stuttgart
         self.einkommen = einkommen or {"features": []}
         # Fixture je Tabelle — Einkommen und Kreisprofil teilen sich Endpunkt
         # und URL, unterscheiden sich nur im layer-Parameter.
@@ -183,6 +188,30 @@ class FakeOutbound:
             if "lfrz_hochwasser" in self.fehler:
                 raise SourceError("timeout", "Zeitüberschreitung — Dienst antwortet nicht.")
             return self.lfrz
+        if "gdi.berlin.de/services/wfs" in url:
+            typ = str(((kw or {}).get("params") or {}).get("typeNames", "")).split(":")[-1]
+            self.calls.append(f"berlin_wfs_{typ}")
+            if "berlin_wfs" in self.fehler:
+                raise SourceError("timeout", "Zeitüberschreitung — Dienst antwortet nicht.")
+            return self.berlin_wfs.get(typ) or {"type": "FeatureCollection", "features": []}
+        if "api.hamburg.de/datasets" in url:
+            coll = url.rstrip("/").split("/collections/")[-1].split("/")[0]
+            self.calls.append(f"hamburg_{coll}")
+            if "hamburg" in self.fehler:
+                raise SourceError("timeout", "Zeitüberschreitung — Dienst antwortet nicht.")
+            return self.hamburg_oaf.get(coll) or {"type": "FeatureCollection", "features": []}
+        if "mobidata-bw.de" in url:
+            self.calls.append("mobidata")
+            if "mobidata" in self.fehler:
+                raise SourceError("timeout", "Zeitüberschreitung — Dienst antwortet nicht.")
+            if "roadworks_geojson" in url:
+                return self.mobidata.get("roadworks") or {"type": "FeatureCollection", "features": []}
+            return self.mobidata.get("charge_points") or {"type": "FeatureCollection", "features": []}
+        if "geoserver.stuttgart.de" in url:
+            self.calls.append("stuttgart_baustellen")
+            if "stuttgart" in self.fehler:
+                raise SourceError("timeout", "Zeitüberschreitung — Dienst antwortet nicht.")
+            return self.stuttgart or {"type": "FeatureCollection", "features": []}
         if "statistik.gv.at/gs-open/GEODATA" in url:
             self.calls.append("statistik_at_geodata")
             if "statistik_at_geodata" in self.fehler or not self.geodata:
@@ -320,6 +349,14 @@ class FakeOutbound:
         return self._dispatch(url, kw)
 
     async def get_text(self, source, url, **kw):
+        if "mobidata-bw.de" in url:
+            self.calls.append("mobidata_csv")
+            if "mobidata" in self.fehler:
+                raise SourceError("timeout", "Zeitüberschreitung — Dienst antwortet nicht.")
+            schluessel = "svz" if "SVZ" in url else "eco"
+            if schluessel not in self.mobidata:
+                raise SourceError("http_status", "HTTP 404")
+            return self.mobidata[schluessel]
         if "wien.gv.at/gogv" in url or "wien.gv.at/data/ogd" in url or "go.gv.at/" in url:
             self.calls.append("wien_csv")
             for stueck, text in self.wien_csv.items():
