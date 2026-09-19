@@ -1501,6 +1501,55 @@ TEILE.update({"r8": r8})
 
 
 
+# ------------------------------------------------------------------ Runde 9
+# Nachfragen zu den Funden aus Runde 8: Wien führt einen neueren
+# Realnutzungs-Layer als den benutzten, Statistik Austria neuere
+# Gemeindegrenzen; Straßen.NRW antwortet ohne bbox plötzlich mit Features;
+# und die CKAN-API von data.gv.at liegt unter einem anderen Pfad als in
+# Runde 8 versucht (Runde 5 benutzte ihn ohne die "3").
+
+def r9(c):
+    # Wien: der neuere Realnutzungs-Layer am Stephansplatz — gleiche Felder?
+    for typ in ("REALNUT2024OGD", "REALNUT2022OGD"):
+        _wfs_json(c, f"r9_wien_{typ.lower()}", "https://data.wien.gv.at/daten/geo",
+                  f"ogdwien:{typ}", *WIEN, d=0.0005)
+    # Statistik Austria: alle Gemeindegrenzen-Layer, um den jüngsten zu finden.
+    daten = hole(c, "r9_geodata_caps", "https://www.statistik.gv.at/gs-open/GEODATA/ows",
+                 params={"service": "WFS", "request": "GetCapabilities", "version": "1.1.0"},
+                 speichern=False)
+    if daten:
+        namen = re.findall(r"<Name>(GEODATA:[A-Z_0-9]+)</Name>", daten.decode("utf-8", "replace"))
+        manifest.append({"name": "r9_geodata_alle", "gem": [n for n in namen if "_GEM_" in n]})
+    _wfs_json(c, "r9_geodata_gem_2026", "https://www.statistik.gv.at/gs-open/GEODATA/ows",
+              "GEODATA:STATISTIK_AUSTRIA_GEM_20260101", *WIEN, d=0.0005)
+    # Straßen.NRW: ohne bbox kamen Features. Mit Filter auf einen Ausschnitt?
+    for name, p in (("bbox_ohne_crs", {"service": "WFS", "version": "2.0.0", "request": "GetFeature",
+                                       "typeNames": "ms:Zaehlstellen", "count": 20,
+                                       "bbox": f"{KOELN[1]-0.05},{KOELN[0]-0.05},{KOELN[1]+0.05},{KOELN[0]+0.05}"}),
+                    ("bbox_25832", {"service": "WFS", "version": "2.0.0", "request": "GetFeature",
+                                    "typeNames": "ms:Zaehlstellen", "count": 20,
+                                    "srsName": "EPSG:25832",
+                                    "bbox": "352000,5640000,362000,5650000,EPSG:25832"}),
+                    ("erste20", {"service": "WFS", "version": "2.0.0", "request": "GetFeature",
+                                 "typeNames": "ms:Zaehlstellen", "count": 20})):
+        hole(c, f"r9_nrw_{name}", "https://www.wfs.nrw.de/wfs/strassen_nrw", params=p)
+    hole(c, "r9_nrw_describe", "https://www.wfs.nrw.de/wfs/strassen_nrw",
+         params={"service": "WFS", "version": "2.0.0", "request": "DescribeFeatureType",
+                 "typeNames": "ms:Zaehlstellen"})
+    # data.gv.at: CKAN-API ohne "3" im Pfad (so lief Runde 5).
+    for name, q in (("ams", "Arbeitslose"), ("gisa", "GISA")):
+        hole(c, f"r9_datagv_suche_{name}", "https://www.data.gv.at/katalog/api/action/package_search",
+             params={"q": q, "rows": 8})
+    for pid in ("gisa-gewerbeinformationssystem-austria",
+                "arbeitsmarktdaten-arbeitslose-und-schulungsteilnehmerinnen-nach-gemeinden"):
+        hole(c, f"r9_datagv_show_{pid[:24]}", "https://www.data.gv.at/katalog/api/action/package_show",
+             params={"id": pid})
+
+
+TEILE.update({"r9": r9})
+
+
+
 if __name__ == "__main__":
     sys.exit(main(sys.argv))
 

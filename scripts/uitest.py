@@ -1153,9 +1153,46 @@ def pruefe_wien(page) -> str:
     return ("Stephansplatz: Land, Schutzzone, Widmung GB, NRW 2024, GeoSphere, lärminfo, Lage, Zählbezirk, "
             "Gemeindeprofil, Immobilienpreise, Dauerzählstellen, Luft — deutsche Blöcke ehrlich leer")
 
+
+def pruefe_datenstand(page) -> str:
+    """Der Datenstand steht im Blockkopf, nicht nur in der Fußzeile.
+
+    Wer einen Standort prüft, soll ohne Scrollen sehen, aus welchem Jahr
+    eine Zahl stammt. Geprüft wird: Jeder Block mit Quellenzeile und
+    Jahresangabe trägt den Chip, und Quellen mit vier Jahren Rückstand
+    (Straßenverkehrszählung 2021, Handelsregister 2019) sind als alt
+    markiert — Bezugszeiträume, die per Definition feststehen (Zensus-
+    Stichtag, Klima-Normalperiode), dagegen nicht.
+    """
+    setze_punkt(page, *MARIENPLATZ)
+    staende = page.eval_on_selector_all(
+        ".block", """e => e.map(b => ({
+            id: b.id.replace('block-', ''),
+            chip: b.querySelector('h2 .stand')?.textContent || null,
+            alt: !!b.querySelector('h2 .stand.alt'),
+            fuss: b.querySelector('.quelle')?.textContent || '',
+        })).filter(x => x.fuss.includes('Stand:'))""")
+    fordere(len(staende) >= 15, f"nur {len(staende)} Blöcke mit Stand in der Fußzeile")
+    ohne_chip = [x["id"] for x in staende if not x["chip"]]
+    fordere(not ohne_chip, f"Stand in der Fußzeile, aber kein Chip im Kopf: {ohne_chip}")
+    je_id = {x["id"]: x for x in staende}
+    for block, erwartet_alt in (("verkehrsmenge", True), ("register", True),
+                                ("zensus", False), ("klima", False), ("pks", False)):
+        x = je_id.get(block)
+        if x is None:
+            continue
+        fordere(x["alt"] is erwartet_alt,
+                f"{block}: Chip {x['chip']!r} alt={x['alt']}, erwartet alt={erwartet_alt}")
+    alt = [x["id"] for x in staende if x["alt"]]
+    laufend = [x["id"] for x in staende if x["chip"] == "laufend"]
+    fordere(laufend, "kein Block als laufend gekennzeichnet")
+    return f"{len(staende)} Blöcke mit Stand, davon {len(alt)} als alt markiert ({', '.join(sorted(alt))})"
+
+
 PRUEFUNGEN = [
     ("Grundgerüst und Blöcke", pruefe_grundgeruest),
     ("Quelle, Stand, Lizenz je Block", pruefe_quellenangaben),
+    ("Datenstand im Blockkopf", pruefe_datenstand),
     ("Wettbewerb nach Entfernung", pruefe_wettbewerb_nach_entfernung),
     ("Verfügbares Einkommen (Kreis)", pruefe_einkommen),
     ("Kreisprofil (Regionalatlas)", pruefe_kreisprofil),

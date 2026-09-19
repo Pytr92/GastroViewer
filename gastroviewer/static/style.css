@@ -270,6 +270,23 @@ main {
 .status.fehler { background: var(--fehler-bg); color: var(--fehler); border-color: #e8b4b0; }
 .status.leer { background: var(--warn-bg); color: var(--warn); border-color: #e7d3a3; }
 
+/* Datenstand im Blockkopf: neutral, solange die Zahlen aktuell sind —
+   gelb, sobald die Quelle vier Jahre oder länger zurückliegt. */
+.stand {
+  font-size: 11px;
+  font-weight: normal;
+  text-transform: none;
+  letter-spacing: 0;
+  padding: 2px 7px;
+  border-radius: 10px;
+  background: var(--bg);
+  color: var(--text-schwach);
+  border: 1px dashed var(--rand);
+  white-space: nowrap;
+  margin-left: 6px;
+}
+.stand.alt { background: var(--warn-bg); color: var(--warn); border-color: #e7d3a3; border-style: solid; }
+
 /* Ladebalken je Quelle */
 .laden {
   height: 3px;
