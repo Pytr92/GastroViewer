@@ -982,7 +982,7 @@ class PointService:
                     for art, muster in immobilien_at_mod.DATEIEN.items():
                         dateien[art] = await self.outbound.get_bytes(
                             "immobilien_at", immobilien_at_mod.BASIS_URL + muster.format(jahr=jahr),
-                            timeout=120.0, limiter="statistik_at", min_interval=0.5)
+                            timeout=120.0, limiter="statistik_at", min_interval=1.0)
                 except SourceError as err:
                     fehler = err
                     continue

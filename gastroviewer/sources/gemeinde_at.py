@@ -213,7 +213,7 @@ async def gkz_am_punkt(out: Outbound, lat: float, lon: float) -> dict[str, str] 
               "bbox": (f"{lon - GEODATA_BOX:.6f},{lat - GEODATA_BOX:.6f},"
                        f"{lon + GEODATA_BOX:.6f},{lat + GEODATA_BOX:.6f},EPSG:4326")}
     payload = await out.get_json("statistik_at_geodata", GEODATA_WFS_URL, params=params, timeout=45.0,
-                                 limiter="statistik_at", min_interval=0.5)
+                                 limiter="statistik_at", min_interval=1.0)
     features = payload.get("features") or [] if isinstance(payload, dict) else []
     for f in features:
         p = f.get("properties") or {}

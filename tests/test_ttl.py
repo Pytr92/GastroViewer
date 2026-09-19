@@ -85,3 +85,38 @@ def test_unbekannte_quelle_faellt_auf_kurze_dauer_und_warnt_einmal(caplog):
         assert s.ttl_for("voellig_neu_xyz") == s.ttl_osm
         assert s.ttl_for("voellig_neu_xyz") == s.ttl_osm
     assert sum("voellig_neu_xyz" in r.getMessage() for r in caplog.records) == 1
+
+
+def test_jeder_limiter_hat_genau_einen_abstand():
+    """Ein Limiter wird beim ersten Aufruf mit seinem Mindestabstand
+    angelegt; ein zweiter Aufruf mit anderem Abstand wirft zur Laufzeit.
+
+    Das ist keine Theorie: Der erste Live-Lauf der Vollprüfung brachte das
+    Gemeindeprofil zum Scheitern, weil ``statistik_at`` an einer Stelle mit
+    0,5 s und an drei anderen mit 1,0 s angelegt wurde — je nachdem, welcher
+    Block zuerst lief. Die Attrappen der Tests kennen keine Limiter, deshalb
+    fällt so etwas offline sonst nirgends auf.
+    """
+    import ast as _ast
+    import collections
+
+    paare = collections.defaultdict(set)
+    stellen = collections.defaultdict(list)
+    for pfad in (SERVICE.parent).rglob("*.py"):
+        baum = _ast.parse(pfad.read_text(encoding="utf-8"))
+        for knoten in _ast.walk(baum):
+            if not isinstance(knoten, _ast.Call):
+                continue
+            kw = {k.arg: k.value for k in knoten.keywords if k.arg}
+            limiter, abstand = kw.get("limiter"), kw.get("min_interval")
+            if (isinstance(limiter, _ast.Constant) and isinstance(limiter.value, str)
+                    and isinstance(abstand, _ast.Constant)):
+                paare[limiter.value].add(abstand.value)
+                stellen[limiter.value].append(f"{pfad.name}:{knoten.lineno}")
+
+    assert len(paare) >= 20, "der Test sollte die echten Quellmodule lesen"
+    uneinheitlich = {name: (sorted(werte), stellen[name])
+                     for name, werte in paare.items() if len(werte) > 1}
+    assert not uneinheitlich, (
+        "Limiter mit mehreren Mindestabständen — der zweite Aufruf wirft zur "
+        f"Laufzeit: {uneinheitlich}")
