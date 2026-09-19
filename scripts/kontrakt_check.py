@@ -44,7 +44,7 @@ from gastroviewer.cache import AsyncCache  # noqa: E402
 from gastroviewer.config import Settings  # noqa: E402
 from gastroviewer.http import Outbound  # noqa: E402
 from gastroviewer.sources import (berlin, gemeinde_at, hamburg, immobilien_at,  # noqa: E402
-                                  indikatoren, klima, mobidata_bw, salzburg, starkregen,
+                                  indikatoren, klima, mobidata_bw, pks, salzburg, starkregen,
                                   wien, wien_profil, wien_verkehr, wms, zensus)
 from gastroviewer.sources.base import SourceError  # noqa: E402
 
@@ -314,6 +314,28 @@ async def statistik_at_dateien(out: Outbound, s: Settings) -> list[str]:
     return befunde
 
 
+async def pks_jahresdatei(out: Outbound, s: Settings) -> list[str]:
+    """Die BKA-Kreistabelle liegt unter einem Pfad mit Berichtsjahr. Der
+    erste Live-Lauf der Vollprüfung fand den Block gescheitert vor —
+    deshalb steht die Datei jetzt im Vertrag."""
+    befunde = []
+    try:
+        r = await out.request("pks", "HEAD", pks.XLSX_URL, timeout=90.0)
+    except SourceError as err:
+        return [f"PKS: Kreistabelle {pks.JAHR} nicht erreichbar — {err.message}"]
+    if r.status_code >= 400:
+        befunde.append(f"PKS: Kreistabelle {pks.JAHR} — HTTP {r.status_code} ({pks.XLSX_URL})")
+    # Gibt es schon das Folgejahr? Dann zeigt der Block veraltete Zahlen.
+    naechstes = pks.XLSX_URL.replace(str(pks.JAHR), str(pks.JAHR + 1))
+    try:
+        r = await out.request("pks", "HEAD", naechstes, timeout=90.0)
+        if r.status_code < 400:
+            befunde.append(f"PKS: Kreistabelle {pks.JAHR + 1} gibt es schon, der Block nutzt {pks.JAHR}")
+    except SourceError:
+        pass
+    return befunde
+
+
 PRUEFUNGEN = [
     ("Zensus-Gitterdienst: Felder und Seitengröße", zensus_felder),
     ("Landes-Kartendienste (WMS GetCapabilities)", wms_dienste),
@@ -327,6 +349,7 @@ PRUEFUNGEN = [
     ("Stuttgart: Baustellen-Layer", stuttgart_layer),
     ("BKG: Starkregen-Layer", bkg_starkregen),
     ("Statistik Austria: Tabellen, Grenzen, Preisdateien", statistik_at_dateien),
+    ("BKA: Kriminalstatistik-Kreistabelle und Berichtsjahr", pks_jahresdatei),
 ]
 
 

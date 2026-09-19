@@ -791,7 +791,10 @@ def t_wien():
     b = d["bloecke"]
     assert b["planung"]["ok"] and b["planung"]["data"]["hochwasser"]["dienst"] == "lfrz"
     assert b["planung"]["data"]["erhaltungssatzung"]["betroffen"] is True, "Innere Stadt ist Schutzzone"
-    assert b["baurecht"]["data"]["stufe"] == "gebietsart", b["baurecht"]
+    # Baurecht ist kein Teil der Sammelantwort (die lädt nur die Blöcke, die
+    # ohne zweiten Abruf gehen) — es hat eine eigene Route.
+    br, _, _ = hole("/api/point/baurecht", {"lat": WIEN[0], "lon": WIEN[1]})
+    assert br["ok"] and br["data"]["stufe"] == "gebietsart", br.get("data") or br.get("error")
     assert b["klima"]["ok"] and "GeoSphere" in b["klima"]["provenance"]["source"]
     assert b["laerm"]["ok"] and b["laerm"]["data"]["dienst"] == "laerminfo"
     assert b["wahl"]["ok"] and b["wahl"]["data"]["wahlkreise"][0]["nr"] == "G90000"
@@ -956,13 +959,19 @@ def t_gemeindeprofil_und_immobilien():
     """Gemeindekennziffer am Punkt (GEODATA-WFS) trägt zwei Blöcke:
     Gemeindeprofil und Immobilienpreise."""
     d, _, _ = hole("/api/kreisprofil", {"lat": WIEN[0], "lon": WIEN[1]})
+    # Erst der Zustand, dann der Inhalt: Eine Meldung, die selbst auf None
+    # zugreift, verdeckt den eigentlichen Fehler (Lehre aus dem Erstlauf).
+    assert d["ok"], f"Gemeindeprofil nicht ok: {d.get('error')}"
     k = d["data"]
-    assert d["ok"] and k["gebiete"]["kreis"]["gkz"] == "90101", k["gebiete"]
+    assert k, f"Gemeindeprofil ohne Daten: {d.get('warnings')}"
+    assert k["gebiete"]["kreis"]["gkz"] == "90101", k["gebiete"]
     assert k.get("zuordnung") == "Gemeindegrenzen-WFS", k.get("zuordnung")
     assert k["indikatoren"], "Gemeindeprofil ohne Kennzahlen"
     d, _, _ = hole("/api/point/immobilien", {"lat": WIEN[0], "lon": WIEN[1]})
+    assert d["ok"], f"Immobilienpreise nicht ok: {d.get('error')}"
     im = d["data"]
-    assert d["ok"] and im["bezirk"]["nummer"] == "901", im["bezirk"]
+    assert im, f"Immobilienpreise ohne Daten: {d.get('warnings')}"
+    assert im["bezirk"]["nummer"] == "901", im["bezirk"]
     assert im["wohnungen"] and im["wohnungen"][0]["perioden"][0]["klassen"][0]["eur_m2"] > 1000, im["wohnungen"][:1]
     d, _, _ = hole("/api/point/immobilien", {"lat": M[0], "lon": M[1]})
     assert d["ok"] and d["data"] is None and "Nur für Österreich" in d["warnings"][0], d["warnings"]
@@ -974,11 +983,22 @@ def t_datenstand_je_block():
     """Jeder Block, der Daten liefert, nennt Quelle und Lizenz; wo ein
     Stand geführt wird, ist er lesbar."""
     d, _, _ = hole("/api/point", {"lat": M[0], "lon": M[1], "r": 600})
+
+    def hat_daten(b):
+        """Ein Block, der nur meldet „hier wurde nichts geholt", hat auch
+        nichts zu belegen — ``overture`` antwortet ohne lokalen Import mit
+        ``{"importiert": False}``, das ist keine Quelle, sondern ein
+        Hinweis auf den fehlenden Import."""
+        daten = b.get("data")
+        if not b.get("ok") or not isinstance(daten, dict) or not daten:
+            return False
+        return daten.get("importiert") is not False
+
     ohne_quelle = [n for n, b in d["bloecke"].items()
-                   if b.get("ok") and b.get("data") is not None and not (b.get("provenance") or {}).get("source")]
+                   if hat_daten(b) and not (b.get("provenance") or {}).get("source")]
     assert not ohne_quelle, f"Blöcke mit Daten ohne Quellenangabe: {ohne_quelle}"
     ohne_lizenz = [n for n, b in d["bloecke"].items()
-                   if b.get("ok") and b.get("data") is not None and not (b.get("provenance") or {}).get("license")]
+                   if hat_daten(b) and not (b.get("provenance") or {}).get("license")]
     assert not ohne_lizenz, f"Blöcke ohne Lizenz: {ohne_lizenz}"
     mit_stand = sum(1 for b in d["bloecke"].values() if (b.get("provenance") or {}).get("stand"))
     return f"{len(d['bloecke'])} Blöcke, alle mit Quelle und Lizenz, {mit_stand} mit Stand"

@@ -66,9 +66,9 @@ def test_jede_feste_fremdkennung_hat_einen_vertrag(kc):
     hier auf."""
     namen = " ".join(name for name, _ in kc.PRUEFUNGEN)
     for pflicht in ("Zensus", "Wien", "Salzburg", "Berlin", "Hamburg", "MobiData",
-                    "Stuttgart", "Starkregen", "Statistik Austria", "DWD", "München"):
+                    "Stuttgart", "Starkregen", "Statistik Austria", "DWD", "München", "BKA"):
         assert pflicht in namen, f"kein Vertrag geprüft für {pflicht}"
-    assert len(kc.PRUEFUNGEN) >= 12
+    assert len(kc.PRUEFUNGEN) >= 13
     assert all(callable(fn) for _, fn in kc.PRUEFUNGEN)
 
 
@@ -91,5 +91,5 @@ def test_geprueft_werden_die_kennungen_aus_den_modulen(kc):
                      "wien.WFS_URL", "wien_verkehr.KFZ_CSV_URL", "wien_profil.ZB_CSV_URL",
                      "salzburg.WFS_URL", "starkregen.SZENARIEN", "gemeinde_at.GEODATA_GEM_TYP",
                      "wien_profil.REALNUT_TYP", "hamburg.VM_HVS_SAMMLUNG",
-                     "immobilien_at.JAHRE", "immobilien_at.DATEIEN"):
+                     "immobilien_at.JAHRE", "immobilien_at.DATEIEN", "pks.XLSX_URL", "pks.JAHR"):
         assert ausdruck in quelle, f"{ausdruck} wird nicht aus dem Modul gelesen"

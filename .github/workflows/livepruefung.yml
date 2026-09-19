@@ -44,7 +44,11 @@ jobs:
       - name: Vollprüfung
         id: pruefung
         continue-on-error: true
-        run: python scripts/vollpruefung.py http://127.0.0.1:8011 | tee vollpruefung.log
+        # Ohne pipefail liefert die Pipe den Exitcode von tee (immer 0) —
+        # der Lauf wäre grün, obwohl die Prüfung Befunde hat.
+        run: |
+          set -o pipefail
+          python scripts/vollpruefung.py http://127.0.0.1:8011 | tee vollpruefung.log
 
       - name: Protokoll sichern
         uses: actions/upload-artifact@v4
