@@ -154,7 +154,7 @@ async def wien_dienste(out: Outbound, s: Settings) -> list[str]:
         "GENFLWIDMUNGOGD": "wien.baurecht", "ZAEHLBEZIRKOGD": "wien_profil.zaehlbezirk",
         "KURZPARKZONEOGD": "wien_profil.lage", "FUSSGEHERZONEOGD": "wien_profil.lage",
         "BEGEGNUNGSZONEOGD": "wien_profil.lage", "STRUKGESCHSTROGD": "wien_profil.lage",
-        "REALNUT2022OGD": "wien_profil.lage", "GEBAEUDEINFOOGD": "wien_profil.lage",
+        wien_profil.REALNUT_TYP: "wien_profil.lage", "GEBAEUDEINFOOGD": "wien_profil.lage",
         "DAUERZAEHLOGD": "wien_verkehr.kfz", "LUFTGUETENETZOGD": "wien_verkehr.luft",
     }
     befunde = _fehlend("Wien WFS", kurz, gebraucht)
@@ -205,7 +205,7 @@ async def hamburg_sammlungen(out: Outbound, s: Settings) -> list[str]:
     befunde = []
     gebraucht = {
         "verkehrsstaerken": {"kfz_temporaere_zaehlungen": "hamburg.verkehrsmengen"},
-        "verkehrsmengen": {"verkehrsmengen_dtv_hvs_2019": "hamburg.verkehrsmengen"},
+        "verkehrsmengen": {hamburg.VM_HVS_SAMMLUNG: "hamburg.verkehrsmengen"},
         "regionalstatistische_daten_stadtteile": {
             "regionalstatistische_daten_stadtteile": "hamburg.stadtteil"},
         "parkhaeuser": {"parkhaeuser": "hamburg.lage"},
