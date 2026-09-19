@@ -434,6 +434,10 @@ async def milieuschutz(
 
 VM_MAX_DISTANZ_M = 1500
 VM_LIZENZ = LIZENZ
+#: Die Verkehrsmengenkarte trägt ihr Erhebungsjahr im Namen. Sie steht
+#: hier als Konstante, damit der Kontrakt-Check denselben Wert prüft, den
+#: der Abruf benutzt — sonst laufen Code und Vertrag auseinander.
+VM_HVS_SAMMLUNG = "verkehrsmengen_dtv_hvs_2019"
 
 
 def _punkte_alle(geom: dict[str, Any] | None) -> list[tuple[float, float]]:
@@ -527,7 +531,7 @@ async def verkehrsmengen_load(out: Outbound, settings: Settings, lat: float, lon
     except SourceError as err:
         return SourceResult.failed("verkehrsmenge", err, int((time.perf_counter() - started) * 1000))
     try:
-        hvs = await _items(out, "verkehrsmengen", "verkehrsmengen_dtv_hvs_2019", bbox, limit=100)
+        hvs = await _items(out, "verkehrsmengen", VM_HVS_SAMMLUNG, bbox, limit=100)
     except SourceError as err:
         hvs, warnungen = [], [f"Verkehrsmengenkarte 2019: {err.message}"]
     data = verkehrsmengen_aufbereiten(zaehlungen, hvs, lat, lon, radius)

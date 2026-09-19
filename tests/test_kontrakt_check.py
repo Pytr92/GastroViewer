@@ -66,19 +66,30 @@ def test_jede_feste_fremdkennung_hat_einen_vertrag(kc):
     hier auf."""
     namen = " ".join(name for name, _ in kc.PRUEFUNGEN)
     for pflicht in ("Zensus", "Wien", "Salzburg", "Berlin", "Hamburg", "MobiData",
-                    "Stuttgart", "Starkregen", "Statistik Austria", "DWD", "München"):
+                    "Stuttgart", "Starkregen", "Statistik Austria", "DWD", "München", "BKA"):
         assert pflicht in namen, f"kein Vertrag geprüft für {pflicht}"
-    assert len(kc.PRUEFUNGEN) >= 12
+    assert len(kc.PRUEFUNGEN) >= 13
     assert all(callable(fn) for _, fn in kc.PRUEFUNGEN)
 
 
 def test_geprueft_werden_die_kennungen_aus_den_modulen(kc):
     """Die Prüfungen lesen die Kennungen aus den Quellmodulen, nicht aus
-    einer zweiten Liste — sonst laufen beide auseinander."""
+    einer zweiten Liste — sonst laufen beide auseinander.
+
+    Das ist keine Vorsichtsmaßnahme, sondern die Lehre aus dem ersten
+    Live-Lauf: Der Check meldete ``REALNUT2022OGD`` als überholt, obwohl
+    das Modul längst den Jahrgang 2024 benutzt — die Kennung stand im
+    Check als Literal. Ein Vertrag, der eine eigene Kopie der Kennung
+    führt, prüft irgendwann etwas anderes als der Code tut."""
     quelle = (WURZEL / "scripts" / "kontrakt_check.py").read_text("utf-8")
+    # Kein Jahrgang als Literal: Namen mit Jahreszahl gehören ins Quellmodul.
+    import re as _re
+    literale = _re.findall(r'"([A-Za-z_]*(?:19|20)\d{2}[A-Za-z_]*)"', quelle)
+    assert not literale, f"Kennung mit Jahrgang als Literal im Vertrag: {literale}"
     for ausdruck in ("berlin.VM_WFS_URL", "berlin.VM_JAHR", "hamburg.OAF_BASE",
                      "mobidata_bw.SVZ_URL", "mobidata_bw.ECO_URL", "mobidata_bw.STUTTGART_TYP",
                      "wien.WFS_URL", "wien_verkehr.KFZ_CSV_URL", "wien_profil.ZB_CSV_URL",
                      "salzburg.WFS_URL", "starkregen.SZENARIEN", "gemeinde_at.GEODATA_GEM_TYP",
-                     "immobilien_at.JAHRE", "immobilien_at.DATEIEN"):
+                     "wien_profil.REALNUT_TYP", "hamburg.VM_HVS_SAMMLUNG",
+                     "immobilien_at.JAHRE", "immobilien_at.DATEIEN", "pks.XLSX_URL", "pks.JAHR"):
         assert ausdruck in quelle, f"{ausdruck} wird nicht aus dem Modul gelesen"
