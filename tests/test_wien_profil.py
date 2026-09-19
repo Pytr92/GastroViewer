@@ -64,9 +64,13 @@ class _Out:
 
 
 def _wfs():
-    return {t: _lies(f"wien_r5_{t.lower()}.json") for t in
-            ("KURZPARKZONEOGD", "FUSSGEHERZONEOGD", "BEGEGNUNGSZONEOGD", "STRUKGESCHSTROGD",
-             "REALNUT2022OGD", "GEBAEUDEINFOOGD", "ZAEHLBEZIRKOGD")}
+    # Die Realnutzung kam mit Runde 9 dazu (Jahrgang 2024, umbenannte Felder),
+    # die übrigen Layer stammen aus Runde 5.
+    layer = {t: _lies(f"wien_r5_{t.lower()}.json") for t in
+             ("KURZPARKZONEOGD", "FUSSGEHERZONEOGD", "BEGEGNUNGSZONEOGD", "STRUKGESCHSTROGD",
+              "GEBAEUDEINFOOGD", "ZAEHLBEZIRKOGD")}
+    layer["REALNUT2024OGD"] = _lies("wien_r9_realnut2024ogd.json")
+    return layer
 
 
 def test_zaehlbezirk_load(zb):
@@ -88,16 +92,22 @@ def test_lage_load_stephansplatz():
     assert all(z["adresse"] for z in l["fussgaengerzonen"][:5])
     assert l["begegnungszonen"] and l["begegnungszonen"][0]["adresse"]
     assert l["geschaeftsstrasse"]["naechste"] is not None and l["geschaeftsstrasse"]["im_radius"] >= 1
+    # Jahrgang 2024 des Realnutzungs-Layers: Felder heißen LEV1..3 statt
+    # NUTZUNG_LEVEL1..3 — der Block liest beide Schemata (Runde 9).
+    # Am Stephansplatz steht der Dom — im Jahrgang 2024 wie schon 2022
+    # „Kultur, Freizeit, Messe". Dass beide Jahrgänge dasselbe sagen, belegt
+    # nebenbei, dass die umbenannten Felder richtig zugeordnet sind.
     assert l["realnutzung"]["stufe3"] == "Kultur, Freizeit, Messe"
+    assert l["realnutzung"]["stufe1"] == "Baulandnutzung" and l["realnutzung"]["jahr"] == 2024
     assert l["gebaeude"] and l["gebaeude"][0]["baujahr"] and l["gebaeude"][0]["distanz_m"] <= 150 and "\n" not in l["gebaeude"][1]["architekt"]
     assert set(out.typen) == {"KURZPARKZONEOGD", "FUSSGEHERZONEOGD", "BEGEGNUNGSZONEOGD", "STRUKGESCHSTROGD",
-                              "REALNUT2022OGD", "GEBAEUDEINFOOGD"}
+                              "REALNUT2024OGD", "GEBAEUDEINFOOGD"}
 
 
 def test_lage_load_ausserhalb_und_ausfall():
     res = asyncio.run(wien_profil.lage_load(_Out({}), 48.1372, 11.5755, 600))
     assert res.ok and res.data is None and "nur für Wien" in res.warnings[0]
-    alle = {"KURZPARKZONEOGD", "FUSSGEHERZONEOGD", "BEGEGNUNGSZONEOGD", "STRUKGESCHSTROGD", "REALNUT2022OGD", "GEBAEUDEINFOOGD"}
+    alle = {"KURZPARKZONEOGD", "FUSSGEHERZONEOGD", "BEGEGNUNGSZONEOGD", "STRUKGESCHSTROGD", "REALNUT2024OGD", "GEBAEUDEINFOOGD"}
     res = asyncio.run(wien_profil.lage_load(_Out({}, fehler=alle), *STEPHANSPLATZ, 600))
     assert res.ok is False
     res = asyncio.run(wien_profil.lage_load(_Out(_wfs(), fehler={"GEBAEUDEINFOOGD"}), *STEPHANSPLATZ, 600))

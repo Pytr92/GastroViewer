@@ -1499,6 +1499,19 @@ python scripts/attrappe.py --port 8041 &
 python scripts/uitest.py http://127.0.0.1:8041 --attrappe
 ```
 
+Drei weitere Prüfebenen laufen außerhalb der Suite, weil sie Netz brauchen:
+
+| Prüfung | Wann | Was sie findet |
+|---|---|---|
+| `scripts/kontrakt_check.py` (Workflow „Kontrakt-Check") | monatlich | Ein Anbieter hat ein Feld, einen Layer oder einen Dateinamen geändert — oder führt einen **neueren Jahrgang**, den das Werkzeug noch nicht nutzt |
+| `scripts/vollpruefung.py` (Workflow „Live-Vollprüfung") | auf Zuruf | Jede Route einmal gegen die echten Dienste, mit inhaltlicher Erwartung statt „antwortet mit 200" |
+| `scripts/at_probe.py` (Workflow „AT-Probe") | auf Zuruf | Formate neuer Kandidatenquellen, bevor etwas gebaut wird |
+
+Der Kontrakt-Check meldet zweierlei: Eine benutzte Kennung ist **weg**
+(dann bliebe ein Block leer) oder es gibt eine **jüngere** (dann zeigte
+der Block veraltete Zahlen, ohne dass etwas kaputt wäre). Das zweite ist
+der Grund, warum er auch dann läuft, wenn nichts schiefgeht.
+
 In diesem Modus schaltet die Prüfung zusätzlich die Namensauflösung des Browsers für
 alles außer `127.0.0.1` ab. Kartenkacheln laden dann nicht — das stört keine einzige
 Prüfung, verhindert aber, dass der Lauf ohne Netz in Zeitabläufen hängt.

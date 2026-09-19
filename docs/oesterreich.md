@@ -25,7 +25,7 @@ Antworten liegen unter `fixtures/at/`, die Tests rechnen darauf.
 | Inside Airbnb Wien, GTFS Wiener Linien, Linkliste | ✅ umgesetzt | `airbnb.py`, `__main__.py`, `links.py` |
 | Gemeindeprofil (Statistik Austria Gemeindetabelle, 2011–2021) | ✅ umgesetzt, Kreisprofil-Block | `gemeinde_at.py` |
 | Zählbezirks-Steckbrief Wien (MA 23) im Indikatoren-Block | ✅ umgesetzt, nur Wien | `wien_profil.py` |
-| Lage Wien: Kurzparkzone, Fußgänger-/Begegnungszonen, Geschäftsstraßen, Realnutzung, Gebäudeinfo | ✅ umgesetzt, nur Wien (Block 6k) | `wien_profil.py` |
+| Lage Wien: Kurzparkzone, Fußgänger-/Begegnungszonen, Geschäftsstraßen, Realnutzung (Jahrgang 2024), Gebäudeinfo | ✅ umgesetzt, nur Wien (Block 6k) | `wien_profil.py` |
 | Verkehrsmenge Wien (Kfz-Dauerzählstellen MA 46, Monats-CSV) | ✅ umgesetzt, nur Wien | `wien_verkehr.py` |
 | Luft Wien (Luftgütemessnetz MA 22, Halbstundenwerte, Index nach UBA-Grenzen) | ✅ umgesetzt, nur Wien | `wien_verkehr.py` |
 | Immobilien-Durchschnittspreise je Bezirk (Häuser, Eigentumswohnungen, Baugrund; ODS Statistik Austria) | ✅ umgesetzt, Block 3i, ganz Österreich | `immobilien_at.py` |
