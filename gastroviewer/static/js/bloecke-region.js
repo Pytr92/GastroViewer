@@ -2089,6 +2089,67 @@ export {
 /* Block 6k — Lage (Wien): Kurzparkzone, Fußgänger- und Begegnungszonen,
    Geschäftsstraßen des Stadtstrukturplans, Realnutzung und Gebäudeinfo.
    Verkehrsrecht und Planung, keine Frequenz — deshalb ohne Score-Anker. */
+/* Block 3i — Immobilien-Durchschnittspreise je Bezirk (Statistik Austria).
+   Österreichs Gegenstück zu den Bodenrichtwerten: Euro je m² aus
+   Kaufverträgen, nach Bauperiode und Wohnfläche. */
+export function zeigeImmobilien(d) {
+  const id = 'immobilien';
+  if (!d.ok) {
+    setStatus(id, 'fehler', 'nicht erreichbar');
+    setInhalt(id, fehlerbox(d.error));
+    setQuelle(id, d.provenance);
+    return;
+  }
+  const m = d.data;
+  if (!m) {
+    setStatus(id, 'leer', 'kein Bezirk');
+    setInhalt(id, ...warnungen(d.warnings || []));
+    setQuelle(id, d.provenance);
+    return;
+  }
+  setStatus(id, 'ok', `${m.bezirk?.name || '?'} (${m.jahr || '?'})`);
+  const teile = [];
+  const kz = [];
+  const w0 = (m.wohnungen || [])[0];
+  const mittel = (t) => {
+    const v = (t?.perioden || []).flatMap((p) => p.klassen.map((k) => k.eur_m2)).filter((x) => x !== null && x !== undefined);
+    return v.length ? Math.round(v.reduce((a, b) => a + b, 0) / v.length) : null;
+  };
+  if (w0) kz.push(kennzahl('Eigentumswohnung (Mittel über Klassen)', mittel(w0), '€/m²'));
+  const hB = (m.haeuser || []).find((h) => h.kategorie === 'B') || (m.haeuser || [])[0];
+  if (hB) kz.push(kennzahl(`Haus, Kategorie ${hB.kategorie || '?'} (Mittel)`, mittel(hB), '€/m²'));
+  if (m.baugrund_bezirk_eur_m2 !== null && m.baugrund_bezirk_eur_m2 !== undefined) {
+    kz.push(kennzahl('Baugrund im Bezirk', m.baugrund_bezirk_eur_m2, '€/m²'));
+  }
+  if (m.gemeinde && m.gemeinde.baugrund_eur_m2 !== null && m.gemeinde.baugrund_eur_m2 !== undefined) {
+    kz.push(kennzahl(`Baugrund ${m.gemeinde.name}`, m.gemeinde.baugrund_eur_m2, '€/m²'));
+  }
+  if (kz.length) teile.push(el('div', { class: 'kennzahlen' }, ...kz));
+  const tabelle = (t) => {
+    const tab = el('table', { class: 'daten' },
+      el('tr', {}, el('th', { colspan: 4 }, t.titel)),
+      el('tr', {}, el('th', {}, 'Bauperiode'),
+        ...t.perioden[0].klassen.map((k) => el('th', { class: 'num' }, k.klasse || '—'))));
+    for (const p of t.perioden) {
+      tab.append(el('tr', {}, el('td', {}, p.periode),
+        ...p.klassen.map((k) => el('td', { class: 'num' },
+          k.eur_m2 === null || k.eur_m2 === undefined ? '—' : NF.format(k.eur_m2)))));
+    }
+    return tab;
+  };
+  for (const t of m.wohnungen || []) teile.push(tabelle(t));
+  for (const t of m.haeuser || []) teile.push(tabelle(t));
+  if (m.grundstuecksgroessen) {
+    teile.push(el('div', { class: 'notiz' },
+      `Grundstücksgrößen im Bezirk: A ${m.grundstuecksgroessen.A}, B ${m.grundstuecksgroessen.B}, C ${m.grundstuecksgroessen.C}.`));
+  }
+  teile.push(el('div', { class: 'notiz' },
+    `${m.land || ''} · Bezirk ${m.bezirk?.name || '?'}${m.gemeinde ? ` · Gemeinde ${m.gemeinde.name}` : ''} · Stand ${m.stand || m.jahr || '?'}. `,
+    el('a', { href: m.portal, target: '_blank', rel: 'noopener' }, 'Immobilien-Durchschnittspreise bei Statistik Austria')));
+  setInhalt(id, ...teile, ...(m.hinweise || []).map((h) => hinweisZeile(h)), ...warnungen(d.warnings || []));
+  setQuelle(id, d.provenance);
+}
+
 export function zeigeLage(d) {
   const id = 'lage';
   if (!d.ok) {

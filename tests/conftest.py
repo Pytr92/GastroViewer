@@ -134,6 +134,16 @@ def geodata_stephansplatz():
 
 
 @pytest.fixture(scope="session")
+def immobilien_ods():
+    """Immobilien-Durchschnittspreise 2024 (Statistik Austria, Runden 5/6):
+    die drei ODS-Dateien als Bytes unter ihren Dateinamen."""
+    wurzel = Path(__file__).resolve().parent.parent / "fixtures" / "at"
+    return {"Haeuserpreise2024.ods": (wurzel / "stat_r5_haeuserpreise2024.ods").read_bytes(),
+            "Wohnungspreise2024.ods": (wurzel / "stat_r6_wohnungspreise2024.ods").read_bytes(),
+            "Baugrundstueckspreise2024.ods": (wurzel / "stat_r6_baugrundstueckspreise2024.ods").read_bytes()}
+
+
+@pytest.fixture(scope="session")
 def statistik_at():
     """Nächtigungsstatistik, live 18.09.2026: Herkunfts-Klassifikation und
     der Wien-Ausschnitt der Datendatei ab 2018."""

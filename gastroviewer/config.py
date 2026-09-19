@@ -119,6 +119,8 @@ TTL_KLASSEN: dict[str, str | int] = {
     "kreisprofil_at": "ttl_zensus", # Gemeindeprofil, jährliche Tabelle
     "gemeinde_at_daten": "ttl_zensus",  # die eingedampfte Gemeindetabelle
     "gemeinde_at_gkz": "ttl_zensus",    # Gemeindekennziffer am Punkt (GEODATA-WFS)
+    "immobilien_at_daten": "ttl_zensus", # drei ODS-Dateien, jährlich
+    "immobilien_at": "ttl_zensus",      # Bezirkswerte daraus
     "wien_zaehlbezirk": "ttl_zensus",   # Zählbezirks-Steckbrief, jährlich
     "wien_zb_daten": "ttl_zensus",      # die eingedampfte Zählbezirks-CSV
     "wien_lage": "ttl_osm",             # Zonen und Nutzung, laufend gepflegt

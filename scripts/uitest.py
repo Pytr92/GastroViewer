@@ -1138,6 +1138,8 @@ def pruefe_wien(page) -> str:
             f"Viertel-Steckbrief ohne Wiener Zählbezirk: {ind[:120]}")
     kp = text(page, "#inhalt-kreisprofil")
     fordere("Wien" in kp and "Beschäftigte" in kp, f"Gemeindeprofil fehlt: {kp[:120]}")
+    im = text(page, "#inhalt-immobilien")
+    fordere("Eigentumswohnungen" in im and "Innere Stadt" in im, f"Immobilienpreise fehlen: {im[:120]}")
     vm = text(page, "#inhalt-verkehrsmenge")
     fordere("Franz-Josefs-Kai" in vm and "MA 46" in vm, f"Wiener Dauerzählstellen fehlen: {vm[:120]}")
     lu = text(page, "#inhalt-luft")
@@ -1149,7 +1151,7 @@ def pruefe_wien(page) -> str:
             "Blöcke bleiben in Wien im Ladezustand")
     setze_punkt(page, *MARIENPLATZ)
     return ("Stephansplatz: Land, Schutzzone, Widmung GB, NRW 2024, GeoSphere, lärminfo, Lage, Zählbezirk, "
-            "Gemeindeprofil, Dauerzählstellen, Luft — deutsche Blöcke ehrlich leer")
+            "Gemeindeprofil, Immobilienpreise, Dauerzählstellen, Luft — deutsche Blöcke ehrlich leer")
 
 PRUEFUNGEN = [
     ("Grundgerüst und Blöcke", pruefe_grundgeruest),

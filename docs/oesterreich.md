@@ -28,6 +28,8 @@ Antworten liegen unter `fixtures/at/`, die Tests rechnen darauf.
 | Lage Wien: Kurzparkzone, Fußgänger-/Begegnungszonen, Geschäftsstraßen, Realnutzung, Gebäudeinfo | ✅ umgesetzt, nur Wien (Block 6k) | `wien_profil.py` |
 | Verkehrsmenge Wien (Kfz-Dauerzählstellen MA 46, Monats-CSV) | ✅ umgesetzt, nur Wien | `wien_verkehr.py` |
 | Luft Wien (Luftgütemessnetz MA 22, Halbstundenwerte, Index nach UBA-Grenzen) | ✅ umgesetzt, nur Wien | `wien_verkehr.py` |
+| Immobilien-Durchschnittspreise je Bezirk (Häuser, Eigentumswohnungen, Baugrund; ODS Statistik Austria) | ✅ umgesetzt, Block 3i, ganz Österreich | `immobilien_at.py` |
+| Gemeindekennziffer am Punkt (Gemeindegrenzen-WFS GEODATA) für Gemeindeprofil, Wahl, Immobilien | ✅ umgesetzt | `gemeinde_at.py` |
 | Luft übriges Österreich (SensorThings-Spiegel) | ⬜ bewusst leer — Daten Monate alt (Juni 2026 am 18.09.2026) | `laender.QUELLEN_NUR` |
 | Bodenrichtwerte, PKS je Bezirk, Passantenfrequenz, Handelsregister, Regionalatlas, Pendler, Regionaldatenbank, BAYSIS/BASt, Gitter/Scan | ⬜ bewusst leer, mit Begründung im Block | `laender.QUELLEN_NUR` |
 | Wiener Radzählungen (ohne Standorte), GISA-Gewerbe, AMS je Gemeinde | ⬜ offen — Standorte bzw. Datensätze am 18.09.2026 nicht auffindbar (data.gv.at 404) | — |

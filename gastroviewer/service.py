@@ -47,6 +47,7 @@ from .sources import (airbnb as airbnb_mod,
                       wien_profil as wien_profil_mod,
                       wien_verkehr as wien_verkehr_mod,
                       salzburg as salzburg_mod,
+                      immobilien_at as immobilien_at_mod,
                       register as register_mod, scan as scan_mod,
                       sonne as sonne_mod,
                       tourismus as tourismus_mod, wahl as wahl_mod, zensus)
@@ -966,6 +967,46 @@ class PointService:
             return None
         return (res.data or {}).get("gkz") if res.ok else None
 
+    async def _immobilien_at_daten(self, refresh: bool = False):
+        """Die drei ODS-Dateien der Immobilien-Durchschnittspreise, **einmal**
+        geladen (jüngstes Berichtsjahr, das der Server hat) und je Bezirk
+        eingedampft."""
+
+        async def laden() -> SourceResult:
+            fehler: SourceError | None = None
+            for jahr in immobilien_at_mod.JAHRE:
+                dateien: dict[str, bytes | None] = {}
+                try:
+                    for art, muster in immobilien_at_mod.DATEIEN.items():
+                        dateien[art] = await self.outbound.get_bytes(
+                            "immobilien_at", immobilien_at_mod.BASIS_URL + muster.format(jahr=jahr),
+                            timeout=120.0, limiter="statistik_at", min_interval=0.5)
+                except SourceError as err:
+                    fehler = err
+                    continue
+                daten = await asyncio.to_thread(
+                    immobilien_at_mod.reduzieren, dateien["haeuser"], dateien["wohnungen"], dateien["baugrund"])
+                return SourceResult(name="immobilien_at_daten", ok=True, data={"daten": daten, "jahr": jahr})
+            raise fehler or SourceError("api_error", "Keine Preisdatei abrufbar.")
+
+        res = await self._cached("immobilien_at_daten", "immobilien_at|daten", laden, refresh=refresh)
+        if not res.ok:
+            raise SourceError(res.error["kind"], res.error["message"])
+        return res.data["daten"], res.data["jahr"]
+
+    async def immobilien(self, lat: float, lon: float, refresh: bool = False):
+        """Immobilien-Durchschnittspreise je Bezirk (Statistik Austria) —
+        nur Österreich; Zuordnung über die Gemeindekennziffer am Punkt."""
+        land = await self.land(lat, lon)
+        if (leer := self._nur_in("immobilien", land)) is not None:
+            return leer
+        gkz = await self.gkz_at(lat, lon, refresh)
+        return await self._cached(
+            "immobilien_at", f"immobilien_at|{gkz or '-'}",
+            lambda: immobilien_at_mod.load(gkz, lambda: self._immobilien_at_daten(refresh)),
+            refresh=refresh,
+        )
+
     async def kreisprofil_ohne_schluessel(self, lat: float, lon: float, refresh: bool = False):
         """Kreisprofil für einen Punkt ohne Gemeindeschlüssel: in Österreich
         das Gemeindeprofil aus der Statistik-Austria-Tabelle, sonst ehrlich leer."""
@@ -1692,11 +1733,12 @@ class PointService:
             self.leerstandsmelder(lat, lon, radius, refresh),
             self.luft(lat, lon, refresh),
             self.lage(lat, lon, radius, refresh),
+            self.immobilien(lat, lon, refresh),
             return_exceptions=True,
         )
         names = ["adresse", "zensus", "osm", "gtfs", "radzaehlung", "verkehrsmenge",
                  "klima", "dynamik", "baustellen", "maerkte",
-                 "messe", "tourismus", "leerstandsmelder", "luft", "lage"]
+                 "messe", "tourismus", "leerstandsmelder", "luft", "lage", "immobilien"]
         blocks: dict[str, Any] = {}
         for name, res in zip(names, results):
             if isinstance(res, BaseException):

@@ -1354,6 +1354,7 @@ Alles über Umgebungsvariablen, alles optional:
 | `GET /api/point/baustellen?lat=&lon=&r=` | Baustellen und Haltverbote im Umkreis (Stadt München, Vier-Wochen-Vorschau) |
 | `GET /api/point/maerkte?lat=&lon=&r=` | städtische Märkte in Reichweite (München, mit Öffnungszeiten) |
 | `GET /api/point/indikatoren?lat=&lon=` | Viertel-Steckbrief: Stadtbezirks-Jahresreihen (Indikatorenatlas München; in Wien Zählbezirk der MA 23) |
+| `GET /api/point/immobilien?lat=&lon=` | Immobilien-Durchschnittspreise je Bezirk (Statistik Austria: Häuser, Eigentumswohnungen, Baugrund; nur Österreich) |
 | `GET /api/point/lage?lat=&lon=&r=` | Lage (Wien): Kurzparkzone, Fußgänger- und Begegnungszonen, Geschäftsstraßen, Realnutzung, Gebäudeinfo |
 | `GET /api/point/airbnb?lat=&lon=&r=` | Kurzzeitvermietung im Umkreis (Inside Airbnb, München/Berlin) |
 | `GET /api/point/messe?lat=&lon=` | Messe-Kalender München (Termine, Besucher-Jahresbilanz, Gelände-Entfernung) |

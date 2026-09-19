@@ -164,6 +164,8 @@ QUELLEN_NUR: dict[str, tuple[set[str], str]] = {
     # Baurecht-Block ehrlich „kein offener Dienst".
     "verkehrsmenge": ({"DE"}, "BAYSIS und BASt zählen nur deutsche Straßen; in Österreich hat nur Wien "
                               "offene Dauerzählstellen."),
+    "immobilien": ({"AT"}, "Statistik Austria veröffentlicht Durchschnittspreise aus Kaufverträgen je Bezirk; "
+                           "in Deutschland stehen dafür die Bodenrichtwerte (BORIS) auf der Karte."),
     "frequenz": ({"DE"}, "Gemessene Passantenfrequenz gibt es offen nur in drei deutschen Städten."),
     "register": ({"DE"}, "Das Registerumfeld kommt aus dem deutschen Handelsregister (OffeneRegister)."),
     "einkommen": ({"DE"}, "Kreiswerte kommen aus dem deutschen Regionalatlas."),

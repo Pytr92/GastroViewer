@@ -42,7 +42,7 @@ import {
   ladeRegister, zeigeKopf, zeigeLeerstandsmelder, zeigeOsm, zeigeZensus,
 } from './js/bloecke-gastro.js';
 import {
-  ladeEinkommen, ladeGenesis, ladeKalender, ladeKreisprofil, ladeLaerm, ladePendler, ladePks, ladeWahl, zeigeAirbnb, zeigeBaurecht, zeigeBaustellen, zeigeDynamik, zeigeFrequenz, zeigeGtfs, zeigeIhkAngebot, zeigeIndikatoren, zeigeKlima, zeigeLage, zeigeLinks, zeigeLuft, zeigeMaerkte, zeigeMesse, zeigeOverture, zeigeSonne, zeigeTourismus,
+  ladeEinkommen, ladeGenesis, ladeKalender, ladeKreisprofil, ladeLaerm, ladePendler, ladePks, ladeWahl, zeigeAirbnb, zeigeBaurecht, zeigeBaustellen, zeigeDynamik, zeigeFrequenz, zeigeGtfs, zeigeIhkAngebot, zeigeImmobilien, zeigeIndikatoren, zeigeKlima, zeigeLage, zeigeLinks, zeigeLuft, zeigeMaerkte, zeigeMesse, zeigeOverture, zeigeSonne, zeigeTourismus,
 } from './js/bloecke-region.js';
 import {
   ladePlanung, zeigeRadzaehlung, zeigeVerkehrsmenge,
@@ -196,6 +196,10 @@ function lade(refresh = false) {
     .then((d) => { if (aktuell()) { state.daten.luft = d; zeigeLuft(d); } })
     .catch((e) => aktuell() && zeigeBlockFehler('luft', e));
 
+  hole('/api/point/immobilien', { lat, lon, ...(refresh ? { refresh: 'true' } : {}) })
+    .then((d) => { if (aktuell()) { state.daten.immobilien = d; zeigeImmobilien(d); } })
+    .catch((e) => aktuell() && zeigeBlockFehler('immobilien', e));
+
   hole('/api/point/sonne', { lat, lon, ...(refresh ? { refresh: 'true' } : {}) })
     .then((d) => { if (aktuell()) { state.daten.sonne = d; zeigeSonne(d); } })
     .catch((e) => aktuell() && zeigeBlockFehler('sonne', e));
@@ -282,6 +286,7 @@ function baueGeruest() {
     block('tourismus', '3f · Tourismus-Saisonalität (München)'),
     block('pks', '3g · Sicherheitslage (Kriminalstatistik, Kreis)'),
     block('wahl', '3h · Wahlergebnis (Bundestagswahl 2025, Wahlkreis)'),
+    block('immobilien', '3i · Immobilienpreise je Bezirk (Statistik Austria, Österreich)'),
     block('gastronomie', '4 · Gastronomie'),
     block('gehweg', '4b · Erreichbarkeit zu Fuß'),
     block('liefergebiet', '4d · Rad-Liefergebiet'),

@@ -80,6 +80,7 @@ PUNKT_PFADE_OHNE_RADIUS = [
     "/api/point/adresse", "/api/point/klima", "/api/point/luft",
     "/api/point/sonne", "/api/point/frequenz", "/api/point/baurecht",
     "/api/point/indikatoren", "/api/point/messe", "/api/point/tourismus",
+    "/api/point/immobilien",
 ]
 
 # Pfade, die einen Gemeindeschlüssel brauchen; er stammt aus der zuvor

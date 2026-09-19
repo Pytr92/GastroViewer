@@ -309,6 +309,16 @@ async def point_oepnv_einzug(
     return (await svc(request).oepnv_einzug(lat, lon, minuten, refresh)).to_dict()
 
 
+@router.get("/api/point/immobilien")
+async def point_immobilien(
+    request: Request, lat: float, lon: float, refresh: bool = False,
+):
+    """Immobilien-Durchschnittspreise je Bezirk (Statistik Austria):
+    Häuser, Eigentumswohnungen, Baugrund — nur Österreich."""
+    _validate(lat, lon, 600)
+    return (await svc(request).immobilien(lat, lon, refresh)).to_dict()
+
+
 @router.get("/api/point/luft")
 async def point_luft(
     request: Request, lat: float, lon: float, refresh: bool = False,

@@ -32,7 +32,7 @@ class FakeOutbound:
                  laerm=None, fehler: set[str] | None = None, photon=None,
                  geosphere=None, laerminfo=None, lfrz=None, wien=None,
                  statistik_at=None, wahl_at=None, starkregen=None, wien_csv=None,
-                 salzburg=None, geodata=None,
+                 salzburg=None, geodata=None, immobilien=None,
                  baustellen=None, maerkte=None, indikatoren=None,
                  airbnb=None, messe=None, tourismus=None,
                  uba=None, bfg_hochwasser=None,
@@ -65,6 +65,7 @@ class FakeOutbound:
         self.wien_csv = wien_csv or {}
         self.salzburg = salzburg or {}
         self.geodata = geodata
+        self.immobilien = immobilien or {}
         self.einkommen = einkommen or {"features": []}
         # Fixture je Tabelle — Einkommen und Kreisprofil teilen sich Endpunkt
         # und URL, unterscheiden sich nur im layer-Parameter.
@@ -397,6 +398,14 @@ class FakeOutbound:
         raise AssertionError(f"unerwartete Text-URL: {url}")
 
     async def get_bytes(self, source, url, **kw):
+        if "statistik.at/fileadmin/pages/222/" in url:
+            self.calls.append("immobilien_at")
+            if "immobilien_at" in self.fehler or not self.immobilien:
+                raise SourceError("timeout", "Zeitüberschreitung — Dienst antwortet nicht.")
+            name = url.rsplit("/", 1)[-1]
+            if name not in self.immobilien:
+                raise SourceError("http_status", f"HTTP 404 — {name} fehlt.")
+            return self.immobilien[name]
         if "e40e3b00-1a98-4338-acb7-42547e6fee55" in url:
             self.calls.append("wahl_at")
             if "wahl_at" in self.fehler or self.wahl_at is None:
@@ -2380,7 +2389,8 @@ WIEN = (48.2082, 16.3738)
 def test_wiener_punkt_bekommt_ehrliche_antwort(client, zensus_600, overpass_combined,
                                                  nominatim_reverse_wien, geosphere_at, laerminfo_at,
                                                  lfrz_hochwasser_at, wien_wfs,
-                                                 wahl_at_dateien, statistik_at, wien_zb_csv, geodata_stephansplatz):
+                                                 wahl_at_dateien, statistik_at, wien_zb_csv, geodata_stephansplatz,
+                                                immobilien_ods):
     """Stephansplatz: Das Land kommt vom Geocoder (Kästen überlappen sich),
     länderunabhängige Quellen laufen, deutsche Dienste werden nicht
     gefragt — kein Zensus-Abruf, keine DWD-Station hinter der Grenze."""
@@ -2388,7 +2398,8 @@ def test_wiener_punkt_bekommt_ehrliche_antwort(client, zensus_600, overpass_comb
                         geosphere=geosphere_at, laerminfo=laerminfo_at,
                         lfrz=lfrz_hochwasser_at, wien=wien_wfs,
                         wahl_at=wahl_at_dateien, statistik_at=statistik_at,
-                        wien_csv=wien_zb_csv, geodata=geodata_stephansplatz)
+                        wien_csv=wien_zb_csv, geodata=geodata_stephansplatz,
+                        immobilien=immobilien_ods)
     c2 = client.make(fake)
     with c2:
         r = c2.get("/api/point", params={"lat": WIEN[0], "lon": WIEN[1], "r": 600})
