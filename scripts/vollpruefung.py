@@ -800,9 +800,16 @@ def t_wien():
     assert b["wahl"]["ok"] and b["wahl"]["data"]["wahlkreise"][0]["nr"] == "G90000"
     assert b["tourismus"]["ok"] and b["tourismus"]["data"]["gebiet"] == "Wien"
     assert b["maerkte"]["ok"] and b["maerkte"]["data"]["stadt"] == "Wien"
-    for name in ("luft", "einkommen", "pks", "register"):
+    # Seit 0.6.0 antworten Luft und Verkehrsmenge in Wien aus den
+    # städtischen Netzen (MA 22, MA 46) — sie stehen deshalb nicht mehr in
+    # der Liste der ehrlich leeren Blöcke, sondern werden positiv geprüft.
+    assert b["luft"]["ok"] and (b["luft"]["data"] or {}).get("dienst") == "wien", b["luft"].get("warnings")
+    assert b["verkehrsmenge"]["ok"] and (b["verkehrsmenge"]["data"] or {}).get("dienst") == "wien"
+    assert b["immobilien"]["ok"] and (b["immobilien"]["data"] or {}).get("land") == "Wien"
+    for name in ("einkommen", "pks", "register"):
         assert b[name]["data"] is None and "Nur für Deutschland" in b[name]["warnings"][0], name
-    return "Stephansplatz live: LFRZ, Schutzzone, Widmung, GeoSphere, lärminfo, NRW 2024, Nächtigungen, Märkte"
+    return ("Stephansplatz live: LFRZ, Schutzzone, Widmung, GeoSphere, lärminfo, NRW 2024, Nächtigungen, "
+            "Märkte, Luft (MA 22), Verkehrsmenge (MA 46), Immobilienpreise")
 
 
 # --------------------------------------------------- Quellen aus 0.6.0
