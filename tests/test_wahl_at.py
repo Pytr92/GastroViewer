@@ -76,6 +76,12 @@ def test_load_mit_adresse_und_ohne(daten):
     assert res.ok and res.data["ebene"] == "Bundesland" and any("Landesergebnis" in w for w in res.warnings)
     res = asyncio.run(wahl_at.load({"gemeinde": "Graz"}, laden))
     assert res.ok and res.data is None
+    # GKZ vom Gemeindegrenzen-WFS hat Vorrang vor dem (hier falschen) Namen
+    # und ersetzt das fehlende Bundesland.
+    res = asyncio.run(wahl_at.load({"gemeinde": "Nirgendwo", "bundesland_iso": "AT-6"}, laden, gkz="60101"))
+    assert res.ok and res.data["ebene"] == "Gemeinde" and res.data["wahlkreise"][0]["name"] == "Graz" and not res.warnings
+    res = asyncio.run(wahl_at.load({}, laden, gkz="60101"))
+    assert res.ok and res.data["ebene"] == "Gemeinde"
 
     async def kaputt():
         raise SourceError("timeout", "weg")

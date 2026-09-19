@@ -32,7 +32,7 @@ class FakeOutbound:
                  laerm=None, fehler: set[str] | None = None, photon=None,
                  geosphere=None, laerminfo=None, lfrz=None, wien=None,
                  statistik_at=None, wahl_at=None, starkregen=None, wien_csv=None,
-                 salzburg=None,
+                 salzburg=None, geodata=None,
                  baustellen=None, maerkte=None, indikatoren=None,
                  airbnb=None, messe=None, tourismus=None,
                  uba=None, bfg_hochwasser=None,
@@ -64,6 +64,7 @@ class FakeOutbound:
         # Wiener OGD-CSVs (MA 23): Text je URL-Bruchstück.
         self.wien_csv = wien_csv or {}
         self.salzburg = salzburg or {}
+        self.geodata = geodata
         self.einkommen = einkommen or {"features": []}
         # Fixture je Tabelle — Einkommen und Kreisprofil teilen sich Endpunkt
         # und URL, unterscheiden sich nur im layer-Parameter.
@@ -181,6 +182,11 @@ class FakeOutbound:
             if "lfrz_hochwasser" in self.fehler:
                 raise SourceError("timeout", "Zeitüberschreitung — Dienst antwortet nicht.")
             return self.lfrz
+        if "statistik.gv.at/gs-open/GEODATA" in url:
+            self.calls.append("statistik_at_geodata")
+            if "statistik_at_geodata" in self.fehler or not self.geodata:
+                raise SourceError("timeout", "Zeitüberschreitung — Dienst antwortet nicht.")
+            return self.geodata
         if "data.stadt-salzburg.at" in url:
             typ = str(((kw or {}).get("params") or {}).get("typeName", "")).split(":")[-1]
             self.calls.append(f"salzburg_{typ.lower()}")
@@ -2374,7 +2380,7 @@ WIEN = (48.2082, 16.3738)
 def test_wiener_punkt_bekommt_ehrliche_antwort(client, zensus_600, overpass_combined,
                                                  nominatim_reverse_wien, geosphere_at, laerminfo_at,
                                                  lfrz_hochwasser_at, wien_wfs,
-                                                 wahl_at_dateien, statistik_at, wien_zb_csv):
+                                                 wahl_at_dateien, statistik_at, wien_zb_csv, geodata_stephansplatz):
     """Stephansplatz: Das Land kommt vom Geocoder (Kästen überlappen sich),
     länderunabhängige Quellen laufen, deutsche Dienste werden nicht
     gefragt — kein Zensus-Abruf, keine DWD-Station hinter der Grenze."""
@@ -2382,7 +2388,7 @@ def test_wiener_punkt_bekommt_ehrliche_antwort(client, zensus_600, overpass_comb
                         geosphere=geosphere_at, laerminfo=laerminfo_at,
                         lfrz=lfrz_hochwasser_at, wien=wien_wfs,
                         wahl_at=wahl_at_dateien, statistik_at=statistik_at,
-                        wien_csv=wien_zb_csv)
+                        wien_csv=wien_zb_csv, geodata=geodata_stephansplatz)
     c2 = client.make(fake)
     with c2:
         r = c2.get("/api/point", params={"lat": WIEN[0], "lon": WIEN[1], "r": 600})

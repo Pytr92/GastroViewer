@@ -118,9 +118,14 @@ def ist_gemeinde(gkz: str) -> bool:
 
 
 def finde_gebiet(gkz_liste: list[dict[str, str]], schluessel: str,
-                 gemeinde: str | None) -> tuple[dict[str, str] | None, str]:
-    """(Eintrag, Ebene): die Gemeinde im Bundesland, sonst das Land."""
+                 gemeinde: str | None, gkz: str | None = None) -> tuple[dict[str, str] | None, str]:
+    """(Eintrag, Ebene): die Gemeinde im Bundesland, sonst das Land. Eine
+    fünfstellige ``gkz`` (Gemeindegrenzen-WFS) hat Vorrang vor dem Namen."""
     land = [g for g in gkz_liste if g["land"] == str(schluessel)]
+    if gkz and schluessel != "9":
+        eintrag = next((g for g in land if g["gkz"] == f"G{gkz}"), None)
+        if eintrag is not None:
+            return eintrag, "Gemeinde"
     if schluessel == "9":
         # Wien: Gemeinde = Land (die Bezirke sind Wahlbezirke, keine Gemeinden).
         eintrag = next((g for g in land if g["gkz"] == "G90000"), None)
@@ -177,7 +182,7 @@ HINWEISE = [
 
 async def load(adresse: dict[str, Any] | None,
                daten_laden: Callable[[], Awaitable[tuple[dict[str, dict[str, Any]], list[dict[str, str]]]]],
-               schluessel: str | None = None) -> SourceResult:
+               schluessel: str | None = None, gkz: str | None = None) -> SourceResult:
     """``adresse`` liefert Gemeinde und Bundesland (ISO ``AT-9``);
     ``daten_laden`` das einmal gecachte Paar aus Ergebnissen und GKZ-Liste."""
     from ..laender import land_aus_iso
@@ -187,6 +192,8 @@ async def load(adresse: dict[str, Any] | None,
     if schluessel is None:
         treffer = land_aus_iso(a.get("bundesland_iso"))
         schluessel = treffer[1] if treffer else None
+    if not schluessel and gkz and gkz[:1].isdigit():
+        schluessel = gkz[0]
     if not schluessel:
         return SourceResult(
             name="wahl", ok=True, data=None,
@@ -195,7 +202,7 @@ async def load(adresse: dict[str, Any] | None,
         ergebnisse, gkz_liste = await daten_laden()
     except SourceError as err:
         return SourceResult.failed("wahl", err, int((time.perf_counter() - started) * 1000))
-    gebiet, ebene = finde_gebiet(gkz_liste, schluessel, a.get("gemeinde"))
+    gebiet, ebene = finde_gebiet(gkz_liste, schluessel, a.get("gemeinde"), gkz)
     data = auswerten(ergebnisse, gebiet, ebene) if gebiet else None
     warnungen: list[str] = []
     if data is None:

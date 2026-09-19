@@ -35,13 +35,13 @@ def _aufzeichnen_modul():
 def test_wiener_antworten_fuer_die_oberflaeche(client, zensus_600, overpass_combined,
                                                 nominatim_reverse_wien, geosphere_at, laerminfo_at,
                                                 lfrz_hochwasser_at, wien_wfs, wahl_at_dateien,
-                                                statistik_at, wien_zb_csv):
+                                                statistik_at, wien_zb_csv, geodata_stephansplatz):
     az = _aufzeichnen_modul()
     fake = FakeOutbound(zensus_600, overpass_combined, nominatim_reverse_wien,
                         geosphere=geosphere_at, laerminfo=laerminfo_at,
                         lfrz=lfrz_hochwasser_at, wien=wien_wfs,
                         wahl_at=wahl_at_dateien, statistik_at=statistik_at,
-                        wien_csv=wien_zb_csv)
+                        wien_csv=wien_zb_csv, geodata=geodata_stephansplatz)
     lat, lon = WIEN
     aufnahme: dict[str, dict] = {}
     with client.make(fake) as c2:

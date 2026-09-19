@@ -4,12 +4,15 @@
 from __future__ import annotations
 
 import asyncio
+import json
 from pathlib import Path
 
 import pytest
 
 from gastroviewer.sources import gemeinde_at
 from gastroviewer.sources.base import SourceError
+
+WURZEL = Path(__file__).resolve().parent.parent / "fixtures" / "at"
 
 AT = Path(__file__).resolve().parent.parent / "fixtures" / "at"
 
@@ -82,3 +85,46 @@ def test_load_wien_innere_stadt(daten):
         raise SourceError("timeout", "weg")
 
     assert asyncio.run(gemeinde_at.load({"bundesland_iso": "AT-6"}, kaputt)).ok is False
+
+
+def test_gkz_am_punkt_ueber_geodata():
+    """Runde 6: Punktkasten am Stephansplatz liefert zwei Gemeindebezirke,
+    Punkt-in-Fläche entscheidet für 90101; Graz und Krems eindeutig."""
+    from gastroviewer.sources.base import SourceError
+
+    class Out:
+        def __init__(self, payload):
+            self.payload, self.params = payload, None
+
+        async def get_json(self, source, url, params=None, **kw):
+            self.params = params
+            if self.payload is None:
+                raise SourceError("timeout", "x")
+            return self.payload
+
+    lies = lambda n: json.loads((WURZEL / n).read_text("utf-8"))  # noqa: E731
+    out = Out(lies("stat_r6_gem_stephansplatz.json"))
+    assert asyncio.run(gemeinde_at.gkz_am_punkt(out, 48.2082, 16.3738)) == {"gkz": "90101", "name": "Wien-Innere Stadt"}
+    assert out.params["typeName"].startswith("GEODATA:STATISTIK_AUSTRIA_GEM_") and "EPSG:4326" in out.params["bbox"]
+    assert asyncio.run(gemeinde_at.gkz_am_punkt(Out(lies("stat_r6_gem_graz.json")), 47.0707, 15.4395))["gkz"] == "60101"
+    assert asyncio.run(gemeinde_at.gkz_am_punkt(Out(lies("stat_r6_gem_krems.json")), 48.4100, 15.6140))["gkz"] == "30101"
+    assert asyncio.run(gemeinde_at.gkz_am_punkt(Out({"features": []}), 48.2, 16.3)) is None
+
+
+def test_load_mit_gkz_hat_vorrang_vor_dem_namen(daten):
+    async def laden():
+        return daten
+
+    # Adresse nennt einen falschen Ortsteil — die GKZ vom WFS gewinnt.
+    res = asyncio.run(gemeinde_at.load({"bundesland_iso": "AT-9", "gemeinde": "Wien", "ortsteil": "Nirgendwo"},
+                                       laden, gkz="90101"))
+    assert res.ok and res.data["gebiete"]["kreis"]["gkz"] == "90101"
+    assert not any("nicht eindeutig" in w for w in res.warnings)
+    assert res.data["zuordnung"] == "Gemeindegrenzen-WFS"
+    # Ohne Bundesland in der Adresse reicht die GKZ (erste Ziffer = Land).
+    res = asyncio.run(gemeinde_at.load({}, laden, gkz="90101"))
+    assert res.ok and res.data["gebiete"]["land"]["name"] == "Wien"
+    # Unbekannte GKZ (nicht in der Tabelle) → Namenssuche wie bisher.
+    res = asyncio.run(gemeinde_at.load({"bundesland_iso": "AT-9", "gemeinde": "Wien", "ortsteil": "Innere Stadt"},
+                                       laden, gkz="99999"))
+    assert res.ok and res.data["gebiete"]["kreis"]["gkz"] == "90101" and res.data["zuordnung"] == "Name aus der Adresse"

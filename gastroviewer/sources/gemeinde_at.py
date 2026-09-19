@@ -33,6 +33,7 @@ import time
 from typing import Any, Awaitable, Callable
 
 from ..laender import AT
+from ..http import Outbound
 from .base import Provenance, SourceError, SourceResult, now_iso
 from .wahl_at import _norm
 
@@ -192,13 +193,48 @@ def auswerten(daten: dict[str, Any], schluessel: str, gcd: str | None, land_name
     }
 
 
+GEODATA_WFS_URL = "https://www.statistik.gv.at/gs-open/GEODATA/ows"
+GEODATA_GEM_TYP = "GEODATA:STATISTIK_AUSTRIA_GEM_20250101"
+GEODATA_BOX = 0.0005
+
+
+async def gkz_am_punkt(out: Outbound, lat: float, lon: float) -> dict[str, str] | None:
+    """Gemeindekennziffer am Punkt aus dem Gemeindegrenzen-WFS von Statistik
+    Austria (GEODATA, live belegt 18.09.2026: Punktkasten liefert 1–2
+    Polygone mit ``g_id``/``g_name``; Punkt-in-Fläche entscheidet). Wien
+    kommt als Gemeindebezirk (``90101`` „Wien-Innere Stadt“) — derselbe
+    Schlüssel wie in der Gemeindetabelle."""
+    from .baurecht import enthaelt_punkt
+
+    params = {"service": "WFS", "version": "1.1.0", "request": "GetFeature", "srsName": "EPSG:4326",
+              "outputFormat": "application/json", "typeName": GEODATA_GEM_TYP, "maxFeatures": 5,
+              "bbox": (f"{lon - GEODATA_BOX:.6f},{lat - GEODATA_BOX:.6f},"
+                       f"{lon + GEODATA_BOX:.6f},{lat + GEODATA_BOX:.6f},EPSG:4326")}
+    payload = await out.get_json("statistik_at_geodata", GEODATA_WFS_URL, params=params, timeout=45.0,
+                                 limiter="statistik_at", min_interval=0.5)
+    features = payload.get("features") or [] if isinstance(payload, dict) else []
+    for f in features:
+        p = f.get("properties") or {}
+        if p.get("g_id") and enthaelt_punkt(f.get("geometry"), lat, lon):
+            return {"gkz": str(p["g_id"]), "name": p.get("g_name")}
+    if len(features) == 1 and (features[0].get("properties") or {}).get("g_id"):
+        p = features[0]["properties"]
+        return {"gkz": str(p["g_id"]), "name": p.get("g_name")}
+    return None
+
+
 async def load(adresse: dict[str, Any] | None,
-               daten_laden: Callable[[], Awaitable[dict[str, Any]]]) -> SourceResult:
+               daten_laden: Callable[[], Awaitable[dict[str, Any]]],
+               gkz: str | None = None) -> SourceResult:
+    """``gkz`` (aus dem GEODATA-WFS, siehe ``gkz_am_punkt``) hat Vorrang vor
+    der Namenssuche über die Adresse."""
     from ..laender import land_aus_iso
 
     started = time.perf_counter()
     a = adresse or {}
     treffer = land_aus_iso(a.get("bundesland_iso"))
+    if not treffer and gkz and gkz[:1].isdigit():
+        treffer = land_aus_iso(f"AT-{gkz[0]}")
     if not treffer:
         return SourceResult(name="kreisprofil", ok=True, data=None,
                             warnings=["Ohne Bundesland (aus der Adresse) lässt sich keine Gemeinde zuordnen."])
@@ -207,9 +243,13 @@ async def load(adresse: dict[str, Any] | None,
         daten = await daten_laden()
     except SourceError as err:
         return SourceResult.failed("kreisprofil", err, int((time.perf_counter() - started) * 1000))
-    gcd = finde_gemeinde(daten, schluessel, a.get("gemeinde"), a.get("ortsteil"))
+    gcd = gkz if gkz and gkz in daten["gemeinden"] else None
+    if gcd is None:
+        gcd = finde_gemeinde(daten, schluessel, a.get("gemeinde"), a.get("ortsteil"))
     data = auswerten(daten, schluessel, gcd, land_name)
     warnungen: list[str] = []
+    if data is not None:
+        data["zuordnung"] = "Gemeindegrenzen-WFS" if gkz and gcd == gkz else "Name aus der Adresse"
     if gcd is None:
         wer = a.get("ortsteil") if schluessel == "9" else a.get("gemeinde")
         warnungen.append(f"„{wer or 'Der Ort'}“ ließ sich nicht eindeutig in der Gemeindetabelle "
@@ -223,8 +263,9 @@ async def load(adresse: dict[str, Any] | None,
             source="Statistik Austria — Gemeindetabelle Abgestimmte Erwerbsstatistik / Arbeitsstättenzählung",
             license=LIZENZ, endpoint=CSV_URL, stand=f"Stichtag 31.10.{data['jahr']}" if data else None,
             retrieved_at=now_iso(),
-            note="Gemeindezeile (Wien: Gemeindebezirk) gegen einwohnergewichtete Landes- und Bundeswerte."),
+            note="Gemeindezeile (Wien: Gemeindebezirk) gegen einwohnergewichtete Landes- und Bundeswerte; "
+                 "Zuordnung über den Gemeindegrenzen-WFS (GEODATA), ersatzweise über den Namen."),
     )
 
 
-__all__ = ["AT", "CSV_URL", "reduzieren", "finde_gemeinde", "auswerten", "load"]
+__all__ = ["AT", "CSV_URL", "GEODATA_WFS_URL", "reduzieren", "finde_gemeinde", "auswerten", "gkz_am_punkt", "load"]

@@ -951,6 +951,21 @@ class PointService:
             raise SourceError(res.error["kind"], res.error["message"])
         return res.data
 
+    async def gkz_at(self, lat: float, lon: float, refresh: bool = False) -> str | None:
+        """Gemeindekennziffer am Punkt (Gemeindegrenzen-WFS von Statistik
+        Austria), gecacht je Punkt; ein Ausfall ergibt ``None`` — dann
+        greift die Namenssuche über die Adresse."""
+        async def laden() -> SourceResult:
+            treffer = await gemeinde_at_mod.gkz_am_punkt(self.outbound, lat, lon)
+            return SourceResult(name="gemeinde_at_gkz", ok=True, data=treffer)
+
+        try:
+            res = await self._cached("gemeinde_at_gkz", cache_key("gemeinde_at_gkz", lat, lon, 0), laden,
+                                     refresh=refresh)
+        except Exception:  # noqa: BLE001 — Zuordnung ist Komfort, kein Blocker
+            return None
+        return (res.data or {}).get("gkz") if res.ok else None
+
     async def kreisprofil_ohne_schluessel(self, lat: float, lon: float, refresh: bool = False):
         """Kreisprofil für einen Punkt ohne Gemeindeschlüssel: in Österreich
         das Gemeindeprofil aus der Statistik-Austria-Tabelle, sonst ehrlich leer."""
@@ -958,10 +973,12 @@ class PointService:
         if land.code == "AT":
             res = await self.adresse(lat, lon)
             a = (res.data or {}) if res.ok else {}
-            key = f"kreisprofil_at|{a.get('bundesland_iso') or '-'}|{(a.get('gemeinde') or '-')[:40]}|{(a.get('ortsteil') or '-')[:40]}"
+            gkz = await self.gkz_at(lat, lon, refresh)
+            key = (f"kreisprofil_at|{gkz or '-'}|{a.get('bundesland_iso') or '-'}|"
+                   f"{(a.get('gemeinde') or '-')[:40]}|{(a.get('ortsteil') or '-')[:40]}")
             return await self._cached(
                 "kreisprofil_at", key,
-                lambda: gemeinde_at_mod.load(a, lambda: self._gemeinde_at_daten(refresh)),
+                lambda: gemeinde_at_mod.load(a, lambda: self._gemeinde_at_daten(refresh), gkz=gkz),
                 refresh=refresh,
             )
         return self._nur_in("kreisprofil", land) or SourceResult(
@@ -974,19 +991,22 @@ class PointService:
         land = await self.land(lat, lon)
         if land.code == "AT":
             res = await self.adresse(lat, lon)
-            return await self.wahl_at((res.data or {}) if res.ok else {}, refresh)
+            return await self.wahl_at((res.data or {}) if res.ok else {}, refresh, lat, lon)
         return self._nur_in("wahl", land) or SourceResult(
             name="wahl", ok=True, data=None,
             warnings=["Ohne Gemeindeschlüssel lässt sich kein Wahlkreis zuordnen."])
 
-    async def wahl_at(self, adresse: dict[str, Any] | None, refresh: bool = False):
-        """Nationalratswahl 2024 je Gemeinde — Zuordnung über Bundesland und
-        Gemeindename aus der Adresse."""
+    async def wahl_at(self, adresse: dict[str, Any] | None, refresh: bool = False,
+                      lat: float | None = None, lon: float | None = None):
+        """Nationalratswahl 2024 je Gemeinde — Zuordnung über die
+        Gemeindekennziffer am Punkt, ersatzweise Bundesland und Gemeindename
+        aus der Adresse."""
         a = adresse or {}
-        key = f"wahl_at|{a.get('bundesland_iso') or '-'}|{(a.get('gemeinde') or '-')[:40]}"
+        gkz = await self.gkz_at(lat, lon, refresh) if lat is not None and lon is not None else None
+        key = f"wahl_at|{gkz or '-'}|{a.get('bundesland_iso') or '-'}|{(a.get('gemeinde') or '-')[:40]}"
         return await self._cached(
             "wahl_at", key,
-            lambda: wahl_at_mod.load(a, lambda: self._wahl_at_daten(refresh)),
+            lambda: wahl_at_mod.load(a, lambda: self._wahl_at_daten(refresh), gkz=gkz),
             refresh=refresh,
         )
 
@@ -1764,7 +1784,7 @@ class PointService:
             if land.code == "AT":
                 # Nationalratswahl 2024 und Gemeindeprofil brauchen keinen
                 # Schlüssel — Bundesland und Gemeindename kommen aus der Adresse.
-                for name, lauf in (("wahl", self.wahl_at(adresse, refresh)),
+                for name, lauf in (("wahl", self.wahl_at(adresse, refresh, lat, lon)),
                                    ("kreisprofil", self.kreisprofil_ohne_schluessel(lat, lon, refresh))):
                     try:
                         blocks[name] = (await lauf).to_dict()

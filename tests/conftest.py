@@ -126,6 +126,14 @@ def wahl_at_dateien():
 
 
 @pytest.fixture(scope="session")
+def geodata_stephansplatz():
+    """Gemeindegrenzen-WFS (GEODATA) am Stephansplatz, Runde 6: zwei Polygone
+    im Punktkasten, der Punkt liegt in 90101 Wien-Innere Stadt."""
+    wurzel = Path(__file__).resolve().parent.parent / "fixtures" / "at"
+    return json.loads((wurzel / "stat_r6_gem_stephansplatz.json").read_text("utf-8"))
+
+
+@pytest.fixture(scope="session")
 def statistik_at():
     """Nächtigungsstatistik, live 18.09.2026: Herkunfts-Klassifikation und
     der Wien-Ausschnitt der Datendatei ab 2018."""
