@@ -45,6 +45,7 @@ from .sources import (airbnb as airbnb_mod,
                       planung_at as planung_at_mod, tourismus_at as tourismus_at_mod,
                       wahl_at as wahl_at_mod, gemeinde_at as gemeinde_at_mod,
                       wien_profil as wien_profil_mod,
+                      wien_verkehr as wien_verkehr_mod,
                       register as register_mod, scan as scan_mod,
                       sonne as sonne_mod,
                       tourismus as tourismus_mod, wahl as wahl_mod, zensus)
@@ -359,6 +360,22 @@ class PointService:
             lambda: genesis_mod.load(self.outbound, self.settings, ags),
         )
 
+    async def _wien_kfz_daten(self, refresh: bool = False):
+        """Monats-CSV der Wiener Dauerzählstellen (5 MB, cp1252), **einmal**
+        geladen und je Zählstelle auf das jüngste Jahr eingedampft."""
+
+        async def laden() -> SourceResult:
+            text = await self.outbound.get_text(
+                "wien_verkehr", wien_verkehr_mod.KFZ_CSV_URL, timeout=120.0,
+                limiter="wien", min_interval=0.5, encoding="cp1252")
+            return SourceResult(name="wien_kfz_daten", ok=True,
+                                data=await asyncio.to_thread(wien_verkehr_mod.kfz_reduzieren, text))
+
+        res = await self._cached("wien_kfz_daten", "wien_kfz|daten", laden, refresh=refresh)
+        if not res.ok:
+            raise SourceError(res.error["kind"], res.error["message"])
+        return res.data
+
     async def _wien_zb_daten(self, refresh: bool = False):
         """Zählbezirks-CSV der MA 23, **einmal** geladen und eingedampft."""
 
@@ -581,7 +598,16 @@ class PointService:
 
     async def verkehrsmenge(self, lat: float, lon: float, radius: int, refresh: bool = False):
         """In Bayern BAYSIS (9 441 Zählstellen, ganzes klassifiziertes
-        Netz), sonst die bundesweiten BASt-Dauerzählstellen."""
+        Netz), sonst die bundesweiten BASt-Dauerzählstellen; in Wien die
+        Kfz-Dauerzählstellen der MA 46."""
+        if wien_verkehr_mod.in_wien(lat, lon):
+            key = cache_key("wien_verkehrsmenge", lat, lon, radius)
+            return await self._cached(
+                "wien_verkehrsmenge", key,
+                lambda: wien_verkehr_mod.kfz_load(
+                    self.outbound, lat, lon, radius, lambda: self._wien_kfz_daten(refresh)),
+                refresh=refresh,
+            )
         land = await self.land(lat, lon)
         if (leer := self._nur_in("verkehrsmenge", land)) is not None:
             return leer
@@ -689,6 +715,13 @@ class PointService:
         return res.data["stationen"]
 
     async def luft(self, lat: float, lon: float, refresh: bool = False):
+        if wien_verkehr_mod.in_wien(lat, lon):
+            key = cache_key("wien_luft", lat, lon, 0)
+            return await self._cached(
+                "wien_luft", key,
+                lambda: wien_verkehr_mod.luft_load(self.outbound, lat, lon),
+                refresh=refresh,
+            )
         land = await self.land(lat, lon)
         if (leer := self._nur_in("luft", land)) is not None:
             return leer

@@ -152,13 +152,18 @@ def iso_aus_schluessel(land: Land, schluessel: str | None) -> str | None:
 QUELLEN_NUR: dict[str, tuple[set[str], str]] = {
     # klima und laerm fehlen hier bewusst: in Österreich antworten GeoSphere
     # (sources/klima_at.py) und lärminfo.at (sources/laerm_at.py).
+    # luft und verkehrsmenge: Wien antwortet vorher aus sources/wien_verkehr.py
+    # (Luftgütemessnetz MA 22, Kfz-Dauerzählstellen MA 46); der Eintrag hier
+    # gilt für das übrige Österreich.
     "luft": ({"DE"}, "Das Luftmessnetz kommt vom Umweltbundesamt (Deutschland); der "
-                     "europäische Spiegel für Österreich hinkt Monate hinterher (geprüft 18.09.2026)."),
+                     "europäische Spiegel für Österreich hinkt Monate hinterher (geprüft 18.09.2026), "
+                     "nur Wien liefert eigene Werte."),
     # planung und baurecht fehlen hier bewusst: in Österreich antworten der
     # LFRZ-Hochwasserdienst (sources/planung_at.py) und die Wiener
     # Flächenwidmung (sources/wien.py); außerhalb Wiens sagt der
     # Baurecht-Block ehrlich „kein offener Dienst".
-    "verkehrsmenge": ({"DE"}, "BAYSIS und BASt zählen nur deutsche Straßen."),
+    "verkehrsmenge": ({"DE"}, "BAYSIS und BASt zählen nur deutsche Straßen; in Österreich hat nur Wien "
+                              "offene Dauerzählstellen."),
     "frequenz": ({"DE"}, "Gemessene Passantenfrequenz gibt es offen nur in drei deutschen Städten."),
     "register": ({"DE"}, "Das Registerumfeld kommt aus dem deutschen Handelsregister (OffeneRegister)."),
     "einkommen": ({"DE"}, "Kreiswerte kommen aus dem deutschen Regionalatlas."),

@@ -118,8 +118,11 @@ TTL_KLASSEN: dict[str, str | int] = {
     "wien_zaehlbezirk": "ttl_zensus",   # Zählbezirks-Steckbrief, jährlich
     "wien_zb_daten": "ttl_zensus",      # die eingedampfte Zählbezirks-CSV
     "wien_lage": "ttl_osm",             # Zonen und Nutzung, laufend gepflegt
+    "wien_kfz_daten": "ttl_zensus",     # Monats-CSV der Dauerzählstellen, monatlich fortgeschrieben
+    "wien_verkehrsmenge": "ttl_zensus", # Jahresmittel je Zählstelle
     # --- Stundenwerte
     "luft_punkt": 3600,             # Luftqualitätsindex, stündlich veröffentlicht
+    "wien_luft": 3600,              # Lumes-Halbstundenwerte
 }
 _TTL_GEWARNT: set[str] = set()
 

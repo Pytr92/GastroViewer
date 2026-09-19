@@ -2,7 +2,7 @@
 
 Stand der Recherche: 17. September 2026. Jede Zeile nennt eine URL, die ein Rechercheur in einer Suche gesehen oder abgerufen hat; *Konfidenz* sagt, wie belastbar die Angabe ist. „unbelegt“ heißt: nicht nachgewiesen, nicht geraten. Preise, Lizenzen und Endpunkte ändern sich — vor einer Umsetzung jede Quelle noch einmal selbst aufrufen.
 
-## Umsetzungsstand (18. September 2026, Version 0.4.0)
+## Umsetzungsstand (19. September 2026)
 
 Die Empfehlung unten wurde so umgesetzt: erst die Länder-Registry
 (`gastroviewer/laender.py`), dann Österreich als Modul. Jede
@@ -22,9 +22,14 @@ Antworten liegen unter `fixtures/at/`, die Tests rechnen darauf.
 | Nationalratswahl 2024 je Gemeinde | ✅ umgesetzt | `wahl_at.py` |
 | Nächtigungsstatistik je Bundesland | ✅ umgesetzt | `tourismus_at.py` |
 | Inside Airbnb Wien, GTFS Wiener Linien, Linkliste | ✅ umgesetzt | `airbnb.py`, `__main__.py`, `links.py` |
-| Luft (SensorThings-Spiegel) | ⬜ bewusst leer — Daten Monate alt (Juni 2026 am 18.09.2026) | `laender.QUELLEN_NUR` |
+| Gemeindeprofil (Statistik Austria Gemeindetabelle, 2011–2021) | ✅ umgesetzt, Kreisprofil-Block | `gemeinde_at.py` |
+| Zählbezirks-Steckbrief Wien (MA 23) im Indikatoren-Block | ✅ umgesetzt, nur Wien | `wien_profil.py` |
+| Lage Wien: Kurzparkzone, Fußgänger-/Begegnungszonen, Geschäftsstraßen, Realnutzung, Gebäudeinfo | ✅ umgesetzt, nur Wien (Block 6k) | `wien_profil.py` |
+| Verkehrsmenge Wien (Kfz-Dauerzählstellen MA 46, Monats-CSV) | ✅ umgesetzt, nur Wien | `wien_verkehr.py` |
+| Luft Wien (Luftgütemessnetz MA 22, Halbstundenwerte, Index nach UBA-Grenzen) | ✅ umgesetzt, nur Wien | `wien_verkehr.py` |
+| Luft übriges Österreich (SensorThings-Spiegel) | ⬜ bewusst leer — Daten Monate alt (Juni 2026 am 18.09.2026) | `laender.QUELLEN_NUR` |
 | Bodenrichtwerte, PKS je Bezirk, Passantenfrequenz, Handelsregister, Regionalatlas, Pendler, Regionaldatenbank, BAYSIS/BASt, Gitter/Scan | ⬜ bewusst leer, mit Begründung im Block | `laender.QUELLEN_NUR` |
-| Wiener Radzählungen, Wiener Zählbezirks-Steckbrief, GISA-Gewerbe | ⬜ offen (Daten liegen in `fixtures/at/`, noch nicht angebunden) | — |
+| Wiener Radzählungen (ohne Standorte), GISA-Gewerbe, AMS je Gemeinde | ⬜ offen — Standorte bzw. Datensätze am 18.09.2026 nicht auffindbar (data.gv.at 404) | — |
 
 Browserprüfung: `scripts/uitest.py` prüft einen Wiener Punkt gegen die
 Attrappe (Aufzeichnung `tests/fixtures/ui/api-antworten-at.json.gz`, erzeugt

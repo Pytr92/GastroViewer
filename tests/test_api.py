@@ -305,7 +305,7 @@ class FakeOutbound:
         return self._dispatch(url, kw)
 
     async def get_text(self, source, url, **kw):
-        if "wien.gv.at/gogv" in url or "wien.gv.at/data/ogd" in url:
+        if "wien.gv.at/gogv" in url or "wien.gv.at/data/ogd" in url or "go.gv.at/" in url:
             self.calls.append("wien_csv")
             for stueck, text in self.wien_csv.items():
                 if stueck in url:
@@ -2366,14 +2366,15 @@ WIEN = (48.2082, 16.3738)
 def test_wiener_punkt_bekommt_ehrliche_antwort(client, zensus_600, overpass_combined,
                                                  nominatim_reverse_wien, geosphere_at, laerminfo_at,
                                                  lfrz_hochwasser_at, wien_wfs,
-                                                 wahl_at_dateien, statistik_at):
+                                                 wahl_at_dateien, statistik_at, wien_zb_csv):
     """Stephansplatz: Das Land kommt vom Geocoder (Kästen überlappen sich),
     länderunabhängige Quellen laufen, deutsche Dienste werden nicht
     gefragt — kein Zensus-Abruf, keine DWD-Station hinter der Grenze."""
     fake = FakeOutbound(zensus_600, overpass_combined, nominatim_reverse_wien,
                         geosphere=geosphere_at, laerminfo=laerminfo_at,
                         lfrz=lfrz_hochwasser_at, wien=wien_wfs,
-                        wahl_at=wahl_at_dateien, statistik_at=statistik_at)
+                        wahl_at=wahl_at_dateien, statistik_at=statistik_at,
+                        wien_csv=wien_zb_csv)
     c2 = client.make(fake)
     with c2:
         r = c2.get("/api/point", params={"lat": WIEN[0], "lon": WIEN[1], "r": 600})
@@ -2411,10 +2412,15 @@ def test_wiener_punkt_bekommt_ehrliche_antwort(client, zensus_600, overpass_comb
         assert bs["data"]["gesamt"] == bs["data"]["baumassnahmen"]
         assert "lfrz_hochwasser" in fake.calls and "wien_maerkteogd" in fake.calls
         assert "wien_baustellenpktogd" in fake.calls and "wien_baustellenlinogd" in fake.calls
-        for name in ("luft", "einkommen", "pks", "register"):
+        for name in ("einkommen", "pks", "register"):
             b = d["bloecke"][name]
             assert b["ok"] is True and b["data"] is None, name
             assert any("Nur für Deutschland" in w for w in b["warnings"]), (name, b["warnings"])
+        # Luft und Verkehrsmenge antworten in Wien aus den städtischen Netzen.
+        lu = d["bloecke"]["luft"]
+        assert lu["ok"] and lu["data"]["dienst"] == "wien" and lu["data"]["station"]["code"] == "STEF"
+        vm = d["bloecke"]["verkehrsmenge"]
+        assert vm["ok"] and vm["data"]["dienst"] == "wien" and vm["data"]["naechste"]["strasse"].startswith("Franz-Josefs-Kai")
         # Wahl: Nationalratswahl 2024 für die Gemeinde Wien (ohne Schlüssel,
         # über Bundesland und Namen); Tourismus: Nächtigungen Wien.
         w = d["bloecke"]["wahl"]

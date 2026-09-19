@@ -275,7 +275,7 @@ function zeigeLuft(d) {
       `Station: ${l.station?.name || '?'} (${l.station?.code || '?'}) — `
       + `${NF.format(l.station?.distanz_m ?? 0)} m ${l.station?.richtung || ''}. `,
       el('a', { href: l.portal, target: '_blank', rel: 'noopener' },
-        'Luftdaten-Portal des UBA')),
+        l.portal_titel || 'Luftdaten-Portal des UBA')),
     ...(l.hinweise || []).map((h) => hinweisZeile(h)),
     ...warnungen(d.warnings || []));
   setQuelle(id, d.provenance);

@@ -45,7 +45,7 @@ ERWARTET = {
             "oepnv_einzug", "overpass", "scan", "vorschlaege"},
     1209600: {"fahrzeit", "gehweg", "liefergebiet", "planung", "planung_at",
               "tourismus_at", "tourismus_at_daten"},
-    3600: {"luft_punkt"},
+    3600: {"luft_punkt", "wien_luft"},
 }
 
 

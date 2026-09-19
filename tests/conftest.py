@@ -95,7 +95,10 @@ def wien_wfs():
             "STRUKGESCHSTROGD": lies("wien_r5_strukgeschstrogd.json"),
             "REALNUT2022OGD": lies("wien_r5_realnut2022ogd.json"),
             "GEBAEUDEINFOOGD": lies("wien_r5_gebaeudeinfoogd.json"),
-            "ZAEHLBEZIRKOGD": lies("wien_r5_zaehlbezirkogd.json")}
+            "ZAEHLBEZIRKOGD": lies("wien_r5_zaehlbezirkogd.json"),
+            # Runde 6: Kfz-Dauerzählstellen und Luftgütemessnetz stadtweit.
+            "DAUERZAEHLOGD": lies("wien_r6_dauerzaehlogd.json"),
+            "LUFTGUETENETZOGD": lies("wien_r6_luftguetenetzogd.json")}
 
 
 @pytest.fixture(scope="session")
@@ -135,7 +138,10 @@ def wien_lage_wfs():
 def wien_zb_csv():
     """Zählbezirks-Bevölkerung der MA 23, Auszug (Bezirk 1 komplett, ab 2022 alle)."""
     wurzel = Path(__file__).resolve().parent.parent / "fixtures" / "at"
-    return {"l9ogdviezbz": (wurzel / "wien_bev_zaehlbezirk_auszug.csv").read_text("utf-8")}
+    return {"l9ogdviezbz": (wurzel / "wien_bev_zaehlbezirk_auszug.csv").read_text("utf-8"),
+            # Runde 7: Dauerzählstellen 2025 und Lumes-Halbstundenwerte.
+            "dauerzaehlstellen.csv": (wurzel / "wien_r7_dauerzaehlstellen_2025.csv").read_text("utf-8"),
+            "l9lumesakt": (wurzel / "wien_r7_luft_lumes.csv").read_text("cp1252")}
 
 
 @pytest.fixture(scope="session")

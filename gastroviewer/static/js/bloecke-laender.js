@@ -598,7 +598,7 @@ function zeigeVerkehrsmenge(d) {
     setQuelle(id, d.provenance);
     return;
   }
-  setStatus(id, 'ok', v.dienst === 'bast' ? `bundesweit (${v.jahr})` : 'geladen');
+  setStatus(id, 'ok', v.dienst === 'bast' ? `bundesweit (${v.jahr})` : (v.stadt ? `${v.stadt} (${v.jahr || '?'})` : 'geladen'));
   const s = v.staerkste || v.naechste;
   const kz = el('div', { class: 'kennzahlen' },
     kennzahl('Stärkste Zählstelle', s.dtv_kfz, 'Kfz/Tag'),
@@ -606,16 +606,21 @@ function zeigeVerkehrsmenge(d) {
     kennzahl('Entfernung', s.distanz_m, 'm'),
     kennzahl('Zählstellen im Umkreis', v.zaehlstellen.length));
 
+  const mitWoche = v.zaehlstellen.some((z) => z.dtv_werktag !== undefined && z.dtv_werktag !== null);
   const tab = el('table', { class: 'daten' },
     el('tr', {}, el('th', {}, 'Straße'), el('th', { class: 'num' }, 'm'),
-      el('th', { class: 'num' }, 'Kfz/Tag'), el('th', { class: 'num' }, 'SV %')));
+      el('th', { class: 'num' }, 'Kfz/Tag'), el('th', { class: 'num' }, 'SV %'),
+      ...(mitWoche ? [el('th', { class: 'num' }, 'Werktag'), el('th', { class: 'num' }, 'Sonntag')] : [])));
   for (const z of v.zaehlstellen.slice(0, 12)) {
     tab.append(el('tr', {},
       el('td', {}, `${z.strasse || '(ohne Angabe)'}${z.im_radius ? ' ✓' : ''}`),
       el('td', { class: 'num' }, NF.format(z.distanz_m)),
       el('td', { class: 'num' }, z.dtv_kfz === null ? '—' : NF.format(z.dtv_kfz)),
       el('td', { class: 'num' },
-        z.schwerverkehr_anteil === null ? '—' : NF1.format(z.schwerverkehr_anteil))));
+        z.schwerverkehr_anteil === null ? '—' : NF1.format(z.schwerverkehr_anteil)),
+      ...(mitWoche ? [
+        el('td', { class: 'num' }, z.dtv_werktag == null ? '—' : NF.format(z.dtv_werktag)),
+        el('td', { class: 'num' }, z.dtv_sonntag == null ? '—' : NF.format(z.dtv_sonntag))] : [])));
   }
 
   setInhalt(id, kz, tab,
@@ -627,13 +632,13 @@ function zeigeVerkehrsmenge(d) {
       + 'schadet sie eher. Der DTV ist ein Jahresmittel über alle Wochentage.'),
     ...(v.hinweise || []).map((h) => hinweisZeile(h)),
     el('div', { class: 'notiz' },
-      v.dienst === 'bast'
+      v.netz_hinweis || (v.dienst === 'bast'
         ? 'Gemessen werden bundesweit nur Autobahnen und Bundesstraßen '
           + '(BASt-Dauerzählstellen). Innerstädtische Straßen fehlen. '
         : 'Gezählt wird nur das klassifizierte Straßennetz (Autobahnen, Bundes-, Staats- '
-          + 'und Kreisstraßen). Innerstädtische Gemeindestraßen und Fußgängerzonen fehlen. ',
+          + 'und Kreisstraßen). Innerstädtische Gemeindestraßen und Fußgängerzonen fehlen. '),
       el('a', { href: v.portal, target: '_blank', rel: 'noopener' },
-        v.dienst === 'bast' ? 'Zählstellen bei der BASt' : 'Straßenverkehrszählung bei BAYSIS')));
+        v.portal_titel || (v.dienst === 'bast' ? 'Zählstellen bei der BASt' : 'Straßenverkehrszählung bei BAYSIS'))));
   setQuelle(id, d.provenance);
 }
 
