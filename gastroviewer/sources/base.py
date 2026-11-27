@@ -90,6 +90,37 @@ def now_iso() -> str:
     return time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
 
 
+def features_aus(payload: Any, quelle: str) -> list:
+    """Liefert die ``features`` einer GeoJSON-FeatureCollection.
+
+    ``[]`` ist gültig und heißt 0 Treffer. Alles andere (kein Objekt, JSON-
+    Fehlerobjekt wie ``{"error": {...}}``, ``features`` fehlt oder ist keine
+    Liste) ist ein Quellenausfall und wird als ``SourceError("parse", …)``
+    gemeldet, nie als „keine Treffer"."""
+    if isinstance(payload, dict) and isinstance(payload.get("features"), list):
+        return payload["features"]
+    if not isinstance(payload, dict):
+        raise SourceError(
+            "parse",
+            f"{quelle}: Antwort ist kein JSON-Objekt ({type(payload).__name__}).",
+        )
+    fehler = payload.get("error")
+    if isinstance(fehler, dict):
+        text = fehler.get("message") or fehler.get("description")
+    else:
+        text = fehler or payload.get("message")
+    if text:
+        raise SourceError(
+            "parse",
+            f"{quelle}: Fehlerantwort statt FeatureCollection: {str(text)[:200]}",
+        )
+    raise SourceError(
+        "parse",
+        f"{quelle}: Antwort ohne Feld „features“ als Liste "
+        f"(Felder: {', '.join(sorted(map(str, payload))[:8]) or 'keine'}).",
+    )
+
+
 EARTH_RADIUS_M = 6371008.8
 
 

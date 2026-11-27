@@ -91,6 +91,20 @@ async def test_load_fragt_mit_lonlat_bbox(settings, muenchen_baustellen):
     assert "Vier-Wochen" in res.provenance.stand or "vier Wochen" in res.provenance.stand
 
 
+async def test_load_fehlerobjekt_ist_ausfall(settings):
+    # Minimal konstruiert: JSON-Fehlerobjekt statt FeatureCollection.
+    out = FakeOut({"error": {"code": 500, "message": "Server kaputt"}})
+    res = await baustellen.load(out, settings, *PUNKT, 400, heute=HEUTE)
+    assert not res.ok and res.data is None
+    assert res.error["kind"] == "parse" and "Server kaputt" in res.error["message"]
+
+
+async def test_load_leere_featurecollection_ist_ok(settings):
+    out = FakeOut({"type": "FeatureCollection", "features": []})
+    res = await baustellen.load(out, settings, *PUNKT, 400, heute=HEUTE)
+    assert res.ok and res.data["gesamt"] == 0
+
+
 async def test_ausserhalb_muenchens_keine_anfrage(settings, muenchen_baustellen):
     out = FakeOut(muenchen_baustellen)
     res = await baustellen.load(out, settings, 53.55, 9.99, 400, heute=HEUTE)

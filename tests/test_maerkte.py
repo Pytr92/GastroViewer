@@ -53,6 +53,20 @@ async def test_load_muenchen(settings, muenchen_maerkte):
     assert "GeodatenService" in res.provenance.source
 
 
+async def test_load_fehlerobjekt_ist_ausfall(settings):
+    # Minimal konstruiert: JSON-Fehlerobjekt statt FeatureCollection.
+    out = FakeOut({"error": {"code": 500, "message": "Server kaputt"}})
+    res = await maerkte.load(out, settings, *MARIENPLATZ, 600)
+    assert not res.ok and res.data is None
+    assert res.error["kind"] == "parse" and "Server kaputt" in res.error["message"]
+
+
+async def test_load_leere_featurecollection_ist_ok(settings):
+    out = FakeOut({"type": "FeatureCollection", "features": []})
+    res = await maerkte.load(out, settings, *MARIENPLATZ, 600)
+    assert res.ok and res.data["stadtweit"] == 0
+
+
 async def test_load_ausserhalb_ohne_anfrage(settings, muenchen_maerkte):
     out = FakeOut(muenchen_maerkte)
     res = await maerkte.load(out, settings, 52.52, 13.40, 600)

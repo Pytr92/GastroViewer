@@ -23,7 +23,9 @@ from typing import Any
 
 from ..config import Settings
 from ..http import Outbound
-from .base import Provenance, SourceError, SourceResult, bearing_label, haversine_m, now_iso
+from .base import (
+    Provenance, SourceError, SourceResult, bearing_label, features_aus, haversine_m, now_iso,
+)
 from .baustellen import STADT_BBOX
 
 WFS_URL = "https://geoportal.muenchen.de/geoserver/gsm_wfs/ows"
@@ -140,12 +142,12 @@ async def load(
             limiter="muenchen",
             min_interval=1.0,
         )
+        features = features_aus(payload, "München-Märkte (WFS)")
     except SourceError as err:
         return SourceResult.failed(
             "maerkte", err, int((time.perf_counter() - started) * 1000)
         )
 
-    features = payload.get("features", []) if isinstance(payload, dict) else []
     data = aufbereiten(features, lat, lon, radius)
     data["hinweise"] = HINWEISE
 
