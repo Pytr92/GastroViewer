@@ -31,10 +31,11 @@ abgefragt.
 from __future__ import annotations
 
 import time
-from datetime import date, datetime, timedelta
+from datetime import datetime, timedelta
 from typing import Any, Awaitable, Callable
 
 from ..http import Outbound
+from ..zeit import heute_berlin, jetzt_mez
 from .base import (Provenance, SourceError, SourceResult, bearing_label,
                    haversine_m, now_iso)
 
@@ -139,13 +140,16 @@ HINWEISE = [
 
 
 def _alter_stunden(stand: Any) -> float | None:
-    """Alter eines UBA-Zeitstempels ("YYYY-MM-DD HH:MM:SS", Ortszeit) in
-    Stunden — None, wenn das Format nicht passt."""
+    """Alter eines UBA-Zeitstempels ("YYYY-MM-DD HH:MM:SS") in Stunden —
+    None, wenn das Format nicht passt. Die Stempel sind MEZ (CET)
+    ganzjährig, ohne Sommerzeit (laut ``indices`` der API: "date start
+    (CET)")."""
     try:
         t = datetime.strptime(str(stand), "%Y-%m-%d %H:%M:%S")
     except (TypeError, ValueError):
         return None
-    return (datetime.now() - t).total_seconds() / 3600
+    jetzt = jetzt_mez().replace(tzinfo=None)
+    return (jetzt - t).total_seconds() / 3600
 
 
 async def load(
@@ -176,8 +180,9 @@ async def load(
     # Zwei Tage statt einem: Nach Mitternacht hat der heutige Tag noch
     # keinen Stundenwert, und ein leerer Block läge dann eine Stunde im
     # Cache. Der jüngste Wert im Fenster zählt; sein Alter steht unten.
-    heute = date.today().isoformat()
-    gestern = (date.today() - timedelta(days=1)).isoformat()
+    heute_tag = heute_berlin()
+    heute = heute_tag.isoformat()
+    gestern = (heute_tag - timedelta(days=1)).isoformat()
     daten = None
     station = None
     for kandidat in kandidaten:

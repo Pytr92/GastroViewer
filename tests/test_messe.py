@@ -94,6 +94,27 @@ async def test_load_block(settings, messe_muenchen):
     assert res.data["hinweise"]
 
 
+async def test_heute_ist_der_deutsche_kalendertag(settings, messe_muenchen, monkeypatch):
+    """06.04.2025 23:30 UTC = 07.04.2025 01:30 MESZ: die bauma (07.–13.04.)
+    läuft dann schon — mit UTC-Tag wäre sie noch „kommend"."""
+    from datetime import datetime, timezone
+
+    from gastroviewer import zeit
+
+    monkeypatch.setattr(
+        zeit, "_utc_jetzt",
+        lambda: datetime(2025, 4, 6, 23, 30, tzinfo=timezone.utc))
+
+    class FakeOut:
+        async def get_text(self, source, url, **kw):
+            return messe_muenchen["csv"]
+
+    res = await messe.load(FakeOut(), settings, *MARIENPLATZ)
+    assert res.ok and res.data
+    assert any(e["titel"] == "bauma" for e in res.data["laufend"])
+    assert not any(e["titel"] == "bauma" for e in res.data["kommend"])
+
+
 async def test_weit_weg_kein_netzaufruf(settings):
     class Nie:
         async def get_text(self, *a, **kw):

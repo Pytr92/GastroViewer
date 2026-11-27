@@ -28,6 +28,7 @@ from typing import Any
 
 from ..config import Settings
 from ..http import Outbound
+from ..zeit import heute_berlin
 from .base import Provenance, SourceError, SourceResult, bearing_label, haversine_m, now_iso
 
 CSV_URL = (
@@ -236,7 +237,7 @@ async def load(
             SourceError("parse", "Keine Münchner Veranstaltungen in der CSV gefunden."),
             int((time.perf_counter() - started) * 1000),
         )
-    heute = heute or time.strftime("%Y-%m-%d", time.gmtime())
+    heute = heute or heute_berlin().isoformat()
     data = auswerten(events, lat, lon, heute)
     data["hinweise"] = HINWEISE
 

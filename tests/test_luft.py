@@ -112,3 +112,44 @@ async def test_zweitagesfenster_und_alterswarnung(stationen, uba_luft_api):
     stand = datetime.strptime(res.data["stand"], "%Y-%m-%d %H:%M:%S")
     assert datetime.now() - stand > timedelta(hours=3)
     assert luft._alter_stunden("kein Datum") is None
+
+
+async def test_tag_und_alter_nach_deutscher_zeit(stationen, uba_luft_api, monkeypatch):
+    """01.12.2026 23:30 UTC = 02.12.2026 00:30 MEZ: das Fenster reicht vom
+    01. bis 02.12., und ein Wert von 00:00 Uhr ist eine halbe Stunde alt."""
+    from datetime import datetime, timezone
+
+    from gastroviewer import zeit
+
+    monkeypatch.setattr(
+        zeit, "_utc_jetzt",
+        lambda: datetime(2026, 12, 1, 23, 30, tzinfo=timezone.utc))
+    gesehen = []
+
+    class FakeOut:
+        async def get_json(self, source, url, **kw):
+            gesehen.append(dict(kw.get("params") or {}))
+            return uba_luft_api["airquality"]
+
+    async def laden():
+        return stationen
+
+    res = await luft.load(FakeOut(), 48.1339, 11.5667, laden)
+    assert res.ok and res.data
+    assert gesehen[0]["date_from"] == "2026-12-01"
+    assert gesehen[0]["date_to"] == "2026-12-02"
+    assert luft._alter_stunden("2026-12-02 00:00:00") == pytest.approx(0.5)
+
+
+def test_alter_nutzt_mez_auch_im_sommer(monkeypatch):
+    """UBA stempelt ganzjährig in MEZ ("date end (CET)" in indices der
+    echten Antwort): 08:30 UTC = 09:30 MEZ (nicht 10:30 MESZ), ein Stand
+    von 09:00 ist also 0,5 h alt."""
+    from datetime import datetime, timezone
+
+    from gastroviewer import zeit
+
+    monkeypatch.setattr(
+        zeit, "_utc_jetzt",
+        lambda: datetime(2026, 8, 8, 8, 30, tzinfo=timezone.utc))
+    assert luft._alter_stunden("2026-08-08 09:00:00") == pytest.approx(0.5)

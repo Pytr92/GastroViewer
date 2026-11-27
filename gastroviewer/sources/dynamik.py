@@ -25,6 +25,7 @@ from typing import Any
 
 from ..config import Settings
 from ..http import Outbound
+from ..zeit import heute_berlin
 from .base import Provenance, SourceError, SourceResult, now_iso
 from .overpass import GASTRO_AMENITIES
 
@@ -107,7 +108,7 @@ async def load(
     out: Outbound, settings: Settings, lat: float, lon: float, radius: int
 ) -> SourceResult:
     started = time.perf_counter()
-    jahr_heute = time.gmtime().tm_year
+    jahr_heute = heute_berlin().year
     jahr_ende = jahr_heute
     warnungen: list[str] = []
 

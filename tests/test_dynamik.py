@@ -61,12 +61,11 @@ def test_zeitraum_und_filter():
 async def test_januar_faellt_auf_das_vorjahr_zurueck(settings, ohsome_dynamik):
     """Vor dem ersten Datenstand des Jahres lehnt ohsome den 1.1. ab —
     dann endet die Reihe am 1.1. des Vorjahres, mit Warnung."""
-    import time
-
     from gastroviewer.sources import dynamik
     from gastroviewer.sources.base import SourceError
+    from gastroviewer.zeit import heute_berlin
 
-    jahr = time.gmtime().tm_year
+    jahr = heute_berlin().year
     aufrufe = []
 
     class FakeOut:
@@ -87,6 +86,27 @@ async def test_januar_faellt_auf_das_vorjahr_zurueck(settings, ohsome_dynamik):
     assert aufrufe[1].endswith(f"{jahr - 1}-01-01/P1Y") and aufrufe[2] == aufrufe[1]
     assert any(f"1.1.{jahr - 1}" in w for w in res.warnings)
     assert res.provenance.stand.endswith(f"{jahr - 1}, jeweils 1. Januar")
+
+
+async def test_jahr_ist_das_deutsche_jahr(settings, ohsome_dynamik, monkeypatch):
+    """31.12.2025 23:30 UTC = 01.01.2026 00:30 MEZ: die Reihe endet 2026."""
+    from datetime import datetime, timezone
+
+    from gastroviewer import zeit
+
+    monkeypatch.setattr(
+        zeit, "_utc_jetzt",
+        lambda: datetime(2025, 12, 31, 23, 30, tzinfo=timezone.utc))
+    aufrufe = []
+
+    class FakeOut:
+        async def post_json(self, source, url, **kw):
+            aufrufe.append(kw["data"]["time"])
+            return ohsome_dynamik["gastro"]
+
+    res = await dynamik.load(FakeOut(), settings, 48.137, 11.575, 600)
+    assert res.ok, res.error
+    assert aufrufe[0] == "2019-01-01/2026-01-01/P1Y"
 
 
 async def test_anderer_404_bleibt_ein_fehler(settings):

@@ -31,7 +31,7 @@ Status: OFFEN | IN ARBEIT | FERTIG | ZURÜCKGESTELLT
 ## Block C — Backend-Kleinkram (niedrig)
 | ID | Ziel | Dateien | Akzeptanzkriterien | Prüf | Status |
 |---|---|---|---|---|---|
-| C1 | Zeit/Datum in Ortszeit | `messe.py`, `dynamik.py`, `luft.py` | „heute"/Jahr/Alter in `Europe/Berlin`; Tests mit fester Uhrzeit um 00:30 MEZ | P | OFFEN |
+| C1 | Zeit/Datum in Ortszeit | `messe.py`, `dynamik.py`, `luft.py` | „heute"/Jahr/Alter in `Europe/Berlin`; Tests mit fester Uhrzeit um 00:30 MEZ | P | FERTIG (1005 grün, 1 Korrekturrunde: UBA-Stempel ganzjährig MEZ → `jetzt_mez`; neues `zeit.py` ohne neue Abhängigkeit; offen, klein: Jahrestest `test_dynamik.py:91` greift erst ab 2027; `date.today()` noch in baustellen, berlin, hamburg, gtfs, mobidata_bw, salzburg, wien) |
 | C2 | Baustellen: LineString übernehmen, verworfene Features als Warnung; Tourismus-Lückenprüfung; Luft `aktiv_bis` | `baustellen.py`, `tourismus.py`, `luft.py` | je Test | P | OFFEN |
 | C3 | Genesis-Zugangsdatei direkt mit 0o600; CLI-Download mit Timeout | `genesis.py`, `__main__.py` | Datei nie weltlesbar (Test prüft Modus); `urlopen(..., timeout=…)` | P | OFFEN |
 | C4 ⚠ | API: PATCH ohne bekanntes Feld → 422; `/api/outbound` mit Obergrenze | `routen/punkte.py`, `cache.py`, README-Tabelle | Tests; README angepasst | P | OFFEN (API-Änderung, OK nötig) |
