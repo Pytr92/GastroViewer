@@ -89,6 +89,27 @@ def _aussenringe(geom: dict[str, Any] | None) -> list[list[list[float]]]:
     return []
 
 
+def _linien(geom: dict[str, Any] | None) -> list[list[list[float]]]:
+    """Linien (``LineString``/``MultiLineString``) als ``[[lon, lat], …]``.
+    Straßenbaustellen sind oft Linien statt Flächen; sie laufen unter
+    demselben Ausgabeformat wie Umrisse, nur ohne Innen-Test."""
+    if not geom:
+        return []
+    typ = geom.get("type")
+    koords = geom.get("coordinates") or []
+    if typ == "LineString":
+        linien = [koords]
+    elif typ == "MultiLineString":
+        linien = list(koords)
+    else:
+        return []
+    return [
+        [p for p in linie if isinstance(p, (list, tuple)) and len(p) >= 2]
+        for linie in linien
+        if linie
+    ]
+
+
 def _im_ring(lat: float, lon: float, ring: list[list[float]]) -> bool:
     """Strahl-Test (even-odd). Ring in ``[lon, lat]``-Reihenfolge."""
     drin = False
@@ -103,14 +124,57 @@ def _im_ring(lat: float, lon: float, ring: list[list[float]]) -> bool:
     return drin
 
 
-def _distanz_m(lat: float, lon: float, ringe: list[list[list[float]]]) -> float:
+def _abstand_segment_m(
+    lat: float, lon: float, a: list[float], b: list[float]
+) -> float:
+    """Abstand Punkt–Strecke (a, b je ``[lon, lat]``) in Metern, lokale
+    equirektanguläre Projektion um den Anfragepunkt; Projektionsparameter
+    auf [0, 1] begrenzt."""
+    kx = 111_320.0 * math.cos(math.radians(lat))
+    ky = 110_540.0
+    ax, ay = (a[0] - lon) * kx, (a[1] - lat) * ky
+    bx, by = (b[0] - lon) * kx, (b[1] - lat) * ky
+    dx, dy = bx - ax, by - ay
+    laenge2 = dx * dx + dy * dy
+    t = 0.0 if laenge2 == 0 else max(0.0, min(1.0, -(ax * dx + ay * dy) / laenge2))
+    return math.hypot(ax + t * dx, ay + t * dy)
+
+
+def _mitte_der_linie(linie: list[list[float]]) -> tuple[float, float]:
+    """Punkt bei halber Linienlänge als ``(lat, lon)``, auf dem Segment
+    interpoliert."""
+    lat0 = linie[0][1]
+    kx = 111_320.0 * math.cos(math.radians(lat0))
+    ky = 110_540.0
+    laengen = [
+        math.hypot((b[0] - a[0]) * kx, (b[1] - a[1]) * ky)
+        for a, b in zip(linie, linie[1:])
+    ]
+    halb = sum(laengen) / 2
+    for (a, b), l in zip(zip(linie, linie[1:]), laengen):
+        if halb <= l and l > 0:
+            t = halb / l
+            return a[1] + t * (b[1] - a[1]), a[0] + t * (b[0] - a[0])
+        halb -= l
+    return linie[0][1], linie[0][0]
+
+
+def _distanz_m(
+    lat: float, lon: float, ringe: list[list[list[float]]], linie: bool = False
+) -> float:
     """0, wenn der Punkt im Umriss liegt; sonst kürzeste Entfernung zu den
-    Stützpunkten. Die Umrisse sind Straßenabschnitte von wenigen hundert
+    Stützpunkten (bei Linien: zu den Strecken). Die Umrisse sind Straßenabschnitte von wenigen hundert
     Metern — die Stützpunkt-Näherung reicht für eine Umkreis-Sortierung."""
     beste = math.inf
     for ring in ringe:
-        if len(ring) >= 3 and _im_ring(lat, lon, ring):
+        if not linie and len(ring) >= 3 and _im_ring(lat, lon, ring):
             return 0.0
+        if linie:
+            for a, b in zip(ring, ring[1:]):
+                beste = min(beste, _abstand_segment_m(lat, lon, a, b))
+            if len(ring) == 1:
+                beste = min(beste, haversine_m(lat, lon, ring[0][1], ring[0][0]))
+            continue
         for punkt in ring:
             d = haversine_m(lat, lon, punkt[1], punkt[0])
             if d < beste:
@@ -137,13 +201,18 @@ def aufbereiten(
     eintraege: list[dict[str, Any]] = []
     for f in features:
         p = f.get("properties") or {}
-        ringe = _aussenringe(f.get("geometry"))
+        geom = f.get("geometry")
+        ringe = _aussenringe(geom)
+        ist_linie = False
+        if not ringe:
+            ringe = [ln for ln in _linien(geom) if ln]
+            ist_linie = bool(ringe)
         if not ringe:
             continue
         ende = _datum(p.get("ende_datum_kombiniert"))
         if ende is not None and ende < heute:
             continue
-        dist = _distanz_m(lat, lon, ringe)
+        dist = _distanz_m(lat, lon, ringe, ist_linie)
         if dist > radius:
             continue
         beginn = _datum(p.get("beginn_datum_kombiniert"))
@@ -151,7 +220,12 @@ def aufbereiten(
         bereiche = str(p.get("betroffene_bereiche") or "").strip()
         gehweg = "gehweg" in (beeintr + " " + bereiche).lower()
         sperrung = "sperr" in beeintr.lower()
-        sp = _schwerpunkt(ringe)
+        if ist_linie:
+            # Repräsentativer Punkt einer Linie: bei halber Linienlänge (liegt
+            # auf der Linie; der Mittelwert läge bei Kurven daneben).
+            sp = _mitte_der_linie(ringe[0])
+        else:
+            sp = _schwerpunkt(ringe)
         status = "laufend"
         if beginn is not None and beginn > heute:
             status = "geplant"
@@ -273,6 +347,15 @@ async def load(
     data["hinweise"] = HINWEISE
 
     warnungen: list[str] = []
+    ohne_geometrie = sum(
+        1 for f in features
+        if not (_aussenringe(f.get("geometry")) or any(_linien(f.get("geometry"))))
+    )
+    if ohne_geometrie:
+        warnungen.append(
+            f"{ohne_geometrie} Meldungen ohne verwertbare Geometrie verworfen "
+            "— sie fehlen in Zählung und Liste."
+        )
     if data["gekappt"]:
         warnungen.append(
             f"{data['gesamt']} Maßnahmen im Radius — die Liste zeigt die "

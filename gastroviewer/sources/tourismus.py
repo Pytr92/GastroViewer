@@ -89,6 +89,17 @@ def _monate_sortiert(reihe: dict[str, int]) -> list[str]:
     return sorted(m for m in reihe if "|" not in m)
 
 
+def _lueckenlos(monate: list[str]) -> str | None:
+    """None, wenn die Monate (``JJJJMM``, sortiert) lückenlos aufeinander
+    folgen; sonst der erste fehlende Monat als Text."""
+    for a, b in zip(monate, monate[1:]):
+        erwartet = (int(a[:4]) * 12 + int(a[4:6]) - 1) + 1
+        j, m = divmod(erwartet, 12)
+        if f"{j}{m + 1:02d}" != b:
+            return _fmt(f"{j}{m + 1:02d}")
+    return None
+
+
 def _fmt(ym: str) -> str:
     return f"{MONATSNAMEN[int(ym[4:6]) - 1]} {ym[:4]}"
 
@@ -106,25 +117,28 @@ def auswerten(reihen: dict[str, dict[str, int]]) -> dict[str, Any]:
         )
 
     letzte12 = monate[-12:]
+    luecke = _lueckenlos(letzte12)
     fenster = [{"monat": _fmt(m), "wert": uebern[m]} for m in letzte12]
-    summe_12m = sum(uebern[m] for m in letzte12)
+    # Mit Lücke wäre die Summe zu klein und trotzdem als 12-Monats-Wert
+    # beschriftet — dann entfallen alle davon abgeleiteten Zahlen.
+    summe_12m = sum(uebern[m] for m in letzte12) if luecke is None else None
 
     vorjahr12 = [f"{int(m[:4]) - 1}{m[4:]}" for m in letzte12]
     veraenderung = None
-    if all(m in uebern for m in vorjahr12):
+    if summe_12m is not None and all(m in uebern for m in vorjahr12):
         basis = sum(uebern[m] for m in vorjahr12)
         if basis:
             veraenderung = round((summe_12m - basis) / basis * 100, 1)
 
     gaeste_12m = None
     dauer = None
-    if all(m in gaeste for m in letzte12):
+    if summe_12m is not None and all(m in gaeste for m in letzte12):
         gaeste_12m = sum(gaeste[m] for m in letzte12)
         if gaeste_12m:
             dauer = round(summe_12m / gaeste_12m, 2)
 
     ausland_prozent = None
-    if all(m in uebern_ausland for m in letzte12):
+    if summe_12m and all(m in uebern_ausland for m in letzte12):
         ausland_prozent = round(
             sum(uebern_ausland[m] for m in letzte12) / summe_12m * 100, 1
         )
@@ -225,12 +239,24 @@ async def load(
         )
 
     try:
-        data = auswerten(parse_monatszahlen(csv_text))
+        reihen = parse_monatszahlen(csv_text)
+        data = auswerten(reihen)
     except SourceError as err:
         return SourceResult.failed(
             "tourismus", err, int((time.perf_counter() - started) * 1000)
         )
     data["hinweise"] = HINWEISE
+
+    warnungen: list[str] = []
+    luecke = _lueckenlos(
+        _monate_sortiert(reihen.get("Übernachtungen|insgesamt") or {})[-12:]
+    )
+    if luecke:
+        warnungen.append(
+            f"In den jüngsten 12 Monaten fehlt {luecke} — die 12-Monats-Werte "
+            "(Summe, Vorjahresvergleich, Gäste, Aufenthaltsdauer, Auslandsanteil) "
+            "entfallen, statt eine zu kleine Summe auszuweisen."
+        )
 
     letzter = data["letzte_12_monate"][-1]["monat"]
     return SourceResult(
@@ -238,7 +264,7 @@ async def load(
         ok=True,
         data=data,
         duration_ms=int((time.perf_counter() - started) * 1000),
-        warnings=[],
+        warnings=warnungen,
         provenance=Provenance(
             source="Monatszahlen Tourismus (Statistisches Amt München)",
             license=LIZENZ,

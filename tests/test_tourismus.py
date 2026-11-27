@@ -50,6 +50,19 @@ def test_letzte_12_monate_und_vergleich(reihen):
     assert d["ausland_anteil_prozent"] == 44.5
 
 
+def test_luecke_in_12_monaten_entfaellt(reihen):
+    kaputt = {k: dict(v) for k, v in reihen.items()}
+    del kaputt["Übernachtungen|insgesamt"]["202506"]  # Monat mitten im Fenster
+    d = tourismus.auswerten(kaputt)
+    assert d["uebernachtungen_12m"] is None
+    assert d["veraenderung_vorjahr_prozent"] is None
+    assert d["gaeste_12m"] is None and d["aufenthaltsdauer_naechte"] is None
+    assert d["ausland_anteil_prozent"] is None
+    assert tourismus._lueckenlos(
+        tourismus._monate_sortiert(kaputt["Übernachtungen|insgesamt"])[-12:]
+    ) == "Jun 2025"
+
+
 def test_saisonkurve(reihen):
     d = tourismus.auswerten(reihen)
     s = d["saison"]
@@ -84,6 +97,22 @@ async def test_load_block(settings, tourismus_muenchen):
     assert "dl-de/by-2-0" in res.provenance.license
     assert "Dez 2025" in res.provenance.stand
     assert res.data["hinweise"]
+
+
+async def test_load_luecke_warnt_und_laesst_summe_weg(settings, tourismus_muenchen):
+    csv_text = "\n".join(
+        z for z in tourismus_muenchen["csv"].splitlines()
+        if not z.startswith('"Übernachtungen","insgesamt",2025,"202506"')
+    )
+    assert csv_text != tourismus_muenchen["csv"]
+
+    class FakeOut:
+        async def get_text(self, source, url, **kw):
+            return csv_text
+
+    res = await tourismus.load(FakeOut(), settings, *MARIENPLATZ)
+    assert res.ok and res.data["uebernachtungen_12m"] is None
+    assert any("fehlt Jun 2025" in w for w in res.warnings)
 
 
 async def test_ausserhalb_muenchens_kein_netzaufruf(settings):

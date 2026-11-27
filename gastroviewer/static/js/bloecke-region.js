@@ -1011,8 +1011,13 @@ function zeigeBaustellen(d) {
   // die Liste springbar).
   const stil = POI_STIL.baustellen;
   for (const e of b.liste || []) {
-    if (e.umriss && e.umriss.length >= 3) {
-      state.ebenen.baustellen.addLayer(L.polygon(e.umriss, {
+    if (e.umriss && e.umriss.length >= 2) {
+      // Linien-Baustellen kommen als offener Umriss (erster ≠ letzter Punkt);
+      // GeoJSON-Polygonringe sind immer geschlossen.
+      const ersterP = e.umriss[0];
+      const letzterP = e.umriss[e.umriss.length - 1];
+      const offen = ersterP[0] !== letzterP[0] || ersterP[1] !== letzterP[1];
+      state.ebenen.baustellen.addLayer((offen ? L.polyline : L.polygon)(e.umriss, {
         color: e.gehweg_betroffen ? '#c62828' : stil.color,
         weight: 2, fillColor: stil.fill,
         fillOpacity: 0.25 * state.deckkraft, opacity: state.deckkraft,
@@ -1309,7 +1314,10 @@ function zeigeTourismus(d) {
     setQuelle(id, d.provenance);
     return;
   }
-  setStatus(id, 'ok', `${t.gebiet ? t.gebiet + ' · ' : ''}${NF.format(t.uebernachtungen_12m)} Übern./12 M.`);
+  /* Bei Lücke in den letzten 12 Monaten liefert das Backend null — nicht als 0 zeigen. */
+  const summe = t.uebernachtungen_12m === null ? 'keine 12-Monats-Summe'
+    : `${NF.format(t.uebernachtungen_12m)} Übern./12 M.`;
+  setStatus(id, 'ok', `${t.gebiet ? t.gebiet + ' · ' : ''}${summe}`);
 
   const s = t.saison;
   const kz = el('div', { class: 'kennzahlen' },

@@ -32,6 +32,23 @@ def test_naechste_station_am_sendlinger_tor(stationen):
     assert len(nah) == 3
 
 
+def test_stillgelegte_station_wird_nicht_gewaehlt(stationen, monkeypatch):
+    from datetime import date
+    monkeypatch.setattr(luft, "heute_berlin", lambda: date(2026, 8, 8))
+    stachus = next(s for s in stationen if s["code"] == "DEBY037")
+    assert stachus["aktiv_bis"] is None
+    # Echte Liste: Augsburg/Königsplatz (aktiv bis 2025-12-31) ist beendet.
+    augsburg = next(s for s in stationen if s["code"] == "DEBY006")
+    assert augsburg["aktiv_bis"] == "2025-12-31"
+    nah = luft.naechste_stationen(stationen, augsburg["lat"], augsburg["lon"], n=50)
+    assert "DEBY006" not in [s["code"] for s in nah]
+    # Stachus mit Enddatum in der Vergangenheit abgeschaltet -> fällt heraus.
+    alt = [{**s, "aktiv_bis": "2020-01-31"} if s is stachus else s for s in stationen]
+    nah = luft.naechste_stationen(alt, 48.1334, 11.5674)
+    assert "DEBY037" not in [s["code"] for s in nah]
+    assert nah, "andere Münchner Stationen bleiben"
+
+
 def test_aktuellster_eintrag_mit_indexskala(uba_luft_api):
     e = luft.aktuellster_eintrag(uba_luft_api["airquality"], "471")
     assert e is not None

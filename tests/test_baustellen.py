@@ -78,6 +78,45 @@ def test_punkt_im_umriss_ist_null_meter():
     assert baustellen._distanz_m(48.01, 11.001, [ring]) > 800
 
 
+async def test_linien_werden_aufgenommen_unbrauchbares_gemeldet(settings, muenchen_baustellen):
+    # Die echte Fixture enthält nur (Multi-)Polygone; daher minimal konstruiert:
+    # zwei echte Features, deren Umriss durch eine Linie aus echten
+    # Stützpunkten desselben Features ersetzt wird (kein erfundenes Format).
+    echte = [f for f in muenchen_baustellen["features"]
+             if f["geometry"]["type"] == "Polygon"][:2]
+    ring = echte[0]["geometry"]["coordinates"][0]
+    linie = {**echte[0], "geometry": {"type": "LineString", "coordinates": ring[:-1]}}
+    multi = {**echte[1], "geometry": {"type": "MultiLineString",
+                                      "coordinates": [echte[1]["geometry"]["coordinates"][0][:-1]]}}
+    kaputt = {**echte[0], "geometry": {"type": "GeometryCollection", "geometries": []}}
+    leer = {**echte[0], "geometry": None}
+    ref = baustellen.aufbereiten(echte, *PUNKT, 5000, HEUTE)
+    data = baustellen.aufbereiten([linie, multi], *PUNKT, 5000, HEUTE)
+    assert data["gesamt"] == ref["gesamt"] == 2
+    assert set(data["liste"][0]) == set(ref["liste"][0])  # Format unverändert
+    for e in data["liste"]:
+        assert e["lat"] is not None and e["umriss"]
+    res = await baustellen.load(
+        FakeOut({"type": "FeatureCollection", "features": [linie, multi, kaputt, leer]}),
+        settings, *PUNKT, 5000, heute=HEUTE)
+    assert res.data["gesamt"] == 2
+    assert any("2 Meldungen ohne verwertbare Geometrie" in w for w in res.warnings)
+
+
+def test_linie_abstand_zur_strecke_und_mitte():
+    # 2-Punkt-Linie, ~1 km lang (West-Ost); Anfragepunkt 50 m nördlich der Mitte.
+    a, b = [11.5700, 48.1374], [11.5836, 48.1374]
+    lat, lon = 48.1374 + 50 / 110_540, (a[0] + b[0]) / 2
+    assert baustellen._distanz_m(lat, lon, [[a, b]], True) < 60
+    assert baustellen._distanz_m(lat, lon, [[a, b]]) > 400  # nur Stützpunkte
+    f = {"type": "Feature", "properties": {"art": "Baumaßnahme"},
+         "geometry": {"type": "LineString", "coordinates": [a, b]}}
+    data = baustellen.aufbereiten([f], lat, lon, 400, HEUTE)
+    assert data["gesamt"] == 1
+    e = data["liste"][0]
+    assert abs(e["lon"] - (a[0] + b[0]) / 2) < 1e-6 and abs(e["lat"] - 48.1374) < 1e-6
+
+
 async def test_load_fragt_mit_lonlat_bbox(settings, muenchen_baustellen):
     out = FakeOut(muenchen_baustellen)
     res = await baustellen.load(out, settings, *PUNKT, 400, heute=HEUTE)

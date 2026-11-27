@@ -58,8 +58,8 @@ MAX_DISTANZ_M = 15000
 def parse_stationen(roh: Any) -> list[dict[str, Any]]:
     """Stationsantwort → reduzierte Liste. Die Feldreihenfolge kommt aus
     ``indices`` der echten Antwort; Stationen ohne Koordinaten fallen
-    heraus, beendete Stationen (aktiv-bis in der Vergangenheit) bleiben
-    drin — ob sie liefern, entscheidet der Datenabruf."""
+    heraus. Das Ende der Betriebszeit (``aktiv_bis``, ISO-Datum oder None)
+    bleibt erhalten; beendete Stationen filtert ``naechste_stationen``."""
     data = (roh or {}).get("data")
     if not isinstance(data, dict):
         raise SourceError(
@@ -79,6 +79,7 @@ def parse_stationen(roh: Any) -> list[dict[str, Any]]:
             "stadt": eintrag[3],
             "lat": lat,
             "lon": lon,
+            "aktiv_bis": eintrag[6] or None,
         })
     if not stationen:
         raise SourceError("parse", "UBA-Stationsliste ohne Stationen.")
@@ -88,8 +89,14 @@ def parse_stationen(roh: Any) -> list[dict[str, Any]]:
 def naechste_stationen(
     stationen: list[dict[str, Any]], lat: float, lon: float, n: int = 3
 ) -> list[dict[str, Any]]:
+    heute = heute_berlin().isoformat()
     mit_distanz = []
     for s in stationen:
+        # Stillgelegte Station (aktiv bis vor heute): nie als „nächste" wählen.
+        # ISO-Daten sind als Text vergleichbar; Unlesbares bleibt drin.
+        bis = str(s.get("aktiv_bis") or "")[:10]
+        if len(bis) == 10 and bis < heute:
+            continue
         d = haversine_m(lat, lon, s["lat"], s["lon"])
         if d > MAX_DISTANZ_M:
             continue
