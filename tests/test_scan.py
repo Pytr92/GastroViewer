@@ -131,3 +131,31 @@ def test_load_meldet_zensus_fehler_statt_zu_raten(settings, overpass_combined):
     )
     assert not res.ok
     assert res.error["kind"] == "timeout"
+
+
+def test_load_meldet_falschen_zensus_typ_als_ausfall(settings, overpass_combined):
+    """Minimal konstruierte Fehlerantwort: eine Liste statt eines JSON-Objekts
+    muss als SourceError (ok=False) ankommen, nicht als AttributeError."""
+    settings.overpass_endpoints = ("https://overpass-api.de/api/interpreter",)
+    res = asyncio.run(
+        scan.load(FakeOut([], overpass_combined), settings, 11.56, 48.12, 11.58, 48.14)
+    )
+    assert not res.ok
+    assert res.error["kind"] == "parse"
+
+
+import pytest
+
+
+@pytest.mark.parametrize("fehler", ["text", {"code": 400, "message": "kaputt"}])
+def test_load_meldet_error_feld_als_api_error(settings, overpass_combined, fehler):
+    """Minimal konstruiert: `error` als String darf keinen AttributeError geben."""
+    settings.overpass_endpoints = ("https://overpass-api.de/api/interpreter",)
+    res = asyncio.run(
+        scan.load(
+            FakeOut({"error": fehler}, overpass_combined),
+            settings, 11.56, 48.12, 11.58, 48.14,
+        )
+    )
+    assert not res.ok
+    assert res.error["kind"] == "api_error"

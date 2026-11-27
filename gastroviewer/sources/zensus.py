@@ -313,6 +313,35 @@ def gitter_kachel(ebene: str, west: float, sued: float, ost: float, nord: float)
     )
 
 
+def seite_pruefen(payload: Any) -> tuple[list[dict[str, Any]], bool]:
+    """Features und „weitere Seite"-Flag einer Zensus-Antwort, typgeprüft.
+
+    Ein Nicht-dict oder ein Nicht-Listen-``features`` ist ein Schemafehler des
+    Dienstes und kein leeres Ergebnis.
+    """
+    if isinstance(payload, dict) and "error" in payload:
+        err = payload["error"]
+        if isinstance(err, dict):
+            raise SourceError(
+                "api_error",
+                f"Zensus-Dienst meldet Fehler {err.get('code')}: {err.get('message')}",
+                detail=str(err.get("details")),
+            )
+        raise SourceError("api_error", f"Zensus-Dienst meldet Fehler: {err}")
+    if not isinstance(payload, dict):
+        raise SourceError(
+            "parse",
+            f"Zensus-Dienst lieferte {type(payload).__name__} statt eines JSON-Objekts.",
+        )
+    batch = payload.get("features", [])
+    if not isinstance(batch, list):
+        raise SourceError(
+            "parse",
+            f"Zensus-Antwort: Feld „features“ ist {type(batch).__name__} statt einer Liste.",
+        )
+    return batch, payload.get("exceededTransferLimit") is True
+
+
 async def fetch_gitter(
     out: Outbound,
     settings: Settings,
@@ -350,15 +379,9 @@ async def fetch_gitter(
         payload = await out.post_json(
             "zensus", url, data=form, timeout=settings.zensus_timeout
         )
-        if isinstance(payload, dict) and "error" in payload:
-            err = payload["error"]
-            raise SourceError(
-                "api_error",
-                f"Zensus-Dienst meldet Fehler {err.get('code')}: {err.get('message')}",
-            )
-        batch = payload.get("features", []) if isinstance(payload, dict) else []
+        batch, mehr = seite_pruefen(payload)
         features.extend(batch)
-        if payload.get("exceededTransferLimit") is not True:
+        if not mehr:
             break
         offset += len(batch) or settings.zensus_page_size
     else:
@@ -415,18 +438,11 @@ async def fetch_cells(
         payload = await out.post_json(
             "zensus", url, data=form, timeout=settings.zensus_timeout
         )
-        if isinstance(payload, dict) and "error" in payload:
-            err = payload["error"]
-            raise SourceError(
-                "api_error",
-                f"Zensus-Dienst meldet Fehler {err.get('code')}: {err.get('message')}",
-                detail=str(err.get("details")),
-            )
-        batch = payload.get("features", []) if isinstance(payload, dict) else []
+        batch, mehr = seite_pruefen(payload)
         features.extend(batch)
 
         # Nur gesetzt, wenn true — Phase-0-Befund A-2.
-        if payload.get("exceededTransferLimit") is not True:
+        if not mehr:
             break
         offset += len(batch) or settings.zensus_page_size
         if page == settings.zensus_max_pages - 1:

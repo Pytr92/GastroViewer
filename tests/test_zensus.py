@@ -264,3 +264,60 @@ def test_ohne_gewichte_bleibt_die_volle_summe(zensus_600):
     cells = zensus.build_cells(zensus_600["features"])
     e = zensus.summarize(cells, LAT, LON)["bevoelkerung"]["einwohner"]
     assert e["wert"] == 16370.0 and e["zellen_anteilig"] == 118
+
+
+# ------------------------------------------- Antwort ist kein erwartetes JSON-Objekt
+# Fehlerfall-Payloads sind minimal konstruiert: kein Dienst liefert das real, die
+# Prüfung soll nur sicherstellen, dass ein Schemabruch als SourceError ankommt
+# (nicht als AttributeError/500) und nicht als „keine Treffer".
+
+class _FalscheAntwort:
+    def __init__(self, antwort):
+        self.antwort = antwort
+
+    async def post_json(self, source, url, data=None, timeout=None, **kw):
+        return self.antwort
+
+
+@pytest.mark.parametrize("antwort", [[], "text", {"features": "kaputt"}])
+async def test_fetch_cells_mit_falschem_typ_wirft_source_error(settings, antwort):
+    from gastroviewer.sources.base import SourceError
+
+    with pytest.raises(SourceError) as exc:
+        await zensus.fetch_cells(_FalscheAntwort(antwort), settings, LAT, LON, 600)
+    assert exc.value.kind == "parse"
+
+
+@pytest.mark.parametrize("antwort", [[], "text", {"features": "kaputt"}])
+async def test_fetch_gitter_mit_falschem_typ_wirft_source_error(settings, antwort):
+    from gastroviewer.sources.base import SourceError
+
+    ebene = next(iter(zensus.GITTER_EBENEN))
+    with pytest.raises(SourceError) as exc:
+        await zensus.fetch_gitter(
+            _FalscheAntwort(antwort), settings, ebene, 11.5, 48.1, 11.6, 48.2
+        )
+    assert exc.value.kind == "parse"
+
+
+async def test_load_meldet_listenantwort_als_ausfall(settings):
+    res = await zensus.load(_FalscheAntwort([]), settings, LAT, LON, 600)
+    assert not res.ok
+    assert res.error["kind"] == "parse"
+
+
+@pytest.mark.parametrize("fehler", ["text", {"code": 400, "message": "kaputt"}])
+async def test_error_feld_jeder_form_wird_api_error(settings, fehler):
+    """Minimal konstruiert: `error` als String darf keinen AttributeError geben."""
+    from gastroviewer.sources.base import SourceError
+
+    antwort = {"error": fehler}
+    ebene = next(iter(zensus.GITTER_EBENEN))
+    aufrufe = [
+        zensus.fetch_cells(_FalscheAntwort(antwort), settings, LAT, LON, 600),
+        zensus.fetch_gitter(_FalscheAntwort(antwort), settings, ebene, 11.5, 48.1, 11.6, 48.2),
+    ]
+    for aufruf in aufrufe:
+        with pytest.raises(SourceError) as exc:
+            await aufruf
+        assert exc.value.kind == "api_error"

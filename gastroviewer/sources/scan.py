@@ -34,7 +34,7 @@ from ..http import Outbound
 from .base import Provenance, SourceError, SourceResult, now_iso
 from .overpass import (GASTRO_AMENITIES, GASTRO_LABELS, LICENSE as OSM_LICENSE,
                        element_coords, run_query)
-from .zensus import LICENSE as ZENSUS_LICENSE, STICHTAG, _ring_center
+from .zensus import LICENSE as ZENSUS_LICENSE, STICHTAG, _ring_center, seite_pruefen
 
 # Gewählte Umfeldgröße: die fußläufige Nachbarschaft von 3–4 Minuten.
 UMFELD_M = 300
@@ -111,15 +111,9 @@ async def fetch_zellen(
         payload = await out.post_json(
             "zensus", url, data=form, timeout=settings.zensus_timeout
         )
-        if isinstance(payload, dict) and "error" in payload:
-            err = payload["error"]
-            raise SourceError(
-                "api_error",
-                f"Zensus-Dienst meldet Fehler {err.get('code')}: {err.get('message')}",
-            )
-        batch = payload.get("features", []) if isinstance(payload, dict) else []
+        batch, mehr = seite_pruefen(payload)
         features.extend(batch)
-        if payload.get("exceededTransferLimit") is not True:
+        if not mehr:
             break
         offset += len(batch) or settings.zensus_page_size
     else:
