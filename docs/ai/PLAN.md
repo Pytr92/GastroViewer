@@ -13,7 +13,7 @@ Status: OFFEN | IN ARBEIT | FERTIG | ZURÜCKGESTELLT
 ## Block A — Backend: Ausfall ≠ keine Treffer
 | ID | Ziel | Dateien | Akzeptanzkriterien | Prüf | Status |
 |---|---|---|---|---|---|
-| A1 | Client-Timeout greift wieder (H1) | `http.py`, `tests/test_http.py` | Ohne `timeout`-Argument gilt das Client-Timeout (`httpx.USE_CLIENT_DEFAULT`); explizites `timeout` wirkt weiter; Test mit MockTransport belegt beides | P | OFFEN |
+| A1 | Client-Timeout greift wieder (H1) | `http.py`, `tests/test_http.py` | Ohne `timeout`-Argument gilt das Client-Timeout (`httpx.USE_CLIENT_DEFAULT`); explizites `timeout` wirkt weiter; Test mit MockTransport belegt beides | P | FERTIG (939 grün) |
 | A2 | Helfer für FeatureCollections, angewendet in Baustellen und Märkte (M1, Teil 1) | `sources/base.py`, `baustellen.py`, `maerkte.py`, Tests | Nicht-dict oder fehlendes `features` → `SourceError("parse", …)`, `ok=False`; leere Liste `features: []` bleibt gültig „0 Treffer"; je ein Test | P | OFFEN |
 | A3 | Helfer aus A2 in bayern, berlin (2×), hamburg, mobidata_bw (2×) (M1, Teil 2) | diese Module, Tests | wie A2, je Fundstelle ein Test | P | OFFEN |
 | A4 | Paginierung typsicher (M2) | `zensus.py`, `scan.py`, Tests | Nicht-dict-Payload → `SourceError("parse")`, kein 500; Test mit Liste als Payload je Pfad | P | OFFEN |

@@ -94,7 +94,7 @@ class Outbound:
         limiter: str | None = None,
         min_interval: float = 0.0,
         max_concurrent: int | None = None,
-        timeout: float | None = None,
+        timeout: Any = httpx.USE_CLIENT_DEFAULT,
         **kwargs: Any,
     ) -> httpx.Response:
         """Ein ausgehender Aufruf. Rate-Limit vorher, Protokoll immer.
@@ -111,7 +111,7 @@ class Outbound:
 
     async def _request(
         self, source: str, method: str, url: str, *,
-        timeout: float | None, **kwargs: Any,
+        timeout: Any, **kwargs: Any,
     ) -> httpx.Response:
         started = time.perf_counter()
         try:

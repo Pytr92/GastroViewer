@@ -165,3 +165,31 @@ async def test_get_text_kodierung_wird_ueberschrieben(settings):
         assert await out.get_text("dwd", "https://d.example/x", encoding="latin-1") == "Größe"
     finally:
         await out.aclose()
+
+
+async def _timeout_am_transport(settings, **kwargs) -> dict:
+    """Schickt eine Anfrage und liefert das Timeout, das am Transport ankommt."""
+    gesehen: dict = {}
+
+    async def handler(request):
+        gesehen.update(request.extensions["timeout"])
+        return httpx.Response(200, json={})
+
+    out = _outbound(settings, handler)
+    out._client.timeout = httpx.Timeout(30.0, connect=10.0)
+    try:
+        await out.get_json("x", "https://t.example/x", **kwargs)
+    finally:
+        await out.aclose()
+    return gesehen
+
+
+async def test_ohne_timeout_gilt_das_client_timeout(settings):
+    """Kein timeout-Argument darf die Zeitlimits nicht abschalten (None)."""
+    t = await _timeout_am_transport(settings)
+    assert t == {"connect": 10.0, "read": 30.0, "write": 30.0, "pool": 30.0}
+
+
+async def test_ausdrueckliches_timeout_wirkt(settings):
+    t = await _timeout_am_transport(settings, timeout=5)
+    assert t == {"connect": 5, "read": 5, "write": 5, "pool": 5}
