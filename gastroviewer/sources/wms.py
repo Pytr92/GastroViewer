@@ -23,6 +23,7 @@ import json as json_mod
 import math
 import re
 import time
+import xml.etree.ElementTree as ET
 from typing import Any
 
 from ..config import Settings
@@ -492,6 +493,40 @@ def werte_aus_antwort(text: str, content_type: str) -> list[dict[str, str]]:
     return []
 
 
+def service_exception_text(text: str) -> str | None:
+    """Meldung eines OGC-``ServiceExceptionReport``, sonst ``None``.
+
+    Ein WMS meldet Fehler (falscher Layer, abgelehntes Format, Wartung) oft mit
+    HTTP 200 und einem XML-Bericht. Als Datenfeld wäre das ein Fehlertext, der
+    wie ein Messwert aussieht. Wird auch erkannt, wenn der Bericht nicht
+    wohlgeformt ist (dann per Textsuche).
+    """
+    kopf = (text or "").lstrip().lstrip("﻿").lstrip()
+    if not kopf.startswith("<") or "ServiceException" not in kopf:
+        return None
+    meldungen: list[str] = []
+    try:
+        wurzel = ET.fromstring(kopf)
+    except ET.ParseError:
+        for m in re.finditer(
+            r"<(?:\w+:)?ServiceException\b[^>]*>(.*?)</(?:\w+:)?ServiceException>", kopf, re.S
+        ):
+            meldungen.append(" ".join(html_mod.unescape(m.group(1)).split()))
+        if not meldungen and re.search(r"<(?:\w+:)?ServiceExceptionReport\b", kopf):
+            return "ohne Text"
+    else:
+        for k in wurzel.iter():
+            if k.tag.rsplit("}", 1)[-1] == "ServiceException":
+                code = (k.get("code") or "").strip()
+                t = " ".join((k.text or "").split())
+                meldungen.append(f"{code}: {t}" if code else t)
+        if wurzel.tag.rsplit("}", 1)[-1] == "ServiceExceptionReport":
+            return "; ".join(m for m in meldungen if m)[:300] or "ohne Text"
+    if not meldungen:
+        return None
+    return "; ".join(m for m in meldungen if m)[:300] or "ohne Text"
+
+
 def _rohtext(text: str, content_type: str) -> str:
     if "html" in content_type:
         ohne = re.sub(r"<(script|style)[^>]*>.*?</\1>", " ", text, flags=re.S | re.I)
@@ -572,6 +607,16 @@ async def feature_info(
 
     content_type = resp.headers.get("content-type", "")
     text = resp.text
+    meldung = service_exception_text(text)
+    if meldung is not None:
+        return SourceResult.failed(
+            "bodenrichtwert",
+            SourceError(
+                "api_error",
+                f"{d['titel']} meldet einen Fehler (ServiceException): {meldung}",
+            ),
+            int((time.perf_counter() - started) * 1000),
+        )
     felder = werte_aus_antwort(text, content_type)
     roh = _rohtext(text, content_type)
 

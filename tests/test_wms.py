@@ -274,6 +274,48 @@ async def test_unauswertbare_antwort_liefert_den_rohtext(settings):
     assert "Originaltext" in res.warnings[0]
 
 
+SERVICE_EXCEPTION = (
+    '<?xml version="1.0" encoding="UTF-8"?>\n'
+    "<!-- Fehlerbericht des Dienstes -->\n"
+    '<ServiceExceptionReport version="1.3.0" xmlns="http://www.opengis.net/ogc">'
+    '<ServiceException code="LayerNotQueryable">Layer brw_xyz ist nicht abfragbar'
+    "</ServiceException></ServiceExceptionReport>"
+)
+
+
+@pytest.mark.parametrize("ctype", ["text/xml", "application/vnd.ogc.se_xml", "text/plain"])
+async def test_service_exception_ist_ein_fehler_kein_datenfeld(settings, ctype):
+    class FakeOut:
+        async def request(self, *a, **kw):
+            class R:
+                status_code = 200
+                headers = {"content-type": ctype}
+                text = SERVICE_EXCEPTION
+
+            return R()
+
+    res = await wms.feature_info(FakeOut(), settings, 50.9413, 6.9583, "05")
+    assert res.ok is False and res.data is None
+    assert res.error["kind"] == "api_error"
+    assert "LayerNotQueryable" in res.error["message"]
+    assert "nicht abfragbar" in res.error["message"]
+
+
+def test_service_exception_text_erkennung():
+    assert "nicht abfragbar" in wms.service_exception_text(SERVICE_EXCEPTION)
+    kaputt = SERVICE_EXCEPTION.replace("</ServiceExceptionReport>", "")
+    assert "nicht abfragbar" in wms.service_exception_text(kaputt)
+    assert wms.service_exception_text('{"features":[]}') is None
+    assert wms.service_exception_text("<a><b>2200</b></a>") is None
+    assert wms.service_exception_text("") is None
+    assert "nicht abfragbar" in wms.service_exception_text("﻿" + SERVICE_EXCEPTION)
+    assert wms.service_exception_text('<ogc:ServiceExceptionReport version="1.3.0"/>') == "ohne Text"
+    assert wms.service_exception_text("<ServiceExceptionReport/>") == "ohne Text"
+    assert wms.service_exception_text(
+        '<FeatureCollection><brw hinweis="ServiceException">220</brw></FeatureCollection>'
+    ) is None
+
+
 # ------------------------------------ Zusätzliche Kartenebenen (Bayern)
 
 
