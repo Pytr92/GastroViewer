@@ -10,7 +10,7 @@
 
 import { NF, NF1, NF2, fmtIsoDatum, nfFest } from './format.js';
 import { state } from './state.js';
-import { block, el, esc, fehlerbox, hinweisZeile, kennzahl, liste, setInhalt, setQuelle, setStatus, warnungen, zeigeBlockFehler } from './dom.js';
+import { block, el, esc, fehlerbox, hinweisZeile, kennzahl, liste, sichereUrl, setInhalt, setQuelle, setStatus, warnungen, zeigeBlockFehler } from './dom.js';
 import { hole } from './api.js';
 import { POI_STIL, springeZuPoi, zeichnePois } from './karte-ebenen.js';
 import { pflegeleiste } from './vergleich.js';
@@ -472,8 +472,8 @@ function zeigeBaurecht(d) {
     teile.push(el('div', { class: 'notiz' },
       el('strong', {}, 'Flächenwidmung: '),
       `Planblatt ${b.planblatt.nummer || ''} — die Widmungsart steht nur im `,
-      b.planblatt.pdf
-        ? el('a', { href: b.planblatt.pdf, target: '_blank', rel: 'noopener' }, 'Plan-PDF der Stadt')
+      sichereUrl(b.planblatt.pdf)
+        ? el('a', { href: sichereUrl(b.planblatt.pdf), target: '_blank', rel: 'noopener' }, 'Plan-PDF der Stadt')
         : 'Plan der Stadt', '.'));
   }
   for (const f of b.baugebiete || []) {
@@ -503,8 +503,8 @@ function zeigeBaurecht(d) {
         el('td', {}, p.plan || '—'),
         el('td', {}, p.rechtsstand || '—'),
         el('td', {}, (p.inhalt_planweit || '—').slice(0, 90)),
-        el('td', {}, p.pdf
-          ? el('a', { href: p.pdf, target: '_blank', rel: 'noopener' }, 'PDF')
+        el('td', {}, sichereUrl(p.pdf)
+          ? el('a', { href: sichereUrl(p.pdf), target: '_blank', rel: 'noopener' }, 'PDF')
           : '—')));
     }
     teile.push(ptab);
@@ -522,8 +522,10 @@ function zeigeBaurecht(d) {
       el('ul', { class: 'liste' },
         b.denkmale.slice(0, 5).map((x) => el('li', {},
           el('span', { class: 'haupt' },
-            el('a', { href: x.link, target: '_blank', rel: 'noopener' },
-              `${x.typ || 'Denkmal'} ${x.id || ''}`)))))));
+            sichereUrl(x.link)
+              ? el('a', { href: sichereUrl(x.link), target: '_blank', rel: 'noopener' },
+                `${x.typ || 'Denkmal'} ${x.id || ''}`)
+              : `${x.typ || 'Denkmal'} ${x.id || ''}`))))));
   }
 
   setInhalt(id, ...teile.filter(Boolean),
@@ -1029,7 +1031,7 @@ function zeigeBaustellen(d) {
         <tr><td>Zeitraum</td><td><b>${esc(e.beginn || '?')} – ${esc(e.ende || '?')}</b></td></tr>
         ${e.beeintraechtigung ? `<tr><td>Beeinträchtigung</td><td><b>${esc(e.beeintraechtigung)}</b></td></tr>` : ''}
         </table>${e.beschreibung ? `<p class="hinweis-klein">${esc(e.beschreibung)}</p>` : ''}
-        ${e.link ? `<p class="hinweis-klein"><a href="${esc(e.link)}" target="_blank" rel="noopener">Baustellen-Info der Stadt</a></p>` : ''}`,
+        ${sichereUrl(e.link) ? `<p class="hinweis-klein"><a href="${esc(sichereUrl(e.link))}" target="_blank" rel="noopener">Baustellen-Info der Stadt</a></p>` : ''}`,
       { maxWidth: 320 });
       state.ebenen.baustellen.addLayer(m);
     }
@@ -2177,7 +2179,7 @@ export function zeigeLage(d) {
         el('th', {}, 'Öffnung'), el('th', { class: 'num' }, 'm')));
     for (const h of ph.slice(0, 10)) {
       ptab.append(el('tr', {},
-        el('td', {}, h.link ? el('a', { href: h.link, target: '_blank', rel: 'noopener' }, h.name || '?') : (h.name || '?')),
+        el('td', {}, sichereUrl(h.link) ? el('a', { href: sichereUrl(h.link), target: '_blank', rel: 'noopener' }, h.name || '?') : (h.name || '?')),
         el('td', { class: 'num' }, h.frei == null ? '—' : NF.format(h.frei)),
         el('td', { class: 'num' }, h.gesamt == null ? '—' : NF.format(h.gesamt)),
         el('td', {}, h.oeffnungszeit || '—'),

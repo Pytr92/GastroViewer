@@ -8,7 +8,7 @@
 
 import { NF, NF1, NF2, fmtIsoDatum, zahl } from './format.js';
 import { state } from './state.js';
-import { el, esc, fehlerbox, kennzahl, liste, setInhalt, setQuelle, setStatus, warnungen, zeigeBlockFehler } from './dom.js';
+import { el, esc, fehlerbox, kennzahl, liste, sichereUrl, setInhalt, setQuelle, setStatus, warnungen, zeigeBlockFehler } from './dom.js';
 import { hole } from './api.js';
 import { BRANCHEN, BRANCHE_SPEICHER, brancheKennzahlen } from './branche.js';
 import { karte } from './karte.js';
@@ -501,9 +501,11 @@ function zeigeLeerstandsmelder(d) {
     inhalt.push(el('ul', { class: 'liste' },
       eintraege.map((x) => el('li', {},
         el('span', { class: 'haupt' },
-          el('a', { href: x.url, target: '_blank', rel: 'noopener',
-            title: 'Meldung auf leerstandsmelder.de öffnen' },
-          x.titel || x.strasse || 'Meldung'),
+          sichereUrl(x.url)
+            ? el('a', { href: sichereUrl(x.url), target: '_blank', rel: 'noopener',
+              title: 'Meldung auf leerstandsmelder.de öffnen' },
+            x.titel || x.strasse || 'Meldung')
+            : (x.titel || x.strasse || 'Meldung'),
           x.beendet_am ? ' — beendet ' + fmtIsoDatum(x.beendet_am) : ''),
         el('span', { class: 'neben' },
           `gemeldet ${fmtIsoDatum(x.gemeldet_am)} · `

@@ -33,6 +33,21 @@ export const el = (tag, attrs = {}, ...kinder) => {
 export const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) =>
   ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
+/** Prüft eine Fremd-URL (OSM, GTFS, Dienste) vor dem Einsatz als `href`.
+ *  Nur absolute http(s)-URLs sind erlaubt; alles andere (javascript:, data:,
+ *  relative oder kaputte Werte, Nicht-Strings) liefert null — dann keinen Link bauen. */
+export function sichereUrl(wert) {
+  if (typeof wert !== 'string') return null;
+  const s = wert.trim();
+  if (!s) return null;
+  try {
+    const u = new URL(s);
+    return u.protocol === 'http:' || u.protocol === 'https:' ? s : null;
+  } catch {
+    return null;
+  }
+}
+
 /** Aggregate kommen als {wert, zellen, zellen_gesamt, median, min, max}. */
 export function kennzahl(titel, agg, einheit = '', nk = 0) {
   const box = el('div', { class: 'kennzahl' });

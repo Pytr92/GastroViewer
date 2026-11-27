@@ -8,7 +8,7 @@
 
 import { NF, NF1 } from './format.js';
 import { state } from './state.js';
-import { block, el, fehlerbox, hinweisZeile, kennzahl, liste, setInhalt, setQuelle, setStatus, warnungen, zeigeBlockFehler } from './dom.js';
+import { block, el, fehlerbox, hinweisZeile, kennzahl, liste, sichereUrl, setInhalt, setQuelle, setStatus, warnungen, zeigeBlockFehler } from './dom.js';
 import { hole } from './api.js';
 import { ebenenSchalter, karte } from './karte.js';
 import { farbe } from './karte-ebenen.js';
@@ -484,9 +484,12 @@ function zeigePlanung(d) {
     teile.push(tab);
     const amt = (hw.gebiete.find((g) => g.amt) || {}).amt;
     if (amt) {
+      const url = sichereUrl(amt);
       teile.push(el('p', { class: 'hinweis-klein' },
         'Zuständig: ',
-        el('a', { href: amt, target: '_blank', rel: 'noopener' }, 'Wasserwirtschaftsamt')));
+        url
+          ? el('a', { href: url, target: '_blank', rel: 'noopener' }, 'Wasserwirtschaftsamt')
+          : 'Wasserwirtschaftsamt'));
     }
   } else {
     teile.push(el('div', { class: 'notiz' },
@@ -566,8 +569,8 @@ function zeigePlanung(d) {
       el('span', { class: 'haupt' }, `Gebiet „${g.name || 'ohne Namen'}“`,
         g.gueltig_ab ? ` — gültig ab ${g.gueltig_ab}` : ''),
       el('span', { class: 'neben' },
-        [g.text_pdf ? el('a', { href: g.text_pdf, target: '_blank', rel: 'noopener' }, 'Satzungstext (PDF)') : null,
-          g.plan_pdf ? el('a', { href: g.plan_pdf, target: '_blank', rel: 'noopener' }, 'Gebietsplan (PDF)') : null]
+        [sichereUrl(g.text_pdf) ? el('a', { href: sichereUrl(g.text_pdf), target: '_blank', rel: 'noopener' }, 'Satzungstext (PDF)') : null,
+          sichereUrl(g.plan_pdf) ? el('a', { href: sichereUrl(g.plan_pdf), target: '_blank', rel: 'noopener' }, 'Gebietsplan (PDF)') : null]
           .filter(Boolean).flatMap((a, i) => (i ? [' · ', a] : [a])))))));
   } else {
     teile.push(el('div', { class: 'notiz' },

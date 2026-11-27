@@ -23,7 +23,7 @@ Status: OFFEN | IN ARBEIT | FERTIG | ZURÜCKGESTELLT
 ## Block B — Oberfläche
 | ID | Ziel | Dateien | Akzeptanzkriterien | Prüf | Status |
 |---|---|---|---|---|---|
-| B1 | Nur `http(s):`-Links aus Fremddaten (M5) | `js/dom.js`, `bloecke-region.js`, `bloecke-gastro.js` | `sichereUrl()` lässt nur http/https durch, sonst kein Link (Text bleibt); alle 6 Stellen nutzen es; ESLint 0 Fehler | P + PJ | OFFEN |
+| B1 | Nur `http(s):`-Links aus Fremddaten (M5) | `js/dom.js`, `bloecke-region.js`, `bloecke-gastro.js` | `sichereUrl()` lässt nur http/https durch, sonst kein Link (Text bleibt); alle 6 Stellen nutzen es; ESLint 0 Fehler | P + PJ | FERTIG (1 Korrekturrunde: +3 Stellen in `bloecke-laender.js`, insgesamt 9; uitest nicht gelaufen, Playwright für Python fehlt) |
 | B2 | Laufprüfung Kartenebenen + Scan-`ausstehend` (M6, M7) | `bloecke-laender.js`, `scan.js` | Nach `await` wird veralteter Lauf verworfen; Code vor `await` gesetzt; `moveend` während Scan löst danach einen Scan aus | PJ + uitest (Attrappe) | OFFEN |
 | B3 | Speicher-Helfer und Fetch-Absicherung (M8) | neu `js/speicher.js` (+ score.js-Variante), betroffene Dateien | Alle `localStorage`-Zugriffe über try/catch; Sicherung-Einspielen meldet Netzfehler; ESLint 0 Fehler | PJ + uitest | OFFEN |
 | B4 | Deckkraft für Fahrzeit-Ebene, tote Importe weg | `bloecke-mobilitaet.js`, `karte.js`, diverse js | Regler wirkt auf Fahrzeit; ESLint-Warnungen `no-unused-vars` für Importe = 0 | PJ + uitest | OFFEN |
