@@ -16,8 +16,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # Älteste unterstützte und eine aktuelle Python-Version.
-        python: ["3.10", "3.12"]
+        # Älteste unterstützte, die Installer-Version (3.11) und eine aktuelle Python-Version.
+        python: ["3.10", "3.11", "3.12"]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
