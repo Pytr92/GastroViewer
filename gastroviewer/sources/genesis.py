@@ -142,14 +142,31 @@ def lade_zugang(settings: Settings) -> dict[str, str] | None:
 
 def speichere_zugang(settings: Settings, kennung: str, passwort: str) -> None:
     pfad = _zugang_datei(settings)
-    pfad.write_text(
-        json.dumps({"kennung": kennung, "passwort": passwort}),
-        encoding="utf-8",
+    inhalt = json.dumps({"kennung": kennung, "passwort": passwort})
+    # Atomar über eine Temp-Datei im selben Verzeichnis, die von Anfang an
+    # nur dem Besitzer gehört — nie kurz weltlesbar. os.replace ersetzt auch
+    # eine ältere Datei mit weiteren Rechten (neue Datei, neuer Modus).
+    tmp = pfad.with_name(pfad.name + ".tmp")
+    tmp.unlink(missing_ok=True)  # Rest eines Abbruchs mit evtl. weiten Rechten
+    fd = os.open(
+        tmp,
+        os.O_WRONLY | os.O_CREAT | os.O_EXCL | getattr(os, "O_NOFOLLOW", 0),
+        0o600,
     )
     try:
-        os.chmod(pfad, 0o600)
-    except OSError:
-        pass  # z. B. Windows — dort gibt es keine POSIX-Rechte
+        with os.fdopen(fd, "w", encoding="utf-8") as fh:
+            fh.write(inhalt)
+        try:
+            os.chmod(tmp, 0o600)  # falls die Temp-Datei schon existierte
+        except OSError:
+            pass  # z. B. Windows — dort gibt es keine POSIX-Rechte
+        os.replace(tmp, pfad)
+    except BaseException:
+        try:
+            os.unlink(tmp)
+        except OSError:
+            pass
+        raise
 
 
 def loesche_zugang(settings: Settings) -> bool:

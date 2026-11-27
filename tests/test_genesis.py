@@ -6,6 +6,8 @@ from __future__ import annotations
 
 import asyncio
 import json
+import os
+import stat
 
 import pytest
 
@@ -149,6 +151,36 @@ def test_zugang_datei_und_umgebung(settings, monkeypatch):
     monkeypatch.delenv("GASTROVIEWER_GENESIS_PASSWORT")
     assert genesis.loesche_zugang(settings) is True
     assert genesis.lade_zugang(settings) is None
+
+
+@pytest.mark.skipif(os.name != "posix", reason="POSIX-Dateirechte")
+def test_zugang_datei_modus_600_auch_bei_vorhandener_weiter_offener_datei(settings):
+    pfad = genesis._zugang_datei(settings)
+    pfad.parent.mkdir(parents=True, exist_ok=True)
+    pfad.write_text("{}", encoding="utf-8")
+    os.chmod(pfad, 0o644)
+
+    genesis.speichere_zugang(settings, "AB1234", "geheim")
+    assert stat.S_IMODE(pfad.stat().st_mode) == 0o600
+    assert not list(pfad.parent.glob("genesis-zugang.json.*"))  # keine Temp-Reste
+
+    pfad.unlink()
+    genesis.speichere_zugang(settings, "AB1234", "geheim")
+    assert stat.S_IMODE(pfad.stat().st_mode) == 0o600
+    assert genesis.lade_zugang(settings)["kennung"] == "AB1234"
+
+
+@pytest.mark.skipif(os.name != "posix", reason="POSIX-Dateirechte")
+def test_zugang_liegengebliebene_tmp_wird_nie_weltlesbar(settings):
+    pfad = genesis._zugang_datei(settings)
+    pfad.parent.mkdir(parents=True, exist_ok=True)
+    tmp = pfad.with_name(pfad.name + ".tmp")
+    tmp.write_text("alt", encoding="utf-8")
+    os.chmod(tmp, 0o644)
+
+    genesis.speichere_zugang(settings, "AB1234", "geheim")
+    assert stat.S_IMODE(pfad.stat().st_mode) == 0o600
+    assert not tmp.exists()
 
 
 # --------------------------------------------------------------- Abruf

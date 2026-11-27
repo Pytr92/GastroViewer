@@ -10,13 +10,18 @@ from __future__ import annotations
 
 import argparse
 import shutil
+import socket
 import sys
 import tempfile
 import time
+import urllib.error
 import urllib.request
 from pathlib import Path
 
 from .config import Settings, get_settings
+
+# Zeitgrenze je Netzwerkoperation beim CLI-Download (Sekunden).
+DOWNLOAD_TIMEOUT_S = 60
 
 
 def _fmt_bytes(n: float) -> str:
@@ -95,21 +100,40 @@ def _download(url: str, target: Path) -> Path:
     # Pipe umgeleitet würde \r sonst hunderte Zeilen Rauschen erzeugen.
     tty = sys.stdout.isatty()
     naechste_meldung = 10
-    with urllib.request.urlopen(url) as resp:  # noqa: S310 — feste, konfigurierte URL
-        total = int(resp.headers.get("Content-Length") or 0)
-        done = 0
-        with open(target, "wb") as fh:
-            while chunk := resp.read(1024 * 256):
-                fh.write(chunk)
-                done += len(chunk)
-                if not total:
-                    continue
-                pct = done / total * 100
-                if tty:
-                    print(f"  {_fmt_bytes(done)} / {_fmt_bytes(total)} ({pct:.0f} %)", end="\r")
-                elif pct >= naechste_meldung:
-                    print(f"  {_fmt_bytes(done)} / {_fmt_bytes(total)} ({pct:.0f} %)")
-                    naechste_meldung += 10
+    try:
+        # Timeout gilt je Socket-Operation (Verbindung/Lesen), nicht für den ganzen Download.
+        with urllib.request.urlopen(  # noqa: S310 — feste, konfigurierte URL
+            url, timeout=DOWNLOAD_TIMEOUT_S
+        ) as resp:
+            total = int(resp.headers.get("Content-Length") or 0)
+            done = 0
+            with open(target, "wb") as fh:
+                while chunk := resp.read(1024 * 256):
+                    fh.write(chunk)
+                    done += len(chunk)
+                    if not total:
+                        continue
+                    pct = done / total * 100
+                    if tty:
+                        print(f"  {_fmt_bytes(done)} / {_fmt_bytes(total)} ({pct:.0f} %)", end="\r")
+                    elif pct >= naechste_meldung:
+                        print(f"  {_fmt_bytes(done)} / {_fmt_bytes(total)} ({pct:.0f} %)")
+                        naechste_meldung += 10
+    except (TimeoutError, socket.timeout) as exc:
+        print(
+            f"\nDownload abgebrochen: Zeitüberschreitung nach {DOWNLOAD_TIMEOUT_S} s "
+            f"({url}): {exc}",
+            file=sys.stderr,
+        )
+        raise SystemExit(1) from exc
+    except urllib.error.URLError as exc:
+        grund = (
+            f"HTTP {exc.code} {exc.reason}"
+            if isinstance(exc, urllib.error.HTTPError)
+            else str(exc.reason or exc)
+        )
+        print(f"\nDownload fehlgeschlagen ({url}): {grund}", file=sys.stderr)
+        raise SystemExit(1) from exc
     if tty:
         print()
     return target
@@ -170,9 +194,11 @@ def cmd_import_gtfs(args: argparse.Namespace, settings: Settings) -> int:
     else:
         quelle = args.url or REGION_URLS.get(args.region or "") or settings.gtfs_url
         tmpdir = Path(tempfile.mkdtemp(prefix="gastroviewer-gtfs-"))
-        zip_path = _download(quelle, tmpdir / "gtfs.zip")
+        zip_path = tmpdir / "gtfs.zip"
 
     try:
+        if tmpdir:
+            _download(quelle, zip_path)
         stats = gtfs.import_feed(
             settings, zip_path, bbox=bbox, quelle=quelle, progress=print
         )
@@ -204,8 +230,10 @@ def cmd_import_raster_at(args: argparse.Namespace, settings: Settings) -> int:
         quelle = args.url or raster_at.QUELLE_URL
         tmpdir = Path(tempfile.mkdtemp(prefix="gastroviewer-raster-"))
         print(f"Lade {quelle} (rund 186 MB) …")
-        pfad = _download(quelle, tmpdir / "census.zip")
+        pfad = tmpdir / "census.zip"
     try:
+        if tmpdir:
+            _download(quelle, pfad)
         if pfad.suffix.lower() == ".gpkg":
             stats = raster_at.import_gpkg(settings, pfad, quelle=quelle, progress=print)
         else:
@@ -237,11 +265,13 @@ def cmd_import_register(args: argparse.Namespace, settings: Settings) -> int:
     else:
         quelle = args.url or register.DUMP_URL
         tmpdir = Path(tempfile.mkdtemp(prefix="gastroviewer-register-"))
-        dump_pfad = _download(quelle, tmpdir / "register.jsonl.bz2")
+        dump_pfad = tmpdir / "register.jsonl.bz2"
 
-    print("Baue lokale Registerdatenbank (Streaming, nichts wird entpackt "
-          "zwischengespeichert) …")
     try:
+        if tmpdir:
+            _download(quelle, dump_pfad)
+        print("Baue lokale Registerdatenbank (Streaming, nichts wird entpackt "
+              "zwischengespeichert) …")
         stats = register.import_dump(settings, dump_pfad, quelle=quelle,
                                      progress=print)
     except Exception as exc:  # noqa: BLE001 — CLI soll die Ursache zeigen
