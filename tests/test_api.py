@@ -2541,3 +2541,30 @@ def test_in_der_ueberlappung_entscheidet_der_geocoder(client, zensus_600, overpa
         d = c3.get("/api/point", params={"lat": SALZBURG[0], "lon": SALZBURG[1], "r": 600}).json()
     assert d["punkt"]["land"] == "DE"
     assert "zensus" in de.calls
+
+
+def test_patch_ohne_aenderbares_feld_ist_422_unbekannter_punkt_404(client):
+    r = client.post("/api/points", json={"label": "A", "lat": LAT, "lon": LON, "radius": R})
+    pid = r.json()["id"]
+    leer = client.patch(f"/api/points/{pid}", json={})
+    assert leer.status_code == 422
+    assert "notiz" in leer.json()["detail"] and "stand" in leer.json()["detail"]
+    assert client.patch(f"/api/points/{pid}", json={"lat": 1.0}).status_code == 422
+    assert client.patch("/api/points/999999", json={"notiz": "x"}).status_code == 404
+    ok = client.patch(f"/api/points/{pid}", json={"notiz": "x"})
+    assert ok.status_code == 200 and ok.json() == {"id": pid, "notiz": "x"}
+
+
+def test_outbound_limit_liefert_die_neuesten_in_alter_reihenfolge(client):
+    cache = client.app.state.cache.sync
+    for i in range(7):
+        cache.log_outbound("zensus", f"https://x/{i}", status=200, duration_ms=1, size=1)
+    d = client.get("/api/outbound", params={"limit": 3}).json()
+    assert d["anzahl"] == 3
+    assert [e["url"] for e in d["eintraege"]] == [f"https://x/{i}" for i in (4, 5, 6)]
+    assert client.get("/api/outbound").json()["anzahl"] >= 7
+
+
+def test_outbound_limit_ausserhalb_der_grenzen_ist_422(client):
+    assert client.get("/api/outbound", params={"limit": 0}).status_code == 422
+    assert client.get("/api/outbound", params={"limit": 5001}).status_code == 422

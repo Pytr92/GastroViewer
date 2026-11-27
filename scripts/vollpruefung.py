@@ -111,7 +111,7 @@ def t_stats():
     return f"{d['total']} Cacheeinträge, 24h: {d['outbound_24h']} Abrufe"
 
 def t_outbound():
-    d, _, _ = hole("/api/outbound", {"seit": time.time() - 3600})
+    d, _, _ = hole("/api/outbound", {"seit": time.time() - 3600, "limit": 5000})
     for e in d["eintraege"][:3]:
         assert e["url"].startswith("http") and e["source"]
     return f"{d['anzahl']} Einträge der letzten Stunde, jede mit Quelle und URL"

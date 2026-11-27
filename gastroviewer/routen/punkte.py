@@ -80,6 +80,13 @@ async def punkt_notiz(request: Request, point_id: int, body: PunktNotiz):
         raise HTTPException(
             422, f"Unbekannter Arbeitsstand: {felder['stand']!r}. "
             f"Möglich sind: {', '.join(STAND_SCHLUESSEL)}.")
+    erlaubt = cache.sync.EIGENE_FELDER
+    if not any(k in erlaubt for k in felder):
+        # Kein änderbares Feld mitgeschickt: Das ist eine fehlerhafte Anfrage
+        # (422), nicht ein fehlender Punkt (404).
+        raise HTTPException(
+            422, "Keine änderbaren Felder in der Anfrage. "
+            f"Erlaubt sind: {', '.join(erlaubt)}.")
     ok = await cache.set_point_felder(point_id, felder)
     if not ok:
         raise HTTPException(404, "Punkt nicht gefunden.")

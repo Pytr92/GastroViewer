@@ -1377,7 +1377,7 @@ Alles über Umgebungsvariablen, alles optional:
 | `GET /api/point/marke?lat=&lon=&marke=&r=` | Gebietsschutz-Check: Betriebe der eigenen Marke bis 20 km |
 | `GET /api/geocode?q=` · `GET /api/geocode/vorschlaege?q=` | Adresssuche bzw. Vorschläge beim Tippen (Photon) |
 | `GET /api/schaetzung/vorgaben?lat=&lon=&r=` · `POST /api/schaetzung` | Umsatzschätzung §9: Vorgaben aus dem Punkt, Rechnung mit Spannen |
-| `GET /api/points` · `POST /api/points` · `DELETE /api/points/{id}` | gemerkte Punkte |
+| `GET /api/points` · `POST /api/points` · `DELETE /api/points/{id}` · `PATCH /api/points/{id}` | gemerkte Punkte; PATCH ändert Notiz, Bewertung, Arbeitsstand (422 ohne änderbares Feld, 404 bei unbekanntem Punkt) |
 | `GET /api/points/{id}` · `GET /api/points/{id}/verlauf` | ein Punkt mit vollem Datenstand bzw. seine abgelegten Stände |
 | `POST /api/points/{id}/pruefung` | „Neu prüfen": Quellen erneut abfragen, Unterschiede ausweisen |
 | `GET /api/points/{id}/waechter` | Veränderungs-Wächter: frische OSM-Zählung gegen den gespeicherten Stand, ohne ihn zu überschreiben |
@@ -1388,7 +1388,7 @@ Alles über Umgebungsvariablen, alles optional:
 | `GET /api/points/export` · `POST /api/points/import` | Datensicherung aller Punkte samt Verlauf als eine Datei |
 | `GET /api/points/vergleich` | Vergleichstabelle |
 | `GET /api/export/point.json` · `GET /api/export/point.csv` · `GET /api/export/vergleich.csv` | Export |
-| `GET /api/stats` · `GET /api/outbound` | Cache-Zustand, Protokoll der echten Abrufe |
+| `GET /api/stats` · `GET /api/outbound?seit=&limit=` | Cache-Zustand, Protokoll der echten Abrufe (die neuesten `limit`, Standard 500, höchstens 5000) |
 | `DELETE /api/cache?quelle=` | Cache leeren |
 | `GET /api/wms` · `?bundesland_code=` | Kartendienst-Register bzw. Ebene eines Landes |
 | `GET /api/wms/ebenen?bundesland_code=` | zusätzliche amtliche Kartenebenen (Bayern: Luftbild, ALKIS) |

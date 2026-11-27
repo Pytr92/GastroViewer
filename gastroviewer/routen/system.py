@@ -42,9 +42,14 @@ async def stats(request: Request):
 
 
 @router.get("/api/outbound")
-async def outbound_log(request: Request, seit: float = Query(0, description="Unix-Zeit")):
+async def outbound_log(
+    request: Request,
+    seit: float = Query(0, description="Unix-Zeit"),
+    limit: int = Query(500, ge=1, le=5000,
+                       description="Höchstzahl Einträge (die neuesten)"),
+):
     cache: AsyncCache = request.app.state.cache
-    rows = await asyncio.to_thread(cache.sync.outbound_since, seit)
+    rows = await asyncio.to_thread(cache.sync.outbound_since, seit, limit)
     return {"anzahl": len(rows), "eintraege": rows}
 
 

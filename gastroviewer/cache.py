@@ -251,10 +251,13 @@ class Cache:
                 (time.time(), source, url, status, duration_ms, size, error),
             )
 
-    def outbound_since(self, ts: float) -> list[dict[str, Any]]:
+    def outbound_since(self, ts: float, limit: int = 500) -> list[dict[str, Any]]:
+        """Die neuesten ``limit`` Einträge seit ``ts``, älteste zuerst."""
         with self._connect() as conn:
             rows = conn.execute(
-                "SELECT * FROM outbound_log WHERE ts >= ? ORDER BY ts", (ts,)
+                "SELECT * FROM (SELECT * FROM outbound_log WHERE ts >= ?"
+                " ORDER BY ts DESC, id DESC LIMIT ?) ORDER BY ts, id",
+                (ts, limit),
             ).fetchall()
         return [dict(r) for r in rows]
 
