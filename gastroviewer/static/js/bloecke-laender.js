@@ -43,12 +43,15 @@ async function setzeBrwEbene(bundeslandCode) {
   entferneBrwEbene();
   if (!bundeslandCode) return;
 
+  const lauf = state.ladeLauf;
   let cfg;
   try {
     cfg = await hole('/api/wms', { bundesland_code: bundeslandCode });
   } catch {
     return; // Ohne Ebene weiterarbeiten; der Panel-Block nennt den Grund.
   }
+  // Veralteter Lauf (neuer Punkt) oder doppelter Aufruf im selben Lauf: nichts zeichnen.
+  if (lauf !== state.ladeLauf || brwState.code === bundeslandCode) return;
   if (!cfg.verfuegbar) { brwState.code = bundeslandCode; brwState.cfg = cfg; return; }
 
   const zusatz = {};
@@ -180,13 +183,21 @@ async function setzeZusatzebenen(bundeslandCode) {
     state.rasterEbenen.delete(e);
   }
   zusatzState.ebenen = [];
-  zusatzState.code = bundeslandCode;
+  zusatzState.code = null;
   if (!bundeslandCode) return;
 
+  const lauf = state.ladeLauf;
   let d;
   try {
     d = await hole('/api/wms/ebenen', { bundesland_code: bundeslandCode });
-  } catch { return; }
+  } catch {
+    // Wie bisher: nach einem Fehler nicht bei jedem Aufruf neu versuchen.
+    if (lauf === state.ladeLauf) zusatzState.code = bundeslandCode;
+    return;
+  }
+  // Veralteter Lauf (neuer Punkt) oder doppelter Aufruf im selben Lauf: nichts zeichnen.
+  if (lauf !== state.ladeLauf || zusatzState.code === bundeslandCode) return;
+  zusatzState.code = bundeslandCode;
 
   for (const cfg of d.ebenen || []) {
     const ebene = L.tileLayer.wms(cfg.url, {

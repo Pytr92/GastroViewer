@@ -208,7 +208,9 @@ function scanMetrik() {
    Box nicht über die Abweisungsgrenze hinausschiebt. */
 const SCAN_SPANNE = [0.055, 0.04];
 
-const scanState = { schluessel: null, laedt: false, status: null, daten: null };
+// ausstehend: moveend kam, während ein Scan lief — wird im finally einmal
+// nachgeholt (über scanNachBewegung, also ohne Overpass-Abfrage ungefragt).
+const scanState = { schluessel: null, laedt: false, ausstehend: false, status: null, daten: null };
 
 const scanLegende = L.control({ position: 'bottomright' });
 scanLegende.onAdd = () => {
@@ -440,7 +442,7 @@ async function ladeScan() {
     return;
   }
   const schluessel = `${box.west.toFixed(3)}|${box.sued.toFixed(3)}|${box.ost.toFixed(3)}|${box.nord.toFixed(3)}`;
-  if (scanState.laedt) return;
+  if (scanState.laedt) { scanState.ausstehend = true; return; }
   if (schluessel === scanState.schluessel && scanState.status) {
     zeigeScanLegende(scanState.status);
     return;
@@ -449,6 +451,7 @@ async function ladeScan() {
   zeigeScanLegende({
     hinweis: 'scannt — eine Zensus- und eine Overpass-Abfrage für den ganzen Ausschnitt …',
   });
+  let erfolg = false;
   try {
     const d = await hole('/api/scan', box);
     if (!d.ok) {
@@ -458,10 +461,16 @@ async function ladeScan() {
     scanState.schluessel = schluessel;
     scanState.daten = d.data;
     zeichneScan();
+    erfolg = true;
   } catch (e) {
     zeigeScanLegende({ hinweis: `Scan nicht möglich: ${e.message}` });
   } finally {
     scanState.laedt = false;
+    /* Bewegung während des Scans nachholen — aber nur nach Erfolg, sonst
+       überschriebe der Nachlauf die Fehlermeldung mit dem alten Stand. */
+    const nachholen = scanState.ausstehend && erfolg;
+    scanState.ausstehend = false;
+    if (nachholen) scanNachBewegung();
   }
 }
 
@@ -506,7 +515,8 @@ function zeichneScan() {
 /* Nach dem Schwenken wird NICHT automatisch neu gescannt — jeder Scan ist
    eine echte Overpass-Abfrage. Stattdessen bietet die Legende den Knopf an. */
 function scanNachBewegung() {
-  if (!karte.hasLayer(state.ebenen.scan) || scanState.laedt) return;
+  if (!karte.hasLayer(state.ebenen.scan)) return;
+  if (scanState.laedt) { scanState.ausstehend = true; return; }
   if (karte.getZoom() < 13) { ladeScan(); return; }
   if (!scanState.status) { ladeScan(); return; }
   const box = scanBox();
