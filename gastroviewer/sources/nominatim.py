@@ -172,7 +172,13 @@ async def reverse(
     except SourceError as err:
         return await _photon_reverse(out, settings, lat, lon, err, started)
 
-    if isinstance(raw, dict) and raw.get("error"):
+    if not isinstance(raw, dict):
+        err = SourceError(
+            "parse",
+            f"Nominatim-Reverse lieferte {type(raw).__name__} statt eines Objekts.")
+        return await _photon_reverse(out, settings, lat, lon, err, started)
+
+    if raw.get("error"):
         return SourceResult(
             name="adresse",
             ok=True,
@@ -220,7 +226,17 @@ async def search(
     except SourceError as err:
         return await _photon_search(out, settings, query, limit, err, started)
 
-    items = [shape(r) for r in raw] if isinstance(raw, list) else []
+    # Keine Liste (z. B. {"error": ...}) ist ein Fehler, nie „keine Treffer".
+    if not isinstance(raw, list):
+        grund = raw.get("error") if isinstance(raw, dict) else None
+        err = SourceError(
+            "api_error" if grund else "parse",
+            f"Nominatim-Suche: {grund}" if grund
+            else f"Nominatim-Suche lieferte {type(raw).__name__} statt einer Trefferliste.",
+        )
+        return await _photon_search(out, settings, query, limit, err, started)
+
+    items = [shape(r) for r in raw]
     licence = items[0]["licence"] if items else FALLBACK_LICENSE
     return SourceResult(
         name="suche",
