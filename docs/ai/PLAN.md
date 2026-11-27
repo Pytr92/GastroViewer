@@ -1,6 +1,9 @@
 # PLAN — Überarbeitung nach AUDIT.md
 
-Branch: `claude/jolly-shannon-g2l13z`. Status: **ENTWURF — wartet auf OK.**
+Branch: `claude/jolly-shannon-g2l13z`. Status: **FREIGEGEBEN (27.11.2026)**, C4 und C5 eingeschlossen.
+**Ziel:** Codebasis stabiler, sauberer, wartbarer; Funktionalität für Nutzer bleibt gleich.
+**Grenzen:** keine neuen Features, kein Framework-Wechsel, Datenformat nur nach Rückfrage ändern; Oberfläche nur
+Fehler beheben, kein Redesign. C4: Oberfläche in derselben Aufgabe mit anpassen, falls nötig.
 Standard-Prüfbefehl (P): `python -m pytest -q` · Oberfläche zusätzlich (PJ):
 `npx --yes eslint@9 gastroviewer/static/js gastroviewer/static/app.js gastroviewer/static/score.js gastroviewer/static/bericht.js gastroviewer/static/duell.js`
 Jede Aufgabe: Test für den Fehlerfall zuerst (Sicherheitsnetz), dann Fix. Fixtures nach Projektregel (echte Antwortform).
