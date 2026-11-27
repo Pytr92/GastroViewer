@@ -29,7 +29,8 @@ from typing import Any
 
 from ..config import Settings
 from ..http import Outbound
-from .base import Provenance, SourceError, SourceResult, bearing_label, haversine_m, now_iso
+from .base import (Provenance, SourceError, SourceResult, bearing_label, features_aus,
+                   haversine_m, now_iso)
 
 WFS_URL = (
     "https://gisportal-stmb.bayern.de/server/services/WFS/"
@@ -169,12 +170,12 @@ async def verkehrsmengen(
             limiter="baysis",
             min_interval=1.0,
         )
+        features = features_aus(payload, "BAYSIS-WFS")
     except SourceError as err:
         return SourceResult.failed(
             "verkehrsmenge", err, int((time.perf_counter() - started) * 1000)
         )
 
-    features = payload.get("features", []) if isinstance(payload, dict) else []
     data = aufbereiten(features, lat, lon, radius)
 
     warnungen: list[str] = []

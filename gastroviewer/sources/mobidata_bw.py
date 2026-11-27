@@ -35,7 +35,8 @@ from datetime import date, datetime
 from typing import Any, Awaitable, Callable
 
 from ..http import Outbound
-from .base import Provenance, SourceError, SourceResult, bearing_label, haversine_m, now_iso
+from .base import (Provenance, SourceError, SourceResult, bearing_label, features_aus,
+                   haversine_m, now_iso)
 
 ROADWORKS_URL = "https://api.mobidata-bw.de/datasets/traffic/roadworks/roadworks_geojson.json"
 SVZ_URL = "https://mobidata-bw.de/vm/Karte_Strassenverkehrszaehlung_BW/SVZ-Zaehlstellen_2026-06-26_augmented_SVZ2024.csv"
@@ -250,9 +251,9 @@ async def stuttgart_baustellen_load(out: Outbound, lat: float, lon: float, radiu
     try:
         payload = await out.get_json("stuttgart_baustellen", STUTTGART_WFS_URL, params=params, timeout=45.0,
                                      limiter="stuttgart", min_interval=0.5)
+        features = features_aus(payload, "Stuttgart-Baustellen (WFS)")
     except SourceError as err:
         return SourceResult.failed("baustellen", err, int((time.perf_counter() - started) * 1000))
-    features = payload.get("features") or [] if isinstance(payload, dict) else []
     data = stuttgart_aufbereiten(features, lat, lon, radius, heute or date.today())
     data["hinweise"] = STUTTGART_HINWEISE
     warnungen = [] if data["gesamt"] else ["Keine Baustelle im Bau im Umkreis (Stadt Stuttgart)."]
@@ -429,7 +430,7 @@ async def ladesaeulen(out: Outbound, lat: float, lon: float, radius: int) -> dic
               "bbox": _bbox_um(lat, lon, radius)}
     payload = await out.get_json("mobidata_ladesaeulen", WFS_URL, params=params, timeout=45.0,
                                  limiter="mobidata", min_interval=0.5)
-    features = payload.get("features") or [] if isinstance(payload, dict) else []
+    features = features_aus(payload, "MobiData-Ladesäulen (WFS)")
     standorte = []
     for f in features:
         punkte = _punkte(f.get("geometry"))

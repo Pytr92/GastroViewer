@@ -32,7 +32,7 @@ from typing import Any
 from ..config import Settings
 from ..http import Outbound
 from .base import (Provenance, SourceError, SourceResult, bearing_label,
-                   haversine_m, now_iso)
+                   features_aus, haversine_m, now_iso)
 
 FEED_URL = "https://api.viz.berlin.de/daten/baustellen_sperrungen_viz.json"
 LIZENZ = (
@@ -181,10 +181,10 @@ async def baustellen_load(
             "berlin_viz", FEED_URL, timeout=60.0,
             limiter="berlin", min_interval=1.0,
         )
+        features = features_aus(payload, "Berlin-VIZ-Baustellen")
     except SourceError as err:
         return SourceResult.failed(
             "baustellen", err, int((time.perf_counter() - started) * 1000))
-    features = payload.get("features", []) if isinstance(payload, dict) else []
     data = aufbereiten(features, lat, lon, radius, heute)
     data["hinweise"] = HINWEISE
     warnungen = ([] if data["gesamt"] else
@@ -229,7 +229,7 @@ async def _vm_features(out: Outbound, typ: str, bbox: str) -> list[dict[str, Any
               "srsName": "EPSG:4326", "outputFormat": "application/json", "count": 200, "bbox": bbox}
     payload = await out.get_json("berlin_verkehrsmengen", VM_WFS_URL, params=params, timeout=45.0,
                                  limiter="berlin", min_interval=1.0)
-    return payload.get("features") or [] if isinstance(payload, dict) else []
+    return features_aus(payload, f"Berlin-Verkehrsmengen ({typ})")
 
 
 def verkehrsmengen_aufbereiten(kfz: list[dict[str, Any]], lkw: list[dict[str, Any]], rad: list[dict[str, Any]],

@@ -39,7 +39,7 @@ from typing import Any
 from ..config import Settings
 from ..http import Outbound
 from .base import (Provenance, SourceError, SourceResult, bearing_label,
-                   haversine_m, now_iso)
+                   features_aus, haversine_m, now_iso)
 
 OAF_BASE = "https://api.hamburg.de/datasets/v1"
 LIZENZ = (
@@ -82,7 +82,7 @@ async def _items(
         limiter="hamburg",
         min_interval=1.0,
     )
-    return payload.get("features", []) if isinstance(payload, dict) else []
+    return features_aus(payload, f"Hamburg {dataset}/{collection}")
 
 
 def _punkt(f: dict[str, Any]) -> tuple[float, float] | None:

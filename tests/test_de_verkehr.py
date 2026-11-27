@@ -9,6 +9,8 @@ import json
 from datetime import date
 from pathlib import Path
 
+import pytest
+
 from gastroviewer.sources import berlin, hamburg
 from gastroviewer.sources import mobidata_bw as mb
 from gastroviewer.sources.base import SourceError
@@ -229,3 +231,72 @@ def test_api_berliner_und_hamburger_punkt(client, zensus_600, overpass_combined,
         lg = _punkt(c2, "/api/point/lage", *MOENCKEBERG, r=600)
         assert lg["data"]["stadt"] == "Hamburg" and lg["data"]["parkhaeuser_im_radius"] >= 5
     assert "berlin_wfs_dtvw2023kfz" in fake.calls and "hamburg_parkhaeuser" in fake.calls
+
+
+# ------------------------------------- Fehlerobjekt statt FeatureCollection
+# Minimal konstruiert: JSON-Fehlerobjekt (200 OK, aber kein ``features``) darf nie
+# als „0 Treffer" durchgehen, sondern ist ein Quellenausfall mit kind "parse".
+
+FEHLER = {"error": {"code": 500, "message": "Dienst kaputt"}}
+LEER = {"type": "FeatureCollection", "features": []}
+
+
+def _ist_parse_fehler(res):
+    return (not res.ok) and res.data is None and res.error["kind"] == "parse" and "Dienst kaputt" in res.error["message"]
+
+
+def test_stuttgart_baustellen_fehlerobjekt():
+    res = asyncio.run(mb.stuttgart_baustellen_load(_Out({"geoserver.stuttgart.de": FEHLER}), *STUTTGART, 600, HEUTE))
+    assert _ist_parse_fehler(res)
+    res = asyncio.run(mb.stuttgart_baustellen_load(_Out({"geoserver.stuttgart.de": LEER}), *STUTTGART, 600, HEUTE))
+    assert res.ok and res.data["gesamt"] == 0
+
+
+def test_ladesaeulen_fehlerobjekt():
+    with pytest.raises(SourceError) as ei:
+        asyncio.run(mb.ladesaeulen(_Out({"charge_points": FEHLER}), *STUTTGART, 600))
+    assert ei.value.kind == "parse" and "Dienst kaputt" in ei.value.message
+    assert asyncio.run(mb.ladesaeulen(_Out({"charge_points": LEER}), *STUTTGART, 600))["im_radius"] == 0
+
+
+def test_berlin_baustellen_fehlerobjekt():
+    res = asyncio.run(berlin.baustellen_load(_Out({"viz.berlin.de": FEHLER}), None, *ALEXANDERPLATZ, 600, HEUTE))
+    assert _ist_parse_fehler(res)
+    res = asyncio.run(berlin.baustellen_load(_Out({"viz.berlin.de": LEER}), None, *ALEXANDERPLATZ, 600, HEUTE))
+    assert res.ok and res.data["gesamt"] == 0
+
+
+def test_berlin_verkehrsmengen_fehlerobjekt():
+    kfz = _lies("de_berlin_r6_verkehrsmengen_2023_dtvw2023kf")
+    # kfz-Layer kaputt: Ausfall des Blocks.
+    res = asyncio.run(berlin.verkehrsmengen_load(_Out({"dtvw2023kfz": FEHLER}), None, *ALEXANDERPLATZ, 600))
+    assert _ist_parse_fehler(res)
+    # Teilabfrage lkw kaputt: Block bleibt ok, der Ausfall steht als Warnung da.
+    out = _Out({"dtvw2023kfz": kfz, "dtvw2023lkw": FEHLER, "dtvw2023rad": LEER})
+    res = asyncio.run(berlin.verkehrsmengen_load(out, None, *ALEXANDERPLATZ, 600))
+    assert res.ok and any("dtvw2023lkw" in w and "Dienst kaputt" in w for w in res.warnings)
+    res = asyncio.run(berlin.verkehrsmengen_load(_Out({"dtvw2023kfz": LEER}), None, *ALEXANDERPLATZ, 600))
+    assert res.ok and res.data["zaehlstellen"] == []
+
+
+def test_hamburg_fehlerobjekt():
+    # Hamburg-Märkte: beide Teilabfragen laufen über _items.
+    res = asyncio.run(hamburg.maerkte_load(_Out({"wochenmarkt": FEHLER}), None, *MOENCKEBERG, 600))
+    assert _ist_parse_fehler(res)
+    res = asyncio.run(hamburg.maerkte_load(_Out({"wochenmarkt": LEER}), None, *MOENCKEBERG, 600))
+    assert res.ok, res.error
+    # Verkehrsmengen: Ausfall der HVS-Teilabfrage wird Warnung, nicht 0.
+    out = _Out({"kfz_temporaere_zaehlungen": _lies("de_hh_r6_verkehrsstaerken_kfz_temporaere_zaehlunge"),
+                "dtv_hvs": FEHLER})
+    res = asyncio.run(hamburg.verkehrsmengen_load(out, None, *MOENCKEBERG, 600))
+    assert res.ok and any("Dienst kaputt" in w for w in res.warnings)
+    # Erste Teilabfrage kaputt: Block fällt aus.
+    res = asyncio.run(hamburg.verkehrsmengen_load(_Out({"kfz_temporaere_zaehlungen": FEHLER}), None, *MOENCKEBERG, 600))
+    assert _ist_parse_fehler(res)
+
+
+def test_hamburg_milieuschutz_fehlerobjekt():
+    # planung.py fängt SourceError und macht daraus eine Warnung (siehe Aufrufer).
+    with pytest.raises(SourceError) as ei:
+        asyncio.run(hamburg.milieuschutz(_Out({"sozerhvo_inkraft": FEHLER}), *MOENCKEBERG))
+    assert ei.value.kind == "parse"

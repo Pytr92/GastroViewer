@@ -178,3 +178,14 @@ async def test_ausfall_wird_benannt(settings):
     res = await bayern.verkehrsmengen(FakeOut(), settings, LAT, LON, 600)
     assert res.ok is False
     assert res.error["kind"] == "http_status"
+
+
+async def test_fehlerobjekt_ist_ausfall_nicht_null_treffer(settings):
+    class FakeOut:
+        async def get_json(self, *a, **kw):
+            # Minimal konstruiert: WFS-JSON-Fehlerobjekt statt FeatureCollection.
+            return {"error": {"code": 500, "message": "WFS kaputt"}}
+
+    res = await bayern.verkehrsmengen(FakeOut(), settings, LAT, LON, 600)
+    assert res.ok is False and res.data is None
+    assert res.error["kind"] == "parse" and "WFS kaputt" in res.error["message"]
