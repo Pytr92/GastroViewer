@@ -1195,7 +1195,8 @@ def test_deckkraftregler_ist_vorhanden_und_beruehrt_die_grundkarte_nicht():
     js = "\n".join(p.read_text(encoding="utf-8")
                    for p in sorted(statisch.rglob("*.js")))
     assert "deckkraft-regler" in js and 'type="range"' in js
-    assert "localStorage.setItem(DECKKRAFT_SPEICHER" in js, "Einstellung muss bleiben"
+    # Gespeichert wird über den abgesicherten Helfer aus js/speicher.js.
+    assert "schreibe(DECKKRAFT_SPEICHER" in js, "Einstellung muss bleiben"
     # Grundkarten werden ohne setOpacity eingehängt.
     block = js.split("if (cfg.als_grundkarte) {")[1].split("} else {")[0]
     assert "setOpacity" not in block, "eine Grundkarte wird nicht zurückgeblendet"

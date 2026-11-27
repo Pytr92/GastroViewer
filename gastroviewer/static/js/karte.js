@@ -12,6 +12,7 @@
  * damit ein globaler Name.
  */
 
+import { lies, schreibe } from './speicher.js';
 import { state } from './state.js';
 
 /* --------------------------------------------------------------- Karte */
@@ -145,7 +146,7 @@ ebenenSchalter.getContainer().classList.add('ebenen-schalter');
 const DECKKRAFT_SPEICHER = 'gastroviewer.deckkraft';
 
 function geladeneDeckkraft() {
-  const roh = Number(localStorage.getItem(DECKKRAFT_SPEICHER));
+  const roh = Number(lies(DECKKRAFT_SPEICHER));
   return Number.isFinite(roh) && roh >= 0.1 && roh <= 1 ? roh : 1;
 }
 state.deckkraft = geladeneDeckkraft();
@@ -173,7 +174,7 @@ function wendeDeckkraftAn() {
 
 function setzeDeckkraft(f) {
   state.deckkraft = Math.min(1, Math.max(0.1, f));
-  localStorage.setItem(DECKKRAFT_SPEICHER, String(state.deckkraft));
+  schreibe(DECKKRAFT_SPEICHER, String(state.deckkraft));
   wendeDeckkraftAn();
 }
 

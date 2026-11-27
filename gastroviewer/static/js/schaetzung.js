@@ -1,4 +1,5 @@
 import { NF, NF1, NF2 } from './format.js';
+import { lies } from './speicher.js';
 import {
   block, el, fehlerbox, kennzahl, setInhalt, setQuelle, setStatus, warnungen,
 } from './dom.js';
@@ -91,7 +92,7 @@ function gehwegAngebot(alt) {
    als Wettbewerberzahl angeboten — wie beim Gehweg: sichtbar, ausdrücklich
    zu übernehmen, nie stillschweigend gesetzt. */
 function brancheAngebot() {
-  const key = localStorage.getItem(BRANCHE_SPEICHER) || 'alle';
+  const key = lies(BRANCHE_SPEICHER) || 'alle';
   const b = BRANCHEN.find((x) => x.key === key);
   if (!b || !b.typen) return null;
   const gastro = state.daten.osm?.data?.gastronomie;

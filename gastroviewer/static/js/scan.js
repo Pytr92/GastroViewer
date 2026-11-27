@@ -9,6 +9,7 @@
  * Programm außer den gemeinsamen Bausteinen.
  */
 
+import { lies, schreibe } from './speicher.js';
 import { NF, zahl } from './format.js';
 import { el } from './dom.js';
 import { state } from './state.js';
@@ -201,7 +202,7 @@ const SCAN_FARBEN = ['#f4f9f0', '#d9ecc6', '#b4d893', '#86bc62', '#569940', '#2f
 const SCAN_OHNE_BETRIEB = '#1c4f22';
 
 function scanMetrik() {
-  const key = localStorage.getItem(SCAN_METRIK_SPEICHER);
+  const key = lies(SCAN_METRIK_SPEICHER);
   return SCAN_METRIKEN.find((m) => m.key === key) || SCAN_METRIKEN[0];
 }
 /* Etwas unter dem Server-Limit, damit die Kachelrundung des Backends die
@@ -254,7 +255,7 @@ function zeigeScanLegende(status) {
     return;
   }
   const auswahl = el('select', { onchange: (ev) => {
-    localStorage.setItem(SCAN_METRIK_SPEICHER, ev.target.value);
+    schreibe(SCAN_METRIK_SPEICHER, ev.target.value);
     zeichneScan();
   } }, SCAN_METRIKEN.map((m) => {
     const o = el('option', { value: m.key }, m.titel);
@@ -301,7 +302,7 @@ const FINDER_SPEICHER = 'gastroviewer.finder';
 
 function finderGewichte() {
   try {
-    const g = JSON.parse(localStorage.getItem(FINDER_SPEICHER) || '{}');
+    const g = JSON.parse(lies(FINDER_SPEICHER) || '{}');
     return {
       chance: [0, 1, 2, 3].includes(g.chance) ? g.chance : 2,
       dichte: [0, 1, 2, 3].includes(g.dichte) ? g.dichte : 1,
@@ -317,7 +318,7 @@ function finderBedienung() {
     el('select', { onchange: (ev) => {
       const neu = finderGewichte();
       neu[name] = Number(ev.target.value);
-      localStorage.setItem(FINDER_SPEICHER, JSON.stringify(neu));
+      schreibe(FINDER_SPEICHER, JSON.stringify(neu));
     } }, werte.map((w) => {
       const o = el('option', { value: String(w) }, String(w));
       if (w === wert) o.selected = true;

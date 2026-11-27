@@ -11,6 +11,7 @@
  * gesamten Karte, nur um nach dem Löschen eines Punktes neu zu zeichnen.
  */
 
+import { lies, schreibe } from './speicher.js';
 import { NF, NF1, nfFest, zahl } from './format.js';
 import { el, kennzahl, fehlerbox, hinweisZeile } from './dom.js';
 import { ueberlappungen } from './geometrie.js';
@@ -68,7 +69,7 @@ function ladeGruppenwahl(gruppen) {
   if (sichtbareGruppen) return sichtbareGruppen;
   let gemerkt = null;
   try {
-    gemerkt = JSON.parse(localStorage.getItem(GRUPPEN_SPEICHER) || 'null');
+    gemerkt = JSON.parse(lies(GRUPPEN_SPEICHER) || 'null');
   } catch { gemerkt = null; }
   const gueltig = new Set(gruppen.map((g) => g.key));
   sichtbareGruppen = new Set(
@@ -83,7 +84,7 @@ function ladeGruppenwahl(gruppen) {
 }
 
 function merkeGruppenwahl() {
-  localStorage.setItem(GRUPPEN_SPEICHER, JSON.stringify([...sichtbareGruppen]));
+  schreibe(GRUPPEN_SPEICHER, JSON.stringify([...sichtbareGruppen]));
 }
 
 /* Eigene Note und Notiz. Das Werkzeug bewertet bewusst nicht und stellt keine
@@ -351,13 +352,24 @@ function pflegeleiste(zeilen) {
         alert('Die Datei ist kein lesbares JSON.');
         return;
       }
-      const r = await fetch('/api/points/import', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(daten),
-      });
+      let r;
+      try {
+        r = await fetch('/api/points/import', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(daten),
+        });
+      } catch (e) {
+        alert(`Einspielen fehlgeschlagen: Server nicht erreichbar (${e.message || e}).`);
+        return;
+      }
       const antwort = await r.json().catch(() => ({}));
       if (!r.ok) {
         alert(`Einspielen fehlgeschlagen: ${antwort.detail || `HTTP ${r.status}`}`);
+        return;
+      }
+      if (typeof antwort.neu !== 'number') {
+        alert('Sicherung vermutlich eingespielt, aber die Antwort des Servers ist unlesbar.');
+        zeigeVergleich();
         return;
       }
       alert(`Sicherung eingespielt: ${antwort.neu} Punkt(e) neu, `
@@ -662,7 +674,7 @@ let rankingOffen = false;
 function ladeGewichte() {
   let gemerkt = null;
   try {
-    gemerkt = JSON.parse(localStorage.getItem(GEWICHTE_SPEICHER) || 'null');
+    gemerkt = JSON.parse(lies(GEWICHTE_SPEICHER) || 'null');
   } catch { gemerkt = null; }
   const gewichte = {};
   for (const m of RANKING_METRIKEN) {
@@ -752,7 +764,7 @@ function rankingBereich(d) {
         oninput: (ev) => {
           gewichte[m.key] = Number(ev.target.value);
           anzeige.textContent = gewichtText(gewichte[m.key]);
-          localStorage.setItem(GEWICHTE_SPEICHER, JSON.stringify(gewichte));
+          schreibe(GEWICHTE_SPEICHER, JSON.stringify(gewichte));
           zeichneRanking(d.zeilen, gewichte, ausgabe);
         },
       })));

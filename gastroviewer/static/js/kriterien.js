@@ -11,6 +11,7 @@
  * Browser, nicht in die Datenbank des Werkzeugs.
  */
 
+import { lies, schreibe } from './speicher.js';
 import { NF, NF1 } from './format.js';
 import { el, hinweisZeile } from './dom.js';
 
@@ -22,14 +23,14 @@ let profil = null;       // die eigenen Kriterien
 export function ladeProfil() {
   if (profil) return profil;
   try {
-    const roh = JSON.parse(localStorage.getItem(SPEICHER) || '[]');
+    const roh = JSON.parse(lies(SPEICHER) || '[]');
     profil = Array.isArray(roh) ? roh : [];
   } catch { profil = []; }
   return profil;
 }
 
 function merkeProfil() {
-  try { localStorage.setItem(SPEICHER, JSON.stringify(profil)); } catch { /* egal */ }
+  schreibe(SPEICHER, JSON.stringify(profil));
 }
 
 function titelVon(key) {

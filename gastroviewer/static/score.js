@@ -97,9 +97,20 @@ const SCORE_METRIKEN = [
   },
 ];
 
+/* Geschützter localStorage-Zugriff. Hier doppelt zu js/speicher.js, weil
+   score.js ein klassisches Skript ist und keine Module importieren kann.
+   Private Modi, gesperrte Website-Daten oder voller Speicher werfen. */
+function speicherLies(schluessel) {
+  try { return window.localStorage.getItem(schluessel); } catch { return null; }
+}
+
+function speicherSchreibe(schluessel, wert) {
+  try { window.localStorage.setItem(schluessel, wert); return true; } catch { return false; }
+}
+
 function ladeScoreGewichte() {
   try {
-    const roh = JSON.parse(localStorage.getItem(SCORE_SPEICHER) || '{}');
+    const roh = JSON.parse(speicherLies(SCORE_SPEICHER) || '{}');
     const g = {};
     for (const m of SCORE_METRIKEN) {
       const v = Number(roh[m.key]);
@@ -112,7 +123,7 @@ function ladeScoreGewichte() {
 }
 
 function speichereScoreGewichte(g) {
-  localStorage.setItem(SCORE_SPEICHER, JSON.stringify(g));
+  speicherSchreibe(SCORE_SPEICHER, JSON.stringify(g));
 }
 
 function scorePunkte(metrik, wert) {

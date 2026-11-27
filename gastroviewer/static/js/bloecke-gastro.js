@@ -6,6 +6,7 @@
  * Gemeindeschlüssel zugeordnet werden muss.
  */
 
+import { lies, schreibe } from './speicher.js';
 import { NF, NF1, NF2, fmtIsoDatum, zahl } from './format.js';
 import { state } from './state.js';
 import { el, esc, fehlerbox, kennzahl, liste, sichereUrl, setInhalt, setQuelle, setStatus, warnungen, zeigeBlockFehler } from './dom.js';
@@ -250,14 +251,14 @@ function brancheBereich(o) {
     ].filter(Boolean));
   };
   const auswahl = el('select', { onchange: (ev) => {
-    localStorage.setItem(BRANCHE_SPEICHER, ev.target.value);
+    schreibe(BRANCHE_SPEICHER, ev.target.value);
     zeichne(ev.target.value);
   } }, BRANCHEN.map((b) => {
     const opt = el('option', { value: b.key }, b.label);
-    if (b.key === (localStorage.getItem(BRANCHE_SPEICHER) || 'alle')) opt.selected = true;
+    if (b.key === (lies(BRANCHE_SPEICHER) || 'alle')) opt.selected = true;
     return opt;
   }));
-  zeichne(localStorage.getItem(BRANCHE_SPEICHER) || 'alle');
+  zeichne(lies(BRANCHE_SPEICHER) || 'alle');
   return el('div', { class: 'branche' },
     el('h3', { class: 'hinweis-klein' }, 'Branchenprofil — was zählt als direkter Wettbewerb?'),
     auswahl,
