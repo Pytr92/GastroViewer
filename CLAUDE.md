@@ -6,7 +6,7 @@ ES-Module ohne Build). Hintergrund und Stand: `docs/ai/HANDOFF.md`, Anforderunge
 ## Befehle
 ```bash
 pip install -e '.[dev]'                 # Entwicklung (kein venv-Zwang, kein make, kein Docker)
-python -m pytest -q                     # komplette Suite, offline, ~50 s, aktuell 937 grün
+python -m pytest -q                     # komplette Suite, offline, ~50 s, aktuell 1020 grün
 python -m pytest tests/test_xyz.py -q   # einzelne Datei
 gastroviewer serve --port 8011          # Server (127.0.0.1), Daten unter ~/.gastroviewer
 

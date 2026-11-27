@@ -1,6 +1,6 @@
 # HANDOFF — GastroViewer
 
-Stand: 27.11.2026 · Version 0.6.1 · Branch `claude/jolly-shannon-g2l13z` · 937 Tests grün (1 skipped).
+Stand: 27.11.2026 · Version 0.6.1 · Branch `claude/jolly-shannon-g2l13z` · 1020 Tests grün (1 skipped), Überarbeitung nach PLAN.md abgeschlossen.
 
 > Herkunft: Beim Anlegen lag mir nur das Repository vor, nicht der Chatverlauf der alten Session.
 > Alles Folgende stammt aus Code, README, `docs/` und Git-Historie. Wer Erkenntnisse aus dem
