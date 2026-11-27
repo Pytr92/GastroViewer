@@ -21,18 +21,14 @@
    score.js bleibt bewusst ein klassisches Skript, weil bericht.html es
    ebenfalls lädt; seine Funktionen sind daher weiterhin globale Namen. */
 
-import {
-  NF, NF1, NF2, OVERPASS_WARNSCHWELLE, fmtIsoDatum, nfFest, zahl,
-} from './js/format.js';
+import { NF, OVERPASS_WARNSCHWELLE } from './js/format.js';
 import { state } from './js/state.js';
 import {
-  beiBlockRender, block, el, esc, fehlerbox, hinweisZeile, kennzahl, liste,
-  setInhalt, setQuelle, setStatus, warnungen, zeigeBlockFehler,
+  beiBlockRender, block, el, setInhalt, setStatus, zeigeBlockFehler,
 } from './js/dom.js';
 import { hole } from './js/api.js';
 import { planeScoreUpdate, zeigeScore } from './js/score-bruecke.js';
-import { BRANCHEN, BRANCHE_SPEICHER, brancheKennzahlen } from './js/branche.js';
-import { schaetzState, spanne, zeigeSchaetzung } from './js/schaetzung.js';
+import { schaetzState, zeigeSchaetzung } from './js/schaetzung.js';
 import { ueberlappungen } from './js/geometrie.js';
 import {
   zeigeFahrzeitAngebot, zeigeGehwegAngebot, zeigeLieferAngebot,
@@ -47,15 +43,14 @@ import {
 import {
   ladePlanung, zeigeRadzaehlung, zeigeVerkehrsmenge,
 } from './js/bloecke-laender.js';
-import { ebenenSchalter, karte, osmKarte, passeKartenhintergrundAn } from './js/karte.js';
+import { karte, osmKarte, passeKartenhintergrundAn } from './js/karte.js';
 import {
-  FARBEN, POI_STIL, aktuellerSprungRing, beiPunktWahl, farbe, grenzen,
-  ladePunkteEbene, setzePunkt, springeZuPoi, zeichnePois, zeichneZensus,
+  aktuellerSprungRing, beiPunktWahl, ladePunkteEbene, setzePunkt,
 } from './js/karte-ebenen.js';
 /* Nur wegen seiner Wirkung: hängt Erkundungsebenen und Kartenereignisse ein. */
 import './js/scan.js';
 import {
-  beiPunkteAenderung, merken, pflegeleiste, zeigeVergleich,
+  beiPunkteAenderung, merken, zeigeVergleich,
 } from './js/vergleich.js';
 
 

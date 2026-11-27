@@ -1,8 +1,6 @@
 import { NF, NF1, NF2 } from './format.js';
 import { lies } from './speicher.js';
-import {
-  block, el, fehlerbox, kennzahl, setInhalt, setQuelle, setStatus, warnungen,
-} from './dom.js';
+import { el, fehlerbox, kennzahl } from './dom.js';
 import { state } from './state.js';
 import { hole } from './api.js';
 import { BRANCHEN, BRANCHE_SPEICHER, brancheKennzahlen } from './branche.js';

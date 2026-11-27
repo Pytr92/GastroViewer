@@ -11,8 +11,6 @@ import { state } from './state.js';
 import { el, fehlerbox, hinweisZeile, kennzahl, setInhalt, setQuelle, setStatus, warnungen, zeigeBlockFehler } from './dom.js';
 import { hole } from './api.js';
 import { karte } from './karte.js';
-import { farbe } from './karte-ebenen.js';
-import { pflegeleiste } from './vergleich.js';
 import { zeigeOsm } from './bloecke-gastro.js';
 import { GEH_STUFEN, zeigeGehweg } from './bloecke-laender.js';
 /* --- 6h ÖPNV-Einzugsgebiet: wie 4b/4d auf Anforderung — die Rechnung über
@@ -380,7 +378,9 @@ function zeichneFahrzeitflaeche(f) {
       radius: 3,
       stroke: false,
       fillColor: stufe.farbe,
-      fillOpacity: 0.75,
+      fillOpacity: 0.75 * state.deckkraft,
+      _basisDeckkraft: 0.75,
+      _basisRand: 0,
     }));
   }
   gruppe.addTo(karte);

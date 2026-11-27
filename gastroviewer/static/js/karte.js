@@ -158,7 +158,7 @@ function wendeDeckkraftAn() {
   const f = state.deckkraft;
   for (const name of ['zensus', 'gastronomie', 'frequenzbringer', 'oepnv', 'leerstand',
     'overture', 'maerkte', 'baustellen', 'airbnb', 'uebersicht', 'scan', 'marke',
-    'gehflaeche', 'liefergebiet', 'oepnveinzug']) {
+    'gehflaeche', 'liefergebiet', 'fahrzeit', 'oepnveinzug']) {
     state.ebenen[name]?.eachLayer((l) => {
       const basis = l.options?._basisDeckkraft;
       if (basis === undefined || !l.setStyle) return;

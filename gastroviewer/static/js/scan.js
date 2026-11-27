@@ -15,7 +15,7 @@ import { el } from './dom.js';
 import { state } from './state.js';
 import { hole } from './api.js';
 import { karte } from './karte.js';
-import { FARBEN, grenzen, setzePunkt } from './karte-ebenen.js';
+import { FARBEN, setzePunkt } from './karte-ebenen.js';
 
 /* ---------------------------------------- Übersichtsgitter (Erkundung) */
 

@@ -10,10 +10,9 @@
 
 import { NF, NF1, NF2, fmtIsoDatum, nfFest } from './format.js';
 import { state } from './state.js';
-import { block, el, esc, fehlerbox, hinweisZeile, kennzahl, liste, sichereUrl, setInhalt, setQuelle, setStatus, warnungen, zeigeBlockFehler } from './dom.js';
+import { el, esc, fehlerbox, hinweisZeile, kennzahl, liste, sichereUrl, setInhalt, setQuelle, setStatus, warnungen, zeigeBlockFehler } from './dom.js';
 import { hole } from './api.js';
 import { POI_STIL, springeZuPoi, zeichnePois } from './karte-ebenen.js';
-import { pflegeleiste } from './vergleich.js';
 import { brwBlock, setzeBrwEbene, setzeZusatzebenen } from './bloecke-laender.js';
 import { importFeld } from './importe.js';
 /* --------------------------- Verfügbares Einkommen (Kreisebene, VGRdL) */

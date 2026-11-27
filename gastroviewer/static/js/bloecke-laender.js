@@ -8,12 +8,10 @@
 
 import { NF, NF1 } from './format.js';
 import { state } from './state.js';
-import { block, el, fehlerbox, hinweisZeile, kennzahl, liste, sichereUrl, setInhalt, setQuelle, setStatus, warnungen, zeigeBlockFehler } from './dom.js';
+import { el, fehlerbox, hinweisZeile, kennzahl, sichereUrl, setInhalt, setQuelle, setStatus, warnungen, zeigeBlockFehler } from './dom.js';
 import { hole } from './api.js';
 import { ebenenSchalter, karte } from './karte.js';
-import { farbe } from './karte-ebenen.js';
 import { ladeGehweg } from './bloecke-mobilitaet.js';
-import { zeigeLinks } from './bloecke-region.js';
 /* ===================================================================
  * Bodenrichtwerte als Kartenebene — Phase 4
  *

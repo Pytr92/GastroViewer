@@ -11,7 +11,7 @@
  * Die Abhängigkeit zeigt damit nur noch in eine Richtung.
  */
 
-import { NF, NF1, NF2, zahl } from './format.js';
+import { zahl } from './format.js';
 
 export const el = (tag, attrs = {}, ...kinder) => {
   const n = document.createElement(tag);

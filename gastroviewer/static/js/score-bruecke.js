@@ -11,7 +11,7 @@
  */
 
 import { NF, NF1 } from './format.js';
-import { el, kennzahl, setStatus, setInhalt, liste } from './dom.js';
+import { el, setStatus, setInhalt } from './dom.js';
 import { state } from './state.js';
 
 let scoreTimer = null;
